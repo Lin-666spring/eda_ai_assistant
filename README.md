@@ -109,3 +109,7 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" main.py
 ## 许可证
 
 本项目代码将在 GitHub/Gitee 开源，具体许可证待定。
+
+## 开发日志
+
+- 2026-05-15: BOM引擎完成，AppController架构重构
