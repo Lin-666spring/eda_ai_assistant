@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ config.title }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #e8ecf1; color: #333;
+        }
+        .header {
+            background: {{ config.board_color }}; color: white;
+            padding: 14px 24px; display: flex; align-items: center;
+            justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .header h1 { font-size: 20px; }
+        .stats { display: flex; gap: 24px; font-size: 13px; }
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 20px; font-weight: bold; }
+
+        .container { display: flex; height: calc(100vh - 56px); }
+
+        .view-panel {
+            flex: 1; display: flex; flex-direction: column;
+            margin: 8px; min-width: 0;
+        }
+        .view-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 6px 12px; background: #fff; border-radius: 8px 8px 0 0;
+            border: 1px solid #e0e0e0; border-bottom: none;
+            font-size: 13px; font-weight: 600;
+        }
+        .view-header .dot { color: #27ae60; }
+        .view-header .footprint { color: #2980b9; }
+        .view-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; }
+        .badge-dot { background: #d5f5e3; color: #27ae60; }
+        .badge-footprint { background: #d6eaf8; color: #2980b9; }
+
+        .zoom-hint {
+            font-size: 10px; color: #999; font-weight: normal;
+        }
+
+        .canvas-wrap {
+            flex: 1; position: relative; background: #fff;
+            border: 1px solid #e0e0e0; border-radius: 0 0 8px 8px;
+            overflow: hidden;
+        }
+        .canvas-wrap canvas { width: 100%; height: 100%; cursor: grab; }
+        .canvas-wrap canvas:active { cursor: grabbing; }
+
+        .canvas-legend {
+            position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 12px; padding: 4px 14px;
+            background: rgba(255,255,255,0.9); border-radius: 12px;
+            font-size: 11px; color: #555; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+        .coords-display {
+            position: absolute; top: 34px; right: 12px;
+            font-size: 11px; color: #555; background: rgba(255,255,255,0.85);
+            padding: 2px 8px; border-radius: 4px; pointer-events: none;
+        }
+
+        .bom-panel {
+            width: 380px; background: #fff; margin: 8px 8px 8px 0;
+            border-radius: 8px; border: 1px solid #e0e0e0;
+            display: flex; flex-direction: column; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .search-box { padding: 10px; border-bottom: 1px solid #e0e0e0; }
+        .search-box input {
+            width: 100%; padding: 8px 12px; border: 1px solid #ddd;
+            border-radius: 6px; font-size: 13px; outline: none; background: #f8f9fa;
+        }
+        .search-box input:focus { border-color: #3498db; background: #fff; }
+        .bom-list { flex: 1; overflow-y: auto; }
+        .bom-item {
+            display: flex; align-items: center; padding: 8px 14px;
+            border-bottom: 1px solid #f5f5f5; cursor: pointer;
+            transition: background 0.15s; gap: 10px;
+        }
+        .bom-item:hover { background: #f0f7ff; }
+        .bom-item.active { background: #d6eaf8 !important; border-left: 3px solid #2980b9; }
+        .bom-item.missing { opacity: 0.45; }
+        .bom-ref { font-weight: 700; font-size: 13px; min-width: 45px; color: #2c3e50; font-family: Consolas, monospace; }
+        .bom-info { flex: 1; font-size: 11px; line-height: 1.4; }
+        .bom-value { color: #c0392b; font-weight: 500; }
+        .bom-package { color: #7f8c8d; }
+        .bom-part { color: #2980b9; }
+        .bom-layer { font-size: 10px; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+        .layer-top { background: #d5f5e3; color: #27ae60; }
+        .layer-bottom { background: #fadbd8; color: #c0392b; }
+        .no-data { text-align: center; padding: 40px; color: #999; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h1>📊 {{ config.title }}</h1>
+    <div class="stats">
+        <div class="stat-item"><div class="stat-value">{{ board_stats.total }}</div><div>总元件</div></div>
+        <div class="stat-item"><div class="stat-value">{{ board_stats.top_count }} / {{ board_stats.bottom_count }}</div><div>顶层 / 底层</div></div>
+        <div class="stat-item"><div class="stat-value">{{ "%.0f"|format(board_stats.width_mm) }}×{{ "%.0f"|format(board_stats.height_mm) }}</div><div>尺寸 (mm)</div></div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="view-panel" id="dotPanel">
+        <div class="view-header">
+            <span><span class="dot">●</span> 点阵位号图</span>
+            <span class="zoom-hint">🖱️ 滚轮缩放 · 拖拽平移 · 双击复位</span>
+            <span class="view-badge badge-dot">元件位置</span>
+        </div>
+        <div class="canvas-wrap"><canvas id="dotCanvas"></canvas></div>
+    </div>
+    <div class="view-panel" id="footprintPanel">
+        <div class="view-header">
+            <span><span class="footprint">■</span> 封装轮廓图</span>
+            <span class="zoom-hint">🖱️ 滚轮缩放 · 拖拽平移 · 双击复位</span>
+            <span class="view-badge badge-footprint">模拟 PCB</span>
+        </div>
+        <div class="canvas-wrap"><canvas id="footprintCanvas"></canvas></div>
+    </div>
+
+    <div class="bom-panel">
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="🔍 搜索位号或型号..." oninput="filterComponents()">
+        </div>
+        <div class="bom-list" id="bomList">
+            {% if components %}
+            {% for comp in components %}
+            <div class="bom-item {% if not comp.has_position %}missing{% endif %}"
+                 data-ref="{{ comp.reference }}"
+                 onclick="highlightComponent('{{ comp.reference }}')"
+                 id="item-{{ comp.reference }}">
+                <div class="bom-ref">{{ comp.reference }}</div>
+                <div class="bom-info">
+                    <div><span class="bom-value">{{ comp.value }}</span> <span class="bom-package">{{ comp.package }}</span></div>
+                    <div class="bom-part">{{ comp.part_number or comp.description }}</div>
+                </div>
+                <div class="bom-layer {% if comp.layer == 'Top' %}layer-top{% else %}layer-bottom{% endif %}">
+                    {{ "顶层" if comp.layer == "Top" else "底层" if comp.layer == "Bottom" else "未知" }}
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="no-data">暂无 BOM 数据</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+const components = {{ components_json | safe }};
+
+const PACKAGE_SIZE = {
+    '0201':[0.6,0.3],'0402':[1.0,0.5],'0603':[1.6,0.8],'0805':[2.0,1.25],
+    '1206':[3.2,1.6],'1210':[3.2,2.5],'2512':[6.3,3.2],
+    'SOT-23':[2.9,2.8],'SOT-223':[6.5,7.0],'SOP-8':[5.0,6.0],'SOP-14':[8.7,6.0],
+    'SOP-16':[10.0,6.0],'SSOP-20':[7.2,7.8],'TSSOP-16':[5.0,6.4],'TSSOP-20':[6.5,6.4],
+    'LQFP-48':[7.0,7.0],'LQFP-64':[10.0,10.0],'LQFP-100':[14.0,14.0],
+    'QFN-24':[4.0,4.0],'QFN-28':[5.0,5.0],'QFN-32':[5.0,5.0],'QFN-48':[7.0,7.0],
+    'QFP-32':[7.0,7.0],'QFP-44':[10.0,10.0],'TO-92':[4.6,5.3],'TO-220':[10.2,15.8],
+    'TO-263':[10.2,15.4],'SMA':[4.5,2.7],'SMB':[4.6,3.6],'SMC':[6.9,5.9],
+    'SOD-123':[2.7,1.6],'SOD-323':[1.7,1.25],'Micro-USB-5P':[7.5,5.5],
+    '5032-2P':[5.0,3.2],'3225-4P':[3.2,2.5]
+};
+
+function getPackageSize(pkg){
+    if(!pkg)return[3,3];
+    var k=pkg.replace(/[ _-]/g,'').toUpperCase();
+    if(PACKAGE_SIZE[k])return PACKAGE_SIZE[k];
+    var m=k.match(/^(\d{4})/);
+    if(m&&PACKAGE_SIZE[m[1]])return PACKAGE_SIZE[m[1]];
+    if(/\d{4}/.test(k))return[1.6,0.8];
+    if(/SOP|SOIC|TSSOP|MSOP/i.test(pkg))return[5,6];
+    if(/QFN|LGA|BGA/i.test(pkg))return[5,5];
+    if(/LQFP|TQFP|QFP/i.test(pkg))return[10,10];
+    if(/TO-|SOT/i.test(pkg))return[5,5];
+    if(/DIP/i.test(pkg))return[7.6,10];
+    if(/USB|CON|排/i.test(pkg))return[8,6];
+    return[3,3];
+}
+
+function getShapeStyle(pkg){
+    var u=(pkg||'').toUpperCase();
+    if(/QFN|LGA|BGA|LQFP|TQFP|QFP/i.test(u))return'square';
+    if(/TO-|DIP|SIP/i.test(u))return'round';
+    if(/CON|USB|排|座|插/i.test(u))return'connector';
+    return'rect';
+}
+
+// ═══════════ 缩放/平移状态 ═══════════
+var zoom=1.0, ZOOM_MIN=0.25, ZOOM_MAX=10, ZOOM_STEP=0.15;
+var panDotX=0, panDotY=0, panFpX=0, panFpY=0;
+var dragging=false, dragId=null, dragSX=0, dragSY=0, dragPX=0, dragPY=0;
+var activeRef=null;
+
+function clampZ(z){ return Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,z)); }
+
+function setZoom(newZ,canvasId,mx,my){
+    var old=zoom; zoom=clampZ(newZ);
+    if(Math.abs(zoom-old)<0.001)return;
+    var r=zoom/old;
+    if(canvasId==='dotCanvas'){ panDotX=mx-r*(mx-panDotX); panDotY=my-r*(my-panDotY); }
+    else{ panFpX=mx-r*(mx-panFpX); panFpY=my-r*(my-panFpY); }
+    drawAll(activeRef);
+}
+
+function resetZoom(){
+    zoom=1; panDotX=panDotY=panFpX=panFpY=0; drawAll(activeRef);
+    document.getElementById('dotCoords')&&(document.getElementById('dotCoords').textContent='点击元件查看坐标');
+    document.getElementById('fpCoords')&&(document.getElementById('fpCoords').textContent='实际封装尺寸模拟');
+}
+
+function getPan(cid){ return cid==='dotCanvas'?{x:panDotX,y:panDotY}:{x:panFpX,y:panFpY}; }
+function setPan(cid,px,py){
+    if(cid==='dotCanvas'){panDotX=px;panDotY=py;}else{panFpX=px;panFpY=py;}
+    drawAll(activeRef);
+}
+
+// ═══════════ 布局 ═══════════
+function computeLayout(canvas,px,py){
+    var pos=components.filter(function(c){return c.has_position});
+    if(!pos.length)return null;
+    var xs=pos.map(function(c){return c.x}), ys=pos.map(function(c){return c.y});
+    var minX=Math.min.apply(null,xs), maxX=Math.max.apply(null,xs);
+    var minY=Math.min.apply(null,ys), maxY=Math.max.apply(null,ys);
+    var rx=maxX-minX||1, ry=maxY-minY||1;
+    var base=Math.min((canvas.width-80)/rx,(canvas.height-80)/ry);
+    var s=base*zoom;
+    return{s:s,ox:(canvas.width-rx*s)/2-minX*s+px,oy:(canvas.height-ry*s)/2-minY*s+py,minX:minX,minY:minY,maxX:maxX,maxY:maxY,base:base};
+}
+
+function pt(comp,lay){ return{x:lay.ox+comp.x*lay.s,y:lay.oy+comp.y*lay.s}; }
+
+// ═══════════ 画布1: 点阵图 ═══════════
+function drawDotMap(hl){
+    var c=document.getElementById('dotCanvas'), p=c.parentElement;
+    c.width=p.clientWidth; c.height=p.clientHeight;
+    var ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
+    var lay=computeLayout(c,panDotX,panDotY); if(!lay)return;
+
+    // 网格
+    var gs=25*zoom, sx=(panDotX%gs+gs)%gs, sy=(panDotY%gs+gs)%gs;
+    ctx.strokeStyle='#eee'; ctx.lineWidth=0.5;
+    for(var gx=sx;gx<c.width;gx+=gs){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,c.height);ctx.stroke();}
+    for(var gy=sy;gy<c.height;gy+=gs){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(c.width,gy);ctx.stroke();}
+
+    // 元件
+    components.forEach(function(comp){
+        if(!comp.has_position)return;
+        var p=pt(comp,lay), isH=comp.reference===hl, isT=comp.layer==='Top';
+        var r=Math.min(4*zoom,isH?10:7);
+        if(isH){ctx.beginPath();ctx.arc(p.x,p.y,20,0,Math.PI*2);ctx.fillStyle='rgba(231,76,60,0.15)';ctx.fill();}
+        ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);
+        ctx.fillStyle=isH?'#e74c3c':(isT?'#27ae60':'#3498db');ctx.fill();
+        if(isH){ctx.strokeStyle='#c0392b';ctx.lineWidth=2.5;ctx.stroke();}
+        if(zoom>=0.55||isH){
+            ctx.fillStyle=isH?'#c0392b':'#555';
+            ctx.font=(isH?'bold ':'')+Math.max(9,10*zoom)+'px sans-serif';
+            ctx.fillText(comp.reference,p.x+r+4,p.y+r/2);
+        }
+    });
+
+    drawOutline(ctx,lay);
+    drawZoomBadge(ctx,c);
+}
+
+// ═══════════ 画布2: 封装轮廓 ═══════════
+function drawFootprintMap(hl){
+    var c=document.getElementById('footprintCanvas'), p=c.parentElement;
+    c.width=p.clientWidth; c.height=p.clientHeight;
+    var ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
+    var lay=computeLayout(c,panFpX,panFpY); if(!lay)return;
+
+    ctx.fillStyle='#1a3a1a'; ctx.fillRect(0,0,c.width,c.height);
+    var gs=28*zoom, sx=(panFpX%gs+gs)%gs, sy=(panFpY%gs+gs)%gs;
+    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=0.5;
+    for(var gx=sx;gx<c.width;gx+=gs){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,c.height);ctx.stroke();}
+    for(var gy=sy;gy<c.height;gy+=gs){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(c.width,gy);ctx.stroke();}
+
+    components.forEach(function(comp){
+        if(!comp.has_position)return;
+        var p=pt(comp,lay), isH=comp.reference===hl;
+        var sz=getPackageSize(comp.package), hw=sz[0]*lay.s/2, hh=sz[1]*lay.s/2;
+        var sh=getShapeStyle(comp.package), hlC='#e74c3c';
+
+        ctx.save(); ctx.translate(p.x,p.y);
+        if(comp.rotation)ctx.rotate(comp.rotation*Math.PI/180);
+
+        if(sh==='square'){
+            var s=Math.max(hw,hh);
+            ctx.fillStyle=isH?hlC:'#1a1a1a'; ctx.fillRect(-s*.95,-s*.95,s*1.9,s*1.9);
+            ctx.fillStyle=isH?hlC:'#c0c0c0';
+            var pw=s*.08, pl=s*.3;
+            for(var i=0;i<8;i++){var pp=-s+(i+.5)*(s*2/8);
+                ctx.fillRect(pp-pw/2,-s-pl,pw,pl);ctx.fillRect(pp-pw/2,s,pw,pl);
+                ctx.fillRect(-s-pl,pp-pw/2,pl,pw);ctx.fillRect(s,pp-pw/2,pl,pw);
+            }
+            ctx.fillStyle='#f39c12';ctx.beginPath();ctx.arc(-s*.7,-s*.7,s*.12,0,Math.PI*2);ctx.fill();
+        }else if(sh==='round'){
+            ctx.fillStyle=isH?hlC:'#1a1a1a';ctx.beginPath();ctx.arc(0,0,Math.max(hw,hh),0,Math.PI*2);ctx.fill();
+            var pR=Math.min(2*lay.s,5); ctx.fillStyle='#f39c12';
+            ctx.beginPath();ctx.arc(-hw*.5,-hh,pR,0,Math.PI*2);ctx.fill();
+            ctx.beginPath();ctx.arc(hw*.5,-hh,pR,0,Math.PI*2);ctx.fill();
+            ctx.beginPath();ctx.arc(-hw*.5,hh,pR,0,Math.PI*2);ctx.fill();
+        }else if(sh==='connector'){
+            ctx.fillStyle=isH?hlC:'#ecf0f1';ctx.fillRect(-hw,-hh,hw*2,hh*2);
+            ctx.strokeStyle='#555';ctx.lineWidth=1;ctx.strokeRect(-hw,-hh,hw*2,hh*2);
+            ctx.fillStyle='#f39c12';var pp=hh*2/5;
+            for(var i=0;i<5;i++)ctx.fillRect(-hw-3,-hh+i*pp,6,pp*.6);
+        }else{
+            ctx.fillStyle=isH?hlC:'#bdc3c7';ctx.fillRect(-hw,-hh,hw*2,hh*2);
+            ctx.fillStyle='#f39c12';ctx.fillRect(-hw-1.5,-hh*.6,1.5,hh*1.2);ctx.fillRect(hw,-hh*.6,1.5,hh*1.2);
+        }
+        if(isH){ctx.strokeStyle=hlC;ctx.lineWidth=3;var ss=Math.max(hw,hh)+6;ctx.strokeRect(-ss,-ss,ss*2,ss*2);}
+        ctx.restore();
+
+        if(isH){ctx.fillStyle='#ff0';ctx.font='bold 12px sans-serif';ctx.fillText(comp.reference,p.x+hw+8,p.y-4);}
+        else if(zoom>=0.6){ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font=Math.max(7,8*zoom)+'px sans-serif';ctx.fillText(comp.reference,p.x+hw+3,p.y+3);}
+    });
+
+    drawOutline(ctx,lay,true);
+    drawZoomBadge(ctx,c);
+}
+
+function drawOutline(ctx,lay,dark){
+    var m=3, x=lay.ox-m*lay.s, y=lay.oy-m*lay.s;
+    var w=(lay.maxX-lay.minX+m*2)*lay.s, h=(lay.maxY-lay.minY+m*2)*lay.s;
+    ctx.strokeStyle=dark?'rgba(255,255,255,0.3)':'#aaa';ctx.lineWidth=1.5;
+    ctx.setLineDash([8,4]);ctx.strokeRect(x,y,w,h);ctx.setLineDash([]);
+}
+
+function drawZoomBadge(ctx,canvas){
+    var pct=Math.round(zoom*100), text='🔍 '+pct+'%';
+    var tw=ctx.measureText(text).width+16;
+    ctx.fillStyle='rgba(0,0,0,0.65)';ctx.fillRect(canvas.width-tw-8,4,tw,24);
+    ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.fillText(text,canvas.width-tw,20);
+}
+
+function drawAll(hl){ drawDotMap(hl); drawFootprintMap(hl); }
+
+// ═══════════ 交互 ═══════════
+function filterComponents(){
+    var q=document.getElementById('searchInput').value.toLowerCase();
+    document.querySelectorAll('.bom-item').forEach(function(it){
+        it.style.display=(!q||it.dataset.ref.toLowerCase().indexOf(q)>=0)?'flex':'none';
+    });
+}
+
+function highlightComponent(ref){
+    if(activeRef){var o=document.getElementById('item-'+activeRef);if(o)o.classList.remove('active');}
+    var el=document.getElementById('item-'+ref);
+    if(el){el.classList.add('active');el.scrollIntoView({behavior:'smooth',block:'center'});}
+    activeRef=ref; drawAll(ref);
+    var comp=components.find(function(c){return c.reference===ref});
+    if(!comp||!comp.has_position)return;
+    var dc=document.getElementById('dotCoords'), fc=document.getElementById('fpCoords');
+    if(!dc||!fc)return;
+    dc.textContent=comp.reference+': ('+comp.x.toFixed(1)+', '+comp.y.toFixed(1)+') @ '+comp.layer;
+    var sz=getPackageSize(comp.package);
+    fc.textContent=comp.package+' ≈ '+sz[0]+'×'+sz[1]+'mm';
+}
+
+// ═══════════ 鼠标事件 ═══════════
+function onWheel(e,canvasId){
+    e.preventDefault();
+    var c=document.getElementById(canvasId), r=c.getBoundingClientRect();
+    var d=e.deltaY>0?-ZOOM_STEP:ZOOM_STEP;
+    setZoom(zoom+d, canvasId, e.clientX-r.left, e.clientY-r.top);
+}
+
+function onMouseDown(e,canvasId){
+    if(e.button!==0)return;
+    dragging=true; dragId=canvasId;
+    dragSX=e.clientX; dragSY=e.clientY;
+    var pan=getPan(canvasId); dragPX=pan.x; dragPY=pan.y;
+    e.preventDefault();
+}
+
+function onMouseMove(e){
+    if(!dragging)return;
+    setPan(dragId, dragPX+(e.clientX-dragSX), dragPY+(e.clientY-dragSY));
+}
+
+function onMouseUp(){ dragging=false; dragId=null; }
+
+function onDblClick(){ resetZoom(); }
+
+function bindCanvas(canvasId){
+    var c=document.getElementById(canvasId);
+    c.addEventListener('wheel',function(e){onWheel(e,canvasId)},{passive:false});
+    c.addEventListener('mousedown',function(e){onMouseDown(e,canvasId)});
+    c.addEventListener('dblclick',onDblClick);
+}
+
+window.addEventListener('mousemove',onMouseMove);
+window.addEventListener('mouseup',onMouseUp);
+window.addEventListener('resize',function(){drawAll(activeRef)});
+document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){
+        if(activeRef){var o=document.getElementById('item-'+activeRef);if(o)o.classList.remove('active');}
+        activeRef=null; drawAll(null);
+    }
+    if(e.key==='0'||e.key==='r')resetZoom();
+});
+
+window.addEventListener('load',function(){
+    bindCanvas('dotCanvas');
+    bindCanvas('footprintCanvas');
+    drawAll(null);
+});
+</script>
+</body>
+</html>
