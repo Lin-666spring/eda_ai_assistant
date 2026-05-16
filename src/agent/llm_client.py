@@ -1,6 +1,9 @@
 """
-DeepSeek API 客户端封装 — 重构版
-消除重复的 payload 构建与历史记录追加
+通用 LLM API 客户端 — 兼容 OpenAI/DeepSeek/通义千问/智谱/Kimi 等厂商
+
+支持两种配置方式：
+1. 厂商预设：设置 LLM_PROVIDER=deepseek 自动填入 base_url 和 model
+2. 手动指定：直接设置 LLM_BASE_URL / LLM_MODEL 覆盖预设
 """
 
 import json
@@ -9,6 +12,8 @@ from dataclasses import dataclass, field
 from typing import Optional, Generator, Callable
 
 import requests
+
+from ..constants import LLM_PROVIDER_PRESETS, DEFAULT_PROVIDER
 
 logger = logging.getLogger(__name__)
 
@@ -81,11 +86,30 @@ def _parse_stream_line(line: str) -> StreamToken:
 
 
 # ══════════════════════════════════════════════════════
+#  厂商预设解析
+# ══════════════════════════════════════════════════════
+
+def resolve_provider(
+    provider: Optional[str] = None,
+    base_url: Optional[str] = None,
+    model: Optional[str] = None,
+) -> tuple[str, str]:
+    """解析厂商预设：provider 提供默认值，base_url/model 可覆盖"""
+    preset = LLM_PROVIDER_PRESETS.get((provider or DEFAULT_PROVIDER).lower())
+    if preset is None:
+        preset = LLM_PROVIDER_PRESETS[DEFAULT_PROVIDER]
+    return (
+        base_url or preset.base_url,
+        model or preset.default_model,
+    )
+
+
+# ══════════════════════════════════════════════════════
 #  客户端
 # ══════════════════════════════════════════════════════
 
-class DeepSeekClient:
-    """DeepSeek 大语言模型 API 客户端 — 重构版"""
+class LLMClient:
+    """通用大语言模型 API 客户端 — 兼容 OpenAI/DeepSeek/通义千问/智谱/Kimi 等"""
 
     DEFAULT_BASE_URL = "https://api.deepseek.com/v1"
     DEFAULT_MODEL = "deepseek-chat"
@@ -97,11 +121,19 @@ class DeepSeekClient:
         api_key: str,
         base_url: Optional[str] = None,
         model: Optional[str] = None,
+        provider: Optional[str] = None,
     ):
         self.api_key = api_key
-        self.base_url = base_url or self.DEFAULT_BASE_URL
-        self.model = model or self.DEFAULT_MODEL
+        resolved_url, resolved_model = resolve_provider(provider, base_url, model)
+        self.base_url = resolved_url
+        self.model = resolved_model
+        self.provider_name = provider or DEFAULT_PROVIDER
         self._history: list[dict] = []
+
+    @property
+    def provider_label(self) -> str:
+        """当前厂商的可读名称"""
+        return self.provider_name
 
     # ── 公开方法 ──
 
@@ -232,7 +264,7 @@ class DeepSeekClient:
             resp.raise_for_status()
             return resp.json()
         except requests.RequestException as error:
-            logger.error(f"DeepSeek API 请求失败: {error}")
+            logger.error(f"LLM API 请求失败 ({self.base_url}): {error}")
             raise
 
     def _post_stream_lines(self, request: ChatRequest) -> Generator[str, None, None]:
@@ -249,7 +281,7 @@ class DeepSeekClient:
                 if raw_line:
                     yield raw_line.decode("utf-8")
         except requests.RequestException as error:
-            logger.error(f"DeepSeek 流式请求失败: {error}")
+            logger.error(f"LLM 流式请求失败 ({self.base_url}): {error}")
             raise
 
     def _build_headers(self) -> dict:

@@ -47,13 +47,55 @@ class BOMConstants:
     REPORT_DOUBLE_SEP: str = "=" * 50
 
 
+# ══════════════════ LLM Provider 预设 ══════════════════
+
+@dataclass(frozen=True)
+class ProviderPreset:
+    """单个 LLM 厂商预设"""
+    name: str
+    base_url: str
+    default_model: str
+    description: str
+
+
+# 主流 OpenAI 兼容厂商预设
+LLM_PROVIDER_PRESETS: dict[str, ProviderPreset] = {
+    "deepseek": ProviderPreset(
+        "deepseek", "https://api.deepseek.com/v1", "deepseek-v4-pro",
+        "DeepSeek V4-Pro — 1.6T MoE, 100万上下文 (2026.04)",
+    ),
+    "openai": ProviderPreset(
+        "openai", "https://api.openai.com/v1", "gpt-5.4",
+        "OpenAI GPT-5.4 — 目前 API 最新旗舰 (2026.03)",
+    ),
+    "qwen": ProviderPreset(
+        "qwen", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen3.6-plus",
+        "通义千问 3.6-Plus — 100万上下文, 性能与成本均衡 (2026.04)",
+    ),
+    "glm": ProviderPreset(
+        "glm", "https://open.bigmodel.cn/api/paas/v4", "glm-5.1",
+        "智谱 GLM-5.1 — 全自治旗舰, 对标 Opus 4.6 (2026.04)",
+    ),
+    "moonshot": ProviderPreset(
+        "moonshot", "https://api.moonshot.cn/v1", "kimi-k2.6",
+        "月之暗面 Kimi K2.6 — 1T MoE, Agent 集群 (2026.04)",
+    ),
+    "siliconflow": ProviderPreset(
+        "siliconflow", "https://api.siliconflow.cn/v1", "deepseek-ai/DeepSeek-V4-Flash",
+        "硅基流动 — 第三方聚合 API (DeepSeek V4-Flash, 高性价比)",
+    ),
+}
+
+DEFAULT_PROVIDER = "deepseek"
+
+
 # ══════════════════ Agent 常量 ══════════════════
 
 @dataclass(frozen=True)
 class AgentConstants:
     """AI Agent 常量"""
 
-    DEFAULT_MODEL: str = "deepseek-chat"
+    DEFAULT_MODEL: str = "deepseek-v4-pro"
     DEFAULT_BASE_URL: str = "https://api.deepseek.com/v1"
     DEFAULT_TEMPERATURE: float = 0.7
     DEFAULT_MAX_TOKENS: int = 4096

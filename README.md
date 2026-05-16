@@ -17,7 +17,7 @@
 
 | 功能 | 描述 | 状态 |
 |------|------|------|
-| 🤖 AI Agent 对话 | 基于 DeepSeek 的自然语言交互 | 🚧 开发中 |
+| 🤖 AI Agent 对话 | 基于 LLM 的自然语言交互，支持多厂商 | 🚧 开发中 |
 | 📦 BOM 智能合并 | 同类元件自动合并，输出对比报告 | ✅ 已实现 |
 | ✅ 封装校验 | 检测封装与型号不匹配项 | ✅ 已实现 |
 | 🔍 位号查重 | 跨文件/单文件重复位号检测 | ✅ 已实现 |
@@ -28,7 +28,7 @@
 
 - **语言**: Python 3.10+
 - **GUI**: PyQt5
-- **AI**: DeepSeek API (大语言模型)
+- **AI**: LLM API — 兼容 OpenAI / DeepSeek / 通义千问 / 智谱 GLM / Kimi 等
 - **数据处理**: pandas, openpyxl
 - **HTML模板**: Jinja2
 - **打包**: PyInstaller
@@ -43,7 +43,7 @@ eda_ai_assistant/
 ├── .gitignore
 ├── src/
 │   ├── agent/              # AI Agent 核心模块
-│   │   ├── deepseek_client.py   # DeepSeek API 封装
+│   │   ├── llm_client.py        # 通用 LLM API 封装
 │   │   └── prompt_templates.py  # Prompt 模板库
 │   ├── bom/                # BOM 处理引擎
 │   │   ├── parser.py            # CSV/Excel 解析
@@ -75,13 +75,21 @@ eda_ai_assistant/
 pip install -r requirements.txt
 ```
 
-### 2. 配置 API 密钥
+### 2. 配置 LLM API
 
-创建 `.env` 文件（项目根目录）：
+创建 `.env` 文件（项目根目录），选择厂商预设或手动指定：
 
 ```env
-DEEPSEEK_API_KEY=your_api_key_here
+# 方式一：厂商预设（推荐）
+LLM_PROVIDER=deepseek
+LLM_API_KEY=your_api_key_here
+
+# 方式二：手动指定
+# LLM_BASE_URL=https://api.openai.com/v1
+# LLM_MODEL=gpt-4o
 ```
+
+可选厂商: `deepseek` | `openai` | `qwen` (通义千问) | `glm` (智谱) | `moonshot` (Kimi) | `siliconflow` (硅基流动)
 
 ### 3. 运行应用
 

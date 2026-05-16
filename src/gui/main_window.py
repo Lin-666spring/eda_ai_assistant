@@ -194,11 +194,12 @@ class MainWindow(QMainWindow):
 
     def _update_agent_status(self):
         if self.controller.is_agent_available():
-            self.chat_panel.add_system_message("✅ DeepSeek AI Agent 已就绪")
+            provider = self.controller.agent.provider_label if self.controller.agent else "LLM"
+            self.chat_panel.add_system_message(f"✅ {provider} AI Agent 已就绪")
         else:
             self.chat_panel.add_system_message(
-                "⚠️ 未配置 DeepSeek API Key。将使用本地关键词匹配模式。\n"
-                "请在项目根目录的 .env 文件中设置 DEEPSEEK_API_KEY。"
+                "⚠️ 未配置 LLM API Key。将使用本地关键词匹配模式。\n"
+                "请在项目根目录的 .env 文件中设置 LLM_API_KEY（或使用 LLM_PROVIDER 选择厂商）。"
             )
 
     # ══════════════════════════════════════════════════

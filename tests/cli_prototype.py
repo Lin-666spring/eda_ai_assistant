@@ -14,7 +14,7 @@ from typing import Optional, Callable
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.agent.deepseek_client import DeepSeekClient
+from src.agent.llm_client import LLMClient
 from src.agent.prompt_templates import PromptTemplates
 from src.bom.parser import BOMParser, BOMItem
 from src.bom.merger import BOMMerger
@@ -257,8 +257,13 @@ class CLIPrototype:
     """命令行交互原型"""
 
     def __init__(self, api_key: str | None = None):
-        self.api_key = api_key or config.deepseek.api_key
-        self.agent = DeepSeekClient(api_key=self.api_key) if self.api_key else None
+        self.api_key = api_key or config.llm.api_key
+        self.agent = LLMClient(
+            api_key=self.api_key,
+            base_url=config.llm.base_url,
+            model=config.llm.model,
+            provider=config.llm.provider,
+        ) if self.api_key else None
         self.parser = BOMParser()
         self.eda = LCEDAAdapter()
         self.context = CommandContext()
@@ -448,9 +453,10 @@ class CLIPrototype:
                 print(f"  {cmd.name:<14s} {cmd.help_text}")
         print("─" * 55)
         if self.agent:
-            print("✅ DeepSeek Agent 已就绪")
+            provider_label = self.agent.provider_label if self.agent else "LLM"
+            print(f"✅ {provider_label} Agent 已就绪")
         else:
-            print("⚠️  未配置 DeepSeek API，使用本地规则引擎。")
+            print("⚠️  未配置 LLM API，使用本地规则引擎。")
 
 
 def _setup_console():

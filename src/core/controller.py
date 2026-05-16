@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
 
-from src.agent.deepseek_client import DeepSeekClient
+from src.agent.llm_client import LLMClient
 from src.agent.prompt_templates import PromptTemplates
 from src.bom.checker import BOMDuplicateChecker
 from src.bom.merger import BOMMerger
@@ -59,8 +59,13 @@ class AppController:
     # ── Lifecycle ──
 
     def __init__(self, api_key: Optional[str] = None):
-        resolved = api_key or config.deepseek.api_key
-        self.agent = DeepSeekClient(api_key=resolved) if self._key_valid(resolved) else None
+        resolved = api_key or config.llm.api_key
+        self.agent = LLMClient(
+            api_key=resolved,
+            base_url=config.llm.base_url,
+            model=config.llm.model,
+            provider=config.llm.provider,
+        ) if self._key_valid(resolved) else None
         self.parser = BOMParser()
         self.eda = LCEDAAdapter()
         self.context = CommandContext()
