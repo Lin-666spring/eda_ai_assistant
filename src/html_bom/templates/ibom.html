@@ -63,7 +63,7 @@
         }
 
         .bom-panel {
-            width: 380px; background: #fff; margin: 8px 8px 8px 0;
+            width: 400px; background: #fff; margin: 8px 8px 8px 0;
             border-radius: 8px; border: 1px solid #e0e0e0;
             display: flex; flex-direction: column; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
         }
@@ -137,7 +137,7 @@
 
     <div class="bom-panel">
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="🔍 搜索位号或型号..." oninput="filterComponents()">
+            <input type="text" id="searchInput" placeholder="🔍 搜索位号、型号、参数、封装 — （如 R1 / 10kΩ / 0603）" oninput="filterComponents()">
         </div>
         <div class="bom-list" id="bomList">
             {% if components %}
