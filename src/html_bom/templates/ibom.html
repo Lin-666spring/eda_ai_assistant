@@ -143,7 +143,7 @@
             {% if components %}
             {% for comp in components %}
             <div class="bom-item {% if not comp.has_position %}missing{% endif %}"
-                 data-ref="{{ comp.reference }}"
+                 data-search="{{ comp.reference }} {{ comp.value }} {{ comp.package }} {{ comp.part_number }} {{ comp.description }}"
                  onclick="highlightComponent('{{ comp.reference }}')"
                  id="item-{{ comp.reference }}">
                 <div class="bom-ref">{{ comp.reference }}</div>
@@ -377,7 +377,8 @@ function drawAll(hl){ drawDotMap(hl); drawFootprintMap(hl); }
 function filterComponents(){
     var q=document.getElementById('searchInput').value.toLowerCase();
     document.querySelectorAll('.bom-item').forEach(function(it){
-        it.style.display=(!q||it.dataset.ref.toLowerCase().indexOf(q)>=0)?'flex':'none';
+        var haystack = it.dataset.search || it.dataset.ref;
+        it.style.display=(!q||haystack.toLowerCase().indexOf(q)>=0)?'flex':'none';
     });
 }
 
