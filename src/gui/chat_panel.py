@@ -147,53 +147,59 @@ class ChatPanel(QWidget):
     def add_error_message(self, text: str):
         self._append_message("❌ 错误", text, QColor("#922b21"), QColor("#fadbd8"))
 
+    # ── Internal helpers (cursor/builder) ──
+
+    @staticmethod
+    def _timestamp() -> str:
+        return datetime.now().strftime("%H:%M:%S")
+
+    @staticmethod
+    def _insert_header(cursor, sender: str, color: QColor):
+        fmt = QTextCharFormat()
+        fmt.setFontWeight(QFont.Bold)
+        fmt.setForeground(color)
+        cursor.insertText(f"\n[{ChatPanel._timestamp()}] {sender}\n", fmt)
+
+    @staticmethod
+    def _insert_separator(cursor):
+        fmt = QTextCharFormat()
+        fmt.setForeground(QColor("#e0e0e0"))
+        cursor.insertText("─" * 40 + "\n", fmt)
+
+    @staticmethod
+    def _insert_text(cursor, text: str, color: QColor):
+        fmt = QTextCharFormat()
+        fmt.setForeground(color)
+        cursor.insertText(text, fmt)
+
+    def _end_cursor(self, cursor):
+        self.chat_display.setTextCursor(cursor)
+        self._scroll_to_bottom()
+
     # ── Streaming support ──
 
     def show_thinking(self):
-        """Begin an AI response slot — shows 'thinking' indicator.
-
-        Subsequent calls to ``append_stream_token`` will stream raw tokens,
-        and ``finish_streaming`` will replace them with the final response.
-        """
         self._streaming = True
 
         cursor = self.chat_display.textCursor()
         cursor.movePosition(QTextCursor.End)
 
-        timestamp = datetime.now().strftime("%H:%M:%S")
-
-        fmt = QTextCharFormat()
-        fmt.setFontWeight(QFont.Bold)
-        fmt.setForeground(QColor("#1a5276"))
-        cursor.insertText(f"\n[{timestamp}] 🤖 AI\n", fmt)
-
-        # Remember where content begins — finish_streaming replaces from here
+        self._insert_header(cursor, "🤖 AI", QColor("#1a5276"))
         self._stream_content_start = cursor.position()
+        self._insert_text(cursor, "思考中... ⏳\n", QColor("#7f8c8d"))
 
-        fmt = QTextCharFormat()
-        fmt.setForeground(QColor("#7f8c8d"))
-        cursor.insertText("思考中... ⏳\n", fmt)
-
-        self.chat_display.setTextCursor(cursor)
-        self._scroll_to_bottom()
+        self._end_cursor(cursor)
 
     def append_stream_token(self, token: str):
-        """Append a raw token during streaming (shown in grey)."""
         if not self._streaming:
             return
 
         cursor = self.chat_display.textCursor()
         cursor.movePosition(QTextCursor.End)
-
-        fmt = QTextCharFormat()
-        fmt.setForeground(QColor("#7f8c8d"))
-        cursor.insertText(token, fmt)
-
-        self.chat_display.setTextCursor(cursor)
-        self._scroll_to_bottom()
+        self._insert_text(cursor, token, QColor("#7f8c8d"))
+        self._end_cursor(cursor)
 
     def finish_streaming(self, final_text: str):
-        """Replace all streamed content with the clean final response."""
         if not self._streaming:
             self.add_ai_message(final_text)
             return
@@ -203,43 +209,20 @@ class ChatPanel(QWidget):
         cursor = self.chat_display.textCursor()
         cursor.setPosition(self._stream_content_start)
         cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
-
-        fmt = QTextCharFormat()
-        fmt.setForeground(QColor("#2c3e50"))
-        cursor.insertText(final_text + "\n", fmt)
-
-        # Separator
-        fmt = QTextCharFormat()
-        fmt.setForeground(QColor("#e0e0e0"))
-        cursor.insertText("─" * 40 + "\n", fmt)
-
-        self.chat_display.setTextCursor(cursor)
-        self._scroll_to_bottom()
+        self._insert_text(cursor, final_text + "\n", QColor("#2c3e50"))
+        self._insert_separator(cursor)
+        self._end_cursor(cursor)
 
     # ── Internal helpers ──
 
-    def _append_message(self, sender: str, text: str, sender_color: QColor, bg_color: QColor):
-        """Append a complete, formatted message block."""
+    def _append_message(self, sender: str, text: str, sender_color: QColor, _bg_color: QColor):
         cursor = self.chat_display.textCursor()
         cursor.movePosition(QTextCursor.End)
 
-        timestamp = datetime.now().strftime("%H:%M:%S")
-
-        fmt = QTextCharFormat()
-        fmt.setFontWeight(QFont.Bold)
-        fmt.setForeground(sender_color)
-        cursor.insertText(f"\n[{timestamp}] {sender}\n", fmt)
-
-        fmt = QTextCharFormat()
-        fmt.setForeground(QColor("#2c3e50"))
-        cursor.insertText(text + "\n", fmt)
-
-        fmt = QTextCharFormat()
-        fmt.setForeground(QColor("#e0e0e0"))
-        cursor.insertText("─" * 40 + "\n", fmt)
-
-        self.chat_display.setTextCursor(cursor)
-        self._scroll_to_bottom()
+        self._insert_header(cursor, sender, sender_color)
+        self._insert_text(cursor, text + "\n", QColor("#2c3e50"))
+        self._insert_separator(cursor)
+        self._end_cursor(cursor)
 
     def _clear_chat(self):
         self.chat_display.clear()

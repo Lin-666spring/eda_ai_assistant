@@ -81,24 +81,15 @@ class BOMTableView(QWidget):
         layout.addWidget(self.table)
 
     def load_items(self, items: list):
-        """加载 BOM 数据到表格"""
         self.table.setRowCount(len(items))
 
         for row, item in enumerate(items):
-            # 位号
-            self._set_cell(row, 0, item.reference)
-            # 参数值
-            self._set_cell(row, 1, item.value)
-            # 封装
-            self._set_cell(row, 2, item.package)
-            # 型号
-            self._set_cell(row, 3, item.part_number)
-            # 描述
-            self._set_cell(row, 4, item.description)
-            # 数量
-            self._set_cell(row, 5, str(item.quantity), align=Qt.AlignCenter)
-            # 制造商
-            self._set_cell(row, 6, item.manufacturer)
+            for col, key in enumerate(self.COLUMN_KEYS):
+                value = getattr(item, key, "")
+                if key == "quantity":
+                    self._set_cell(row, col, str(int(value)) if value else "1", align=Qt.AlignCenter)
+                else:
+                    self._set_cell(row, col, str(value))
 
         self.table.resizeRowsToContents()
 

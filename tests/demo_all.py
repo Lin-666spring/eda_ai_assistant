@@ -2,6 +2,14 @@
 功能演示脚本 — 展示所有已实现功能
 """
 import sys
+import io
+
+# Fix Windows GBK encoding for emoji output
+try:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+except Exception:
+    pass
+
 sys.path.insert(0, r"C:\Users\lin\Desktop\eda_ai_assistant")
 
 from tests.cli_prototype import (

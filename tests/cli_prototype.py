@@ -357,29 +357,27 @@ class CLIPrototype:
             "stat":   ShellCommand("stat",   lambda: (self._print_bom_summary(), True)[1], "元件统计"),
         }
 
+    _PREFIX_COMMANDS = (
+        ("load ", lambda self, arg: self.load_bom(arg)),
+        ("pos ",  lambda self, arg: self.load_positions(arg)),
+        ("list",  lambda self, arg: self._handle_list("list " + arg if arg else "list")),
+    )
+
     def _dispatch_shell_command(self, raw_input: str) -> bool:
         cmd = raw_input.strip()
         if not cmd:
             return True
         lowered = cmd.lower()
 
-        # 前缀命令
-        if lowered.startswith("load "):
-            self.load_bom(cmd[5:].strip())
-            return True
-        if lowered.startswith("pos "):
-            self.load_positions(cmd[4:].strip())
-            return True
-        if lowered.startswith("list"):
-            self._handle_list(cmd)
-            return True
+        for prefix, handler in self._PREFIX_COMMANDS:
+            if lowered.startswith(prefix):
+                arg = cmd[len(prefix):].strip()
+                return handler(self, arg)
 
-        # 注册表匹配
         shell_cmd = self._shell.get(lowered)
         if shell_cmd:
             return shell_cmd.action()
 
-        # 自然语言 → AI
         self.process_with_ai(cmd)
         return True
 
@@ -446,15 +444,11 @@ class CLIPrototype:
         print("\n" + "=" * 55)
         print("  🤖 EDA AI 智能助手 — 命令行原型")
         print("=" * 55)
-        for name in ["load", "pos", "merge", "validate", "dup",
-                      "rule", "html", "stat", "list", "help", "quit"]:
-            cmd = self._shell.get(name)
-            if cmd:
-                print(f"  {cmd.name:<14s} {cmd.help_text}")
+        for cmd in self._shell.values():
+            print(f"  {cmd.name:<14s} {cmd.help_text}")
         print("─" * 55)
         if self.agent:
-            provider_label = self.agent.provider_label if self.agent else "LLM"
-            print(f"✅ {provider_label} Agent 已就绪")
+            print(f"✅ {self.agent.provider_label} Agent 已就绪")
         else:
             print("⚠️  未配置 LLM API，使用本地规则引擎。")
 

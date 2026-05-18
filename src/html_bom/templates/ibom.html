@@ -110,7 +110,14 @@
             <span class="zoom-hint">🖱️ 滚轮缩放 · 拖拽平移 · 双击复位</span>
             <span class="view-badge badge-dot">元件位置</span>
         </div>
-        <div class="canvas-wrap"><canvas id="dotCanvas"></canvas></div>
+        <div class="canvas-wrap">
+            <div id="dotPlaceholder" class="placeholder-msg" style="display:none; position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#999;z-index:10;pointer-events:none;">
+                <div style="font-size:48px;margin-bottom:12px;">📋</div>
+                <div style="font-size:14px;">尚未导入 Pick & Place 坐标文件</div>
+                <div style="font-size:12px;margin-top:4px;">导入坐标后可显示元件位置图</div>
+            </div>
+            <canvas id="dotCanvas"></canvas>
+        </div>
     </div>
     <div class="view-panel" id="footprintPanel">
         <div class="view-header">
@@ -118,7 +125,14 @@
             <span class="zoom-hint">🖱️ 滚轮缩放 · 拖拽平移 · 双击复位</span>
             <span class="view-badge badge-footprint">模拟 PCB</span>
         </div>
-        <div class="canvas-wrap"><canvas id="footprintCanvas"></canvas></div>
+        <div class="canvas-wrap">
+            <div id="fpPlaceholder" class="placeholder-msg" style="display:none; position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#999;z-index:10;pointer-events:none;">
+                <div style="font-size:48px;margin-bottom:12px;">📋</div>
+                <div style="font-size:14px;">尚未导入 Pick & Place 坐标文件</div>
+                <div style="font-size:12px;margin-top:4px;">导入坐标后可显示封装轮廓模拟图</div>
+            </div>
+            <canvas id="footprintCanvas"></canvas>
+        </div>
     </div>
 
     <div class="bom-panel">
@@ -190,7 +204,7 @@ function getShapeStyle(pkg){
 }
 
 // ═══════════ 缩放/平移状态 ═══════════
-var zoom=1.0, ZOOM_MIN=0.25, ZOOM_MAX=10, ZOOM_STEP=0.15;
+var zoomDot=1.0, zoomFp=1.0, ZOOM_MIN=0.25, ZOOM_MAX=10, ZOOM_STEP=0.15;
 var panDotX=0, panDotY=0, panFpX=0, panFpY=0;
 var dragging=false, dragId=null, dragSX=0, dragSY=0, dragPX=0, dragPY=0;
 var activeRef=null;
@@ -198,16 +212,17 @@ var activeRef=null;
 function clampZ(z){ return Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,z)); }
 
 function setZoom(newZ,canvasId,mx,my){
-    var old=zoom; zoom=clampZ(newZ);
-    if(Math.abs(zoom-old)<0.001)return;
-    var r=zoom/old;
-    if(canvasId==='dotCanvas'){ panDotX=mx-r*(mx-panDotX); panDotY=my-r*(my-panDotY); }
-    else{ panFpX=mx-r*(mx-panFpX); panFpY=my-r*(my-panFpY); }
-    drawAll(activeRef);
+    var old=canvasId==='dotCanvas'?zoomDot:zoomFp;
+    var z=clampZ(newZ);
+    if(Math.abs(z-old)<0.001)return;
+    var r=z/old;
+    if(canvasId==='dotCanvas'){ zoomDot=z; panDotX=mx-r*(mx-panDotX); panDotY=my-r*(my-panDotY); }
+    else{ zoomFp=z; panFpX=mx-r*(mx-panFpX); panFpY=my-r*(my-panFpY); }
+    if(canvasId==='dotCanvas')drawDotMap(activeRef); else drawFootprintMap(activeRef);
 }
 
 function resetZoom(){
-    zoom=1; panDotX=panDotY=panFpX=panFpY=0; drawAll(activeRef);
+    zoomDot=zoomFp=1; panDotX=panDotY=panFpX=panFpY=0; drawAll(activeRef);
     document.getElementById('dotCoords')&&(document.getElementById('dotCoords').textContent='点击元件查看坐标');
     document.getElementById('fpCoords')&&(document.getElementById('fpCoords').textContent='实际封装尺寸模拟');
 }
@@ -219,29 +234,45 @@ function setPan(cid,px,py){
 }
 
 // ═══════════ 布局 ═══════════
-function computeLayout(canvas,px,py){
+function computeLayout(canvas,px,py,z){
     var pos=components.filter(function(c){return c.has_position});
     if(!pos.length)return null;
     var xs=pos.map(function(c){return c.x}), ys=pos.map(function(c){return c.y});
     var minX=Math.min.apply(null,xs), maxX=Math.max.apply(null,xs);
     var minY=Math.min.apply(null,ys), maxY=Math.max.apply(null,ys);
-    var rx=maxX-minX||1, ry=maxY-minY||1;
+    // Compute outline bounds including package sizes (for drawOutline)
+    var pminX=Infinity, pmaxX=-Infinity, pminY=Infinity, pmaxY=-Infinity;
+    pos.forEach(function(c){
+        var sz=getPackageSize(c.package);
+        var hw=sz[0]/2, hh=sz[1]/2;
+        if(c.rotation==90||c.rotation==270){var t=hw;hw=hh;hh=t;}
+        pminX=Math.min(pminX, c.x-hw); pmaxX=Math.max(pmaxX, c.x+hw);
+        pminY=Math.min(pminY, c.y-hh); pmaxY=Math.max(pmaxY, c.y+hh);
+    });
+    var rx=pmaxX-pminX||1, ry=pmaxY-pminY||1;
     var base=Math.min((canvas.width-80)/rx,(canvas.height-80)/ry);
-    var s=base*zoom;
-    return{s:s,ox:(canvas.width-rx*s)/2-minX*s+px,oy:(canvas.height-ry*s)/2-minY*s+py,minX:minX,minY:minY,maxX:maxX,maxY:maxY,base:base};
+    var s=base*z;
+    return{s:s,ox:(canvas.width-rx*s)/2-pminX*s+px,oy:(canvas.height-ry*s)/2-pminY*s+py,
+        minX:minX,minY:minY,maxX:maxX,maxY:maxY,
+        pminX:pminX,pmaxX:pmaxX,pminY:pminY,pmaxY:pmaxY,base:base};
 }
 
 function pt(comp,lay){ return{x:lay.ox+comp.x*lay.s,y:lay.oy+comp.y*lay.s}; }
 
 // ═══════════ 画布1: 点阵图 ═══════════
+function hasPositions(){ return components.some(function(c){return c.has_position}); }
+function showPlaceholder(id,show){ var el=document.getElementById(id); if(el)el.style.display=show?'block':'none'; }
+
 function drawDotMap(hl){
     var c=document.getElementById('dotCanvas'), p=c.parentElement;
     c.width=p.clientWidth; c.height=p.clientHeight;
     var ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
-    var lay=computeLayout(c,panDotX,panDotY); if(!lay)return;
+    if(!hasPositions()){ showPlaceholder('dotPlaceholder',true); return; }
+    showPlaceholder('dotPlaceholder',false);
+    var lay=computeLayout(c,panDotX,panDotY,zoomDot); if(!lay)return;
 
     // 网格
-    var gs=25*zoom, sx=(panDotX%gs+gs)%gs, sy=(panDotY%gs+gs)%gs;
+    var gs=25*zoomDot, sx=(panDotX%gs+gs)%gs, sy=(panDotY%gs+gs)%gs;
     ctx.strokeStyle='#eee'; ctx.lineWidth=0.5;
     for(var gx=sx;gx<c.width;gx+=gs){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,c.height);ctx.stroke();}
     for(var gy=sy;gy<c.height;gy+=gs){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(c.width,gy);ctx.stroke();}
@@ -250,20 +281,20 @@ function drawDotMap(hl){
     components.forEach(function(comp){
         if(!comp.has_position)return;
         var p=pt(comp,lay), isH=comp.reference===hl, isT=comp.layer==='Top';
-        var r=Math.min(4*zoom,isH?10:7);
+        var r=Math.min(4*zoomDot,isH?10:7);
         if(isH){ctx.beginPath();ctx.arc(p.x,p.y,20,0,Math.PI*2);ctx.fillStyle='rgba(231,76,60,0.15)';ctx.fill();}
         ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);
         ctx.fillStyle=isH?'#e74c3c':(isT?'#27ae60':'#3498db');ctx.fill();
         if(isH){ctx.strokeStyle='#c0392b';ctx.lineWidth=2.5;ctx.stroke();}
-        if(zoom>=0.55||isH){
+        if(zoomDot>=0.55||isH){
             ctx.fillStyle=isH?'#c0392b':'#555';
-            ctx.font=(isH?'bold ':'')+Math.max(9,10*zoom)+'px sans-serif';
+            ctx.font=(isH?'bold ':'')+Math.max(9,10*zoomDot)+'px sans-serif';
             ctx.fillText(comp.reference,p.x+r+4,p.y+r/2);
         }
     });
 
     drawOutline(ctx,lay);
-    drawZoomBadge(ctx,c);
+    drawZoomBadge(ctx,c,zoomDot);
 }
 
 // ═══════════ 画布2: 封装轮廓 ═══════════
@@ -271,10 +302,12 @@ function drawFootprintMap(hl){
     var c=document.getElementById('footprintCanvas'), p=c.parentElement;
     c.width=p.clientWidth; c.height=p.clientHeight;
     var ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
-    var lay=computeLayout(c,panFpX,panFpY); if(!lay)return;
+    if(!hasPositions()){ showPlaceholder('fpPlaceholder',true); return; }
+    showPlaceholder('fpPlaceholder',false);
+    var lay=computeLayout(c,panFpX,panFpY,zoomFp); if(!lay)return;
 
     ctx.fillStyle='#1a3a1a'; ctx.fillRect(0,0,c.width,c.height);
-    var gs=28*zoom, sx=(panFpX%gs+gs)%gs, sy=(panFpY%gs+gs)%gs;
+    var gs=28*zoomFp, sx=(panFpX%gs+gs)%gs, sy=(panFpY%gs+gs)%gs;
     ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=0.5;
     for(var gx=sx;gx<c.width;gx+=gs){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,c.height);ctx.stroke();}
     for(var gy=sy;gy<c.height;gy+=gs){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(c.width,gy);ctx.stroke();}
@@ -317,22 +350,22 @@ function drawFootprintMap(hl){
         ctx.restore();
 
         if(isH){ctx.fillStyle='#ff0';ctx.font='bold 12px sans-serif';ctx.fillText(comp.reference,p.x+hw+8,p.y-4);}
-        else if(zoom>=0.6){ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font=Math.max(7,8*zoom)+'px sans-serif';ctx.fillText(comp.reference,p.x+hw+3,p.y+3);}
+        else if(zoomFp>=0.6){ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font=Math.max(7,8*zoomFp)+'px sans-serif';ctx.fillText(comp.reference,p.x+hw+3,p.y+3);}
     });
 
     drawOutline(ctx,lay,true);
-    drawZoomBadge(ctx,c);
+    drawZoomBadge(ctx,c,zoomFp);
 }
 
 function drawOutline(ctx,lay,dark){
-    var m=3, x=lay.ox-m*lay.s, y=lay.oy-m*lay.s;
-    var w=(lay.maxX-lay.minX+m*2)*lay.s, h=(lay.maxY-lay.minY+m*2)*lay.s;
+    var m=2, x=lay.ox+(lay.pminX-m)*lay.s, y=lay.oy+(lay.pminY-m)*lay.s;
+    var w=(lay.pmaxX-lay.pminX+m*2)*lay.s, h=(lay.pmaxY-lay.pminY+m*2)*lay.s;
     ctx.strokeStyle=dark?'rgba(255,255,255,0.3)':'#aaa';ctx.lineWidth=1.5;
     ctx.setLineDash([8,4]);ctx.strokeRect(x,y,w,h);ctx.setLineDash([]);
 }
 
-function drawZoomBadge(ctx,canvas){
-    var pct=Math.round(zoom*100), text='🔍 '+pct+'%';
+function drawZoomBadge(ctx,canvas,z){
+    var pct=Math.round(z*100), text='🔍 '+pct+'%';
     var tw=ctx.measureText(text).width+16;
     ctx.fillStyle='rgba(0,0,0,0.65)';ctx.fillRect(canvas.width-tw-8,4,tw,24);
     ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.fillText(text,canvas.width-tw,20);
@@ -366,8 +399,9 @@ function highlightComponent(ref){
 function onWheel(e,canvasId){
     e.preventDefault();
     var c=document.getElementById(canvasId), r=c.getBoundingClientRect();
+    var curZ=canvasId==='dotCanvas'?zoomDot:zoomFp;
     var d=e.deltaY>0?-ZOOM_STEP:ZOOM_STEP;
-    setZoom(zoom+d, canvasId, e.clientX-r.left, e.clientY-r.top);
+    setZoom(curZ+d, canvasId, e.clientX-r.left, e.clientY-r.top);
 }
 
 function onMouseDown(e,canvasId){

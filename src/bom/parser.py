@@ -80,65 +80,61 @@ class BOMParser:
         return self._parse_dataframe(df)
 
     def _read_csv(self, file_path: str) -> pd.DataFrame:
-        """读取 CSV 文件，自动检测编码和分隔符"""
-        detected_encoding = "utf-8"
+        encoding, first_line = self._detect_encoding(file_path)
+        sep = self._detect_separator(first_line)
+        return pd.read_csv(file_path, encoding=encoding, sep=sep, dtype=str).fillna("")
 
-        # 单次读取探测编码和分隔符
+    def _detect_encoding(self, file_path: str) -> tuple[str, str]:
         for encoding in BOM.CSV_ENCODINGS:
             try:
                 with open(file_path, "r", encoding=encoding) as f:
-                    first_line = f.readline()
-                detected_encoding = encoding
-                break
+                    return encoding, f.readline()
             except (UnicodeDecodeError, UnicodeError):
                 continue
-        else:
-            # 所有已知编码均失败，用 utf-8 + 容错模式兜底
-            try:
-                with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-                    first_line = f.readline()
-                detected_encoding = "utf-8"
-            except Exception:
-                first_line = ""
-                detected_encoding = "utf-8"
+        try:
+            with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+                return "utf-8", f.readline()
+        except Exception:
+            return "utf-8", ""
 
-        sep = "\t" if "\t" in first_line else ","
-        return pd.read_csv(file_path, encoding=detected_encoding, sep=sep, dtype=str).fillna("")
+    @staticmethod
+    def _detect_separator(first_line: str) -> str:
+        return "\t" if "\t" in first_line else ","
 
     def _read_excel(self, file_path: str) -> pd.DataFrame:
         """读取 Excel 文件"""
         return pd.read_excel(file_path, dtype=str).fillna("")
 
+    _TEXT_FIELDS = ("reference", "value", "package", "part_number", "description", "manufacturer")
+    _INT_FIELDS = ("quantity",)
+
     def _parse_dataframe(self, df: pd.DataFrame) -> list[BOMItem]:
-        """将 DataFrame 映射为 BOMItem 列表"""
         col_map = self._map_columns(df)
         items = []
 
-        ref_col = col_map.get("reference", "")
-        val_col = col_map.get("value", "")
-        pkg_col = col_map.get("package", "")
-        pn_col = col_map.get("part_number", "")
-        desc_col = col_map.get("description", "")
-        qty_col = col_map.get("quantity", "")
-        mfr_col = col_map.get("manufacturer", "")
-
         for row in df.itertuples(index=False):
-            ref = str(getattr(row, ref_col, "")) if ref_col else ""
-            if not ref or ref == "nan":
-                continue
-            item = BOMItem(
-                reference=ref,
-                value=str(getattr(row, val_col, "")) if val_col else "",
-                package=str(getattr(row, pkg_col, "")) if pkg_col else "",
-                part_number=str(getattr(row, pn_col, "")) if pn_col else "",
-                description=str(getattr(row, desc_col, "")) if desc_col else "",
-                quantity=int(getattr(row, qty_col, 1) or 1) if qty_col else 1,
-                manufacturer=str(getattr(row, mfr_col, "")) if mfr_col else "",
-            )
-            items.append(item)
+            item = self._row_to_item(row, col_map)
+            if item is not None:
+                items.append(item)
 
         logger.info(f"解析完成：共 {len(items)} 条 BOM 记录")
         return items
+
+    def _row_to_item(self, row, col_map: dict[str, str]) -> Optional[BOMItem]:
+        ref_col = col_map.get("reference", "")
+        ref = str(getattr(row, ref_col, "")) if ref_col else ""
+        if not ref or ref == "nan":
+            return None
+
+        kwargs: dict[str, object] = {}
+        for field in self._TEXT_FIELDS:
+            col = col_map.get(field, "")
+            kwargs[field] = str(getattr(row, col, "")) if col else ""
+        for field in self._INT_FIELDS:
+            col = col_map.get(field, "")
+            kwargs[field] = int(getattr(row, col, 1) or 1) if col else 1
+
+        return BOMItem(**kwargs)
 
     def _map_columns(self, df: pd.DataFrame) -> dict[str, str]:
         """自动映射 DataFrame 列名到标准字段名"""

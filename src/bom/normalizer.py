@@ -55,14 +55,18 @@ class ValueNormalizer:
     }
 
     # 预排序（按 key 长度降序，避免短 key 误匹配长 key）
-    _RESISTOR_SORTED: tuple[tuple[str, float], ...] = tuple(
-        sorted(_RESISTOR_UNITS.items(), key=lambda kv: -len(kv[0]))
-    )
-    _CAPACITOR_SORTED: tuple[tuple[str, float], ...] = tuple(
-        sorted(_CAPACITOR_UNITS.items(), key=lambda kv: -len(kv[0]))
-    )
-    _INDUCTOR_SORTED: tuple[tuple[str, float], ...] = tuple(
-        sorted(_INDUCTOR_UNITS.items(), key=lambda kv: -len(kv[0]))
+    @staticmethod
+    def _sort_units(units: dict[str, float]) -> tuple[tuple[str, float], ...]:
+        return tuple(sorted(units.items(), key=lambda kv: -len(kv[0])))
+
+    _RESISTOR_SORTED = _sort_units(_RESISTOR_UNITS)
+    _CAPACITOR_SORTED = _sort_units(_CAPACITOR_UNITS)
+    _INDUCTOR_SORTED = _sort_units(_INDUCTOR_UNITS)
+
+    _COMPONENT_SCHEMAS = (
+        (_RESISTOR_SORTED, "R", "Ω"),
+        (_CAPACITOR_SORTED, "C", "F"),
+        (_INDUCTOR_SORTED, "L", "H"),
     )
 
     @classmethod
@@ -84,18 +88,10 @@ class ValueNormalizer:
 
         cleaned = raw_value.strip().upper()
 
-        # 电阻
-        result = cls._try_parse(cleaned, cls._RESISTOR_SORTED, "R", "Ω")
-        if result:
-            return result
-        # 电容
-        result = cls._try_parse(cleaned, cls._CAPACITOR_SORTED, "C", "F")
-        if result:
-            return result
-        # 电感
-        result = cls._try_parse(cleaned, cls._INDUCTOR_SORTED, "L", "H")
-        if result:
-            return result
+        for sorted_units, component_type, base_unit in cls._COMPONENT_SCHEMAS:
+            result = cls._try_parse(cleaned, sorted_units, component_type, base_unit)
+            if result:
+                return result
 
         return NormalizedValue(
             raw=raw_value, component_type="?", base_value=0,
@@ -130,9 +126,9 @@ class ValueNormalizer:
         """尝试用指定单位表解析（预排序，按 key 长度降序）"""
         for unit, multiplier in sorted_units:
             pattern = rf"^([\d]+\.?[\d]*)\s*{re.escape(unit)}$"
-            m = re.match(pattern, cleaned)
-            if m:
-                raw_num = m.group(1)
+            match = re.match(pattern, cleaned)
+            if match:
+                raw_num = match.group(1)
                 base_value = float(raw_num) * multiplier
                 return NormalizedValue(
                     raw=cleaned,

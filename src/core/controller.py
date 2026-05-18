@@ -59,13 +59,13 @@ class AppController:
     # ── Lifecycle ──
 
     def __init__(self, api_key: Optional[str] = None):
-        resolved = api_key or config.llm.api_key
+        effective_key = api_key or config.llm.api_key
         self.agent = LLMClient(
-            api_key=resolved,
+            api_key=effective_key,
             base_url=config.llm.base_url,
             model=config.llm.model,
             provider=config.llm.provider,
-        ) if self._key_valid(resolved) else None
+        ) if self._key_valid(effective_key) else None
         self.parser = BOMParser()
         self.eda = LCEDAAdapter()
         self.context = CommandContext()
@@ -136,13 +136,31 @@ class AppController:
         return checker.get_report(violations)
 
     def get_bom_summary(self) -> dict:
-        """Return per-prefix component statistics."""
         prefixes: dict[str, int] = {}
         for item in self.context.bom_items:
-            ref0 = item.reference.split(",")[0].strip()
-            pfx = "".join(c for c in ref0 if c.isalpha())
-            prefixes[pfx] = prefixes.get(pfx, 0) + 1
+            first_ref = item.reference.split(",")[0].strip()
+            prefix = "".join(c for c in first_ref if c.isalpha())
+            prefixes[prefix] = prefixes.get(prefix, 0) + 1
         return {"total": len(self.context.bom_items), "by_prefix": dict(sorted(prefixes.items()))}
+
+    # ── Operation dispatch table (strategy pattern) ──
+
+    def _dispatch_operation(self, operation: str, params: dict) -> str:
+        handlers = {
+            "merge_bom": self.merge_bom,
+            "validate_package": self.validate_packages,
+            "check_duplicates": self.check_duplicates,
+            "check_rule": self.check_design_rules,
+            "generate_html_bom": lambda: self.generate_html_bom(params.get("output_path")),
+            "filter_components": lambda: self._filter_components(params),
+        }
+        handler = handlers.get(operation)
+        if handler is None:
+            return (
+                f"🤔 无法识别操作「{operation}」\n\n"
+                "可用操作：合并BOM / 校验封装 / 检查重复 / 生成HTML BOM / 设计规则检查"
+            )
+        return handler()
 
     # ══════════════════════════════════════════════════
     #  Natural-language processing
@@ -151,40 +169,56 @@ class AppController:
     def is_agent_available(self) -> bool:
         return self.agent is not None
 
-    def process_input(self, user_input: str) -> str:
-        """Entry point for user messages.  Tries AI first, falls back to local keywords."""
+    def _require_data(self) -> Optional[str]:
         if not self.context.has_data:
             return "⚠️ 请先导入 BOM 文件再输入指令。"
+        return None
 
+    def process_input(self, user_input: str) -> str:
+        guard = self._require_data()
+        if guard:
+            return guard
         if self.is_agent_available():
             result = self._try_ai(user_input)
             if result is not None:
                 return result
-
         return self._local_fallback(user_input)
 
     def process_input_stream(
         self, user_input: str, on_token: Callable[[str], None]
     ) -> str:
-        """Streaming variant — ``on_token`` receives each token as it arrives."""
-        if not self.context.has_data:
-            return "⚠️ 请先导入 BOM 文件再输入指令。"
-
+        guard = self._require_data()
+        if guard:
+            return guard
         if self.is_agent_available():
             result = self._try_ai_stream(user_input, on_token)
             if result is not None:
                 return result
-
         return self._local_fallback(user_input)
 
     # ── AI helpers ──
 
+    def _build_ai_prompt(self, user_input: str) -> tuple[str, str]:
+        return (
+            PromptTemplates.get_system_prompt("bom"),
+            PromptTemplates.COMMAND_PARSE.format(user_command=user_input),
+        )
+
+    def _ai_to_operation(self, raw_response: str) -> Optional[str]:
+        parsed = self._extract_json(raw_response)
+        if parsed is None:
+            return None
+        result = self._dispatch_operation(
+            parsed.get("operation", ""), parsed.get("params", {})
+        )
+        explanation = parsed.get("explanation", "")
+        return f"🤖 AI 理解: {explanation}\n\n{result}" if explanation else result
+
     def _try_ai(self, user_input: str) -> Optional[str]:
         try:
-            parsed = self._parse_via_ai(user_input)
-            if parsed is None:
-                return None
-            return self._execute_operation(parsed)
+            system, prompt = self._build_ai_prompt(user_input)
+            raw = self.agent.chat(prompt, system_prompt=system)
+            return self._ai_to_operation(raw)
         except Exception:
             logger.exception("AI processing failed, falling back to local")
             return None
@@ -193,48 +227,12 @@ class AppController:
         self, user_input: str, on_token: Callable[[str], None]
     ) -> Optional[str]:
         try:
-            system = PromptTemplates.get_system_prompt("bom")
-            prompt = PromptTemplates.COMMAND_PARSE.format(user_command=user_input)
+            system, prompt = self._build_ai_prompt(user_input)
             raw = self.agent.chat_stream(prompt, system_prompt=system, on_token=on_token)
-            parsed = self._extract_json(raw)
-            if parsed is None:
-                return None
-            return self._execute_operation(parsed)
+            return self._ai_to_operation(raw)
         except Exception:
             logger.exception("AI streaming failed, falling back to local")
             return None
-
-    def _parse_via_ai(self, user_input: str) -> Optional[dict]:
-        system = PromptTemplates.get_system_prompt("bom")
-        prompt = PromptTemplates.COMMAND_PARSE.format(user_command=user_input)
-        raw = self.agent.chat(prompt, system_prompt=system)
-        return self._extract_json(raw)
-
-    def _execute_operation(self, parsed: dict) -> str:
-        operation = parsed.get("operation", "")
-        params = parsed.get("params", {})
-        explanation = parsed.get("explanation", "")
-
-        op_map = {
-            "merge_bom": self.merge_bom,
-            "validate_package": self.validate_packages,
-            "check_duplicates": self.check_duplicates,
-            "generate_html_bom": lambda: self.generate_html_bom(
-                params.get("output_path")
-            ),
-            "check_rule": self.check_design_rules,
-            "filter_components": lambda: self._filter_components(params),
-        }
-
-        handler = op_map.get(operation)
-        if handler is None:
-            return (
-                f"🤔 无法识别操作「{operation}」\n\n"
-                "可用操作：合并BOM / 校验封装 / 检查重复 / 生成HTML BOM / 设计规则检查"
-            )
-
-        prefix = f"🤖 AI 理解: {explanation}\n\n" if explanation else ""
-        return prefix + handler()
 
     def _filter_components(self, params: dict) -> str:
         keyword = (params.get("keyword") or "").lower()
@@ -256,22 +254,26 @@ class AppController:
 
     # ── Local keyword fallback ──
 
-    def _local_fallback(self, user_input: str) -> str:
+    _KEYWORD_ROUTES: tuple[tuple[tuple[str, ...], str], ...] = (
+        (("合并", "merge", "整理"), "merge_bom"),
+        (("校验", "验证", "封装", "validate"), "validate_packages"),
+        (("重复", "查重", "duplicate", "位号"), "check_duplicates"),
+        (("html", "网页"), "generate_html_bom"),
+        (("规则", "rule", "去耦", "信号"), "check_design_rules"),
+        (("统计", "概览", "summary"), "_summary_report"),
+    )
+
+    def _match_keyword(self, user_input: str) -> Optional[Callable[[], str]]:
         lowered = user_input.lower()
-
-        checks = [
-            (["合并", "merge", "整理"], self.merge_bom),
-            (["校验", "验证", "封装", "validate"], self.validate_packages),
-            (["重复", "查重", "duplicate", "位号"], self.check_duplicates),
-            (["html", "网页"], self.generate_html_bom),
-            (["规则", "rule", "去耦", "信号"], self.check_design_rules),
-            (["统计", "概览", "summary"], self._summary_report),
-        ]
-
-        for keywords, handler in checks:
+        for keywords, method_name in self._KEYWORD_ROUTES:
             if any(kw in lowered for kw in keywords):
-                return handler()
+                return getattr(self, method_name)
+        return None
 
+    def _local_fallback(self, user_input: str) -> str:
+        handler = self._match_keyword(user_input)
+        if handler:
+            return handler()
         return (
             "🤔 无法识别指令。请尝试:\n"
             "• 合并 BOM  — 合并同类元件\n"
@@ -282,16 +284,16 @@ class AppController:
         )
 
     def _summary_report(self) -> str:
-        s = self.get_bom_summary()
+        summary = self.get_bom_summary()
         lines = [
             "=" * 50,
             "        BOM 元件统计",
             "=" * 50,
-            f"总元件数：{s['total']}",
+            f"总元件数：{summary['total']}",
             "-" * 50,
         ]
-        for pfx, count in s["by_prefix"].items():
-            lines.append(f"  {pfx}: {count} 个")
+        for prefix, count in summary["by_prefix"].items():
+            lines.append(f"  {prefix}: {count} 个")
         lines.append("=" * 50)
         return "\n".join(lines)
 

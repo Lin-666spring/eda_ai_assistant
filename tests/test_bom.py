@@ -23,6 +23,11 @@ SAMPLE_BOM = TEST_DATA / "sample_bom.csv"
 SAMPLE_POS = TEST_DATA / "sample_positions.csv"
 
 
+@pytest.fixture
+def sample_items():
+    return BOMParser().parse(str(SAMPLE_BOM))
+
+
 class TestBOMParser:
     """BOM 解析器测试"""
 
@@ -71,22 +76,18 @@ class TestBOMParser:
 class TestBOMMerger:
     """BOM 合并器测试"""
 
-    @pytest.fixture
-    def items(self):
-        parser = BOMParser()
-        return parser.parse(str(SAMPLE_BOM))
-
-    def test_merge_count(self, items):
+    def test_merge_count(self, sample_items):
+        items = sample_items
         """测试合并后数量"""
         merger = BOMMerger()
-        merged = merger.merge(items)
+        merged = merger.merge(sample_items)
         assert len(merged) < len(items)  # 应减少
         assert len(merged) == 15
 
-    def test_merge_resistor_group(self, items):
+    def test_merge_resistor_group(self, sample_items):
         """测试电阻合并"""
         merger = BOMMerger()
-        merged = merger.merge(items)
+        merged = merger.merge(sample_items)
         # 查找 10kΩ 电阻组
         r10k = next((m for m in merged if "C25804" in m.part_number), None)
         assert r10k is not None
@@ -95,20 +96,20 @@ class TestBOMMerger:
         assert "R2" in r10k.references
         assert "R3" in r10k.references
 
-    def test_merge_capacitor_group(self, items):
+    def test_merge_capacitor_group(self, sample_items):
         """测试电容合并"""
         merger = BOMMerger()
-        merged = merger.merge(items)
+        merged = merger.merge(sample_items)
         c100nf = next((m for m in merged if "C1588" in m.part_number), None)
         assert c100nf is not None
         assert c100nf.total_quantity == 4
         assert all(r in c100nf.references for r in ["C1", "C2", "C3", "C6"])
 
-    def test_merge_report(self, items):
+    def test_merge_report(self, sample_items):
         """测试合并报告"""
         merger = BOMMerger()
-        merged = merger.merge(items)
-        report = merger.get_merge_report(items, merged)
+        merged = merger.merge(sample_items)
+        report = merger.get_merge_report(sample_items, merged)
         assert "原始条目数：23" in report
         assert "合并后条目数：15" in report
 
@@ -124,12 +125,8 @@ class TestBOMMerger:
 class TestBOMValidator:
     """封装校验器测试"""
 
-    @pytest.fixture
-    def items(self):
-        parser = BOMParser()
-        return parser.parse(str(SAMPLE_BOM))
-
-    def test_validate_all_pass(self, items):
+    def test_validate_all_pass(self, sample_items):
+        items = sample_items
         """测试全部通过（正确封装）"""
         validator = BOMValidator()
         results = validator.validate(items)
@@ -156,10 +153,10 @@ class TestBOMValidator:
         results = validator.validate([cap])
         assert results[0].is_valid  # 无源元件始终通过
 
-    def test_validation_report(self, items):
+    def test_validation_report(self, sample_items):
         """测试校验报告"""
         validator = BOMValidator()
-        results = validator.validate(items)
+        results = validator.validate(sample_items)
         report = validator.get_validation_report(results)
         assert "通过：23" in report
 
@@ -167,12 +164,8 @@ class TestBOMValidator:
 class TestBOMDuplicateChecker:
     """位号查重器测试"""
 
-    @pytest.fixture
-    def items(self):
-        parser = BOMParser()
-        return parser.parse(str(SAMPLE_BOM))
-
-    def test_no_duplicates(self, items):
+    def test_no_duplicates(self, sample_items):
+        items = sample_items
         """测试无重复位号"""
         checker = BOMDuplicateChecker()
         duplicates = checker.check(items)
@@ -197,10 +190,10 @@ class TestBOMDuplicateChecker:
         dup = checker.check_multi_file({"board1.csv": file1, "board2.csv": file2})
         assert len(dup) == 1
 
-    def test_summary(self, items):
+    def test_summary(self, sample_items):
         """测试统计摘要"""
         checker = BOMDuplicateChecker()
-        summary = checker.get_reference_summary(items)
+        summary = checker.get_reference_summary(sample_items)
         assert summary["total_references"] == 23
         assert summary["duplicate_count"] == 0
 

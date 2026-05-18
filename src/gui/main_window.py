@@ -188,7 +188,7 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self._status_label = QLabel("就绪")
-        self.status_bar.addWidget(self._status_label)
+        self.status_bar.addPermanentWidget(self._status_label)
         self.status_bar.showMessage("欢迎使用 EDA AI 智能助手 | 请导入 BOM 文件开始")
         self._update_agent_status()
 
@@ -345,23 +345,23 @@ class MainWindow(QMainWindow):
         if not self.controller.context.has_data:
             QMessageBox.information(self, "提示", "请先导入 BOM 文件")
             return
+        if not self.controller.context.positions:
+            response = QMessageBox.question(
+                self, "缺少坐标数据",
+                "尚未导入坐标文件(Pick & Place)，点阵位号图和封装轮廓图将无法显示。\n\n"
+                "是否继续生成仅含表格的 HTML BOM？",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+            )
+            if response == QMessageBox.No:
+                return
 
-        def _run():
-            return self.controller.generate_html_bom()
+        output_path = Path(__file__).parent.parent.parent / "output" / "ibom.html"
+        report = self.controller.generate_html_bom(str(output_path))
+        self._show_report(report)
+        self.chat_panel.add_system_message("✅ HTML BOM 已生成")
 
-        self._run_operation("🌐 正在生成 HTML BOM...", _run)
-        # Also try to load the result into the preview tab
-        output_path = str(
-            Path(__file__).parent.parent.parent / "output" / "ibom.html"
-        )
-        try:
-            from pathlib import Path
-            if Path(output_path).exists():
-                with open(output_path, "r", encoding="utf-8") as f:
-                    self.html_preview.setHtml(f.read())
-                self.right_tabs.setCurrentIndex(1)  # switch to HTML tab
-        except Exception:
-            pass
+        if output_path.exists():
+            webbrowser.open(str(output_path))
 
     def _on_design_rule_check(self):
         self._run_operation("📏 正在执行设计规则检查...", self.controller.check_design_rules)
