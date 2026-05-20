@@ -17,19 +17,19 @@ from PyQt5.QtCore import Qt
 from src.gui.main_window import MainWindow
 
 
-def setup_logging():
+def setup_logging(debug: bool = False):
     """配置日志"""
     log_dir = PROJECT_ROOT / "logs"
     log_dir.mkdir(exist_ok=True)
 
-    # Ensure stdout can handle emoji/unicode on Windows terminals
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
         pass
 
+    level = logging.DEBUG if debug else logging.INFO
     logging.basicConfig(
-        level=logging.INFO,
+        level=level,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         handlers=[
             logging.FileHandler(log_dir / "app.log", encoding="utf-8"),
@@ -40,8 +40,11 @@ def setup_logging():
 
 def main():
     """应用主入口"""
-    setup_logging()
+    debug = "--debug" in sys.argv
+    setup_logging(debug=debug)
     logger = logging.getLogger(__name__)
+    if debug:
+        logger.debug("DEBUG 模式已启用")
     logger.info("启动 EDA AI 智能助手...")
 
     # 高 DPI 适配

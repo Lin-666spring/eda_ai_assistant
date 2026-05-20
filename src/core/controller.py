@@ -7,7 +7,6 @@ so feature parity is guaranteed across interfaces.
 
 import json
 import logging
-from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
@@ -24,6 +23,10 @@ from src.interfaces.eda_adapter import LCEDAAdapter
 from src.rules.checker import DesignRuleChecker
 
 logger = logging.getLogger(__name__)
+
+
+def _is_key_usable(key: Optional[str]) -> bool:
+    return bool(key and key not in ("", "your_api_key_here", "sk-"))
 
 
 # ══════════════════════════════════════════════════════
@@ -65,14 +68,26 @@ class AppController:
             base_url=config.llm.base_url,
             model=config.llm.model,
             provider=config.llm.provider,
-        ) if self._key_valid(effective_key) else None
+        ) if _is_key_usable(effective_key) else None
         self.parser = BOMParser()
         self.eda = LCEDAAdapter()
         self.context = CommandContext()
 
-    @staticmethod
-    def _key_valid(key: Optional[str]) -> bool:
-        return bool(key and key not in ("", "your_api_key_here", "sk-"))
+    def reconfigure_llm(self, provider: str, api_key: str, base_url: str, model: str):
+        """热重载 LLM 客户端 — 用户通过设置面板修改配置后调用。"""
+        if _is_key_usable(api_key):
+            self.agent = LLMClient(
+                api_key=api_key,
+                base_url=base_url or None,
+                model=model or None,
+                provider=provider,
+            )
+        else:
+            self.agent = None
+        logger.info(
+            "LLM reconfigured: provider=%s, model=%s, has_key=%s",
+            provider, model or "(default)", bool(self.agent),
+        )
 
     # ══════════════════════════════════════════════════
     #  File I/O

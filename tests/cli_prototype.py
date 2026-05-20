@@ -465,8 +465,13 @@ def _setup_console():
 def main():
     _setup_console()
 
+    debug = "--debug" in sys.argv
+    if debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.debug("DEBUG 模式已启用")
+
     if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
-        print("用法: python cli.py [--api-key YOUR_KEY] [bom_file.csv]")
+        print("用法: python cli.py [--debug] [--api-key YOUR_KEY] [bom_file.csv]")
         return
 
     api_key = None
@@ -475,6 +480,8 @@ def main():
     for arg in args:
         if arg == "--api-key":
             api_key = next(args, None)
+        elif arg == "--debug":
+            continue
         elif arg.endswith((".csv", ".xlsx", ".xls")):
             bom_to_load = arg
 

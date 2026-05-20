@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(python *)",
+      "Bash(PYTHONIOENCODING=utf-8 python *)",
+      "Bash(mkdir *)",
+      "Bash(ls *)",
+      "Bash(pip *)",
+      "Bash(tasklist *)",
+      "Bash(echo *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": {
+      "Edit": [
+        {
+          "matcher": ".*\\.env$",
+          "mode": "block",
+          "message": "不要直接编辑 .env——它包含 API Key，不在版本控制内。请提示用户手动修改。"
+        }
+      ]
+    },
+    "PostToolUse": {
+      "Edit": [
+        {
+          "matcher": "src/.*\\.py$",
+          "command": "cd \"$CLAUDE_PROJECT_DIR\" && python -m pytest tests/ -x --tb=short -q 2>&1 | tail -25"
+        }
+      ]
+    }
+  }
+}

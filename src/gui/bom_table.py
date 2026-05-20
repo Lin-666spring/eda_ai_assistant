@@ -14,6 +14,8 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+from .vscode_theme import current_theme
+
 
 class BOMTableView(QWidget):
     """BOM 数据表格视图"""
@@ -53,30 +55,8 @@ class BOMTableView(QWidget):
         # 垂直表头显示行号
         self.table.verticalHeader().setVisible(True)
 
-        # 样式
-        self.table.setStyleSheet("""
-            QTableWidget {
-                gridline-color: #e0e0e0;
-                background-color: #ffffff;
-                alternate-background-color: #f8f9fa;
-                font-size: 12px;
-            }
-            QTableWidget::item {
-                padding: 4px 8px;
-            }
-            QTableWidget::item:selected {
-                background-color: #d4e6f1;
-                color: #2c3e50;
-            }
-            QHeaderView::section {
-                background-color: #34495e;
-                color: white;
-                padding: 6px 8px;
-                font-weight: bold;
-                font-size: 12px;
-                border: 1px solid #2c3e50;
-            }
-        """)
+        # Apply initial theme styles
+        self.refresh_theme()
 
         layout.addWidget(self.table)
 
@@ -111,3 +91,33 @@ class BOMTableView(QWidget):
     def clear(self):
         """清空表格"""
         self.table.setRowCount(0)
+
+    def refresh_theme(self):
+        """Re-apply inline table styles from the current theme."""
+        t = current_theme()
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                gridline-color: {t['border']};
+                background-color: {t['bg_editor']};
+                alternate-background-color: {t['bg_sidebar']};
+                font-size: 12px;
+                color: {t['text_primary']};
+            }}
+            QTableWidget::item {{
+                padding: 4px 8px;
+            }}
+            QTableWidget::item:selected {{
+                background-color: {t['selection_bg']};
+                color: #ffffff;
+            }}
+            QHeaderView::section {{
+                background-color: {t['bg_tab_inactive']};
+                color: {t['text_primary']};
+                padding: 6px 8px;
+                font-weight: bold;
+                font-size: 12px;
+                border: none;
+                border-right: 1px solid {t['border']};
+                border-bottom: 1px solid {t['border']};
+            }}
+        """)

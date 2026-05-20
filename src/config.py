@@ -4,9 +4,13 @@
 
 LLM 配置支持厂商预设 (LLM_PROVIDER) 和手动指定 (LLM_*)
 同时向后兼容旧的 DEEPSEEK_* 环境变量
+
+GUI 设置面板保存到 ~/.eda_ai_assistant/settings.json，优先级高于 .env。
 """
 
+import json
 import os
+import stat
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -20,10 +24,35 @@ try:
     from dotenv import load_dotenv
 
     _ENV_FILE = Path(__file__).parent.parent / ".env"
-    if _ENV_FILE.exists():
-        load_dotenv(_ENV_FILE)
+    load_dotenv(_ENV_FILE)
 except ImportError:
     pass
+
+# 本地持久化设置文件 (项目外，避免被 git 跟踪)
+SETTINGS_DIR = Path.home() / ".eda_ai_assistant"
+SETTINGS_FILE = SETTINGS_DIR / "settings.json"
+
+
+def load_settings() -> dict:
+    """从本地 settings.json 读取设置。不存在返回空字典。"""
+    try:
+        with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_settings(data: dict) -> bool:
+    """将设置写入本地 settings.json。目录不存在则创建。"""
+    try:
+        SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        # 设置仅 owner 可读写权限
+        os.chmod(SETTINGS_FILE, stat.S_IREAD | stat.S_IWRITE)
+        return True
+    except OSError:
+        return False
 
 
 def _env(key: str, default: str = "") -> str:
@@ -35,38 +64,47 @@ def _resolve_llm_config() -> tuple[str, str, str, str]:
     """
     解析 LLM 配置，优先级：
     1. LLM_* 环境变量直接覆盖
-    2. LLM_PROVIDER 厂商预设
-    3. 旧的 DEEPSEEK_* 环境变量（向后兼容）
-    4. 默认值 (deepseek)
+    2. ~/.eda_ai_assistant/settings.json（GUI 设置面板保存）
+    3. LLM_PROVIDER 厂商预设
+    4. 旧的 DEEPSEEK_* 环境变量（向后兼容）
+    5. 默认值 (deepseek)
     """
+    # 读取本地持久化设置
+    saved = load_settings()
+
     # 向后兼容：旧的 DEEPSEEK_* 变量
     legacy_key = _env("DEEPSEEK_API_KEY", "")
     legacy_url = _env("DEEPSEEK_BASE_URL", "")
     legacy_model = _env("DEEPSEEK_MODEL", "")
 
-    # 新变量优先，旧变量兜底
-    api_key = _env("LLM_API_KEY", legacy_key)
-    provider = _env("LLM_PROVIDER", DEFAULT_PROVIDER)
-    base_url = _env("LLM_BASE_URL", "")
-    model = _env("LLM_MODEL", "")
-
-    # 如果没有显式指定 base_url / model，用 legacy 值
-    if not base_url and legacy_url:
-        base_url = legacy_url
-    if not model and legacy_model:
-        model = legacy_model
+    # 新变量 > settings.json > 旧变量
+    api_key = _env("LLM_API_KEY", "") or saved.get("llm_api_key", "") or legacy_key
+    provider = _env("LLM_PROVIDER", "") or saved.get("llm_provider", "") or DEFAULT_PROVIDER
+    base_url = _env("LLM_BASE_URL", "") or saved.get("llm_base_url", "") or legacy_url
+    model = _env("LLM_MODEL", "") or saved.get("llm_model", "") or legacy_model
 
     return api_key, provider, base_url, model
+
+
+# 缓存 _resolve_llm_config() 结果，避免 4 个 default_factory 各调用一次
+_llm_config_cache: Optional[tuple] = None
+
+
+def _cached_llm_config() -> tuple[str, str, str, str]:
+    global _llm_config_cache
+    if _llm_config_cache is None:
+        _llm_config_cache = _resolve_llm_config()
+    return _llm_config_cache
 
 
 @dataclass
 class LLMConfig:
     """LLM API 配置 — 兼容 OpenAI/DeepSeek/通义千问/智谱/Kimi 等"""
 
-    api_key: str = field(default_factory=lambda: _resolve_llm_config()[0])
-    provider: str = field(default_factory=lambda: _resolve_llm_config()[1])
-    base_url: str = field(default_factory=lambda: _resolve_llm_config()[2])
-    model: str = field(default_factory=lambda: _resolve_llm_config()[3])
+    api_key: str = field(default_factory=lambda: _cached_llm_config()[0])
+    provider: str = field(default_factory=lambda: _cached_llm_config()[1])
+    base_url: str = field(default_factory=lambda: _cached_llm_config()[2])
+    model: str = field(default_factory=lambda: _cached_llm_config()[3])
 
     def __post_init__(self):
         # 如果 base_url / model 为空，从 provider 预设解析
