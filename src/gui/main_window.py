@@ -39,7 +39,7 @@ from .settings_panel import SettingsPanel
 from .eda_theme import (
     compile_stylesheet, current_theme, switch_theme,
     get_active_theme_name, get_theme_display_name,
-    THEME_DISPLAY_ORDER, on_theme_changed,
+    THEME_DISPLAY_ORDER, on_theme_changed, remove_theme_listener,
     FONT_MONO, FONT_FAMILY,
 )
 from ..core.controller import AppController
@@ -513,6 +513,10 @@ class MainWindow(QMainWindow):
     def _apply_style(self):
         self.setStyleSheet(compile_stylesheet())
 
+    def closeEvent(self, event):
+        remove_theme_listener(self._on_external_theme_change)
+        super().closeEvent(event)
+
     # ══════════════════════════════════════════════════
     #  Signal wiring
     # ══════════════════════════════════════════════════
@@ -549,11 +553,16 @@ class MainWindow(QMainWindow):
         self._status_message.setText("就绪")
 
     def _on_ai_error(self, error_msg: str):
+        self.chat_panel.cancel_streaming()
         self.chat_panel.add_error_message(f"AI 处理失败: {error_msg}")
         self.chat_panel.add_system_message("已回退到本地关键词匹配模式。")
-        fallback = self.controller._local_fallback(
-            getattr(self, "_last_user_input", "")
-        )
+        try:
+            fallback = self.controller._local_fallback(
+                getattr(self, "_last_user_input", "")
+            )
+        except Exception:
+            logger.exception("Local fallback failed")
+            fallback = ""
         if fallback:
             self.chat_panel.add_ai_message(fallback)
             self._show_report(fallback)
@@ -751,6 +760,7 @@ class MainWindow(QMainWindow):
     def _set_input_enabled(self, enabled: bool):
         self.chat_panel.send_btn.setEnabled(enabled)
         self.chat_panel.input_box.setEnabled(enabled)
+        self.chat_panel.clear_btn.setEnabled(enabled)
         self.menuBar().setEnabled(enabled)
 
     def _update_agent_status(self):

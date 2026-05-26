@@ -14,9 +14,12 @@ EDA AI 智能助手 — 4套多颜色主题系统
 """
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Dict, List, Callable
+
+logger = logging.getLogger(__name__)
 
 # ══════════════════════════════════════════
 #  Fonts (shared across all themes)
@@ -67,7 +70,7 @@ def _save_theme_preference(name: str):
         with open(_SETTINGS_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     except OSError:
-        pass
+        logger.exception("Failed to save theme preference to %s", _SETTINGS_FILE)
 
 
 # ══════════════════════════════════════════
@@ -450,7 +453,7 @@ def switch_theme(name: str):
         try:
             cb(name)
         except Exception:
-            pass
+            logger.exception("Theme listener %s failed for theme %s", cb, name)
 
 
 def on_theme_changed(callback: Callable[[str], None]):

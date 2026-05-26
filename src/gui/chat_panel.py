@@ -191,7 +191,7 @@ class ChatPanel(QWidget):
         self._append_system(_esc(text))
 
     def add_error_message(self, text: str):
-        self._append_warning(_esc(text))
+        self._append_error(_esc(text))
 
     def add_config_tip(self, text: str, semantic_type: str = None):
         self._append_config_tip(_esc(text), semantic_type)
@@ -204,32 +204,16 @@ class ChatPanel(QWidget):
         self._stream_tokens = []
         cursor = self.display.textCursor()
         cursor.movePosition(QTextCursor.End)
-
-        html = (
-            f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
-            f'<tr><td style="padding:4px 0 2px 0;">'
-            f'<span style="color:{t["text_muted"]};font-size:11px;font-weight:600;">AI</span>'
-            f'<span style="color:{t["text_muted"]};font-size:10px;margin-left:8px;">{_ts()}</span>'
-            f'</td></tr><tr><td>'
-            f'<table cellpadding="0" cellspacing="0" border="0" style="max-width:100%;">'
-            f'<tr><td style="background-color:{t["chat_bubble_ai"]};'
-            f'border-radius:4px 12px 12px 12px;padding:10px 14px;">'
-            f'<span style="color:{t["highlight"]};font-size:13px;">思考中...</span>'
-        )
-        cursor.insertHtml(html)
         self._stream_marker = cursor.position()
+        fmt = QTextCharFormat()
+        fmt.setForeground(QColor(t["highlight"]))
+        cursor.insertText("思考中...", fmt)
         self._end_cursor(cursor)
 
     def append_stream_token(self, token: str):
         if not self._streaming:
             return
         self._stream_tokens.append(token)
-        if len(self._stream_tokens) == 1:
-            cursor = self.display.textCursor()
-            cursor.setPosition(self._stream_marker)
-            cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
-            cursor.removeSelectedText()
-
         cursor = self.display.textCursor()
         cursor.movePosition(QTextCursor.End)
         fmt = QTextCharFormat()
@@ -242,13 +226,22 @@ class ChatPanel(QWidget):
             self.add_ai_message(final_text)
             return
         self._streaming = False
+        text = "".join(self._stream_tokens) if self._stream_tokens else final_text
         cursor = self.display.textCursor()
-        cursor.movePosition(QTextCursor.End)
-        cursor.insertHtml(
-            f'</td></tr></table></td></tr></table>'
-            f'<div style="height:6px;"></div>'
-        )
-        self._end_cursor(cursor)
+        cursor.setPosition(self._stream_marker)
+        cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
+        cursor.removeSelectedText()
+        self._append_bubble("ai", _esc(text))
+
+    def cancel_streaming(self):
+        """Cancel in-progress streaming and remove placeholder."""
+        if not self._streaming:
+            return
+        self._streaming = False
+        cursor = self.display.textCursor()
+        cursor.setPosition(self._stream_marker)
+        cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
+        cursor.removeSelectedText()
 
     # ── Message builders ──
 
@@ -292,8 +285,7 @@ class ChatPanel(QWidget):
         cursor.insertHtml(html)
         self._end_cursor(cursor)
 
-    def _append_warning(self, html_text: str):
-        """Semantic error notification — rose red."""
+    def _append_error(self, html_text: str):
         s = get_semantic_style("error")
         html = (
             f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'

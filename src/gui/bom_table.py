@@ -123,7 +123,10 @@ class BOMTableView(QWidget):
                     continue
                 value = getattr(item, key, "")
                 if key == "quantity":
-                    text = str(int(value)) if value else "1"
+                    try:
+                        text = str(int(value)) if value is not None and value != "" else "1"
+                    except (ValueError, TypeError):
+                        text = str(value) if value else "1"
                 else:
                     text = str(value) if value else "-"
                 align = Qt.AlignCenter if self.COL_ALIGN[col] else (Qt.AlignLeft | Qt.AlignVCenter)
