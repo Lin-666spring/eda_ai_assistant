@@ -1,97 +1,173 @@
 """
-聊天面板组件 — 提供与 AI Agent 对话的交互界面。
-
-Supports both static message display and incremental streaming.
+聊天面板组件 — 支持4主题动态切换，现代对话气泡 UI + 流式响应。
 """
 
 from datetime import datetime
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QFont, QTextCharFormat, QTextCursor
+from PyQt5.QtGui import QColor, QTextCharFormat, QTextCursor
 from PyQt5.QtWidgets import (
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QTextEdit,
-    QVBoxLayout,
-    QWidget,
+    QHBoxLayout, QLabel, QLineEdit, QPushButton,
+    QSizePolicy, QTextEdit, QVBoxLayout, QWidget,
 )
 
-from .vscode_theme import current_theme
+from .eda_theme import (
+    current_theme, FONT_FAMILY,
+    _detect_semantic_type, get_semantic_style,
+)
+
+
+def _esc(text: str) -> str:
+    return (
+        text.replace("&", "&amp;").replace("<", "&lt;")
+        .replace(">", "&gt;").replace('"', "&quot;")
+        .replace("\n", "<br>")
+    )
+
+
+def _ts() -> str:
+    return datetime.now().strftime("%H:%M")
 
 
 class ChatPanel(QWidget):
-    """AI 对话面板 — 支持流式和非流式两种响应模式."""
-
     message_sent = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._streaming = False
-        self._stream_content_start = 0
+        self._stream_marker = 0
+        self._stream_tokens: list[str] = []
         self._setup_ui()
+        self._show_welcome()
 
-    # ── UI construction ──
+    # ── UI ──
 
     def _setup_ui(self):
+        t = current_theme()
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        layout.setSpacing(0)
 
-        # Title bar (VS Code panel style)
-        self._title_bar = QWidget()
-        self._title_bar.setStyleSheet("padding: 8px;")
-        title_layout = QHBoxLayout(self._title_bar)
-        title_layout.setContentsMargins(12, 6, 12, 6)
+        # Header
+        self._header = QWidget()
+        self._header.setFixedHeight(44)
+        self._header.setObjectName("chatHeader")
+        self._header.setStyleSheet(
+            f"QWidget#chatHeader {{ background-color: transparent; "
+            f"border-bottom: 1px solid {t['border']}; }}"
+        )
+        hl = QHBoxLayout(self._header)
+        hl.setContentsMargins(16, 0, 10, 0)
+        hl.setSpacing(8)
 
-        self._title_label = QLabel("AI 助手对话")
-        self._title_label.setStyleSheet("font-size: 13px; font-weight: bold;")
-        title_layout.addWidget(self._title_label)
+        self._header_title = QLabel("AI 助手")
+        self._header_title.setStyleSheet(
+            f"color: {t['text_primary']}; font-size: 14px; font-weight: 600; background: transparent;"
+        )
+        hl.addWidget(self._header_title)
+        hl.addStretch()
 
         self.clear_btn = QPushButton("清空")
-        self.clear_btn.setFixedWidth(60)
+        self.clear_btn.setMinimumWidth(64)
+        self.clear_btn.setFixedHeight(30)
+        self.clear_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.clear_btn.setObjectName("chatClearBtn")
+        self._style_clear_btn()
         self.clear_btn.clicked.connect(self._clear_chat)
-        title_layout.addWidget(self.clear_btn)
-        layout.addWidget(self._title_bar)
+        hl.addWidget(self.clear_btn)
+        layout.addWidget(self._header)
 
-        # Chat display
-        self.chat_display = QTextEdit()
-        self.chat_display.setReadOnly(True)
-        layout.addWidget(self.chat_display)
+        # Display
+        self.display = QTextEdit()
+        self.display.setReadOnly(True)
+        self.display.setObjectName("chatDisplay")
+        self._style_display()
+        layout.addWidget(self.display)
 
         # Input area
-        input_widget = QWidget()
-        input_layout = QHBoxLayout(input_widget)
-        input_layout.setContentsMargins(0, 0, 0, 0)
-        input_layout.setSpacing(6)
+        self._input_container = QWidget()
+        self._input_container.setObjectName("chatInputContainer")
+        self._input_container.setStyleSheet(
+            f"QWidget#chatInputContainer {{ background-color: transparent; "
+            f"border-top: 1px solid {t['border']}; }}"
+        )
+        il = QHBoxLayout(self._input_container)
+        il.setContentsMargins(14, 12, 14, 12)
+        il.setSpacing(10)
 
         self.input_box = QLineEdit()
-        self.input_box.setPlaceholderText("输入你的指令，如「帮我合并BOM中所有10k电阻」...")
+        self.input_box.setPlaceholderText("输入指令，如「合并 BOM」...")
+        self.input_box.setMinimumHeight(40)
+        self._style_input_box()
         self.input_box.returnPressed.connect(self._on_send)
-        input_layout.addWidget(self.input_box)
+        il.addWidget(self.input_box)
 
         self.send_btn = QPushButton("发送")
-        self.send_btn.setFixedWidth(70)
+        self.send_btn.setMinimumWidth(72)
+        self.send_btn.setFixedHeight(40)
+        self.send_btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self._style_send_btn()
         self.send_btn.clicked.connect(self._on_send)
-        input_layout.addWidget(self.send_btn)
+        il.addWidget(self.send_btn)
 
-        layout.addWidget(input_widget)
+        layout.addWidget(self._input_container)
 
-        # Apply initial theme styles
-        self.refresh_theme()
+    # ── Inline style helpers ──
 
-        # Welcome message
-        self.add_system_message(
-            "欢迎使用 EDA AI 智能助手！\n\n"
-            "我可以帮你：\n"
-            "  BOM 合并     — 合并同类元件\n"
-            "  封装校验     — 校验封装与型号匹配\n"
-            "  位号查重     — 检查重复位号\n"
-            "  HTML BOM    — 生成交互式 HTML BOM\n"
-            "  设计规则检查  — 检查设计规则\n\n"
-            "请先导入 BOM 文件，然后在下方输入指令。"
-        )
+    def _style_clear_btn(self):
+        t = current_theme()
+        self.clear_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {t['border']}; color: {t['text_secondary']};
+                border: none; border-radius: 7px;
+                padding: 5px 16px; font-size: 12px; font-weight: 500;
+            }}
+            QPushButton:hover {{
+                background-color: {t['primary']}; color: {t['text_white']};
+            }}
+        """)
+
+    def _style_display(self):
+        t = current_theme()
+        self.display.setStyleSheet(f"""
+            QTextEdit#chatDisplay {{
+                background-color: transparent; border: none;
+                padding: 16px 14px; font-size: 13px;
+                font-family: {FONT_FAMILY};
+            }}
+            QScrollBar:vertical {{ background: transparent; width: 6px; margin: 2px; }}
+            QScrollBar::handle:vertical {{
+                background: {t['scrollbar_handle']}; border-radius: 3px; min-height: 30px;
+            }}
+            QScrollBar::handle:vertical:hover {{ background: {t['scrollbar_handle_hover']}; }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: transparent; }}
+        """)
+
+    def _style_input_box(self):
+        t = current_theme()
+        self.input_box.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: {t['bg_input']}; color: {t['text_primary']};
+                border: 1px solid {t['border']}; border-radius: 8px;
+                padding: 10px 14px; font-size: 13px;
+            }}
+            QLineEdit:focus {{
+                border: 2px solid {t['border_focus']}; padding: 9px 13px;
+            }}
+        """)
+
+    def _style_send_btn(self):
+        t = current_theme()
+        self.send_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {t['primary']}; color: {t['text_white']};
+                border: none; border-radius: 8px;
+                padding: 10px 20px; font-size: 13px; font-weight: 600;
+            }}
+            QPushButton:hover {{ background-color: {t['primary_hover']}; }}
+            QPushButton:pressed {{ background-color: {t['primary_pressed']}; }}
+        """)
 
     # ── Send ──
 
@@ -103,163 +179,241 @@ class ChatPanel(QWidget):
         self.input_box.clear()
         self.message_sent.emit(text)
 
-    # ── Static messages ──
+    # ── Public message API ──
 
     def add_user_message(self, text: str):
-        self._append_message("[用户]", text, QColor(current_theme()["chat_header_user"]))
+        self._append_bubble("user", _esc(text))
 
     def add_ai_message(self, text: str):
-        self._append_message("[AI]", text, QColor(current_theme()["chat_header_ai"]))
+        self._append_bubble("ai", _esc(text))
 
     def add_system_message(self, text: str):
-        self._append_message("[系统]", text, QColor(current_theme()["chat_header_sys"]))
+        self._append_system(_esc(text))
 
     def add_error_message(self, text: str):
-        self._append_message("[错误]", text, QColor(current_theme()["chat_header_err"]))
+        self._append_warning(_esc(text))
 
-    # ── Internal helpers (cursor/builder) ──
+    def add_config_tip(self, text: str, semantic_type: str = None):
+        self._append_config_tip(_esc(text), semantic_type)
 
-    @staticmethod
-    def _timestamp() -> str:
-        return datetime.now().strftime("%H:%M:%S")
-
-    @staticmethod
-    def _insert_header(cursor, sender: str, color: QColor):
-        fmt = QTextCharFormat()
-        fmt.setFontWeight(QFont.Bold)
-        fmt.setForeground(color)
-        cursor.insertText(f"\n[{ChatPanel._timestamp()}] {sender}\n", fmt)
-
-    @staticmethod
-    def _insert_separator(cursor, color: QColor = None):
-        fmt = QTextCharFormat()
-        if color is None:
-            color = QColor(current_theme()["chat_separator"])
-        fmt.setForeground(color)
-        cursor.insertText("─" * 40 + "\n", fmt)
-
-    @staticmethod
-    def _insert_text(cursor, text: str, color: QColor):
-        fmt = QTextCharFormat()
-        fmt.setForeground(color)
-        cursor.insertText(text, fmt)
-
-    def _end_cursor(self, cursor):
-        self.chat_display.setTextCursor(cursor)
-        self._scroll_to_bottom()
-
-    # ── Streaming support ──
+    # ── Streaming ──
 
     def show_thinking(self):
-        self._streaming = True
         t = current_theme()
-        self._stream_theme = t
-
-        cursor = self.chat_display.textCursor()
+        self._streaming = True
+        self._stream_tokens = []
+        cursor = self.display.textCursor()
         cursor.movePosition(QTextCursor.End)
 
-        self._insert_header(cursor, "[AI]", QColor(t["chat_header_ai"]))
-        self._stream_content_start = cursor.position()
-        self._insert_text(cursor, "思考中...\n", QColor(t["text_secondary"]))
-
+        html = (
+            f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            f'<tr><td style="padding:4px 0 2px 0;">'
+            f'<span style="color:{t["text_muted"]};font-size:11px;font-weight:600;">AI</span>'
+            f'<span style="color:{t["text_muted"]};font-size:10px;margin-left:8px;">{_ts()}</span>'
+            f'</td></tr><tr><td>'
+            f'<table cellpadding="0" cellspacing="0" border="0" style="max-width:100%;">'
+            f'<tr><td style="background-color:{t["chat_bubble_ai"]};'
+            f'border-radius:4px 12px 12px 12px;padding:10px 14px;">'
+            f'<span style="color:{t["highlight"]};font-size:13px;">思考中...</span>'
+        )
+        cursor.insertHtml(html)
+        self._stream_marker = cursor.position()
         self._end_cursor(cursor)
 
     def append_stream_token(self, token: str):
         if not self._streaming:
             return
+        self._stream_tokens.append(token)
+        if len(self._stream_tokens) == 1:
+            cursor = self.display.textCursor()
+            cursor.setPosition(self._stream_marker)
+            cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
+            cursor.removeSelectedText()
 
-        t = self._stream_theme
-        cursor = self.chat_display.textCursor()
+        cursor = self.display.textCursor()
         cursor.movePosition(QTextCursor.End)
-        self._insert_text(cursor, token, QColor(t["chat_text"]))
+        fmt = QTextCharFormat()
+        fmt.setForeground(QColor(current_theme()["chat_text_ai"]))
+        cursor.insertText(token, fmt)
         self._end_cursor(cursor)
 
     def finish_streaming(self, final_text: str):
         if not self._streaming:
             self.add_ai_message(final_text)
             return
-
         self._streaming = False
-        t = self._stream_theme
-
-        cursor = self.chat_display.textCursor()
-        cursor.setPosition(self._stream_content_start)
-        cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
-        self._insert_text(cursor, final_text + "\n", QColor(t["chat_text"]))
-        self._insert_separator(cursor)
-        self._end_cursor(cursor)
-
-    # ── Internal helpers ──
-
-    def _append_message(self, sender: str, text: str, sender_color: QColor):
-        """Append a message using current theme colours."""
-        t = current_theme()
-        cursor = self.chat_display.textCursor()
+        cursor = self.display.textCursor()
         cursor.movePosition(QTextCursor.End)
-        self._insert_header(cursor, sender, sender_color)
-        self._insert_text(cursor, text + "\n", QColor(t["chat_text"]))
-        self._insert_separator(cursor, QColor(t["chat_separator"]))
+        cursor.insertHtml(
+            f'</td></tr></table></td></tr></table>'
+            f'<div style="height:6px;"></div>'
+        )
         self._end_cursor(cursor)
 
-    def _clear_chat(self):
-        self.chat_display.clear()
-        self.add_system_message("对话已清空。")
+    # ── Message builders ──
+
+    def _append_bubble(self, side: str, html_text: str):
+        t = current_theme()
+        if side == "user":
+            bg, fg, time_c = t["chat_bubble_user"], t["chat_text_user"], t["chat_time_user"]
+            align, radius, label = "right", "12px 12px 0 12px", ""
+        else:
+            bg, fg, time_c = t["chat_bubble_ai"], t["chat_text_ai"], t["chat_time_ai"]
+            align, radius = "left", "0 12px 12px 12px"
+            label = (
+                f'<span style="color:{t["text_muted"]};font-size:11px;font-weight:600;">AI</span>'
+                f'<span style="color:{t["text_muted"]};font-size:10px;margin-left:8px;">{_ts()}</span><br>'
+            )
+
+        html = (
+            f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            f'<tr><td align="{align}">'
+            f'<table cellpadding="0" cellspacing="0" border="0" style="max-width:85%;display:inline-table;">'
+            f'<tr><td style="background-color:{bg};border-radius:{radius};padding:10px 14px;">'
+            f'{label}'
+            f'<span style="color:{fg};font-size:13px;line-height:1.6;">{html_text}</span><br>'
+            f'<span style="color:{time_c};font-size:10px;float:right;margin-top:2px;">{_ts()}</span>'
+            f'</td></tr></table></td></tr></table>'
+            f'<div style="height:6px;"></div>'
+        )
+        cursor = self.display.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertHtml(html)
+        self._end_cursor(cursor)
+
+    def _append_system(self, html_text: str):
+        t = current_theme()
+        html = (
+            f'<div style="padding:4px 0;">'
+            f'<span style="color:{t["chat_text_sys"]};font-size:11px;">{html_text}</span></div>'
+        )
+        cursor = self.display.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertHtml(html)
+        self._end_cursor(cursor)
+
+    def _append_warning(self, html_text: str):
+        """Semantic error notification — rose red."""
+        s = get_semantic_style("error")
+        html = (
+            f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            f'<tr><td align="center">'
+            f'<table cellpadding="0" cellspacing="0" border="0" style="max-width:90%;display:inline-table;">'
+            f'<tr><td style="background-color:{s["bg"]};border-left:3px solid {s["border"]};'
+            f'border-radius:0 6px 6px 0;padding:8px 14px;">'
+            f'<span style="color:{s["text"]};font-size:12px;">{html_text}</span>'
+            f'</td></tr></table></td></tr></table>'
+            f'<div style="height:6px;"></div>'
+        )
+        cursor = self.display.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertHtml(html)
+        self._end_cursor(cursor)
+
+    def _append_config_tip(self, html_text: str, semantic_type: str = None):
+        """Semantic status tip — auto-detects type from content keywords."""
+        if semantic_type is None:
+            semantic_type = _detect_semantic_type(html_text)
+        s = get_semantic_style(semantic_type)
+        html = (
+            f'<div style="height:8px;"></div>'
+            f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+            f'<tr><td align="left">'
+            f'<table cellpadding="0" cellspacing="0" border="0" style="max-width:95%;display:inline-table;">'
+            f'<tr><td style="background-color:{s["bg"]};'
+            f'border:1px solid {s["border"]};'
+            f'border-radius:6px;padding:10px 14px;">'
+            f'<span style="color:{s["text"]};font-size:11px;line-height:1.5;">{html_text}</span>'
+            f'</td></tr></table></td></tr></table>'
+            f'<div style="height:4px;"></div>'
+        )
+        cursor = self.display.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertHtml(html)
+        self._end_cursor(cursor)
+
+    # ── Helpers ──
+
+    def _end_cursor(self, cursor: QTextCursor):
+        self.display.setTextCursor(cursor)
+        self._scroll_to_bottom()
 
     def _scroll_to_bottom(self):
-        scrollbar = self.chat_display.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
+        sb = self.display.verticalScrollBar()
+        sb.setValue(sb.maximum())
+
+    def _clear_chat(self):
+        self._streaming = False
+        self._stream_tokens = []
+        self.display.clear()
+        self._show_welcome()
+
+    def _show_welcome(self):
+        """Structured welcome: Title → Features → Guide — left-aligned, clean dividers."""
+        t = current_theme()
+        features = [
+            ("合并 BOM", "合并同类元件"),
+            ("封装校验", "校验封装与型号匹配"),
+            ("位号查重", "检查重复位号"),
+            ("HTML BOM", "生成交互式 HTML BOM"),
+            ("设计规则检查", "PCB 设计规则检查"),
+        ]
+        feature_rows = "".join(
+            f'<tr>'
+            f'<td style="padding:2px 0;color:{t["highlight"]};font-size:12px;font-weight:500;white-space:nowrap;">'
+            f'{name}</td>'
+            f'<td style="padding:2px 6px;color:{t["text_muted"]};font-size:12px;">—</td>'
+            f'<td style="padding:2px 0;color:{t["text_muted"]};font-size:12px;">{desc}</td>'
+            f'</tr>'
+            for name, desc in features
+        )
+
+        html = (
+            # ── Title ──
+            f'<div style="padding:10px 0 4px 0;">'
+            f'<span style="color:{t["primary"]};font-size:24px;font-weight:700;">EDA</span>'
+            f'<span style="color:{t["text_primary"]};font-size:24px;font-weight:300;"> AI 智能助手</span>'
+            f'</div>'
+            f'<div style="color:{t["text_secondary"]};font-size:11px;padding:0 0 10px 0;">'
+            f'面向立创 EDA 的 BOM 管理与 PCB 设计助手</div>'
+            # ── Divider ──
+            f'<div style="height:1px;background-color:{t["border"]};margin:0 0 10px 0;"></div>'
+            # ── Feature list ──
+            f'<div style="color:{t["text_secondary"]};font-size:11px;font-weight:600;padding:0 0 4px 0;">'
+            f'可用功能</div>'
+            f'<table cellpadding="0" cellspacing="0" border="0">{feature_rows}</table>'
+            # ── Divider ──
+            f'<div style="height:1px;background-color:{t["border"]};margin:10px 0 8px 0;"></div>'
+            # ── Guide ──
+            f'<div style="color:{t["text_muted"]};font-size:11px;line-height:1.6;padding:0 0 4px 0;">'
+            f'请先导入 BOM 文件，然后在下方输入指令开始使用。</div>'
+        )
+        cursor = self.display.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertHtml(html)
+        self._end_cursor(cursor)
+
+    # ── Theme refresh ──
 
     def refresh_theme(self):
-        """Re-apply inline styles from the current theme."""
+        """Re-apply all inline styles after theme switch."""
         t = current_theme()
-        self.setStyleSheet(f"background-color: {t['bg_sidebar']};")
-
-        # Title bar
-        self._title_bar.setStyleSheet(
-            f"background-color: {t['title_bar_bg']}; padding: 8px;"
+        # Header
+        self._header.setStyleSheet(
+            f"QWidget#chatHeader {{ background-color: transparent; "
+            f"border-bottom: 1px solid {t['border']}; }}"
         )
-        self._title_label.setStyleSheet(
-            f"color: {t['title_bar_text']}; font-size: 13px; font-weight: bold;"
+        self._header_title.setStyleSheet(
+            f"color: {t['text_primary']}; font-size: 14px; font-weight: 600; background: transparent;"
         )
-
-        # Chat display
-        self.chat_display.setStyleSheet(f"""
-            QTextEdit {{
-                background-color: {t['chat_bg']};
-                border: 1px solid {t['chat_border']};
-                padding: 8px;
-                font-size: 13px;
-                color: {t['text_primary']};
-            }}
-        """)
-        self.input_box.setStyleSheet(f"""
-            QLineEdit {{
-                padding: 10px;
-                border: 1px solid {t['border']};
-                font-size: 13px;
-                background-color: {t['bg_input']};
-                color: {t['text_primary']};
-            }}
-            QLineEdit:focus {{ border-color: {t['accent']}; }}
-        """)
-        self.send_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {t['btn_bg']}; color: {t['text_primary']};
-                border: none; padding: 10px; font-size: 13px; font-weight: bold;
-            }}
-            QPushButton:hover {{ background-color: {t['btn_bg_hover']}; }}
-            QPushButton:pressed {{ background-color: {t['btn_bg_pressed']}; }}
-        """)
-        self.clear_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {t['border']}; color: {t['text_primary']};
-                border: none; padding: 4px 8px; font-size: 12px;
-            }}
-            QPushButton:hover {{ background-color: {t['bg_hover']}; }}
-        """)
-        # Re-colour existing messages
-        cursor = self.chat_display.textCursor()
-        cursor.select(QTextCursor.Document)
-        fmt = QTextCharFormat()
-        fmt.setForeground(QColor(t['text_primary']))
-        cursor.mergeCharFormat(fmt)
+        # Buttons
+        self._style_clear_btn()
+        self._style_send_btn()
+        # Display + input
+        self._style_display()
+        self._style_input_box()
+        # Container
+        self._input_container.setStyleSheet(
+            f"QWidget#chatInputContainer {{ background-color: transparent; "
+            f"border-top: 1px solid {t['border']}; }}"
+        )
