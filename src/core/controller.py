@@ -72,6 +72,7 @@ class AppController:
         self.parser = BOMParser()
         self.eda = LCEDAAdapter()
         self.context = CommandContext()
+        self._conversation_active = False
 
     def reconfigure_llm(self, provider: str, api_key: str, base_url: str, model: str):
         """热重载 LLM 客户端 — 用户通过设置面板修改配置后调用。"""
@@ -84,10 +85,17 @@ class AppController:
             )
         else:
             self.agent = None
+        self._conversation_active = False
         logger.info(
             "LLM reconfigured: provider=%s, model=%s, has_key=%s",
             provider, model or "(default)", bool(self.agent),
         )
+
+    def clear_conversation(self):
+        """清空对话历史与上下文标记"""
+        self._conversation_active = False
+        if self.agent:
+            self.agent.clear_history()
 
     # ══════════════════════════════════════════════════
     #  File I/O
@@ -97,6 +105,7 @@ class AppController:
         """Parse a BOM file, populate context, return (count, message)."""
         self.context.bom_items = self.parser.parse(file_path)
         self.context.bom_file = file_path
+        self.clear_conversation()
         name = Path(file_path).name
         n = len(self.context.bom_items)
         logger.info("BOM loaded: %s (%d items)", name, n)
@@ -118,6 +127,47 @@ class AppController:
         merger = BOMMerger()
         merged = merger.merge(self.context.bom_items)
         return merger.get_merge_report(self.context.bom_items, merged)
+
+    def ai_merge_bom(self) -> str:
+        """AI-assisted BOM merge: rule-based merge + AI suggestions for further merging."""
+        if not self.is_agent_available():
+            return self.merge_bom() + "\n\n⚠️ AI 未配置，仅执行了规则合并"
+
+        merger = BOMMerger()
+        rule_merged = merger.merge(self.context.bom_items)
+
+        bom_text = self._format_merged_for_ai(rule_merged)
+        prompt = PromptTemplates.get("bom_ai_merge", bom_data=bom_text)
+        system = PromptTemplates.get_system_prompt("bom")
+
+        try:
+            raw = self.agent.chat(prompt, system_prompt=system)
+            parsed = self._extract_json(raw)
+            suggestions = parsed.get("suggestions", []) if isinstance(parsed, dict) else []
+        except Exception:
+            logger.exception("AI merge analysis failed")
+            suggestions = []
+
+        final_merged, ai_count = merger.merge_with_ai_suggestion(
+            self.context.bom_items, suggestions,
+        )
+
+        report = merger.get_merge_report(self.context.bom_items, final_merged)
+        if ai_count > 0:
+            report += f"\n\n🤖 AI 额外识别了 {ai_count} 组合并"
+        else:
+            report += "\n\n🤖 AI 未发现额外合并机会"
+        return report
+
+    def _format_merged_for_ai(self, merged: list) -> str:
+        """Format rule-merged BOM groups as compact text for AI analysis."""
+        lines: list[str] = []
+        for i, m in enumerate(merged, 1):
+            lines.append(
+                f"{i}. 位号:{m.reference_str} | 型号:{m.part_number} "
+                f"| 封装:{m.package} | 值:{m.value} | 数量:{m.total_quantity}"
+            )
+        return "\n".join(lines)
 
     def validate_packages(self) -> str:
         validator = BOMValidator()
@@ -163,6 +213,7 @@ class AppController:
     def _dispatch_operation(self, operation: str, params: dict) -> str:
         handlers = {
             "merge_bom": self.merge_bom,
+            "ai_merge_bom": self.ai_merge_bom,
             "validate_package": self.validate_packages,
             "check_duplicates": self.check_duplicates,
             "check_rule": self.check_design_rules,
@@ -232,8 +283,14 @@ class AppController:
     def _try_ai(self, user_input: str) -> Optional[str]:
         try:
             system, prompt = self._build_ai_prompt(user_input)
-            raw = self.agent.chat(prompt, system_prompt=system)
-            return self._ai_to_operation(raw)
+            raw = self.agent.chat(
+                prompt, system_prompt=system,
+                use_history=self._conversation_active,
+            )
+            result = self._ai_to_operation(raw)
+            if result is not None:
+                self._conversation_active = True
+            return result
         except Exception:
             logger.exception("AI processing failed, falling back to local")
             return None
@@ -243,8 +300,14 @@ class AppController:
     ) -> Optional[str]:
         try:
             system, prompt = self._build_ai_prompt(user_input)
-            raw = self.agent.chat_stream(prompt, system_prompt=system, on_token=on_token)
-            return self._ai_to_operation(raw)
+            raw = self.agent.chat_stream(
+                prompt, system_prompt=system, on_token=on_token,
+                use_history=self._conversation_active,
+            )
+            result = self._ai_to_operation(raw)
+            if result is not None:
+                self._conversation_active = True
+            return result
         except Exception:
             logger.exception("AI streaming failed, falling back to local")
             return None
@@ -270,6 +333,7 @@ class AppController:
     # ── Local keyword fallback ──
 
     _KEYWORD_ROUTES: tuple[tuple[tuple[str, ...], str], ...] = (
+        (("ai合并", "智能合并", "ai_merge"), "ai_merge_bom"),
         (("合并", "merge", "整理"), "merge_bom"),
         (("校验", "验证", "封装", "validate"), "validate_packages"),
         (("重复", "查重", "duplicate", "位号"), "check_duplicates"),
@@ -291,11 +355,12 @@ class AppController:
             return handler()
         return (
             "🤔 无法识别指令。请尝试:\n"
-            "• 合并 BOM  — 合并同类元件\n"
-            "• 校验封装   — 检查封装型号匹配\n"
-            "• 检查重复   — 检测重复位号\n"
-            "• 生成 HTML  — 导出交互式 BOM\n"
-            "• 设计规则   — PCB 规则检查"
+            "• 合并 BOM    — 合并同类元件\n"
+            "• AI智能合并   — AI 辅助识别额外合并机会\n"
+            "• 校验封装    — 检查封装型号匹配\n"
+            "• 检查重复    — 检测重复位号\n"
+            "• 生成 HTML   — 导出交互式 BOM\n"
+            "• 设计规则    — PCB 规则检查"
         )
 
     def _summary_report(self) -> str:

@@ -238,6 +238,8 @@ class MainWindow(QMainWindow):
         tool_menu.addSeparator()
         tool_menu.addAction("设计规则检查", self._on_design_rule_check)
         tool_menu.addSeparator()
+        tool_menu.addAction("清空对话", self._on_clear_conversation)
+        tool_menu.addSeparator()
 
         # ── 主题切换子菜单 ──
         theme_menu = tool_menu.addMenu("主题切换")
@@ -523,6 +525,7 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self):
         self.chat_panel.message_sent.connect(self._on_user_message)
+        self.chat_panel.clear_requested.connect(self._on_clear_conversation)
 
     # ══════════════════════════════════════════════════
     #  User message handler
@@ -568,6 +571,10 @@ class MainWindow(QMainWindow):
             self._show_report(fallback)
         self._set_input_enabled(True)
         self._status_message.setText("就绪")
+
+    def _on_clear_conversation(self):
+        self.controller.clear_conversation()
+        self._status_message.setText("对话已清空")
 
     # ══════════════════════════════════════════════════
     #  File operations

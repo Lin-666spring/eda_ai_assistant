@@ -72,6 +72,27 @@ BOM 数据如下：
 
 用户问题：{question}"""
 
+    BOM_AI_MERGE = """## 任务：AI 辅助 BOM 合并优化
+
+以下是已按规则（型号+封装+参数值）初步合并的 BOM 分组。请检查是否有应该进一步合并的组。
+
+常见可合并情况：
+1. 参数值写法不同但实际相同（如 "10kΩ" 和 "10K"、"0.1μF" 和 "100nF"）
+2. 同一芯片的不同后缀（如 STM32F103C8T6 和 STM32F103C8T6TR）
+3. 同功能不同厂商型号可互换（如 LM358 和 LM358N）
+
+当前分组：
+{bom_data}
+
+请返回 JSON 对象：{{"suggestions": [...], "analysis": "..."}}
+suggestions 每项包含：
+- references: 需要合并的位号列表（必填）
+- suggested_value: 建议统一的值（可选）
+- suggested_part_number: 建议统一的型号（可选）
+- reason: 合并理由，中文（必填）
+
+如果没有需要合并的，suggestions 为空数组。"""
+
     COMMAND_PARSE = """## 任务：将用户的自然语言指令解析为结构化操作
 
 支持的操作类型：
@@ -81,6 +102,7 @@ BOM 数据如下：
 - filter_components: 筛选特定类型的元件
 - generate_html_bom: 生成交互式HTML BOM
 - check_rule: 执行设计规则检查
+- ai_merge_bom: AI 智能分析并合并 BOM（用户说"AI合并"或"智能合并"时使用）
 
 用户指令：{user_command}
 
@@ -95,6 +117,7 @@ BOM 数据如下：
         "rule_signal_trace": RULE_SIGNAL_TRACE,
         "general_qa": GENERAL_QA,
         "command_parse": COMMAND_PARSE,
+        "bom_ai_merge": BOM_AI_MERGE,
     }
 
     _SYSTEM_PROMPTS: ClassVar[dict[str, str]] = {

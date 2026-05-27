@@ -87,13 +87,68 @@ class BOMMerger:
         self,
         items: list[BOMItem],
         ai_suggestion: list[dict],
-    ) -> list[MergedBOMItem]:
+    ) -> tuple[list[MergedBOMItem], int]:
         """
-        根据 AI 建议合并（AI 识别出合并候选组）。
+        根据 AI 建议合并。
 
-        TODO: 根据 AI 建议进一步合并（如将 10kΩ → 10K 识别为同一元件）
+        ai_suggestion 格式:
+            [{"references": ["R1","R3"], "suggested_part_number": "...",
+              "suggested_value": "10kΩ", "reason": "..."}, ...]
+
+        Returns:
+            (merged_items, ai_merge_count) — AI 额外合并的组数
         """
-        return self.merge(items)
+        result = self.merge(items)
+        rule_merge_count = len(result)
+        if not ai_suggestion:
+            return result, 0
+
+        # Build reference → index lookup
+        ref_to_idx: dict[str, int] = {}
+        for i, m in enumerate(result):
+            for ref in m.references:
+                ref_to_idx[ref] = i
+
+        ai_merges = 0
+        for group in ai_suggestion:
+            refs = group.get("references", [])
+            if len(refs) < 2:
+                continue
+            # Collect indices of merged items to combine
+            indices: set[int] = set()
+            for ref in refs:
+                idx = ref_to_idx.get(ref)
+                if idx is not None:
+                    indices.add(idx)
+            if len(indices) < 2:
+                continue
+            # Merge these groups into the first one
+            idx_list = sorted(indices)
+            target = result[idx_list[0]]
+            for idx in idx_list[1:]:
+                source = result[idx]
+                target.total_quantity += source.total_quantity
+                target.references.extend(source.references)
+            # Remove merged-away items (reverse order to preserve indices)
+            for idx in reversed(idx_list[1:]):
+                del result[idx]
+                # Update ref_to_idx for items that shifted
+                ref_to_idx = {}
+                for i, m in enumerate(result):
+                    for ref in m.references:
+                        ref_to_idx[ref] = i
+            ai_merges += 1
+            # Apply AI-suggested part number / value if provided
+            if group.get("suggested_part_number"):
+                target.part_number = group["suggested_part_number"]
+            if group.get("suggested_value"):
+                target.value = group["suggested_value"]
+
+        logger.info(
+            "AI 辅助合并: 规则合并 %d 组, AI 额外合并 %d 组 → 最终 %d 组",
+            rule_merge_count, ai_merges, len(result),
+        )
+        return result, ai_merges
 
     # ── 内部方法 ──
 

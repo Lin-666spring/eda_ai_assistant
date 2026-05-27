@@ -144,12 +144,16 @@ class LLMClient:
         temperature: float = 0.7,
         max_tokens: int = 4096,
         stream: bool = False,
+        use_history: bool = False,
     ) -> str:
-        """单轮对话"""
+        """单轮对话（use_history=True 时附带已记录的历史）"""
         request = self._prepare_request(
-            user_message, system_prompt, temperature, max_tokens, stream
+            user_message, system_prompt, temperature, max_tokens, stream,
+            use_history=use_history,
         )
-        return self._execute(request)
+        reply = self._execute(request)
+        self._record_turn(user_message, reply)
+        return reply
 
     def chat_with_history(
         self,
@@ -172,10 +176,11 @@ class LLMClient:
         user_message: str,
         system_prompt: Optional[str] = None,
         on_token: Optional[Callable[[str], None]] = None,
+        use_history: bool = False,
     ) -> str:
-        """流式对话"""
+        """流式对话（use_history=True 时附带已记录的历史）"""
         request = self._prepare_request(
-            user_message, system_prompt, stream=True,
+            user_message, system_prompt, stream=True, use_history=use_history,
         )
         reply = self._execute_stream(request, on_token)
         self._record_turn(user_message, reply)

@@ -31,6 +31,7 @@ def _ts() -> str:
 
 class ChatPanel(QWidget):
     message_sent = pyqtSignal(str)
+    clear_requested = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -339,6 +340,7 @@ class ChatPanel(QWidget):
         self._stream_tokens = []
         self.display.clear()
         self._show_welcome()
+        self.clear_requested.emit()
 
     def _show_welcome(self):
         """Structured welcome: Title → Features → Guide — left-aligned, clean dividers."""
