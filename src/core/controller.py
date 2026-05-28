@@ -13,13 +13,14 @@ from typing import Callable, Optional
 
 from src.agent.llm_client import LLMClient
 from src.agent.prompt_templates import PromptTemplates
+from src.agent.router import LLMRouter, TaskIntent
 from src.bom.checker import BOMDuplicateChecker
 from src.bom.merger import BOMMerger
 from src.bom.parser import BOMItem, BOMParser
 from src.bom.validator import BOMValidator
 from src.config import config
 from src.html_bom.generator import HTMLBOMConfig, HTMLBOMGenerator
-from src.interfaces.eda_adapter import LCEDAAdapter
+from src.interfaces.eda_adapter import LCEDAAdapter, PCBData
 from src.rules.checker import DesignRuleChecker
 
 logger = logging.getLogger(__name__)
@@ -41,6 +42,7 @@ class CommandContext:
     bom_items: list = field(default_factory=list)
     positions: dict = field(default_factory=dict)
     bom_file: Optional[str] = None
+    pcb_data: Optional[PCBData] = None
 
     @property
     def has_data(self) -> bool:
@@ -69,6 +71,7 @@ class AppController:
             model=config.llm.model,
             provider=config.llm.provider,
         ) if _is_key_usable(effective_key) else None
+        self.router = LLMRouter.from_config(effective_key) if _is_key_usable(effective_key) else None
         self.parser = BOMParser()
         self.eda = LCEDAAdapter()
         self.context = CommandContext()
@@ -83,8 +86,10 @@ class AppController:
                 model=model or None,
                 provider=provider,
             )
+            self.router = LLMRouter.from_config(api_key)
         else:
             self.agent = None
+            self.router = None
         self._conversation_active = False
         logger.info(
             "LLM reconfigured: provider=%s, model=%s, has_key=%s",
@@ -118,6 +123,25 @@ class AppController:
         n = len(self.context.positions)
         logger.info("Positions loaded: %s (%d entries)", name, n)
         return n, f"✅ 已加载坐标: {name}\n共 {n} 个位号坐标"
+
+    def load_pcb(self, file_path: str) -> tuple[int, str]:
+        """Parse a PCB layout file, populate context, return (net_count, message)."""
+        self.context.pcb_data = self.eda.get_pcb_data(file_path)
+        name = Path(file_path).name
+        pcb = self.context.pcb_data
+        logger.info(
+            "PCB loaded: %s (%d nets, %d traces, %d vias)",
+            name, pcb.net_count, pcb.trace_count, pcb.via_count,
+        )
+        summary = (
+            f"✅ 已加载 PCB: {name}\n"
+            f"  格式: {pcb.format}\n"
+            f"  网络: {pcb.net_count} 个\n"
+            f"  走线: {pcb.trace_count} 条\n"
+            f"  过孔: {pcb.via_count} 个\n"
+            f"  层: {', '.join(pcb.layers) if pcb.layers else '无'}"
+        )
+        return pcb.net_count, summary
 
     # ══════════════════════════════════════════════════
     #  BOM operations — each returns a formatted report
@@ -197,7 +221,11 @@ class AppController:
 
     def check_design_rules(self) -> str:
         checker = DesignRuleChecker()
-        violations = checker.check_all(self.context.bom_items, self.context.positions)
+        violations = checker.check_all(
+            self.context.bom_items,
+            self.context.positions,
+            pcb_data=self.context.pcb_data,
+        )
         return checker.get_report(violations)
 
     def get_bom_summary(self) -> dict:
@@ -265,10 +293,26 @@ class AppController:
     # ── AI helpers ──
 
     def _build_ai_prompt(self, user_input: str) -> tuple[str, str]:
-        return (
-            PromptTemplates.get_system_prompt("bom"),
-            PromptTemplates.COMMAND_PARSE.format(user_command=user_input),
-        )
+        """根据意图分类选择最合适的 system prompt 和模板"""
+        if self.router:
+            intent = self.router.classify_intent(user_input)
+        else:
+            intent = TaskIntent.TEXT_CHAT
+
+        # 按意图映射 system prompt
+        intent_system_map = {
+            TaskIntent.BOM_ANALYSIS: "bom",
+            TaskIntent.RULE_CHECK: "rule",
+            TaskIntent.PCB_ANALYSIS: "pcb",
+            TaskIntent.CODE_RULE_GEN: "rule",
+            TaskIntent.VISUAL: "general",
+            TaskIntent.TEXT_CHAT: "general",
+        }
+        system_type = intent_system_map.get(intent, "general")
+        system = PromptTemplates.get_system_prompt(system_type)
+        prompt = PromptTemplates.COMMAND_PARSE.format(user_command=user_input)
+        logger.debug("Intent: %s → system_prompt=%s", intent.name, system_type)
+        return system, prompt
 
     def _ai_to_operation(self, raw_response: str) -> Optional[str]:
         parsed = self._extract_json(raw_response)
@@ -338,7 +382,8 @@ class AppController:
         (("校验", "验证", "封装", "validate"), "validate_packages"),
         (("重复", "查重", "duplicate", "位号"), "check_duplicates"),
         (("html", "网页"), "generate_html_bom"),
-        (("规则", "rule", "去耦", "信号"), "check_design_rules"),
+        (("规则", "rule", "去耦", "信号", "电源", "模数"), "check_design_rules"),
+        (("pcb", "导入pcb", "电路板"), "_pcb_status"),
         (("统计", "概览", "summary"), "_summary_report"),
     )
 
@@ -360,7 +405,8 @@ class AppController:
             "• 校验封装    — 检查封装型号匹配\n"
             "• 检查重复    — 检测重复位号\n"
             "• 生成 HTML   — 导出交互式 BOM\n"
-            "• 设计规则    — PCB 规则检查"
+            "• 设计规则    — PCB 规则检查（需先导入PCB）\n"
+            "• PCB         — 查看已加载的 PCB 状态"
         )
 
     def _summary_report(self) -> str:
@@ -376,6 +422,20 @@ class AppController:
             lines.append(f"  {prefix}: {count} 个")
         lines.append("=" * 50)
         return "\n".join(lines)
+
+    def _pcb_status(self) -> str:
+        """返回已加载 PCB 的状态摘要"""
+        pcb = self.context.pcb_data
+        if not pcb:
+            return "⚠️ 未加载 PCB 文件。请通过 文件→导入PCB 加载电路板文件。"
+        return (
+            f"📐 PCB 状态:\n"
+            f"  格式: {pcb.format}\n"
+            f"  网络: {pcb.net_count} 个\n"
+            f"  走线: {pcb.trace_count} 条\n"
+            f"  过孔: {pcb.via_count} 个\n"
+            f"  层: {', '.join(pcb.layers) if pcb.layers else '无'}"
+        )
 
     # ── Static utility ──
 

@@ -8,15 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-
-@dataclass
-class PCBData:
-    """PCB 数据容器"""
-
-    bom_items: list           # BOM 物料列表
-    component_positions: dict  # 位号 → (x, y, rotation, layer)
-    board_outline: dict        # 板框信息
-    layers: list[str]          # 层列表
+# 新的 PCB 数据模型（替代旧 PCBData）
+from ..pcb.models import PCBData as PCBData
 
 
 class EDAAdapter(ABC):
@@ -34,6 +27,11 @@ class EDAAdapter(ABC):
     @abstractmethod
     def get_positions(self, project_path: str) -> dict:
         """获取元件坐标 (Pick & Place)"""
+        ...
+
+    @abstractmethod
+    def get_pcb_data(self, file_path: str) -> PCBData:
+        """解析 PCB 文件，获取网络/走线/层信息"""
         ...
 
     @abstractmethod
@@ -108,10 +106,17 @@ class LCEDAAdapter(EDAAdapter):
 
         return positions
 
+    def get_pcb_data(self, file_path: str) -> PCBData:
+        """解析 PCB 文件获取布局数据（网络/走线/层）"""
+        from ..pcb.parser import create_parser
+
+        parser = create_parser(file_path)
+        return parser.parse(file_path)
+
     def get_project_info(self, project_path: str) -> dict:
         """获取项目基本信息"""
         return {
             "tool": self.tool_name,
             "project_path": project_path,
-            "supported_formats": [".csv", ".xlsx", ".xls"],
+            "supported_formats": [".csv", ".xlsx", ".xls", ".json", ".epro"],
         }

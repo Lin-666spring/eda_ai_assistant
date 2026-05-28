@@ -66,6 +66,27 @@ BOM 数据如下：
 
 {context_data}"""
 
+    PCB_ANALYSIS = """## 任务：PCB 布局分析
+请根据已解析的 PCB 数据（网络连接、走线宽度、层信息、元件位置），分析以下方面：
+1. 关键信号走线路径是否合理
+2. 电源网络布线是否满足载流要求
+3. 模拟与数字区域是否有效隔离
+4. 是否存在明显的布局问题或改善空间
+
+PCB 数据摘要：
+{pcb_summary}
+
+请给出专业的中文分析报告。"""
+
+    PCB_DOC_QA = """## 任务：基于立创EDA知识库回答问题
+请根据以下检索到的相关知识，回答用户关于立创EDA或PCB设计的问题。
+如果知识库中没有相关信息，请根据你的专业知识进行补充说明。
+
+相关知识：
+{context}
+
+用户问题：{question}"""
+
     # ── 通用模板 ──
     GENERAL_QA = """## 任务：回答用户的电子/PCB相关疑问
 请根据你的专业知识，回答用户的问题。如果涉及具体元件参数，请给出典型值和建议。
@@ -103,6 +124,8 @@ suggestions 每项包含：
 - generate_html_bom: 生成交互式HTML BOM
 - check_rule: 执行设计规则检查
 - ai_merge_bom: AI 智能分析并合并 BOM（用户说"AI合并"或"智能合并"时使用）
+- load_pcb: 导入PCB文件（用户说"导入pcb"或"加载电路板"时使用）
+- pcb_analysis: 分析PCB布局（用户说"分析pcb"或"pcb分析"时使用）
 
 用户指令：{user_command}
 
@@ -118,11 +141,14 @@ suggestions 每项包含：
         "general_qa": GENERAL_QA,
         "command_parse": COMMAND_PARSE,
         "bom_ai_merge": BOM_AI_MERGE,
+        "pcb_analysis": PCB_ANALYSIS,
+        "pcb_doc_qa": PCB_DOC_QA,
     }
 
     _SYSTEM_PROMPTS: ClassVar[dict[str, str]] = {
         "bom": SYSTEM_ROLE + "\n\n你当前专注于 BOM 物料清单管理任务。",
         "rule": SYSTEM_ROLE + "\n\n你当前专注于 PCB 设计规则检查任务。",
+        "pcb": SYSTEM_ROLE + "\n\n你当前专注于 PCB 布局分析与设计规则检查。",
         "general": SYSTEM_ROLE,
     }
 

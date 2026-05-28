@@ -222,6 +222,7 @@ class MainWindow(QMainWindow):
         file_menu = mb.addMenu("文件")
         file_menu.addAction("导入 BOM 文件", self._on_import_bom, "Ctrl+O")
         file_menu.addAction("导入坐标文件", self._on_import_positions, "Ctrl+Shift+O")
+        file_menu.addAction("导入 PCB 文件", self._on_import_pcb, "Ctrl+P")
         file_menu.addSeparator()
         file_menu.addAction("导出合并 BOM", self._on_export_bom, "Ctrl+S")
         file_menu.addAction("生成 HTML BOM", self._on_generate_html_bom, "Ctrl+G")
@@ -610,6 +611,26 @@ class MainWindow(QMainWindow):
         except Exception as exc:
             QMessageBox.critical(self, "导入失败", str(exc))
             logger.exception("Position import failed")
+
+    def _on_import_pcb(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "选择 PCB 文件", "",
+            "PCB 文件 (*.json *.epro);;所有文件 (*.*)",
+        )
+        if not path:
+            return
+        try:
+            count, msg = self.controller.load_pcb(path)
+            self.chat_panel.add_system_message(msg)
+            self._status_message.setText(f"已加载 PCB: {Path(path).name}")
+            # 如果已有 BOM，自动触发规则检查
+            if self.controller.context.has_data:
+                report = self.controller.check_design_rules()
+                self.report_view.setPlainText(report)
+                self.right_tabs.setCurrentIndex(self.REPORT_TAB_INDEX)
+        except Exception as exc:
+            QMessageBox.critical(self, "导入失败", str(exc))
+            logger.exception("PCB import failed")
 
     def _on_export_bom(self):
         if not self.controller.context.has_data:

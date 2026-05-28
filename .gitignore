@@ -40,3 +40,10 @@ release/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# RAG 向量数据 (只提交源文档，不提交 chromadb 二进制)
+rag_data/*/
+rag_data/*.sqlite3
+
+# Claude Code
+.claude/

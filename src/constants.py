@@ -133,9 +133,62 @@ class HTMLBOMConstants:
     LABEL_VISIBLE_ZOOM: float = 0.55
 
 
+# ══════════════════ PCB 常量 ══════════════════
+
+@dataclass(frozen=True)
+class PCBConstants:
+    """PCB 解析与规则检查常量"""
+
+    # 层名称（立创 EDA 导出）
+    TOP_LAYER: str = "TopLayer"
+    BOTTOM_LAYER: str = "BottomLayer"
+
+    # 信号线规则
+    SIGNAL_TRACE_MIN_WIDTH_MM: float = 0.2     # 信号线最小宽度
+    SIGNAL_NET_KEYWORDS: tuple = (              # 低速信号网络关键词
+        "SCK", "SCL", "SDA", "MISO", "MOSI", "SS",
+        "TX", "RX", "SPI", "I2C", "UART",
+        "CLK", "RST", "INT", "CS",
+    )
+
+    # 电源线规则
+    POWER_NET_KEYWORDS: tuple = (               # 电源网络关键词
+        "VCC", "VDD", "VEE", "VSS",
+        "PWR", "POWER", "VBUS", "VBAT",
+        "+5V", "+3.3V", "+12V", "+1.8V",
+        "5V", "3V3", "3.3V", "12V", "1.8V",
+        "VIN", "VOUT", "VREF",
+        "GND", "AGND", "DGND", "PGND",
+    )
+
+    # IPC-2221 简化载流参数 (1oz 铜厚, 10°C 温升)
+    IPC_K_FACTOR: float = 0.048     # 外层 K 系数
+    IPC_TEMP_RISE: float = 10.0     # 允许温升 (°C)
+    IPC_COPPER_OZ: float = 1.0      # 铜厚 (oz)
+    POWER_CURRENT_DEFAULT_A: float = 0.5  # 无BOM信息时的默认电流估算
+
+    # 模数分离
+    ANALOG_COMPONENT_KW: tuple = (            # 模拟元件关键词
+        "运放", "比较器", "ADC", "DAC",
+        "OP", "LM", "AD", "TL",
+        "传感器", "sensor",
+        "模拟开关", "analog switch",
+    )
+    DIGITAL_COMPONENT_KW: tuple = (           # 数字元件关键词
+        "MCU", "FPGA", "CPLD", "DSP",
+        "STM32", "ESP32", "ATmega",
+        "74HC", "74LS", "ARM",
+    )
+    AD_SEPARATION_MIN_MM: float = 5.0         # 模拟/数字最小分离距离 (mm)
+
+    # 文件格式
+    SUPPORTED_PCB_FORMATS: tuple = (".json", ".epro")
+
+
 # ══════════════════ 单例实例 ══════════════════
 
 BOM = BOMConstants()
 AGENT = AgentConstants()
 GUI = GUIConstants()
 HTML = HTMLBOMConstants()
+PCB = PCBConstants()

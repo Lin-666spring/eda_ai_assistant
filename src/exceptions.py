@@ -75,3 +75,15 @@ class SimulationError(EDAAIAssistantError):
 class SimulationNotAvailableError(SimulationError):
     """仿真引擎不可用"""
     pass
+
+
+# ══════════════════ PCB 模块异常 ══════════════════
+
+class PCBError(EDAAIAssistantError):
+    """PCB 解析相关异常基类"""
+    pass
+
+
+class PCBParseError(PCBError):
+    """PCB 文件解析失败（格式不兼容/文件损坏）"""
+    pass
