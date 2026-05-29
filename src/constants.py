@@ -191,4 +191,52 @@ BOM = BOMConstants()
 AGENT = AgentConstants()
 GUI = GUIConstants()
 HTML = HTMLBOMConstants()
+# ══════════════════ 供应链常量 ══════════════════
+
+@dataclass(frozen=True)
+class SupplyConstants:
+    """立创商城 API + BOM 健康检查常量"""
+
+    # LCSC 官方 OpenAPI
+    LCSC_API_BASE: str = "https://wmsc.lcsc.com/openapi"
+    LCSC_API_SEARCH: str = "/v1/product/search"       # 关键字搜索
+    LCSC_API_DETAIL: str = "/v1/product/detail"        # 商品详情
+    LCSC_API_TIMEOUT: int = 15
+    LCSC_MAX_PAGE_SIZE: int = 30
+
+    # jlcsearch 公开 API（无需认证）
+    JLCSEARCH_API: str = "https://jlcsearch.tscircuit.com/api"
+    JLCSEARCH_TIMEOUT: int = 10
+
+    # 缓存
+    CACHE_TTL_HOURS: int = 24
+    CACHE_DIR_NAME: str = "lcsc_cache"
+
+    # BOM 健康检查
+    LIFE_WARN_THRESHOLD_DAYS: int = 180         # 库存不足时开始预警
+    PRICE_ESTIMATE_QTY: int = 100               # 估价用的批量数量
+    ALT_MAX_RECOMMEND: int = 5                  # 替代料最多推荐数
+
+    # 生命周期关键词
+    EOL_KEYWORDS: tuple = ("NRND", "EOL", "Obsolete", "Discontinued", "停产")
+
+
+@dataclass(frozen=True)
+class WatcherConstants:
+    """文件监听常量"""
+
+    DEBOUNCE_SEC: float = 2.0
+    PCB_EXTENSIONS: tuple = (".json", ".epro")
+    # 立创 EDA 默认项目路径候选
+    DEFAULT_WATCH_DIRS: tuple = (
+        "Documents/LCEDA",
+        "Documents/EasyEDA",
+        "LCEDA",
+    )
+
+
+# ══════════════════ 单例实例 ══════════════════
+
 PCB = PCBConstants()
+SUPPLY = SupplyConstants()
+WATCHER = WatcherConstants()

@@ -87,3 +87,25 @@ class PCBError(EDAAIAssistantError):
 class PCBParseError(PCBError):
     """PCB 文件解析失败（格式不兼容/文件损坏）"""
     pass
+
+
+# ══════════════════ 供应链模块异常 ══════════════════
+
+class SupplyError(EDAAIAssistantError):
+    """供应链（立创商城）相关异常基类"""
+    pass
+
+
+class SupplyAPIError(SupplyError):
+    """商城 API 调用失败"""
+    pass
+
+
+class SupplyAuthError(SupplyError):
+    """商城 API 认证失败"""
+    pass
+
+
+class SupplyNotFoundError(SupplyError):
+    """元器件在商城中未找到"""
+    pass

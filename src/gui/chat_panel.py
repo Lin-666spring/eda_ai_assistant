@@ -38,6 +38,7 @@ class ChatPanel(QWidget):
         self._streaming = False
         self._stream_marker = 0
         self._stream_tokens: list[str] = []
+        self._showing_welcome = False
         self._setup_ui()
         self._show_welcome()
 
@@ -183,9 +184,11 @@ class ChatPanel(QWidget):
     # ── Public message API ──
 
     def add_user_message(self, text: str):
+        self._showing_welcome = False
         self._append_bubble("user", _esc(text))
 
     def add_ai_message(self, text: str):
+        self._showing_welcome = False
         self._append_bubble("ai", _esc(text))
 
     def add_system_message(self, text: str):
@@ -278,11 +281,11 @@ class ChatPanel(QWidget):
     def _append_system(self, html_text: str):
         t = current_theme()
         html = (
-            f'<div style="padding:4px 0;">'
-            f'<span style="color:{t["chat_text_sys"]};font-size:11px;">{html_text}</span></div>'
+            f'<span style="color:{t["chat_text_sys"]};font-size:11px;">{html_text}</span>'
         )
         cursor = self.display.textCursor()
         cursor.movePosition(QTextCursor.End)
+        cursor.insertBlock()
         cursor.insertHtml(html)
         self._end_cursor(cursor)
 
@@ -362,30 +365,50 @@ class ChatPanel(QWidget):
             for name, desc in features
         )
 
+        card_bg = t["bg_card_hover"]
+        card_border = t["border"]
+        card_style = (
+            f'background-color:{card_bg};border:1px solid {card_border};'
+            f'border-radius:10px;padding:12px 16px;'
+        )
+        # Helper: wrap content in the same card pattern as _append_config_tip
+        def _card(body: str, gap: int = 10) -> str:
+            return (
+                f'<div style="height:{gap}px;"></div>'
+                f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+                f'<tr><td align="left">'
+                f'<table cellpadding="0" cellspacing="0" border="0"'
+                f' style="max-width:95%;display:inline-table;">'
+                f'<tr><td style="{card_style}">{body}</td></tr>'
+                f'</table></td></tr></table>'
+            )
+
+        feature_body = (
+            f'<div style="color:{t["text_secondary"]};font-size:11px;font-weight:600;padding:0 0 6px 0;">'
+            f'可用功能</div>'
+            f'<table cellpadding="0" cellspacing="0" border="0">{feature_rows}</table>'
+        )
+        guide_body = (
+            f'<div style="color:{t["text_muted"]};font-size:11px;line-height:1.6;">'
+            f'请先导入 BOM 文件，然后在下方输入指令开始使用。</div>'
+        )
+
         html = (
-            # ── Title ──
             f'<div style="padding:10px 0 4px 0;">'
             f'<span style="color:{t["primary"]};font-size:24px;font-weight:700;">EDA</span>'
             f'<span style="color:{t["text_primary"]};font-size:24px;font-weight:300;"> AI 智能助手</span>'
             f'</div>'
             f'<div style="color:{t["text_secondary"]};font-size:11px;padding:0 0 10px 0;">'
             f'面向立创 EDA 的 BOM 管理与 PCB 设计助手</div>'
-            # ── Divider ──
-            f'<div style="height:1px;background-color:{t["border"]};margin:0 0 10px 0;"></div>'
-            # ── Feature list ──
-            f'<div style="color:{t["text_secondary"]};font-size:11px;font-weight:600;padding:0 0 4px 0;">'
-            f'可用功能</div>'
-            f'<table cellpadding="0" cellspacing="0" border="0">{feature_rows}</table>'
-            # ── Divider ──
-            f'<div style="height:1px;background-color:{t["border"]};margin:10px 0 8px 0;"></div>'
-            # ── Guide ──
-            f'<div style="color:{t["text_muted"]};font-size:11px;line-height:1.6;padding:0 0 4px 0;">'
-            f'请先导入 BOM 文件，然后在下方输入指令开始使用。</div>'
+            + _card(feature_body, gap=10)
+            + _card(guide_body, gap=10)
+            + f'<div style="height:2px;"></div>'
         )
         cursor = self.display.textCursor()
         cursor.movePosition(QTextCursor.End)
         cursor.insertHtml(html)
         self._end_cursor(cursor)
+        self._showing_welcome = True
 
     # ── Theme refresh ──
 
@@ -411,3 +434,10 @@ class ChatPanel(QWidget):
             f"QWidget#chatInputContainer {{ background-color: transparent; "
             f"border-top: 1px solid {t['border']}; }}"
         )
+        re_rendered = False
+        if self._showing_welcome:
+            self.display.clear()
+            self._showing_welcome = False
+            self._show_welcome()
+            re_rendered = True
+        return re_rendered

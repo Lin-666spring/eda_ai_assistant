@@ -1,8 +1,8 @@
 # EDA AI 智能助手 — 依赖清单
 # 安装方式: pip install -r requirements.txt
 
-# ── GUI 框架 ──
-PyQt5>=5.15.0
+# ── GUI 框架 (Web UI) ──
+eel>=0.16.0
 
 # ── 数据处理 ──
 pandas>=2.0.0
@@ -21,6 +21,9 @@ python-dotenv>=1.0.0     # 环境变量管理
 
 # ── 打包发布 ──
 pyinstaller>=5.0.0       # 生成 Windows 可执行文件
+
+# ── 文件监听 ──
+watchdog>=3.0.0
 
 # ── 开发/测试 ──
 pytest>=7.0.0

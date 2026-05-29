@@ -43,6 +43,7 @@ from .eda_theme import (
     FONT_MONO, FONT_FAMILY,
 )
 from ..core.controller import AppController
+from ..core.file_watcher import FileWatcher
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +125,8 @@ class MainWindow(QMainWindow):
 
         self.controller = AppController()
         self._theme_actions: dict[str, QAction] = {}
+        self._watcher = FileWatcher()
+        self._auto_sync_enabled = False
 
         self._setup_ui()
         self._connect_signals()
@@ -238,6 +241,9 @@ class MainWindow(QMainWindow):
         tool_menu.addAction("位号查重", self._on_check_duplicates)
         tool_menu.addSeparator()
         tool_menu.addAction("设计规则检查", self._on_design_rule_check)
+        self._auto_sync_action = tool_menu.addAction("自动同步 PCB", self._on_toggle_auto_sync)
+        self._auto_sync_action.setCheckable(True)
+        self._auto_sync_action.setChecked(False)
         tool_menu.addSeparator()
         tool_menu.addAction("清空对话", self._on_clear_conversation)
         tool_menu.addSeparator()
@@ -505,9 +511,9 @@ class MainWindow(QMainWindow):
         """)
 
         # Child components
-        self.chat_panel.refresh_theme()
+        if self.chat_panel.refresh_theme():
+            self._update_agent_status()  # re-emit config tip if welcome was re-rendered
         self.bom_table.refresh_theme()
-        # Settings panel is in a dialog, not always loaded
 
     # ══════════════════════════════════════════════════
     #  Style
@@ -517,6 +523,7 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(compile_stylesheet())
 
     def closeEvent(self, event):
+        self._watcher.stop()
         remove_theme_listener(self._on_external_theme_change)
         super().closeEvent(event)
 
@@ -713,6 +720,48 @@ class MainWindow(QMainWindow):
 
     def _on_design_rule_check(self):
         self._run_operation("正在执行设计规则检查...", self.controller.check_design_rules)
+
+    # ── Auto-sync ──
+
+    def _on_toggle_auto_sync(self):
+        self._auto_sync_enabled = not self._auto_sync_enabled
+        self._auto_sync_action.setChecked(self._auto_sync_enabled)
+        if self._auto_sync_enabled:
+            self._start_auto_sync()
+        else:
+            self._watcher.stop()
+            self._status_message.setText("自动同步已关闭")
+
+    def _start_auto_sync(self):
+        watch_path = FileWatcher.default_watch_path()
+        if not watch_path:
+            self._auto_sync_enabled = False
+            self._auto_sync_action.setChecked(False)
+            self.chat_panel.add_system_message(
+                "⚠️ 未找到立创 EDA 项目目录。请手动设置监听路径。"
+            )
+            self._status_message.setText("未找到监听目录")
+            return
+        ok = self._watcher.watch(watch_path, self._on_pcb_file_changed)
+        if ok:
+            self.chat_panel.add_config_tip(
+                f"自动同步已开启 — 监听: {watch_path}", "success"
+            )
+            self._status_message.setText(f"自动同步: {watch_path}")
+
+    def _on_pcb_file_changed(self, filepath: str):
+        try:
+            count, msg = self.controller.load_pcb(filepath)
+            self.chat_panel.add_system_message(
+                f"📁 检测到 PCB 文件变化，已自动重新加载\n{msg}"
+            )
+            self._status_message.setText(f"已同步: {Path(filepath).name}")
+            if self.controller.context.has_data:
+                report = self.controller.check_design_rules()
+                self._show_report(report)
+        except Exception as exc:
+            logger.exception("Auto-sync PCB reload failed")
+            self.chat_panel.add_error_message(f"自动同步失败: {exc}")
 
     # ══════════════════════════════════════════════════
     #  Settings dialog

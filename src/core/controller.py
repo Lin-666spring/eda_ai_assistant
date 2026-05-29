@@ -22,6 +22,8 @@ from src.config import config
 from src.html_bom.generator import HTMLBOMConfig, HTMLBOMGenerator
 from src.interfaces.eda_adapter import LCEDAAdapter, PCBData
 from src.rules.checker import DesignRuleChecker
+from src.supply.lcsc_client import LcscSearchClient
+from src.supply.bom_health import BOMHealthChecker
 
 logger = logging.getLogger(__name__)
 
@@ -228,6 +230,19 @@ class AppController:
         )
         return checker.get_report(violations)
 
+    def check_bom_health(self) -> str:
+        """BOM 健康检查 — 库存 / 生命周期 / 替代料 / 成本。"""
+        if not self.context.has_data:
+            return "⚠️ 请先导入 BOM 文件"
+        client = LcscSearchClient()
+        checker = BOMHealthChecker(client)
+        report = checker.check(self.context.bom_items)
+        logger.info(
+            "BOM health: %d items, score=%.0f, cost=¥%.2f",
+            report.total_items, report.health_score, report.total_cost_estimate,
+        )
+        return BOMHealthChecker.format_report(report)
+
     def get_bom_summary(self) -> dict:
         prefixes: dict[str, int] = {}
         for item in self.context.bom_items:
@@ -245,6 +260,7 @@ class AppController:
             "validate_package": self.validate_packages,
             "check_duplicates": self.check_duplicates,
             "check_rule": self.check_design_rules,
+            "bom_health": self.check_bom_health,
             "generate_html_bom": lambda: self.generate_html_bom(params.get("output_path")),
             "filter_components": lambda: self._filter_components(params),
         }
@@ -384,6 +400,7 @@ class AppController:
         (("html", "网页"), "generate_html_bom"),
         (("规则", "rule", "去耦", "信号", "电源", "模数"), "check_design_rules"),
         (("pcb", "导入pcb", "电路板"), "_pcb_status"),
+        (("健康", "库存", "采购", "报价", "替代料", "缺货"), "check_bom_health"),
         (("统计", "概览", "summary"), "_summary_report"),
     )
 
@@ -406,6 +423,7 @@ class AppController:
             "• 检查重复    — 检测重复位号\n"
             "• 生成 HTML   — 导出交互式 BOM\n"
             "• 设计规则    — PCB 规则检查（需先导入PCB）\n"
+            "• BOM健康     — 库存/生命周期/替代料/成本\n"
             "• PCB         — 查看已加载的 PCB 状态"
         )
 

@@ -1,16 +1,10 @@
 """
-EDA AI 智能助手 — 4套多颜色主题系统
-
-主题列表:
-  1. 深海科技 (deep_sea)       — 深蓝专业风，默认主题
-  2. 极简冷白 (minimal_white)  — 浅色清爽，明亮环境
-  3. 石墨灰调 (graphite)       — 中性深灰，减少视觉疲劳
-  4. 青森护眼 (forest_green)   — 低饱和绿，长时间护眼
+EDA AI 智能助手 — 双主题系统（深色 / 浅色）
 
 用法:
-  from .eda_theme import switch_theme, current_theme, THEME_NAMES
-  switch_theme("minimal_white")
-  t = current_theme()  # 始终返回当前激活主题
+  from .eda_theme import switch_theme, current_theme
+  switch_theme("light")
+  t = current_theme()
 """
 
 import json
@@ -54,7 +48,7 @@ def _load_theme_preference() -> str:
                 return name
     except (json.JSONDecodeError, OSError):
         pass
-    return "deep_sea"
+    return "dark"
 
 
 def _save_theme_preference(name: str):
@@ -74,82 +68,82 @@ def _save_theme_preference(name: str):
 
 
 # ══════════════════════════════════════════
-#  Theme: 深海科技 (Deep Sea — default)
+#  Theme: 深色 (Dark — default)
 # ══════════════════════════════════════════
 
-DEEP_SEA: Dict[str, str] = {
-    "theme_name": "深海科技",
-    "theme_id": "deep_sea",
+DARK: Dict[str, str] = {
+    "theme_name": "深色",
+    "theme_id": "dark",
     "is_dark": "1",
-    # Core
-    "primary": "#165DFF",
-    "primary_hover": "#3478FF",
-    "primary_pressed": "#1248CC",
-    "primary_glow": "#165DFF40",
-    # Background
-    "bg_main": "#0A1629",
-    "bg_card": "#132442",
-    "bg_card_hover": "#1A3055",
-    "bg_input": "#0D1C35",
-    "bg_header": "#0F1E38",
+    # Core — warm gold accent (no blue)
+    "primary": "#B8965A",
+    "primary_hover": "#C9A96E",
+    "primary_pressed": "#9E7D42",
+    "primary_glow": "#B8965A30",
+    # Background — deep elegant black
+    "bg_main": "#0F0F11",
+    "bg_card": "#1A1A1E",
+    "bg_card_hover": "#24242A",
+    "bg_input": "#1A1A1E",
+    "bg_header": "#141417",
     # Text
-    "text_primary": "#E6EDF7",
-    "text_secondary": "#94A3B8",
-    "text_muted": "#64748B",
-    "text_white": "#FFFFFF",
+    "text_primary": "#E4E4E7",
+    "text_secondary": "#A1A1AA",
+    "text_muted": "#71717A",
+    "text_white": "#FAFAFA",
     # Accent
-    "highlight": "#3B8CFF",
+    "highlight": "#C9A96E",
     "success": "#22C55E",
-    "warning": "#FF7D00",
-    "warning_bg": "rgba(255,125,0,0.12)",
+    "warning": "#F59E0B",
+    "warning_bg": "rgba(245,158,11,0.12)",
     "error": "#EF4444",
     "error_bg": "rgba(239,68,68,0.10)",
     # Borders
-    "border": "#1E3555",
-    "border_light": "#2A4470",
-    "border_focus": "#165DFF",
+    "border": "#27272A",
+    "border_light": "#3F3F46",
+    "border_focus": "#B8965A",
     # Selection
-    "selection_bg": "#165DFF40",
-    "selection_text": "#FFFFFF",
+    "selection_bg": "#B8965A30",
+    "selection_text": "#FAFAFA",
     # Scrollbar
-    "scrollbar_handle": "#1E3555",
-    "scrollbar_handle_hover": "#2A4470",
+    "scrollbar_handle": "#3F3F46",
+    "scrollbar_handle_hover": "#52525B",
     # Status bar
-    "status_bar_bg": "#060E1C",
-    "status_bar_text": "#7B8BA8",
+    "status_bar_bg": "#09090B",
+    "status_bar_text": "#71717A",
     # Chat
-    "chat_bg": "#0A1629",
-    "chat_bubble_user": "#165DFF",
-    "chat_bubble_ai": "#132442",
-    "chat_text_user": "#FFFFFF",
-    "chat_text_ai": "#E6EDF7",
-    "chat_text_sys": "#94A3B8",
+    "chat_bg": "#0F0F11",
+    "chat_bubble_user": "#9E7D42",
+    "chat_bubble_ai": "#1A1A1E",
+    "chat_text_user": "#FAFAFA",
+    "chat_text_ai": "#E4E4E7",
+    "chat_text_sys": "#A1A1AA",
     "chat_time_user": "#FFFFFF99",
-    "chat_time_ai": "#64748B",
+    "chat_time_ai": "#71717A",
     # Navbar
-    "navbar_bg": "#0E1C30",
+    "navbar_bg": "#141417",
     # Card
-    "card_bg": "#132442",
+    "card_bg": "#1A1A1E",
     "card_radius": "10px",
-    "card_border": "#1A3050",
+    "card_border": "#27272A",
     # Misc
-    "shadow": "#060D1A",
-    "divider": "#1A3050",
+    "shadow": "#00000040",
+    "divider": "#27272A",
     # Table alt row
-    "table_alt_bg": "#0E1D33",
-    # Welcome section blocks (per-theme adaptive)
-    "section_header_bg": "rgba(22,93,255,0.07)",
-    "config_tip_bg": "#1E3A6A",
-    "config_tip_border": "#254B85",
+    "table_alt_bg": "#141417",
+    # Welcome section blocks
+    "section_header_bg": "rgba(255,255,255,0.03)",
+    "config_tip_bg": "#24242A",
+    "config_tip_border": "#3F3F46",
 }
 
 # ══════════════════════════════════════════
-#  Theme: 极简冷白 (Minimal White)
+#  Theme: 浅色 (Light)
 # ══════════════════════════════════════════
 
 MINIMAL_WHITE: Dict[str, str] = {
-    "theme_name": "极简冷白",
-    "theme_id": "minimal_white",
+    "theme_name": "浅色",
+    "theme_id": "light",
     "is_dark": "0",
     # Core
     "primary": "#2563EB",
@@ -160,7 +154,7 @@ MINIMAL_WHITE: Dict[str, str] = {
     "bg_main": "#F8FAFC",
     "bg_card": "#FFFFFF",
     "bg_card_hover": "#F1F5F9",
-    "bg_input": "#FFFFFF",
+    "bg_input": "#F1F5F9",
     "bg_header": "#F8FAFC",
     # Text
     "text_primary": "#1E293B",
@@ -214,157 +208,15 @@ MINIMAL_WHITE: Dict[str, str] = {
 }
 
 # ══════════════════════════════════════════
-#  Theme: 石墨灰调 (Graphite)
-# ══════════════════════════════════════════
-
-GRAPHITE: Dict[str, str] = {
-    "theme_name": "石墨灰调",
-    "theme_id": "graphite",
-    "is_dark": "1",
-    # Core
-    "primary": "#475569",
-    "primary_hover": "#64748B",
-    "primary_pressed": "#334155",
-    "primary_glow": "#47556940",
-    # Background
-    "bg_main": "#1A1A1A",
-    "bg_card": "#292929",
-    "bg_card_hover": "#363636",
-    "bg_input": "#242424",
-    "bg_header": "#222222",
-    # Text
-    "text_primary": "#D1D5DB",
-    "text_secondary": "#9CA3AF",
-    "text_muted": "#6B7280",
-    "text_white": "#FFFFFF",
-    # Accent
-    "highlight": "#94A3B8",
-    "success": "#4ADE80",
-    "warning": "#F59E0B",
-    "warning_bg": "rgba(245,158,11,0.12)",
-    "error": "#F87171",
-    "error_bg": "rgba(248,113,113,0.10)",
-    # Borders
-    "border": "#404040",
-    "border_light": "#525252",
-    "border_focus": "#64748B",
-    # Selection
-    "selection_bg": "#47556940",
-    "selection_text": "#FFFFFF",
-    # Scrollbar
-    "scrollbar_handle": "#404040",
-    "scrollbar_handle_hover": "#525252",
-    # Status bar
-    "status_bar_bg": "#111111",
-    "status_bar_text": "#9CA3AF",
-    # Chat
-    "chat_bg": "#1A1A1A",
-    "chat_bubble_user": "#475569",
-    "chat_bubble_ai": "#292929",
-    "chat_text_user": "#FFFFFF",
-    "chat_text_ai": "#D1D5DB",
-    "chat_text_sys": "#9CA3AF",
-    "chat_time_user": "#FFFFFF99",
-    "chat_time_ai": "#6B7280",
-    # Navbar
-    "navbar_bg": "#222222",
-    # Card
-    "card_bg": "#292929",
-    "card_radius": "10px",
-    "card_border": "#404040",
-    # Misc
-    "shadow": "#00000040",
-    "divider": "#404040",
-    # Table alt row
-    "table_alt_bg": "#222222",
-    # Welcome section blocks (per-theme adaptive)
-    "section_header_bg": "rgba(71,85,105,0.08)",
-    "config_tip_bg": "#334155",
-    "config_tip_border": "#475569",
-}
-
-# ══════════════════════════════════════════
-#  Theme: 青森护眼 (Forest Green)
-# ══════════════════════════════════════════
-
-FOREST_GREEN: Dict[str, str] = {
-    "theme_name": "青森护眼",
-    "theme_id": "forest_green",
-    "is_dark": "1",
-    # Core — fresh teal-green, calm & clear
-    "primary": "#0D9488",
-    "primary_hover": "#14B8A6",
-    "primary_pressed": "#0B7A70",
-    "primary_glow": "#0D948850",
-    # Background — lighter teal-tinted dark, not deep black-green
-    "bg_main": "#1A3A35",
-    "bg_card": "#234D47",
-    "bg_card_hover": "#2C5E57",
-    "bg_input": "#1D423C",
-    "bg_header": "#1F453F",
-    # Text — crisp, good contrast on lighter bg
-    "text_primary": "#D1FAE5",
-    "text_secondary": "#8CC4B5",
-    "text_muted": "#6DA096",
-    "text_white": "#ECFDF5",
-    # Accent
-    "highlight": "#5AB8A2",
-    "success": "#3CB38A",
-    "warning": "#F09060",
-    "warning_bg": "rgba(240,144,96,0.12)",
-    "error": "#FB7185",
-    "error_bg": "rgba(251,113,133,0.10)",
-    # Borders — lighter, more open feel
-    "border": "#2C5E57",
-    "border_light": "#3A7A6E",
-    "border_focus": "#0D9488",
-    # Selection
-    "selection_bg": "#0D948850",
-    "selection_text": "#ECFDF5",
-    # Scrollbar
-    "scrollbar_handle": "#2C5E57",
-    "scrollbar_handle_hover": "#3A7A6E",
-    # Status bar
-    "status_bar_bg": "#122E2A",
-    "status_bar_text": "#6DA096",
-    # Chat — teal-toned, noticeably lighter
-    "chat_bg": "#1A3A35",
-    "chat_bubble_user": "#0D9488",
-    "chat_bubble_ai": "#234D47",
-    "chat_text_user": "#ECFDF5",
-    "chat_text_ai": "#D1FAE5",
-    "chat_text_sys": "#8CC4B5",
-    "chat_time_user": "#FFFFFF99",
-    "chat_time_ai": "#6DA096",
-    # Navbar
-    "navbar_bg": "#1C3F3A",
-    # Card
-    "card_bg": "#234D47",
-    "card_radius": "10px",
-    "card_border": "#2C5E57",
-    # Misc
-    "shadow": "#0A1A17",
-    "divider": "#2C5E57",
-    # Table alt row
-    "table_alt_bg": "#1C3F3A",
-    # Welcome section blocks
-    "section_header_bg": "rgba(13,148,136,0.08)",
-    "config_tip_bg": "#1E5F58",
-    "config_tip_border": "#297A70",
-}
-
-# ══════════════════════════════════════════
 #  Theme registry
 # ══════════════════════════════════════════
 
 THEMES: Dict[str, Dict[str, str]] = {
-    "deep_sea": DEEP_SEA,
-    "minimal_white": MINIMAL_WHITE,
-    "graphite": GRAPHITE,
-    "forest_green": FOREST_GREEN,
+    "dark": DARK,
+    "light": MINIMAL_WHITE,
 }
 
-THEME_DISPLAY_ORDER = ["deep_sea", "minimal_white", "graphite", "forest_green"]
+THEME_DISPLAY_ORDER = ["dark", "light"]
 
 # ══════════════════════════════════════════
 #  Semantic status colours — dark-mode low-saturation glow
