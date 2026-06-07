@@ -3,6 +3,8 @@
 所有项目自定义异常的基类，便于上层统一捕获和处理
 """
 
+from typing import Optional
+
 
 class EDAAIAssistantError(Exception):
     """项目基础异常 — 所有自定义异常的基类"""
@@ -65,18 +67,6 @@ class ConfigError(EDAAIAssistantError):
     pass
 
 
-# ══════════════════ 仿真器异常 ══════════════════
-
-class SimulationError(EDAAIAssistantError):
-    """仿真器相关异常"""
-    pass
-
-
-class SimulationNotAvailableError(SimulationError):
-    """仿真引擎不可用"""
-    pass
-
-
 # ══════════════════ PCB 模块异常 ══════════════════
 
 class PCBError(EDAAIAssistantError):
@@ -108,4 +98,24 @@ class SupplyAuthError(SupplyError):
 
 class SupplyNotFoundError(SupplyError):
     """元器件在商城中未找到"""
+    pass
+
+
+# ══════════════════ NLU 模块异常 ══════════════════
+
+class NLUError(AgentError):
+    """自然语言理解相关异常基类"""
+    pass
+
+
+class IntentAmbiguousError(NLUError):
+    """意图分类结果模糊（中置信度），需要用户澄清"""
+
+    def __init__(self, message: str, candidates: Optional[list[tuple[str, float]]] = None):
+        super().__init__(message)
+        self.candidates = candidates or []
+
+
+class EntityExtractionError(NLUError):
+    """从用户输入中提取 EDA 实体失败"""
     pass

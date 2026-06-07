@@ -1,57 +1,309 @@
 /* ═══════════════════════════════════════════
-   EDA AI 智能助手 — Frontend Logic
+   EDA AI 智能助手 — Cherry Studio Frontend
    ═══════════════════════════════════════════ */
 
-let welcomeVisible = true;
+// ═══════════ State ═══════════
+
+const ASSISTANTS = {
+  'eda-general': {
+    id: 'eda-general', name: 'EDA 通用助手', icon: '(´｡• ᵕ •｡`)',
+    systemPrompt: 'general',
+    quickActions: ['合并 BOM', '校验封装', '设计规则', 'BOM健康'],
+    description: 'BOM管理、设计规则检查、PCB分析的通用助手',
+  },
+  'bom-expert': {
+    id: 'bom-expert', name: 'BOM 管理专家', icon: '( •̀ᴗ•́ )و',
+    systemPrompt: 'bom',
+    quickActions: ['合并 BOM', 'AI智能合并', '校验封装', '查重', 'BOM健康', '生成 HTML'],
+    description: '专注于物料清单管理、合并、验证和供应链检查',
+  },
+  'pcb-reviewer': {
+    id: 'pcb-reviewer', name: 'PCB 设计审查', icon: '(｡･ω･｡)',
+    systemPrompt: 'pcb',
+    quickActions: ['设计规则', '分析PCB', '检查走线', '查看PCB'],
+    description: '专注于PCB布局分析、设计规则检查和信号完整性',
+  },
+  'vision-analyst': {
+    id: 'vision-analyst', name: '视觉分析', icon: '(=^･^=)',
+    systemPrompt: 'vision',
+    quickActions: ['分析图片'],
+    description: '上传PCB截图或原理图进行AI视觉分析',
+  },
+};
+
+let currentAssistant = 'eda-general';
+let conversations = {};      // { assistantId: [{ id, title, messages: [] }] }
+let activeConvId = null;     // currently selected conversation id
+let currentImage = null;
+let convCounter = 0;
+
+// Initialize conversations for each assistant
+Object.keys(ASSISTANTS).forEach(aid => { conversations[aid] = []; });
 
 // ═══════════ Init ═══════════
 
 document.addEventListener('DOMContentLoaded', async () => {
+  renderAssistants();
+  renderConversations();
+  selectAssistant('eda-general');
+
   // Theme
-  const sett = await eel.get_settings()();
-  if (sett && sett.theme) applyTheme(sett.theme);
+  try {
+    const sett = await eel.get_settings()();
+    if (sett && sett.theme) applyTheme(sett.theme);
+  } catch(e) {}
 
   // LLM config
-  const cfg = await eel.get_llm_config()();
-  updateLLMStatus(cfg);
+  try {
+    const cfg = await eel.get_llm_config()();
+    updateLLMStatus(cfg);
+  } catch(e) {}
 
   // Tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 
-  // Enter key
-  document.getElementById('chatInput').addEventListener('keydown', e => {
+  // Enter to send, Shift+Enter for newline
+  const input = document.getElementById('chatInput');
+  input.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+  });
+  // Auto-resize textarea
+  input.addEventListener('input', () => {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  });
+
+  // Paste image
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (let item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const blob = item.getAsFile();
+        const reader = new FileReader();
+        reader.onload = ev => { currentImage = ev.target.result; showImagePreview(currentImage); };
+        reader.readAsDataURL(blob);
+        break;
+      }
+    }
   });
 });
 
-// ═══════════ Theme ═══════════
+// ═══════════ Assistant Management ═══════════
 
-function applyTheme(name) {
-  document.body.setAttribute('data-theme', name);
+function renderAssistants() {
+  const container = document.getElementById('assistantList');
+  container.innerHTML = Object.values(ASSISTANTS).map(a => `
+    <div class="sb-item ${a.id === currentAssistant ? 'active' : ''}"
+         onclick="selectAssistant('${a.id}')" title="${a.description}">
+      <span class="sb-item-icon">${a.icon}</span>
+      <span class="sb-item-name">${a.name}</span>
+    </div>
+  `).join('');
 }
 
-async function toggleTheme() {
-  const current = document.body.getAttribute('data-theme');
-  const next = current === 'dark' ? 'light' : 'dark';
-  applyTheme(next);
-  await eel.save_theme(next)();
+function selectAssistant(id) {
+  currentAssistant = id;
+  renderAssistants();
+  renderConversations();
+  updateChatHeader();
+
+  // Auto-select first conversation or show empty state
+  const convs = conversations[id] || [];
+  if (convs.length > 0) {
+    switchConversation(convs[0].id);
+  } else {
+    activeConvId = null;
+    showEmptyState(true);
+    document.getElementById('chatMessages').querySelectorAll('.msg-row').forEach(el => el.remove());
+  }
+
+  // Update quick actions
+  renderQuickActions();
+}
+
+function updateChatHeader() {
+  const a = ASSISTANTS[currentAssistant];
+  document.getElementById('assistantIcon').textContent = a.icon;
+  document.getElementById('assistantName').textContent = a.name;
+}
+
+function switchAssistant(id) {
+  selectAssistant(id);
+}
+
+function renderQuickActions() {
+  const a = ASSISTANTS[currentAssistant];
+  const container = document.getElementById('quickActions');
+  container.innerHTML = (a.quickActions || []).map(cmd =>
+    `<button class="qa-btn" onclick="quickCmd('${cmd}')">${cmd}</button>`
+  ).join('');
+}
+
+// ═══════════ Conversation Management ═══════════
+
+function newConversation() {
+  const convs = conversations[currentAssistant];
+  convCounter++;
+  const conv = {
+    id: `conv_${Date.now()}_${convCounter}`,
+    title: '新对话',
+    messages: [],
+  };
+  convs.unshift(conv);
+  activeConvId = conv.id;
+  renderConversations();
+  clearChatMessages();
+  showEmptyState(true);
+  document.getElementById('chatInput').focus();
+}
+
+function switchConversation(convId) {
+  activeConvId = convId;
+  renderConversations();
+  clearChatMessages();
+  showEmptyState(false);
+
+  const conv = findConversation(convId);
+  if (conv && conv.messages.length > 0) {
+    conv.messages.forEach(m => appendBubble(m.role, m.content, m.image));
+  } else if (!conv || conv.messages.length === 0) {
+    showEmptyState(true);
+  }
+  document.getElementById('chatInput').focus();
+}
+
+function deleteConversation(convId, event) {
+  event.stopPropagation();
+  const convs = conversations[currentAssistant];
+  const idx = convs.findIndex(c => c.id === convId);
+  if (idx < 0) return;
+  convs.splice(idx, 1);
+
+  if (activeConvId === convId) {
+    if (convs.length > 0) {
+      switchConversation(convs[0].id);
+    } else {
+      activeConvId = null;
+      clearChatMessages();
+      showEmptyState(true);
+    }
+  }
+  renderConversations();
+}
+
+function findConversation(convId) {
+  for (const aid of Object.keys(conversations)) {
+    const found = conversations[aid].find(c => c.id === convId);
+    if (found) return found;
+  }
+  return null;
+}
+
+function getActiveConversation() {
+  if (!activeConvId) {
+    newConversation();
+  }
+  return findConversation(activeConvId);
+}
+
+function renderConversations() {
+  const container = document.getElementById('conversationList');
+  const convs = conversations[currentAssistant] || [];
+  container.innerHTML = convs.map(c => `
+    <div class="sb-item ${c.id === activeConvId ? 'active' : ''}"
+         onclick="switchConversation('${c.id}')" title="${escapeAttr(c.title)}">
+      <span class="sb-item-icon">▸</span>
+      <span class="sb-item-name">${escapeHtml(c.title)}</span>
+      <button class="sb-item-del" onclick="deleteConversation('${c.id}', event)">✕</button>
+    </div>
+  `).join('');
 }
 
 // ═══════════ Chat ═══════════
 
+function clearChatMessages() {
+  const container = document.getElementById('chatMessages');
+  container.querySelectorAll('.msg-row,.config-tip').forEach(el => el.remove());
+}
+
+function showEmptyState(show) {
+  const el = document.getElementById('emptyState');
+  if (show) { el.classList.remove('hidden'); }
+  else { el.classList.add('hidden'); }
+}
+
 function quickCmd(text) {
-  if (text === '生成 HTML') {
-    generateHTMLBOM();
-    return;
-  }
+  if (text === '生成 HTML') { generateHTMLBOM(); return; }
   document.getElementById('chatInput').value = text;
   sendChat();
 }
 
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text && !currentImage) return;
+  if (text === '生成 HTML' || text === '生成HTML') { removeImage(); input.value = ''; generateHTMLBOM(); return; }
+
+  const hasImage = !!currentImage;
+  const userText = text || '帮我分析这张图片';
+  input.value = '';
+  input.style.height = 'auto';
+  showEmptyState(false);
+
+  // Get or create conversation
+  const conv = getActiveConversation();
+
+  // Update title from first message
+  if (conv.messages.length === 0) {
+    conv.title = userText.substring(0, 30) + (userText.length > 30 ? '...' : '');
+    renderConversations();
+  }
+
+  // Show user bubble
+  if (hasImage) {
+    appendBubbleWithImage('user', userText, currentImage);
+    conv.messages.push({ role: 'user', content: userText, image: currentImage });
+  } else {
+    appendBubble('user', userText);
+    conv.messages.push({ role: 'user', content: userText });
+  }
+
+  setStatus('思考中...');
+  disableInput(true);
+
+  let resp;
+  try {
+    if (hasImage) {
+      resp = await eel.send_image(userText, currentImage)();
+      currentImage = null; hideImagePreview();
+    } else {
+      resp = await eel.send_message(userText)();
+    }
+  } catch(e) {
+    resp = { ok: false, result: '网络错误: ' + e };
+  }
+
+  disableInput(false);
+  setStatus('就绪');
+
+  if (resp && resp.ok) {
+    appendBubble('ai', resp.result);
+    conv.messages.push({ role: 'ai', content: resp.result });
+    showReport(resp.result);
+  } else {
+    const errMsg = '处理失败: ' + (resp ? resp.result : '未知错误');
+    appendBubble('ai', errMsg);
+    conv.messages.push({ role: 'ai', content: errMsg });
+  }
+  renderConversations();
+}
+
 async function generateHTMLBOM() {
-  setStatus('生成 HTML BOM 中...');
+  setStatus('生成 HTML BOM...');
   try {
     const resp = await eel.generate_html_bom()();
     if (resp.ok) {
@@ -65,53 +317,38 @@ async function generateHTMLBOM() {
         switchTab('html');
       }
     } else {
-      appendConfigTip(resp.report || '生成失败', 'error');
+      appendTip(resp.report || '生成失败', 'error');
     }
-  } catch(e) { appendConfigTip('生成失败: ' + e, 'error'); }
+  } catch(e) { appendTip('生成失败: ' + e, 'error'); }
   setStatus('就绪');
 }
 
-async function sendChat() {
-  const input = document.getElementById('chatInput');
-  const text = input.value.trim();
-  if (!text) return;
-  if (text === '生成 HTML' || text === '生成HTML') { input.value = ''; generateHTMLBOM(); return; }
-  input.value = '';
-  hideWelcome();
-  appendBubble('user', text);
-  setStatus('思考中...');
-  disableInput(true);
-  const resp = await eel.send_message(text)();
-  disableInput(false);
-  setStatus('就绪');
-  if (resp && resp.ok) {
-    appendBubble('ai', resp.result);
-    showReport(resp.result);
-  } else {
-    appendBubble('ai', '处理失败: ' + (resp ? resp.result : '未知错误'));
-  }
-}
-
-function hideWelcome() {
-  if (!welcomeVisible) return;
-  document.getElementById('welcomeBlock').style.display = 'none';
-  welcomeVisible = false;
-}
+// ═══════════ Bubbles ═══════════
 
 function appendBubble(type, text) {
-  if (type === 'user') hideWelcome();
+  if (type === 'user') showEmptyState(false);
   const row = document.createElement('div');
   row.className = `msg-row ${type}`;
-
   const bubble = document.createElement('div');
-  if (type === 'system') {
-    bubble.className = 'bubble bubble-system';
-  } else {
-    bubble.className = `bubble bubble-${type}`;
-  }
-
+  bubble.className = type === 'system' ? 'bubble bubble-system' : `bubble bubble-${type}`;
   const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
   bubble.innerHTML = escapeHtml(text) + `<div class="bubble-time">${time}</div>`;
+  row.appendChild(bubble);
+  document.getElementById('chatMessages').appendChild(row);
+  scrollChat();
+}
+
+function appendBubbleWithImage(type, text, imageDataUrl) {
+  showEmptyState(false);
+  const row = document.createElement('div');
+  row.className = `msg-row ${type}`;
+  const bubble = document.createElement('div');
+  bubble.className = `bubble bubble-${type}`;
+  const img = document.createElement('img');
+  img.src = imageDataUrl;
+  const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  bubble.appendChild(img);
+  bubble.innerHTML += escapeHtml(text) + `<div class="bubble-time">${time}</div>`;
   row.appendChild(bubble);
   document.getElementById('chatMessages').appendChild(row);
   scrollChat();
@@ -128,21 +365,13 @@ function appendSystem(text) {
   scrollChat();
 }
 
-function appendConfigTip(text, type) {
-  hideWelcome();
+function appendTip(text, type) {
+  showEmptyState(false);
   const div = document.createElement('div');
-  div.className = `config-tip ${type || detectSemantic(text)}`;
+  div.className = `config-tip ${type || 'info'}`;
   div.textContent = text;
   document.getElementById('chatMessages').appendChild(div);
   scrollChat();
-}
-
-function detectSemantic(text) {
-  const tl = text.toLowerCase();
-  if (/未配置|无效|禁用|失败|错误/.test(tl)) return 'error';
-  if (/通过|完成|已生成|成功|就绪/.test(tl)) return 'success';
-  if (/请先|缺少|待处理|部分|注意/.test(tl)) return 'warning';
-  return 'info';
 }
 
 function scrollChat() {
@@ -150,10 +379,7 @@ function scrollChat() {
   el.scrollTop = el.scrollHeight;
 }
 
-function clearReport() {
-  document.getElementById('reportStack').innerHTML = '';
-  document.getElementById('reportEmpty').style.display = 'flex';
-}
+// ═══════════ Report ═══════════
 
 function showReport(text) {
   const stack = document.getElementById('reportStack');
@@ -167,78 +393,69 @@ function showReport(text) {
 }
 
 function formatReport(text) {
-  // Parse the structured report into styled HTML
   const lines = text.split('\n');
   let html = '';
-  let inHeader = false, inSection = false, currentSeverity = '';
+  let inSection = false;
   const sevClass = { 'ERROR': 'rp-error', 'WARNING': 'rp-warning', 'INFO': 'rp-info' };
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    // Skip top border
     if (/^={10,}/.test(line) && i < 2) continue;
-    // Report title
-    if (line.includes('设计规则检查报告') || line.includes('BOM 健康检查报告') || line.includes('BOM 合并报告') || line.includes('封装校验') || line.includes('位号查重') || line.includes('BOM 健康') || line.includes('合并报告') || line.includes('校验报告')) {
+    if (line.includes('设计规则检查报告') || line.includes('BOM 健康检查报告') ||
+        line.includes('BOM 合并报告') || line.includes('封装校验') ||
+        line.includes('位号查重') || line.includes('合并报告') ||
+        line.includes('校验报告') || line.includes('AI 视觉分析')) {
       html += `<div class="rp-title">${escapeHtml(line.trim())}</div>`;
       continue;
     }
-    // Separator
-    if (/^[-=]{10,}/.test(line)) {
-      html += '<hr class="rp-hr">';
-      continue;
-    }
-    // Section header: 【ERROR】 or 【WARNING】 or 【INFO】
+    if (/^[-=]{10,}/.test(line)) { html += '<hr class="rp-hr">'; continue; }
     const secMatch = line.match(/【(\w+)】(.+)/);
     if (secMatch) {
-      const sev = secMatch[1].toUpperCase();
-      currentSeverity = sevClass[sev] || '';
-      html += `<div class="rp-section ${currentSeverity}"><div class="rp-section-head">${escapeHtml(line.trim())}</div>`;
-      inSection = true;
-      continue;
+      const sev = sevClass[secMatch[1].toUpperCase()] || '';
+      html += `<div class="rp-section ${sev}"><div class="rp-section-head">${escapeHtml(line.trim())}</div>`;
+      inSection = true; continue;
     }
-    // Item within section
     if (inSection && line.startsWith('  •')) {
-      const item = line.replace(/^  •\s*/, '');
-      html += `<div class="rp-item">${escapeHtml(item)}</div>`;
+      html += `<div class="rp-item">${escapeHtml(line.replace(/^  •\s*/, ''))}</div>`;
       continue;
     }
-    // Sub-line (位置/建议/理论)
     if (inSection && /^\s{4,}/.test(line)) {
       const sub = line.trim();
-      if (sub.startsWith('位置:')) {
-        html += `<div class="rp-sub rp-loc">${escapeHtml(sub)}</div>`;
-      } else if (sub.startsWith('建议:')) {
-        html += `<div class="rp-sub rp-sug">${escapeHtml(sub)}</div>`;
-      } else if (sub.startsWith('理论:')) {
-        html += `<div class="rp-sub rp-theory">${escapeHtml(sub)}</div>`;
-      }
+      if (sub.startsWith('位置:')) html += `<div class="rp-sub rp-loc">${escapeHtml(sub)}</div>`;
+      else if (sub.startsWith('建议:')) html += `<div class="rp-sub rp-sug">${escapeHtml(sub)}</div>`;
+      else if (sub.startsWith('理论:')) html += `<div class="rp-sub rp-theory">${escapeHtml(sub)}</div>`;
       continue;
     }
-    // Close section if blank line
-    if (line.trim() === '' && inSection) {
-      html += '</div>';
-      inSection = false;
-      continue;
-    }
-    // Regular text
-    if (line.trim()) {
-      html += `<div class="rp-line">${escapeHtml(line)}</div>`;
-    }
+    if (line.trim() === '' && inSection) { html += '</div>'; inSection = false; continue; }
+    if (line.trim()) html += `<div class="rp-line">${escapeHtml(line)}</div>`;
   }
   if (inSection) html += '</div>';
   return html;
 }
 
-function setStatus(msg) {
-  document.getElementById('statusMsg').textContent = msg;
+// ═══════════ Image Handling ═══════════
+
+function showImagePreview(dataUrl) {
+  document.getElementById('imagePreviewThumb').src = dataUrl;
+  document.getElementById('imagePreviewBar').style.display = 'flex';
+}
+function hideImagePreview() {
+  document.getElementById('imagePreviewBar').style.display = 'none';
+}
+function removeImage() {
+  currentImage = null; hideImagePreview();
+  document.getElementById('imageFileInput').value = '';
+}
+function onImageFileSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { currentImage = e.target.result; showImagePreview(currentImage); };
+  reader.readAsDataURL(file);
+  input.value = '';
 }
 
-function disableInput(disabled) {
-  document.getElementById('chatInput').disabled = disabled;
-  document.getElementById('sendBtn').disabled = disabled;
-}
-
-// ═══════════ File imports (native browser picker — always on top) ═══════════
+// ═══════════ File Imports ═══════════
 
 function onFileSelected(type, input) {
   const file = input.files[0];
@@ -254,124 +471,70 @@ function onFileSelected(type, input) {
       if (type === 'bom') {
         const resp = await eel.import_bom_file(file.name, b64)();
         if (resp.ok) { appendSystem(resp.msg); renderBOMTable(resp.items); setStatus(`已加载 BOM (${resp.count} 条)`); }
-        else { appendConfigTip(resp.msg, 'error'); setStatus('加载失败'); }
+        else { appendTip(resp.msg, 'error'); setStatus('加载失败'); }
       } else if (type === 'pcb') {
         const resp = await eel.import_pcb_file(file.name, b64)();
-        if (resp.ok) { appendSystem(resp.msg); setStatus(`已加载 PCB: ${resp.pcb ? resp.pcb.net_count + ' nets' : ''}`); }
-        else { appendConfigTip(resp.msg, 'error'); setStatus('加载失败'); }
+        if (resp.ok) { appendSystem(resp.msg); setStatus(`已加载 PCB`); }
+        else { appendTip(resp.msg, 'error'); setStatus('加载失败'); }
       } else if (type === 'pos') {
         const resp = await eel.import_pos_file(file.name, b64)();
         if (resp.ok) { appendSystem(resp.msg); setStatus('已加载坐标'); }
-        else { appendConfigTip(resp.msg, 'error'); setStatus('加载失败'); }
+        else { appendTip(resp.msg, 'error'); setStatus('加载失败'); }
       }
-    } catch(err) { appendConfigTip('导入失败: ' + err, 'error'); setStatus('导入失败'); }
+    } catch(err) { appendTip('导入失败: ' + err, 'error'); setStatus('导入失败'); }
     input.value = '';
   };
   reader.readAsArrayBuffer(file);
 }
 
-// ═══════════ BOM table ═══════════
-
 function renderBOMTable(items) {
   const tbody = document.querySelector('#bomTable tbody');
   tbody.innerHTML = items.map((item, i) => `
     <tr>
-      <td style="color:var(--text-muted);text-align:right;padding-right:12px;width:32px">${i + 1}</td>
+      <td style="color:var(--text-muted);text-align:right;padding-right:8px;width:28px">${i + 1}</td>
       <td>${escapeHtml(item.reference)}</td>
       <td>${escapeHtml(item.value)}</td>
       <td>${escapeHtml(item.package)}</td>
       <td>${escapeHtml(item.part_number)}</td>
       <td style="text-align:right">${item.quantity}</td>
-      <td style="color:var(--text-muted)">${escapeHtml(item.description)}</td>
-      <td style="color:var(--text-muted)">${escapeHtml(item.manufacturer)}</td>
     </tr>
   `).join('');
   document.getElementById('bomEmpty').style.display = items.length ? 'none' : 'flex';
 }
 
-// ═══════════ Operations (quick-commands) ═══════════
+// ═══════════ Panel Tabs ═══════════
 
-async function runOp(name, fn) {
-  setStatus(`正在${name}...`);
-  const resp = await fn();
-  if (resp.ok) {
-    appendBubble('ai', resp.report);
-    showReport(resp.report);
-    setStatus('就绪');
-  } else {
-    appendConfigTip(resp.report || '操作失败', 'error');
-    setStatus('操作失败');
-  }
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const btn = document.querySelector(`[data-tab="${name}"]`);
+  if (btn) btn.classList.add('active');
+  const panel = document.getElementById(`tab-${name}`);
+  if (panel) panel.classList.add('active');
 }
 
-// Provider presets with model lists
+function toggleRightPanel() {
+  document.getElementById('rightPanel').classList.toggle('collapsed');
+}
+
+// ═══════════ Theme ═══════════
+
+function applyTheme(name) {
+  document.body.setAttribute('data-theme', name);
+  try { eel.save_theme(name)(); } catch(e) {}
+}
+
+// ═══════════ LLM Settings ═══════════
+
 const PROVIDERS = {
-  deepseek: {
-    url: 'https://api.deepseek.com/v1',
-    models: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-v3', 'deepseek-r1'],
-    defaultModel: 'deepseek-v4-pro',
-  },
-  openai: {
-    url: 'https://api.openai.com/v1',
-    models: ['gpt-5.4', 'gpt-4o', 'gpt-4o-mini', 'gpt-4.1'],
-    defaultModel: 'gpt-5.4',
-  },
-  qwen: {
-    url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    models: ['qwen3.6-plus', 'qwen3.6-flash', 'qwen-plus', 'qwen-max'],
-    defaultModel: 'qwen3.6-plus',
-  },
-  glm: {
-    url: 'https://open.bigmodel.cn/api/paas/v4',
-    models: ['glm-5.1', 'glm-5.1-flash', 'glm-4-plus', 'glm-4-flash'],
-    defaultModel: 'glm-5.1',
-  },
-  moonshot: {
-    url: 'https://api.moonshot.cn/v1',
-    models: ['kimi-k2.6', 'kimi-k2-flash', 'kimi-k2-turbo'],
-    defaultModel: 'kimi-k2.6',
-  },
-  siliconflow: {
-    url: 'https://api.siliconflow.cn/v1',
-    models: ['deepseek-ai/DeepSeek-V4-Flash', 'deepseek-ai/DeepSeek-V3', 'Qwen/Qwen3.6-Plus', 'Pro/GLM-5.1'],
-    defaultModel: 'deepseek-ai/DeepSeek-V4-Flash',
-  },
+  deepseek:  { url: 'https://api.deepseek.com/v1', models: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-v3'], defaultModel: 'deepseek-v4-pro' },
+  openai:    { url: 'https://api.openai.com/v1', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1'], defaultModel: 'gpt-4o' },
+  qwen:      { url: 'https://dashscope.aliyuncs.com/compatible-mode/v1', models: ['qwen3.6-plus', 'qwen3.6-flash'], defaultModel: 'qwen3.6-plus' },
+  glm:       { url: 'https://open.bigmodel.cn/api/paas/v4', models: ['glm-5.1', 'glm-5.1-flash'], defaultModel: 'glm-5.1' },
+  moonshot:  { url: 'https://api.moonshot.cn/v1', models: ['kimi-k2.6', 'kimi-k2-flash'], defaultModel: 'kimi-k2.6' },
+  siliconflow: { url: 'https://api.siliconflow.cn/v1', models: ['deepseek-ai/DeepSeek-V4-Flash', 'Qwen/Qwen3.6-Plus'], defaultModel: 'deepseek-ai/DeepSeek-V4-Flash' },
 };
-
-function onProviderChange() {
-  const p = document.getElementById('setProvider').value;
-  const preset = PROVIDERS[p] || {};
-  if (!document.getElementById('setBaseUrl').value) {
-    document.getElementById('setBaseUrl').placeholder = preset.url || '';
-  }
-  // Populate model dropdown
-  const sel = document.getElementById('setModelSelect');
-  sel.innerHTML = '';
-  (preset.models || []).forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = m; opt.textContent = m;
-    if (m === preset.defaultModel) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  // Also add custom option
-  const custom = document.createElement('option');
-  custom.value = '__custom__'; custom.textContent = '自定义...';
-  sel.appendChild(custom);
-  onModelSelectChange();
-}
-
-function onModelSelectChange() {
-  const sel = document.getElementById('setModelSelect');
-  const customInput = document.getElementById('setModelCustom');
-  if (sel.value === '__custom__') {
-    customInput.style.display = 'block';
-    customInput.focus();
-  } else {
-    customInput.style.display = 'none';
-  }
-}
-
-// ═══════════ LLM settings ═══════════
+const PROVIDER_NAMES = { deepseek:'DeepSeek', openai:'OpenAI', qwen:'通义千问', glm:'智谱', moonshot:'Kimi', siliconflow:'硅基流动' };
 
 function toggleSettings() {
   document.getElementById('settingsOverlay').classList.toggle('show');
@@ -381,15 +544,13 @@ function toggleSettings() {
       document.getElementById('setProvider').value = sett.provider || 'deepseek';
       document.getElementById('setApiKey').value = sett.api_key || '';
       document.getElementById('setBaseUrl').value = sett.base_url || '';
-      // Populate model dropdown, then select saved model
+      document.getElementById('setTheme').value = sett.theme || 'dark';
       onProviderChange();
       const savedModel = sett.model || '';
       if (savedModel) {
         const sel = document.getElementById('setModelSelect');
         for (let i = 0; i < sel.options.length; i++) {
-          if (sel.options[i].value === savedModel) {
-            sel.selectedIndex = i; break;
-          }
+          if (sel.options[i].value === savedModel) { sel.selectedIndex = i; break; }
         }
         if (sel.value !== savedModel) {
           sel.value = '__custom__';
@@ -407,6 +568,30 @@ function closeSettings(e) {
   }
 }
 
+function onProviderChange() {
+  const p = document.getElementById('setProvider').value;
+  const preset = PROVIDERS[p] || {};
+  if (!document.getElementById('setBaseUrl').value) {
+    document.getElementById('setBaseUrl').placeholder = preset.url || '';
+  }
+  const sel = document.getElementById('setModelSelect');
+  sel.innerHTML = '';
+  (preset.models || []).forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m; opt.textContent = m;
+    if (m === preset.defaultModel) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  const custom = document.createElement('option');
+  custom.value = '__custom__'; custom.textContent = '自定义...';
+  sel.appendChild(custom);
+}
+
+function onModelSelectChange() {
+  const sel = document.getElementById('setModelSelect');
+  document.getElementById('setModelCustom').style.display = sel.value === '__custom__' ? 'block' : 'none';
+}
+
 async function saveLLMSettings() {
   const provider = document.getElementById('setProvider').value;
   const apiKey = document.getElementById('setApiKey').value;
@@ -415,47 +600,28 @@ async function saveLLMSettings() {
   let model = modelSel.value === '__custom__'
     ? document.getElementById('setModelCustom').value
     : modelSel.value;
-  if (!model) {
-    const preset = PROVIDERS[provider];
-    model = preset ? preset.defaultModel : '';
-  }
+  if (!model) model = (PROVIDERS[provider] || {}).defaultModel || '';
   const resp = await eel.update_llm_config(provider, apiKey, baseUrl, model)();
   if (resp.ok) {
     const cfg = await eel.get_llm_config()();
     updateLLMStatus(cfg);
-    appendConfigTip(`${PROVIDER_NAMES[provider] || provider} AI Agent 已就绪  |  模型: ${cfg.model}`, 'success');
+    appendTip(`${PROVIDER_NAMES[provider] || provider} AI Agent 已就绪 · ${cfg.model}`, 'success');
   }
   document.getElementById('settingsOverlay').classList.remove('show');
 }
 
-const PROVIDER_NAMES = {
-  deepseek: 'DeepSeek', openai: 'OpenAI', qwen: '通义千问',
-  glm: '智谱', moonshot: 'Kimi', siliconflow: '硅基流动',
-};
-
 function updateLLMStatus(cfg) {
-  const el = document.getElementById('llmStatus');
-  if (cfg && cfg.is_configured) {
-    const name = PROVIDER_NAMES[cfg.provider] || cfg.provider;
-    el.textContent = `${name} · ${cfg.model}`;
-    el.className = 'llm-status configured';
-  } else {
-    el.textContent = '未配置';
-    el.className = 'llm-status';
-    appendConfigTip('未配置 LLM API Key，使用本地关键词匹配模式。点击右上角设置。', 'error');
-  }
-}
-
-// ═══════════ Panel tabs ═══════════
-
-function switchTab(name) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelector(`[data-tab="${name}"]`).classList.add('active');
-  document.getElementById(`tab-${name}`).classList.add('active');
+  // Status badge removed from header — settings gear indicates config state
+  // Kept for potential future use
 }
 
 // ═══════════ Utils ═══════════
+
+function setStatus(msg) { /* simplified — no status bar in new UI */ }
+function disableInput(disabled) {
+  document.getElementById('chatInput').disabled = disabled;
+  document.getElementById('sendBtn').disabled = disabled;
+}
 
 function escapeHtml(str) {
   if (!str) return '';
@@ -465,9 +631,12 @@ function escapeHtml(str) {
     .replace(/\n/g, '<br>');
 }
 
-// Called by Python file watcher as eel.on_pcb_changed()
+function escapeAttr(str) {
+  return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Called by Python file watcher
 eel.expose(onPCBChanged, 'on_pcb_changed');
 function onPCBChanged(filepath) {
   appendSystem(`📁 检测到 PCB 文件变化: ${filepath}`);
-  setStatus(`已同步 PCB`);
 }

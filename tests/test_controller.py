@@ -224,3 +224,53 @@ class TestAgentStatus:
         c = AppController(api_key="sk-test-key-123456")
         # 即使有 key，网络不可达时 agent 仍然创建（仅 token 校验）
         assert c.is_agent_available()
+
+
+# ——— char_ngram_similarity (new) ———
+
+
+class TestCharNgramSimilarity:
+    def test_identical_strings(self, controller):
+        score = controller._char_ngram_similarity("合并BOM", "合并BOM")
+        assert score == pytest.approx(1.0)
+
+    def test_empty_string(self, controller):
+        assert controller._char_ngram_similarity("", "") == 0.0
+
+    def test_short_string(self, controller):
+        assert controller._char_ngram_similarity("合", "合并", n=2) == 0.0
+
+    def test_similar_chinese_bigrams(self, controller):
+        score = controller._char_ngram_similarity("合饼BOM", "合并BOM", n=2)
+        assert score > 0.2  # "BO"和"OM"重叠
+
+    def test_different_strings(self, controller):
+        score = controller._char_ngram_similarity("你好", "pcb布局")
+        assert score < 0.3
+
+
+# ——— _get_closest_commands (new) ———
+
+
+class TestGetClosestCommands:
+    def test_returns_ranked_suggestions(self, controller):
+        suggestions = controller._get_closest_commands("合并BOM")
+        assert len(suggestions) > 0
+        # "合并" 应排最高
+        assert suggestions[0][0] == "merge_bom"
+
+    def test_empty_for_gibberish(self, controller):
+        suggestions = controller._get_closest_commands("xyz123abc")
+        assert len(suggestions) == 0
+
+
+# ——— _method_label (new) ———
+
+
+class TestMethodLabel:
+    def test_known_method(self, controller):
+        assert controller._method_label("merge_bom") == "合并BOM"
+        assert controller._method_label("check_design_rules") == "设计规则检查"
+
+    def test_unknown_falls_back(self, controller):
+        assert controller._method_label("nonexistent") == "nonexistent"

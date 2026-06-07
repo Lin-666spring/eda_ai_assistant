@@ -186,13 +186,67 @@ class LLMClient:
         self._record_turn(user_message, reply)
         return reply
 
+    def chat_multimodal(
+        self,
+        user_message: str,
+        image_b64: str,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+    ) -> str:
+        """多模态对话 — 发送文本 + 图片给视觉 LLM
+
+        Args:
+            user_message: 用户文本（如 "帮我分析这张PCB"）
+            image_b64: Base64 编码的图片 (data URI 或纯 base64)
+            system_prompt: 系统提示词
+        """
+        request = self._prepare_multimodal_request(
+            user_message, image_b64, system_prompt, temperature, max_tokens,
+        )
+        reply = self._execute(request)
+        self._record_turn(user_message, reply)
+        return reply
+
+    def _prepare_multimodal_request(
+        self,
+        user_message: str,
+        image_b64: str,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+    ) -> ChatRequest:
+        """构建多模态请求 — content 数组格式"""
+        # 确保 image 是完整的 data URI
+        if not image_b64.startswith("data:"):
+            image_b64 = f"data:image/png;base64,{image_b64}"
+
+        # 构建 content 数组
+        content: list[dict] = [
+            {"type": "text", "text": user_message},
+            {"type": "image_url", "image_url": {"url": image_b64}},
+        ]
+
+        messages: list[dict] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": content})
+
+        return ChatRequest(
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=False,
+        )
+
+    # [PLANNED] Agent Loop 接入 — 见 src/agent/tools.py 集成点注释
     def function_call(
         self,
         user_message: str,
         functions: list[dict],
         system_prompt: Optional[str] = None,
     ) -> dict:
-        """Function Calling"""
+        """Function Calling — 已就绪，待 Agent Loop 接入"""
         request = self._prepare_request(user_message, system_prompt)
         payload = request.build_payload(
             self.model,

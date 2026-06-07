@@ -3,133 +3,165 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EDA AI 智能助手</title>
+<title>EDA AI v0.5.2</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%235b8def'/><text x='16' y='22' text-anchor='middle' font-family='sans-serif' font-size='14' font-weight='bold' fill='white'>EDA</text></svg>">
 <link rel="stylesheet" href="css/style.css">
 <script src="/eel.js"></script>
 </head>
-<body data-theme="dark">
+<body>
 
-<header id="navbar">
-  <div class="nav-left">
-    <span class="logo">EDA <span class="logo-thin">AI 智能助手</span></span>
-    <span class="version-tag">v0.5.0</span>
+<!-- ═══════════ Sidebar ═══════════ -->
+<aside id="sidebar">
+  <div class="sidebar-brand" onclick="switchAssistant('eda-general')">
+    <span class="sidebar-logo">EDA</span>
+    <span class="sidebar-title">AI 智能助手</span>
   </div>
-  <div class="nav-center">
-    <input type="file" id="bomFileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="onFileSelected('bom', this)">
-    <input type="file" id="pcbFileInput" accept=".json,.epro" style="display:none" onchange="onFileSelected('pcb', this)">
-    <input type="file" id="posFileInput" accept=".csv" style="display:none" onchange="onFileSelected('pos', this)">
-    <button class="nav-btn" onclick="document.getElementById('bomFileInput').click()" title="导入 BOM 文件 (CSV/Excel)">导入 BOM</button>
-    <button class="nav-btn" onclick="document.getElementById('pcbFileInput').click()" title="导入 PCB 文件 (JSON/EPRO)">导入 PCB</button>
-    <button class="nav-btn" onclick="document.getElementById('posFileInput').click()" title="导入坐标文件 (CSV)">导入坐标</button>
-  </div>
-  <div class="nav-right">
-    <span id="llmStatus" class="llm-status" onclick="toggleSettings()">未配置</span>
-    <button id="themeToggle" class="icon-btn" onclick="toggleTheme()" title="切换主题">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-    </button>
-  </div>
-</header>
 
-<main id="app">
-  <!-- Chat panel -->
-  <section id="chatPanel">
-    <div id="chatMessages">
-      <!-- Welcome -->
-      <div id="welcomeBlock">
-        <div class="welcome-title">
-          <span class="welcome-brand">EDA</span>
-          <span class="welcome-sub"> AI 智能助手</span>
-        </div>
-        <p class="welcome-desc">面向立创 EDA 的 BOM 管理与 PCB 设计助手</p>
-        <div class="card welcome-card">
-          <div class="card-label">可用功能</div>
-          <table class="feature-table">
-            <tr><td class="ft-name">合并 BOM</td><td class="ft-dash">—</td><td class="ft-desc">合并同类元件</td></tr>
-            <tr><td class="ft-name">封装校验</td><td class="ft-dash">—</td><td class="ft-desc">校验封装与型号匹配</td></tr>
-            <tr><td class="ft-name">位号查重</td><td class="ft-dash">—</td><td class="ft-desc">检查重复位号</td></tr>
-            <tr><td class="ft-name">HTML BOM</td><td class="ft-dash">—</td><td class="ft-desc">生成交互式 HTML BOM</td></tr>
-            <tr><td class="ft-name">设计规则检查</td><td class="ft-dash">—</td><td class="ft-desc">PCB 设计规则检查</td></tr>
-          </table>
-        </div>
-        <div class="card welcome-card">
-          <p class="welcome-hint">请先导入 BOM 文件，然后在下方输入指令开始使用。</p>
-        </div>
-      </div>
-    </div>
-    <div id="chatInputBar">
-      <div class="quick-actions">
-        <button class="qa-btn" onclick="quickCmd('合并 BOM')">合并</button>
-        <button class="qa-btn" onclick="quickCmd('AI智能合并')">AI 合并</button>
-        <button class="qa-btn" onclick="quickCmd('校验封装')">校验</button>
-        <button class="qa-btn" onclick="quickCmd('BOM健康')">健康</button>
-        <button class="qa-btn" onclick="quickCmd('设计规则')">DRC</button>
-        <button class="qa-btn" onclick="quickCmd('生成 HTML')">HTML</button>
-      </div>
-      <div class="input-row">
-        <input type="text" id="chatInput" placeholder="输入指令..." autofocus>
-        <button id="sendBtn" onclick="sendChat()" title="发送">发送</button>
-      </div>
-    </div>
-  </section>
+  <!-- 助手列表 -->
+  <div class="sidebar-section">
+    <div class="sidebar-label">助手</div>
+    <div id="assistantList"></div>
+  </div>
 
-  <!-- Right panel -->
-  <aside id="rightPanel">
-    <div class="panel-tabs">
-      <button class="tab-btn active" data-tab="bom">BOM 表格</button>
-      <button class="tab-btn" data-tab="report">报告</button>
-      <button class="tab-btn" data-tab="html">HTML 预览</button>
+  <div class="sidebar-divider"></div>
+
+  <!-- 对话列表 -->
+  <div class="sidebar-section chat-list-section">
+    <div class="sidebar-label-row">
+      <span class="sidebar-label">对话</span>
+      <button class="sidebar-action" onclick="newConversation()" title="新建对话">+</button>
     </div>
-    <div class="panel-content">
-      <div id="tab-bom" class="tab-panel active">
-        <table id="bomTable"><thead><tr><th>#</th><th>位号</th><th>值</th><th>封装</th><th>型号</th><th>数量</th><th>描述</th><th>制造商</th></tr></thead><tbody></tbody></table>
-        <div id="bomEmpty" class="empty-hint">尚未导入 BOM 文件</div>
-      </div>
-      <div id="tab-report" class="tab-panel">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-          <button class="qa-btn" onclick="clearReport()">清空全部</button>
-        </div>
-        <div id="reportStack"></div>
-        <div id="reportEmpty" class="empty-hint">执行操作后报告将显示于此</div>
-      </div>
-      <div id="tab-html" class="tab-panel">
-        <iframe id="htmlFrame" style="width:100%;height:100%;border:none;display:none;"></iframe>
-        <div id="htmlEmpty" class="empty-hint">HTML BOM 预览将在生成后显示于此</div>
-      </div>
+    <div id="conversationList"></div>
+  </div>
+
+  <div class="sidebar-spacer"></div>
+</aside>
+
+<!-- ═══════════ Main Chat Area ═══════════ -->
+<main id="chatArea">
+  <!-- 模型选择栏 -->
+  <div id="chatHeader">
+    <div id="currentAssistantTitle">
+      <span id="assistantIcon">🤖</span>
+      <span id="assistantName">EDA 通用助手</span>
     </div>
-  </aside>
+    <div class="header-right">
+      <button class="header-icon-btn" onclick="toggleSettings()" title="设置">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- 消息区域 -->
+  <div id="chatMessages">
+    <!-- 空状态 -->
+    <div id="emptyState"></div>
+  </div>
+
+  <!-- 输入区域 -->
+  <div id="chatFooter">
+    <!-- 图片预览 -->
+    <div id="imagePreviewBar" style="display:none">
+      <img id="imagePreviewThumb" src="" alt="预览">
+      <button class="img-remove" onclick="removeImage()">✕</button>
+    </div>
+    <!-- 快捷操作 -->
+    <div id="quickActions" class="quick-actions"></div>
+    <!-- 输入行 -->
+    <div class="input-row">
+      <input type="file" id="imageFileInput" accept="image/*" style="display:none" onchange="onImageFileSelected(this)">
+      <button class="img-btn" onclick="document.getElementById('imageFileInput').click()" title="添加图片 (可 Ctrl+V 粘贴)">+</button>
+      <textarea id="chatInput" placeholder="输入指令... (Enter 发送, Shift+Enter 换行)" rows="1" autofocus></textarea>
+      <button id="sendBtn" onclick="sendChat()" title="发送">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
 </main>
 
-<!-- Settings modal -->
+<!-- ═══════════ Right Panel ═══════════ -->
+<aside id="rightPanel">
+  <div class="panel-tabs">
+    <button class="tab-btn active" data-tab="bom">BOM 表格</button>
+    <button class="tab-btn" data-tab="report">报告</button>
+    <button class="tab-btn" data-tab="html">HTML 预览</button>
+    <button class="panel-toggle" onclick="toggleRightPanel()" title="折叠面板">◀</button>
+  </div>
+  <div class="panel-content">
+    <div id="tab-bom" class="tab-panel active">
+      <table id="bomTable"><thead><tr><th>#</th><th>位号</th><th>值</th><th>封装</th><th>型号</th><th>数量</th></tr></thead><tbody></tbody></table>
+      <div id="bomEmpty" class="empty-hint">尚未导入 BOM — 使用顶部按钮导入</div>
+    </div>
+    <div id="tab-report" class="tab-panel">
+      <div id="reportStack"></div>
+      <div id="reportEmpty" class="empty-hint">执行操作后报告显示于此</div>
+    </div>
+    <div id="tab-html" class="tab-panel">
+      <iframe id="htmlFrame" style="width:100%;height:100%;border:none;display:none;"></iframe>
+      <div id="htmlEmpty" class="empty-hint">HTML BOM 预览将在生成后显示</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════ Hidden file inputs ═══════════ -->
+<input type="file" id="bomFileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="onFileSelected('bom', this)">
+<input type="file" id="pcbFileInput" accept=".json,.epro" style="display:none" onchange="onFileSelected('pcb', this)">
+<input type="file" id="posFileInput" accept=".csv" style="display:none" onchange="onFileSelected('pos', this)">
+
+<!-- ═══════════ Settings Modal ═══════════ -->
 <div id="settingsOverlay" class="modal-overlay" onclick="closeSettings(event)">
   <div class="modal" onclick="event.stopPropagation()">
-    <h2>LLM 设置</h2>
-    <label>厂商</label>
-    <select id="setProvider" onchange="onProviderChange()">
-      <option value="deepseek">DeepSeek</option>
-      <option value="openai">OpenAI</option>
-      <option value="qwen">通义千问</option>
-      <option value="glm">智谱</option>
-      <option value="moonshot">Kimi 月之暗面</option>
-      <option value="siliconflow">硅基流动</option>
-    </select>
-    <label>API Key</label>
-    <input type="password" id="setApiKey" placeholder="sk-...">
-    <label>Base URL (可选)</label>
-    <input type="text" id="setBaseUrl" placeholder="留空使用默认">
-    <label>模型</label>
-    <select id="setModelSelect" onchange="onModelSelectChange()"></select>
-    <input type="text" id="setModelCustom" placeholder="输入模型名称..." style="display:none;margin-top:6px">
+    <h2>设置</h2>
+
+    <!-- LLM 配置 -->
+    <div class="settings-section">
+      <div class="settings-section-title">AI 模型</div>
+      <div class="settings-grid">
+        <div>
+          <label>厂商</label>
+          <select id="setProvider" onchange="onProviderChange()">
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai">OpenAI</option>
+            <option value="qwen">通义千问</option>
+            <option value="glm">智谱</option>
+            <option value="moonshot">Kimi 月之暗面</option>
+            <option value="siliconflow">硅基流动</option>
+          </select>
+        </div>
+        <div>
+          <label>模型</label>
+          <select id="setModelSelect" onchange="onModelSelectChange()"></select>
+          <input type="text" id="setModelCustom" placeholder="自定义模型名..." style="display:none;margin-top:6px">
+        </div>
+        <div>
+          <label>API Key</label>
+          <input type="password" id="setApiKey" placeholder="sk-...">
+        </div>
+        <div>
+          <label>Base URL (可选)</label>
+          <input type="text" id="setBaseUrl" placeholder="留空使用默认">
+        </div>
+      </div>
+    </div>
+
+    <!-- 外观 -->
+    <div class="settings-section">
+      <div class="settings-section-title">外观</div>
+      <div class="settings-row">
+        <span>主题</span>
+        <select id="setTheme" onchange="applyTheme(this.value)">
+          <option value="dark">深色</option>
+          <option value="light">浅色</option>
+        </select>
+      </div>
+    </div>
+
     <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeSettings()">取消</button>
+      <button class="btn-secondary" onclick="closeSettings(event)">取消</button>
       <button class="btn-primary" onclick="saveLLMSettings()">保存</button>
     </div>
   </div>
 </div>
-
-<footer id="statusBar">
-  <span id="statusMsg">就绪</span>
-  <span id="statusRight"></span>
-</footer>
 
 <script src="js/app.js"></script>
 </body>

@@ -192,9 +192,32 @@ def send_message(text: str) -> dict:
 
 
 @eel.expose
+def send_image(text: str, image_b64: str) -> dict:
+    """Send a chat message with an image (base64 data URI).
+
+    The image is passed directly to a multimodal LLM for visual analysis.
+    """
+    try:
+        result = controller.process_image_input(text, image_b64)
+        return {"ok": True, "result": result}
+    except Exception as e:
+        return {"ok": False, "result": str(e)}
+
+
+@eel.expose
 def clear_chat():
     controller.clear_conversation()
     return {"ok": True}
+
+
+@eel.expose
+def set_active_assistant(assistant_id: str) -> dict:
+    """切换当前助手"""
+    try:
+        controller.set_active_assistant(assistant_id)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "result": str(e)}
 
 
 @eel.expose

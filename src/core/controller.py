@@ -78,6 +78,7 @@ class AppController:
         self.eda = LCEDAAdapter()
         self.context = CommandContext()
         self._conversation_active = False
+        self._active_assistant: Optional[str] = None  # 当前助手 ID
 
     def reconfigure_llm(self, provider: str, api_key: str, base_url: str, model: str):
         """热重载 LLM 客户端 — 用户通过设置面板修改配置后调用。"""
@@ -103,6 +104,18 @@ class AppController:
         self._conversation_active = False
         if self.agent:
             self.agent.clear_history()
+
+    def set_active_assistant(self, assistant_id: str):
+        """切换当前助手 — 影响 AI 回复的系统提示词风格
+
+        Args:
+            assistant_id: 助手 ID，如 'eda-general' / 'bom-expert' / 'pcb-reviewer' / 'vision-analyst'
+        """
+        self._active_assistant = assistant_id
+        self._conversation_active = False
+        if self.agent:
+            self.agent.clear_history()
+        logger.info("Active assistant switched to: %s", assistant_id)
 
     # ══════════════════════════════════════════════════
     #  File I/O
@@ -254,23 +267,53 @@ class AppController:
     # ── Operation dispatch table (strategy pattern) ──
 
     def _dispatch_operation(self, operation: str, params: dict) -> str:
-        handlers = {
-            "merge_bom": self.merge_bom,
-            "ai_merge_bom": self.ai_merge_bom,
-            "validate_package": self.validate_packages,
-            "check_duplicates": self.check_duplicates,
-            "check_rule": self.check_design_rules,
-            "bom_health": self.check_bom_health,
-            "generate_html_bom": lambda: self.generate_html_bom(params.get("output_path")),
-            "filter_components": lambda: self._filter_components(params),
-        }
-        handler = handlers.get(operation)
-        if handler is None:
-            return (
-                f"🤔 无法识别操作「{operation}」\n\n"
-                "可用操作：合并BOM / 校验封装 / 检查重复 / 生成HTML BOM / 设计规则检查"
-            )
-        return handler()
+        # 处理 LLM 返回的追问
+        if operation == "__clarify__":
+            question = params.get("question", "不太确定您的意思，能再说详细一点吗？")
+            options = params.get("options", [])
+            if options:
+                return "🤔 " + question + "\n\n可选项：\n" + "\n".join(f"  • {o}" for o in options)
+            return "🤔 " + question
+
+        # 从 ToolRegistry 获取 handler 映射（带懒加载降级）
+        dispatch = self._build_dispatch_map()
+        handler = dispatch.get(operation)
+        if handler:
+            return handler()
+
+        return (
+            f"🤔 无法识别操作「{operation}」\n\n"
+            "可用操作：合并BOM / 校验封装 / 检查重复 / 筛选元件 / "
+            "生成HTML BOM / 设计规则检查 / BOM健康检查"
+        )
+
+    def _build_dispatch_map(self) -> dict[str, Callable[[], str]]:
+        """从 ToolRegistry 构建操作分发映射"""
+        handlers: dict[str, Callable[[], str]] = {}
+        try:
+            from src.agent.tools import ToolRegistry
+            for name, handler_name in ToolRegistry.get_dispatch_map().items():
+                if handler_name == "_filter_input":
+                    handlers[name] = self._filter_input_handler
+                elif handler_name == "_pcb_analysis_cmd":
+                    handlers[name] = self._pcb_analysis_handler
+                else:
+                    method = getattr(self, handler_name, None)
+                    if method:
+                        handlers[name] = method
+        except ImportError:
+            pass  # ToolRegistry 不可用
+
+        # 补充特殊方法
+        if "generate_html_bom" in handlers:
+            orig = handlers["generate_html_bom"]
+            handlers["generate_html_bom"] = lambda: orig()
+        if "filter_components" in handlers:
+            handlers["filter_components"] = lambda: self._filter_components({})
+
+        # 向后兼容旧指令名
+        handlers["load_pcb"] = lambda: "⚠️ 请通过 文件→导入PCB 加载电路板文件。"
+        return handlers
 
     # ══════════════════════════════════════════════════
     #  Natural-language processing
@@ -306,7 +349,62 @@ class AppController:
                 return result
         return self._local_fallback(user_input)
 
+    def process_image_input(self, text: str, image_b64: str) -> str:
+        """处理带图片的用户输入 — 调用多模态 LLM 分析
+
+        不需要 BOM 预加载（图片分析独立于 BOM 数据）。
+        """
+        if not self.is_agent_available():
+            return "⚠️ 图片分析需要配置 AI 模型。请在设置中配置支持多模态的 API（如 Kimi、GPT-4o、Qwen-VL）。"
+
+        try:
+            return self._analyze_image(text, image_b64)
+        except Exception as e:
+            logger.exception("Image analysis failed")
+            return f"⚠️ 图片分析失败: {e}"
+
     # ── AI helpers ──
+
+    def _get_nlu_engine(self):
+        """lazy init NLU 引擎（获取或创建）"""
+        if not hasattr(self, '_nlu_engine'):
+            try:
+                from src.agent.nlu_engine import NLUEngine
+                self._nlu_engine = NLUEngine()
+                logger.info("NLU Engine ready (embedding: %s)", self._nlu_engine.embedding_available)
+            except Exception as e:
+                logger.warning("NLU Engine init failed: %s", e)
+                self._nlu_engine = None
+        return self._nlu_engine
+
+    def _intent_to_system_type(self, intent: TaskIntent) -> str:
+        """将 TaskIntent 映射到 system prompt 类型
+
+        如果设置了 active assistant，优先使用助手偏好的提示词类型。
+        """
+        # 助手→系统提示映射
+        assistant_map = {
+            "eda-general": None,       # 使用意图自动映射
+            "bom-expert": "bom",       # 始终用 BOM 提示词
+            "pcb-reviewer": "pcb",     # 始终用 PCB 提示词
+            "vision-analyst": "vision", # 始终用视觉提示词
+        }
+        if self._active_assistant and self._active_assistant in assistant_map:
+            override = assistant_map[self._active_assistant]
+            if override:
+                return override
+
+        # 默认：基于意图映射
+        mapping = {
+            TaskIntent.BOM_ANALYSIS: "bom",
+            TaskIntent.RULE_CHECK: "rule",
+            TaskIntent.PCB_ANALYSIS: "pcb",
+            TaskIntent.CODE_RULE_GEN: "rule",
+            TaskIntent.VISUAL: "vision",
+            TaskIntent.TEXT_CHAT: "general",
+            TaskIntent.LOCAL_ONLY: "general",
+        }
+        return mapping.get(intent, "general")
 
     def _build_ai_prompt(self, user_input: str) -> tuple[str, str]:
         """根据意图分类选择最合适的 system prompt 和模板"""
@@ -315,18 +413,9 @@ class AppController:
         else:
             intent = TaskIntent.TEXT_CHAT
 
-        # 按意图映射 system prompt
-        intent_system_map = {
-            TaskIntent.BOM_ANALYSIS: "bom",
-            TaskIntent.RULE_CHECK: "rule",
-            TaskIntent.PCB_ANALYSIS: "pcb",
-            TaskIntent.CODE_RULE_GEN: "rule",
-            TaskIntent.VISUAL: "general",
-            TaskIntent.TEXT_CHAT: "general",
-        }
-        system_type = intent_system_map.get(intent, "general")
+        system_type = self._intent_to_system_type(intent)
         system = PromptTemplates.get_system_prompt(system_type)
-        prompt = PromptTemplates.COMMAND_PARSE.format(user_command=user_input)
+        prompt = PromptTemplates.get("command_parse", user_command=user_input)
         logger.debug("Intent: %s → system_prompt=%s", intent.name, system_type)
         return system, prompt
 
@@ -341,16 +430,38 @@ class AppController:
         return f"🤖 AI 理解: {explanation}\n\n{result}" if explanation else result
 
     def _try_ai(self, user_input: str) -> Optional[str]:
+        """两阶段 NLU 管线
+
+        Stage 1: 意图分类（语义 + 关键词混合，带置信度）
+          - 高置信 (>0.7)  → 进入 Stage 2
+          - 中置信 (0.4-0.7) → 返回追问
+          - 低置信 (<0.4)   → 走原 LLM 路径兜底
+
+        Stage 2: 实体抽取 + 命令解析 → 操作分发
+        """
         try:
-            system, prompt = self._build_ai_prompt(user_input)
-            raw = self.agent.chat(
-                prompt, system_prompt=system,
-                use_history=self._conversation_active,
-            )
-            result = self._ai_to_operation(raw)
-            if result is not None:
-                self._conversation_active = True
-            return result
+            nlu = self._get_nlu_engine()
+            if nlu is not None:
+                intent_name, confidence, _debug = nlu.classify(user_input)
+                try:
+                    intent = TaskIntent[intent_name]
+                except KeyError:
+                    intent = TaskIntent.TEXT_CHAT
+
+                logger.debug("NLU: intent=%s confidence=%.2f", intent.name, confidence)
+
+                if confidence < 0.40:
+                    # 低置信 → 走原 LLM 路径
+                    return self._legacy_ai_path(user_input)
+                elif confidence < 0.70:
+                    # 中置信 → 追问
+                    return self._ask_clarification(user_input, nlu)
+                else:
+                    # 高置信 → Stage 2
+                    return self._execute_with_intent(user_input, intent)
+            else:
+                # NLU 不可用 → 走原 LLM 路径
+                return self._legacy_ai_path(user_input)
         except Exception:
             logger.exception("AI processing failed, falling back to local")
             return None
@@ -358,19 +469,113 @@ class AppController:
     def _try_ai_stream(
         self, user_input: str, on_token: Callable[[str], None]
     ) -> Optional[str]:
+        """流式版本 — 暂用原路径（流式不适合两阶段追问）"""
         try:
-            system, prompt = self._build_ai_prompt(user_input)
-            raw = self.agent.chat_stream(
-                prompt, system_prompt=system, on_token=on_token,
-                use_history=self._conversation_active,
+            return self._legacy_ai_path_stream(user_input, on_token)
+        except Exception:
+            logger.exception("AI streaming failed, falling back to local")
+            return None
+
+    def _legacy_ai_path(self, user_input: str) -> Optional[str]:
+        """原 AI 路径：单次 LLM 调用解析"""
+        system, prompt = self._build_ai_prompt(user_input)
+        raw = self.agent.chat(
+            prompt, system_prompt=system,
+            use_history=self._conversation_active,
+        )
+        result = self._ai_to_operation(raw)
+        if result is not None:
+            self._conversation_active = True
+        return result
+
+    def _legacy_ai_path_stream(
+        self, user_input: str, on_token: Callable[[str], None]
+    ) -> Optional[str]:
+        """流式版本的遗留路径"""
+        system, prompt = self._build_ai_prompt(user_input)
+        raw = self.agent.chat_stream(
+            prompt, system_prompt=system, on_token=on_token,
+            use_history=self._conversation_active,
+        )
+        result = self._ai_to_operation(raw)
+        if result is not None:
+            self._conversation_active = True
+        return result
+
+    def _execute_with_intent(self, user_input: str, intent: TaskIntent) -> Optional[str]:
+        """Stage 2: 基于已确认意图的精准命令解析
+
+        先用 entity_extract 模板提取实体，将实体上下文注入 command_parse，
+        让 LLM 在已有意图方向的前提下做更精准的解析。
+        """
+        system_type = self._intent_to_system_type(intent)
+        system = PromptTemplates.get_system_prompt(system_type)
+
+        try:
+            # Step 2a: 实体抽取（best-effort）
+            entity_prompt = PromptTemplates.get("entity_extract", user_command=user_input)
+            entity_raw = self.agent.chat(entity_prompt, system_prompt=system)
+            entities = self._extract_json(entity_raw)
+            entity_context = ""
+            if entities and entities.get("entities"):
+                entity_context = "\n已提取的实体上下文：\n" + json.dumps(
+                    entities["entities"], ensure_ascii=False, indent=2
+                )
+
+            # Step 2b: 精准命令解析
+            cmd_prompt = PromptTemplates.get(
+                "command_parse",
+                user_command=user_input,
+                entity_context=entity_context,
             )
-            result = self._ai_to_operation(raw)
+            cmd_raw = self.agent.chat(cmd_prompt, system_prompt=system)
+
+            result = self._ai_to_operation(cmd_raw)
             if result is not None:
                 self._conversation_active = True
             return result
         except Exception:
-            logger.exception("AI streaming failed, falling back to local")
-            return None
+            logger.exception("Stage 2 parsing failed, falling back to legacy")
+            return self._legacy_ai_path(user_input)
+
+    def _ask_clarification(self, user_input: str, nlu=None) -> str:
+        """生成意图追问（中置信度时调用）"""
+        if nlu is None:
+            nlu = self._get_nlu_engine()
+        if nlu is not None:
+            return nlu.get_clarification_question(user_input)
+        return (
+            "🤔 不太确定您的意思，能再说详细一点吗？\n\n"
+            "可用操作：合并BOM / 校验封装 / 检查重复 / 设计规则 / PCB分析 / BOM健康"
+        )
+
+    def _analyze_image(self, text: str, image_b64: str) -> str:
+        """调用多模态 LLM 分析图片
+
+        使用视觉系统提示词和 VISION_ANALYSIS 模板，
+        通过 LLMClient.chat_multimodal 发送 base64 图片。
+        """
+        system = PromptTemplates.get_system_prompt("vision")
+        prompt = PromptTemplates.get(
+            "vision_analysis",
+            user_command=text,
+        )
+        try:
+            raw = self.agent.chat_multimodal(
+                user_message=prompt,
+                image_b64=image_b64,
+                system_prompt=system,
+            )
+            return f"🤖 AI 视觉分析:\n\n{raw}"
+        except Exception as e:
+            logger.exception("Multimodal LLM call failed")
+            return (
+                f"⚠️ 视觉分析调用失败: {e}\n\n"
+                "请确认:\n"
+                "• 已配置支持多模态的 API（如 Kimi、GPT-4o、Qwen-VL）\n"
+                "• 当前模型支持图片输入\n"
+                "• API 额度充足"
+            )
 
     def _filter_components(self, params: dict) -> str:
         keyword = (params.get("keyword") or "").lower()
@@ -392,40 +597,182 @@ class AppController:
 
     # ── Local keyword fallback ──
 
-    _KEYWORD_ROUTES: tuple[tuple[tuple[str, ...], str], ...] = (
-        (("ai合并", "智能合并", "ai_merge"), "ai_merge_bom"),
-        (("合并", "merge", "整理"), "merge_bom"),
-        (("校验", "验证", "封装", "validate"), "validate_packages"),
-        (("重复", "查重", "duplicate", "位号"), "check_duplicates"),
-        (("html", "网页"), "generate_html_bom"),
-        (("规则", "rule", "去耦", "信号", "电源", "模数"), "check_design_rules"),
-        (("pcb", "导入pcb", "电路板"), "_pcb_status"),
-        (("健康", "库存", "采购", "报价", "替代料", "缺货"), "check_bom_health"),
-        (("统计", "概览", "summary"), "_summary_report"),
-    )
+    # _KEYWORD_ROUTES 已从 ToolRegistry 派生（单一事实来源）
+    # 保留此属性以兼容旧代码，实际匹配在 _match_keyword 中通过 ToolRegistry 完成
+    _KEYWORD_ROUTES: tuple = ()  # deprecated, kept for compatibility
+
+    def _get_keyword_map(self):
+        """懒加载 ToolRegistry 关键词映射"""
+        try:
+            from src.agent.tools import ToolRegistry
+            return ToolRegistry.get_keyword_map()
+        except ImportError:
+            return ()
 
     def _match_keyword(self, user_input: str) -> Optional[Callable[[], str]]:
+        """关键词匹配 — 从 ToolRegistry 派生（精确子串 → 模糊 n-gram 降级）"""
         lowered = user_input.lower()
-        for keywords, method_name in self._KEYWORD_ROUTES:
+
+        # 第一轮：精确子串匹配（ToolRegistry 关键词，优先顺序已内置）
+        for keywords, tool_name in self._get_keyword_map():
             if any(kw in lowered for kw in keywords):
-                return getattr(self, method_name)
+                logger.debug("Keyword match: '%s' → %s", user_input[:30], tool_name)
+                return self._resolve_handler_by_tool(tool_name)
+
+        # 第二轮：汉字 bigram 模糊匹配
+        best_tool: Optional[str] = None
+        best_score = 0.0
+        threshold = 0.25
+
+        for keywords, tool_name in self._get_keyword_map():
+            for kw in keywords:
+                if len(kw) < 2:
+                    continue
+                score = self._char_ngram_similarity(lowered, kw, n=2)
+                if score > best_score:
+                    best_score = score
+                    best_tool = tool_name
+
+        if best_score >= threshold and best_tool:
+            logger.debug("Fuzzy match: '%s' → %s (ngram=%.2f)", user_input[:30], best_tool, best_score)
+            return self._resolve_handler_by_tool(best_tool)
+
         return None
+
+    def _resolve_handler_by_tool(self, tool_name: str) -> Optional[Callable[[], str]]:
+        """通过 ToolRegistry 解析 tool name → handler callable"""
+        # 特殊处理：需要参数或特殊逻辑的工具
+        if tool_name == "filter_components":
+            return self._filter_input_handler
+        if tool_name == "pcb_analysis":
+            return self._pcb_analysis_handler
+
+        # 标准工具：从 Registry 获取 handler 名称
+        try:
+            from src.agent.tools import ToolRegistry
+            dispatch = ToolRegistry.get_dispatch_map()
+            handler_name = dispatch.get(tool_name)
+            if handler_name:
+                return getattr(self, handler_name, None)
+        except ImportError:
+            pass
+        return None
+
+    def _resolve_handler(self, method_name: str) -> Optional[Callable[[], str]]:
+        """将方法名解析为可调用对象（向后兼容旧 _KEYWORD_ROUTES 路径）"""
+        if method_name == "_filter_input":
+            return self._filter_input_handler
+        if method_name == "_pcb_analysis_cmd":
+            return self._pcb_analysis_handler
+        return getattr(self, method_name, None)
+
+    def _filter_input_handler(self) -> str:
+        """处理用户的筛选/搜索请求（从输入中提取关键词）"""
+        # 这个方法在本地降级时被调用，但我们没有保存原始输入
+        # 返回引导信息
+        return (
+            "🔍 请在指令中指定要筛选的关键词，例如：\n"
+            "• \"筛选0603封装的电阻\"\n"
+            "• \"查找STM32\"\n"
+            "• \"搜索10kΩ\""
+        )
+
+    def _pcb_analysis_handler(self) -> str:
+        """处理 PCB 分析请求（本地降级时）"""
+        if self.agent is None:
+            return "⚠️ PCB 分析需要 AI 支持，请先配置 API Key。"
+        return self.agent.chat(
+            PromptTemplates.get("pcb_analysis", pcb_summary=str(self.context.pcb_data or "未加载")),
+            system_prompt=PromptTemplates.get_system_prompt("pcb"),
+        )
+
+    @staticmethod
+    def _char_ngram_similarity(a: str, b: str, n: int = 2) -> float:
+        """汉字 character n-gram Jaccard 相似度
+
+        用于处理输入法导致的近似匹配，如 "合饼" → "合并"、 "物料青丹" → "物料清单"。
+        """
+        def ngrams(s: str) -> set:
+            return {s[i:i + n] for i in range(len(s) - n + 1)}
+
+        grams_a = ngrams(a)
+        grams_b = ngrams(b)
+        if not grams_a or not grams_b:
+            return 0.0
+        intersection = grams_a & grams_b
+        union = grams_a | grams_b
+        return len(intersection) / len(union)
+
+    def _get_closest_commands(self, user_input: str, top: int = 3) -> list[tuple[str, float]]:
+        """找到与用户输入最相似的前 N 条指令（从 ToolRegistry 派生）"""
+        lowered = user_input.lower()
+        scored: list[tuple[str, float]] = []
+
+        for keywords, tool_name in self._get_keyword_map():
+            max_score = max(
+                (self._char_ngram_similarity(lowered, kw, n=2) for kw in keywords),
+                default=0.0,
+            )
+            if max_score > 0.15:
+                scored.append((tool_name, max_score))
+
+        # 去重保留最高分
+        seen: set[str] = set()
+        unique: list[tuple[str, float]] = []
+        for tool, score in sorted(scored, key=lambda x: -x[1]):
+            if tool not in seen:
+                seen.add(tool)
+                unique.append((tool, score))
+
+        return unique[:top]
 
     def _local_fallback(self, user_input: str) -> str:
         handler = self._match_keyword(user_input)
         if handler:
             return handler()
-        return (
-            "🤔 无法识别指令。请尝试:\n"
-            "• 合并 BOM    — 合并同类元件\n"
-            "• AI智能合并   — AI 辅助识别额外合并机会\n"
-            "• 校验封装    — 检查封装型号匹配\n"
-            "• 检查重复    — 检测重复位号\n"
-            "• 生成 HTML   — 导出交互式 BOM\n"
-            "• 设计规则    — PCB 规则检查（需先导入PCB）\n"
-            "• BOM健康     — 库存/生命周期/替代料/成本\n"
-            "• PCB         — 查看已加载的 PCB 状态"
-        )
+
+        # 未匹配 → 查找最相似的指令给出建议
+        suggestions = self._get_closest_commands(user_input, top=3)
+        suggestion_text = ""
+        if suggestions:
+            suggestion_text = "\n💡 您是不是想:\n"
+            for tool_name, score in suggestions:
+                label = ToolRegistry.get_label(tool_name) if 'ToolRegistry' in dir() else tool_name
+                suggestion_text += f"  • {label}\n"
+
+        # 从 ToolRegistry 生成帮助文本
+        try:
+            from src.agent.tools import ToolRegistry
+            help_text = ToolRegistry.get_help_text()
+        except ImportError:
+            help_text = (
+                "可用指令:\n"
+                "• 合并/整理 BOM     — 合并同类元件\n"
+                "• AI智能合并         — AI 辅助识别\n"
+                "• 校验/验证封装      — 检查封装匹配\n"
+                "• 查重/位号检查      — 检测重复位号\n"
+                "• 筛选/查找元件      — 搜索元件\n"
+                "• 生成 HTML/导出     — 交互式 BOM\n"
+                "• 规则检查 / DRC     — 设计规则检查\n"
+                "• BOM健康 / 库存     — 库存/替代料\n"
+                "• PCB / 电路板       — PCB 状态\n"
+                "• 统计 / 概览        — 元件统计"
+            )
+
+        return "🤔 无法识别指令。" + suggestion_text + "\n" + help_text
+
+    @staticmethod
+    def _method_label(method_name: str) -> str:
+        """方法名 → 用户可读标签（从 ToolRegistry 派生，向后兼容）"""
+        try:
+            from src.agent.tools import ToolRegistry
+            # 尝试通过 handler 名称反查
+            for tool in ToolRegistry.get_all():
+                if tool.handler == method_name or tool.name == method_name:
+                    return tool.label
+        except ImportError:
+            pass
+        return method_name
 
     def _summary_report(self) -> str:
         summary = self.get_bom_summary()

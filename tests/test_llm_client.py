@@ -142,10 +142,13 @@ class TestParseStreamLine:
 
 # ——— LLMClient ———
 
+@pytest.fixture
+def client():
+    """共享 LLMClient fixture"""
+    return LLMClient(api_key="sk-test-key")
+
+
 class TestLLMClient:
-    @pytest.fixture
-    def client(self):
-        return LLMClient(api_key="sk-test-key")
 
     def test_provider_label(self, client):
         assert isinstance(client.provider_label, str)
@@ -197,6 +200,52 @@ class TestLLMClient:
     def test_model_defaults(self, client):
         assert client.model is not None
         assert client.base_url is not None
+
+
+# ——— Multimodal ———
+
+
+class TestMultimodalRequest:
+    """多模态请求结构测试"""
+
+    def test_prepare_multimodal_content_array(self, client):
+        req = client._prepare_multimodal_request(
+            "分析这张PCB", "fakebase64data", system_prompt="你是一个视觉专家",
+        )
+        # 验证消息结构
+        assert len(req.messages) == 2  # system + user
+        assert req.messages[0]["role"] == "system"
+        assert req.messages[0]["content"] == "你是一个视觉专家"
+
+        user_msg = req.messages[1]
+        assert user_msg["role"] == "user"
+        assert isinstance(user_msg["content"], list)  # content array
+        assert len(user_msg["content"]) == 2  # text + image
+
+        # 第一部分：文本
+        assert user_msg["content"][0]["type"] == "text"
+        assert user_msg["content"][0]["text"] == "分析这张PCB"
+
+        # 第二部分：图片
+        assert user_msg["content"][1]["type"] == "image_url"
+        assert "url" in user_msg["content"][1]["image_url"]
+
+    def test_image_b64_prefixed_with_data_uri(self, client):
+        """纯 base64 应自动补 data: 前缀"""
+        req = client._prepare_multimodal_request("test", "plainbase64string")
+        # 无 system prompt → 只有 1 条消息
+        user_msg = req.messages[0]
+        assert user_msg["role"] == "user"
+        url = user_msg["content"][1]["image_url"]["url"]
+        assert url.startswith("data:image/png;base64,")
+
+    def test_image_data_uri_unchanged(self, client):
+        """已含 data: 前缀的不重复添加"""
+        data_uri = "data:image/jpeg;base64,/9j/4AAQ"
+        req = client._prepare_multimodal_request("test", data_uri)
+        user_msg = req.messages[0]
+        url = user_msg["content"][1]["image_url"]["url"]
+        assert url == data_uri
 
     def test_manual_model_and_url(self):
         c = LLMClient(api_key="sk-xxx", base_url="https://my.api/v1", model="my-model")
