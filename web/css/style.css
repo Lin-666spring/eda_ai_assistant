@@ -223,12 +223,106 @@ body {
   color: var(--text-muted); font-size: 11px; padding: 4px 12px;
   max-width: 100%; text-align: center;
 }
+/* Streaming cursor animation */
+.stream-cursor {
+  display: inline; color: var(--accent); font-weight: 400;
+  animation: blink 0.7s step-end infinite;
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
 .bubble-time {
   font-size: 10px; margin-top: 4px; opacity: 0.5;
 }
 .user .bubble-time { text-align: right; }
 .bubble img {
   max-width: 200px; border-radius: 6px; margin-bottom: 6px; display: block;
+}
+
+/* ── Markdown Content (inside AI bubbles) ── */
+.bubble-ai h1, .bubble-ai h2, .bubble-ai h3, .bubble-ai h4 {
+  font-weight: 600; line-height: 1.4; margin: 12px 0 6px; color: var(--text-primary);
+}
+.bubble-ai h1 { font-size: 18px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+.bubble-ai h2 { font-size: 15px; }
+.bubble-ai h3 { font-size: 14px; }
+.bubble-ai h4 { font-size: 13px; }
+.bubble-ai p { margin: 4px 0 8px; }
+.bubble-ai p:first-child { margin-top: 0; }
+.bubble-ai p:last-child { margin-bottom: 0; }
+
+.bubble-ai ul, .bubble-ai ol {
+  margin: 4px 0 8px; padding-left: 20px;
+}
+.bubble-ai li { margin: 2px 0; line-height: 1.5; }
+.bubble-ai ul ul, .bubble-ai ol ol, .bubble-ai ul ol, .bubble-ai ol ul {
+  margin: 2px 0 2px;
+}
+
+/* Inline code */
+.bubble-ai code {
+  font-family: var(--font-mono); font-size: 12px;
+  background: var(--bg-input); padding: 1px 5px; border-radius: 3px;
+  color: var(--accent); white-space: nowrap;
+}
+
+/* Fenced code block */
+.bubble-ai pre {
+  background: #0d1117; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+  margin: 8px 0; overflow-x: auto; line-height: 1.5;
+}
+.bubble-ai pre code {
+  background: none; padding: 0; color: #e6edf3;
+  white-space: pre; font-size: 12px; border-radius: 0;
+}
+
+/* Tables */
+.bubble-ai table {
+  width: 100%; border-collapse: collapse; margin: 8px 0;
+  font-size: 12px; overflow-x: auto; display: block;
+}
+.bubble-ai thead { border-bottom: 2px solid var(--border); }
+.bubble-ai th {
+  padding: 6px 10px; text-align: left; font-weight: 600;
+  color: var(--text-primary); white-space: nowrap;
+}
+.bubble-ai td {
+  padding: 5px 10px; border-bottom: 1px solid var(--border-light);
+  color: var(--text-secondary);
+}
+.bubble-ai tr:last-child td { border-bottom: none; }
+.bubble-ai tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+/* Blockquote */
+.bubble-ai blockquote {
+  margin: 6px 0; padding: 6px 12px;
+  border-left: 3px solid var(--accent-dim);
+  color: var(--text-secondary); font-style: italic;
+}
+.bubble-ai blockquote p { margin: 2px 0; }
+
+/* Links */
+.bubble-ai a {
+  color: var(--accent); text-decoration: none;
+}
+.bubble-ai a:hover { text-decoration: underline; }
+
+/* Horizontal rule */
+.bubble-ai hr {
+  border: none; border-top: 1px solid var(--border); margin: 10px 0;
+}
+
+/* Strong & emphasis */
+.bubble-ai strong { font-weight: 700; color: var(--text-primary); }
+.bubble-ai em { font-style: italic; }
+
+/* Strikethrough */
+.bubble-ai del { color: var(--text-muted); }
+
+/* Task list */
+.bubble-ai input[type="checkbox"] {
+  margin-right: 6px; accent-color: var(--accent);
 }
 
 /* ════════════════════════════════════

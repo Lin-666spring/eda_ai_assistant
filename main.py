@@ -283,7 +283,22 @@ def toggle_auto_sync() -> dict:
     watcher.watch(path, lambda fp: eel.on_pcb_changed(fp)())
     return {"ok": True, "running": True, "path": path, "msg": f"自动同步已开启 — {path}"}
 
-# ── Streaming is not well-supported by Eel; use sync path for now ──
+@eel.expose
+def send_message_stream(text: str):
+    """Send a chat message with streaming token callbacks to the frontend.
+
+    The controller invokes eel.on_stream_token(token)() for each token,
+    eel.on_stream_done(full_text)() on completion, and
+    eel.on_stream_error(err_msg)() on failure.
+    """
+    try:
+        result = controller.chat_message_stream(
+            text,
+            on_token=lambda token: eel.on_stream_token(token)()
+        )
+        eel.on_stream_done(result)()
+    except Exception as e:
+        eel.on_stream_error(str(e))()
 
 # ══════════════════════════════════════════
 #  Entry point

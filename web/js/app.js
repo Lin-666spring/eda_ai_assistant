@@ -36,9 +36,22 @@ let conversations = {};      // { assistantId: [{ id, title, messages: [] }] }
 let activeConvId = null;     // currently selected conversation id
 let currentImage = null;
 let convCounter = 0;
+let _activeStreamBubble = null;  // streaming bubble controller
+let _streamTokenCount = 0;
 
 // Initialize conversations for each assistant
 Object.keys(ASSISTANTS).forEach(aid => { conversations[aid] = []; });
+
+// ── Marked.js configuration ──
+// Safe defaults: no raw HTML passthrough, GFM tables & task lists enabled
+if (typeof marked !== 'undefined') {
+  marked.setOptions({
+    breaks: true,        // single \n → <br>
+    gfm: true,           // tables, task lists, strikethrough
+    headerIds: false,    // no id attributes on headings
+    mangle: false,       // no email obfuscation
+  });
+}
 
 // ═══════════ Init ═══════════
 
@@ -226,6 +239,9 @@ function renderConversations() {
 // ═══════════ Chat ═══════════
 
 function clearChatMessages() {
+  // Abort any in-progress stream
+  _activeStreamBubble = null;
+  _streamTokenCount = 0;
   const container = document.getElementById('chatMessages');
   container.querySelectorAll('.msg-row,.config-tip').forEach(el => el.remove());
 }
@@ -263,6 +279,12 @@ async function sendChat() {
     renderConversations();
   }
 
+  // Abort any in-progress stream
+  if (_activeStreamBubble) {
+    _activeStreamBubble = null;
+    _streamTokenCount = 0;
+  }
+
   // Show user bubble
   if (hasImage) {
     appendBubbleWithImage('user', userText, currentImage);
@@ -275,29 +297,48 @@ async function sendChat() {
   setStatus('思考中...');
   disableInput(true);
 
-  let resp;
-  try {
-    if (hasImage) {
+  if (hasImage) {
+    // Image analysis: keep non-streaming
+    let resp;
+    try {
       resp = await eel.send_image(userText, currentImage)();
-      currentImage = null; hideImagePreview();
-    } else {
-      resp = await eel.send_message(userText)();
+    } catch(e) {
+      resp = { ok: false, result: '网络错误: ' + e };
     }
-  } catch(e) {
-    resp = { ok: false, result: '网络错误: ' + e };
-  }
+    currentImage = null; hideImagePreview();
+    disableInput(false);
+    setStatus('就绪');
 
-  disableInput(false);
-  setStatus('就绪');
-
-  if (resp && resp.ok) {
-    appendBubble('ai', resp.result);
-    conv.messages.push({ role: 'ai', content: resp.result });
-    showReport(resp.result);
+    if (resp && resp.ok) {
+      appendBubble('ai', resp.result);
+      conv.messages.push({ role: 'ai', content: resp.result });
+      showReport(resp.result);
+    } else {
+      const errMsg = '处理失败: ' + (resp ? resp.result : '未知错误');
+      appendBubble('ai', errMsg);
+      conv.messages.push({ role: 'ai', content: errMsg });
+    }
   } else {
-    const errMsg = '处理失败: ' + (resp ? resp.result : '未知错误');
-    appendBubble('ai', errMsg);
-    conv.messages.push({ role: 'ai', content: errMsg });
+    // Text message: use streaming API
+    _streamTokenCount = 0;
+    _activeStreamBubble = createStreamingBubble();
+    document.getElementById('chatMessages').appendChild(_activeStreamBubble.element);
+    scrollChat();
+
+    try {
+      await eel.send_message_stream(userText)();
+      // on_stream_done callback handles finalization
+    } catch (e) {
+      // Network error: eel call itself failed
+      if (_activeStreamBubble) {
+        _activeStreamBubble.finalize('⚠️ 连接错误: ' + e);
+        const conv2 = getActiveConversation();
+        conv2.messages.push({ role: 'ai', content: _activeStreamBubble.getText() });
+        _activeStreamBubble = null;
+      }
+      disableInput(false);
+      setStatus('错误');
+    }
   }
   renderConversations();
 }
@@ -332,10 +373,30 @@ function appendBubble(type, text) {
   const bubble = document.createElement('div');
   bubble.className = type === 'system' ? 'bubble bubble-system' : `bubble bubble-${type}`;
   const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-  bubble.innerHTML = escapeHtml(text) + `<div class="bubble-time">${time}</div>`;
+
+  if (type === 'ai' && typeof marked !== 'undefined') {
+    // AI responses: render Markdown
+    bubble.innerHTML = renderMarkdown(text) + `<div class="bubble-time">${time}</div>`;
+  } else {
+    // User / system messages: plain text (safe)
+    bubble.innerHTML = escapeHtml(text) + `<div class="bubble-time">${time}</div>`;
+  }
+
   row.appendChild(bubble);
   document.getElementById('chatMessages').appendChild(row);
   scrollChat();
+}
+
+/** Safe markdown render — strips raw HTML tags before parsing */
+function renderMarkdown(text) {
+  if (!text) return '';
+  // Strip raw HTML to prevent XSS, then parse markdown
+  const safe = String(text).replace(/<[^>]*>/g, '');
+  try {
+    return marked.parse(safe);
+  } catch (e) {
+    return escapeHtml(safe);
+  }
 }
 
 function appendBubbleWithImage(type, text, imageDataUrl) {
@@ -352,6 +413,48 @@ function appendBubbleWithImage(type, text, imageDataUrl) {
   row.appendChild(bubble);
   document.getElementById('chatMessages').appendChild(row);
   scrollChat();
+}
+
+// ── Streaming bubble support ──
+
+/** Create a streaming AI bubble that updates incrementally.
+ *  Returns { updateToken(token), finalize(fullText), element } */
+function createStreamingBubble() {
+  showEmptyState(false);
+  const row = document.createElement('div');
+  row.className = 'msg-row ai';
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble bubble-ai streaming';
+  const timeLabel = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+  let buffer = '';
+  let tokenCount = 0;
+  const RERENDER_EVERY = 3;  // throttle: rerender every N tokens
+
+  function rerender() {
+    // Build inner HTML with streamed content + blinking cursor
+    const rendered = renderMarkdown(buffer);
+    const cursor = '<span class="stream-cursor">▍</span>';
+    bubble.innerHTML = rendered + cursor + `<div class="bubble-time">${timeLabel}</div>`;
+  }
+
+  return {
+    element: bubble,
+    updateToken(token) {
+      buffer += token;
+      tokenCount++;
+      if (tokenCount % RERENDER_EVERY === 0) {
+        rerender();
+      }
+    },
+    finalize(fullText) {
+      buffer = fullText || buffer;
+      // Final render: no cursor
+      bubble.innerHTML = renderMarkdown(buffer) + `<div class="bubble-time">${timeLabel}</div>`;
+      bubble.classList.remove('streaming');
+    },
+    getText() { return buffer; },
+  };
 }
 
 function appendSystem(text) {
@@ -639,4 +742,42 @@ function escapeAttr(str) {
 eel.expose(onPCBChanged, 'on_pcb_changed');
 function onPCBChanged(filepath) {
   appendSystem(`📁 检测到 PCB 文件变化: ${filepath}`);
+}
+
+// ── Streaming callbacks (called by Python) ──
+
+eel.expose(onStreamToken, 'on_stream_token');
+function onStreamToken(token) {
+  if (_activeStreamBubble) {
+    _streamTokenCount++;
+    _activeStreamBubble.updateToken(token);
+  }
+}
+
+eel.expose(onStreamDone, 'on_stream_done');
+function onStreamDone(fullText) {
+  if (_activeStreamBubble) {
+    _activeStreamBubble.finalize(fullText);
+    const conv = getActiveConversation();
+    conv.messages.push({ role: 'ai', content: _activeStreamBubble.getText() });
+    showReport(fullText);
+    _activeStreamBubble = null;
+    _streamTokenCount = 0;
+  }
+  disableInput(false);
+  setStatus('就绪');
+  renderConversations();
+}
+
+eel.expose(onStreamError, 'on_stream_error');
+function onStreamError(errorMsg) {
+  if (_activeStreamBubble) {
+    _activeStreamBubble.finalize('⚠️ 流式输出中断: ' + errorMsg);
+    const conv = getActiveConversation();
+    conv.messages.push({ role: 'ai', content: _activeStreamBubble.getText() });
+    _activeStreamBubble = null;
+    _streamTokenCount = 0;
+  }
+  disableInput(false);
+  setStatus('错误');
 }

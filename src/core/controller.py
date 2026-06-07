@@ -349,6 +349,33 @@ class AppController:
                 return result
         return self._local_fallback(user_input)
 
+    def chat_message_stream(self, user_input: str, on_token: Callable[[str], None]) -> str:
+        """自然语言对话（流式），不要求 BOM 预加载，LLM 直接输出 Markdown。
+
+        与 process_input() 的区别：
+        - 不要求 _require_data() — 无需导入 BOM 即可对话
+        - LLM 用自然语言回复（Markdown 格式），而非 JSON 命令解析
+        - 通过 on_token 回调流式输出每个 token
+        - 使用 general 系统提示词，支持多轮对话历史
+
+        Returns:
+            AI 的完整回复文本
+        """
+        if not self.is_agent_available():
+            return self._local_fallback(user_input)
+
+        try:
+            system = PromptTemplates.get_system_prompt("general")
+            raw = self.agent.chat_stream(
+                user_input, system_prompt=system,
+                on_token=on_token, use_history=self._conversation_active,
+            )
+            self._conversation_active = True
+            return raw
+        except Exception:
+            logger.exception("chat_message_stream failed")
+            return "⚠️ AI 调用失败，请检查网络连接和 API 配置。\n\n建议：\n- 检查 API Key 是否正确\n- 检查网络连接是否通畅\n- 检查 API 额度是否充足"
+
     def process_image_input(self, text: str, image_b64: str) -> str:
         """处理带图片的用户输入 — 调用多模态 LLM 分析
 
