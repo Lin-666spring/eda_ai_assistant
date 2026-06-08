@@ -4,61 +4,77 @@
 
 // ═══════════ State ═══════════
 
-const ASSISTANTS = {
+const ASSISTANT_TYPES = {
   'eda-general': {
-    id: 'eda-general', name: 'EDA 通用助手', icon: '(´｡• ᵕ •｡`)',
+    typeId: 'eda-general', name: 'EDA 通用助手', icon: '(´｡• ᵕ •｡`)',
     systemPrompt: 'general',
     quickActions: ['合并 BOM', '校验封装', '设计规则', 'BOM健康'],
     description: 'BOM管理、设计规则检查、PCB分析的通用助手',
   },
   'bom-expert': {
-    id: 'bom-expert', name: 'BOM 管理专家', icon: '( •̀ᴗ•́ )و',
+    typeId: 'bom-expert', name: 'BOM 管理专家', icon: '( •̀ᴗ•́ )و',
     systemPrompt: 'bom',
     quickActions: ['合并 BOM', 'AI智能合并', '校验封装', '查重', 'BOM健康', '生成 HTML'],
     description: '专注于物料清单管理、合并、验证和供应链检查',
   },
   'pcb-reviewer': {
-    id: 'pcb-reviewer', name: 'PCB 设计审查', icon: '(｡･ω･｡)',
+    typeId: 'pcb-reviewer', name: 'PCB 设计审查', icon: '(｡･ω･｡)',
     systemPrompt: 'pcb',
     quickActions: ['设计规则', '分析PCB', '检查走线', '查看PCB'],
     description: '专注于PCB布局分析、设计规则检查和信号完整性',
   },
   'vision-analyst': {
-    id: 'vision-analyst', name: '视觉分析', icon: '(=^･^=)',
+    typeId: 'vision-analyst', name: '视觉分析助手', icon: '(=^･^=)',
     systemPrompt: 'vision',
     quickActions: ['分析图片'],
     description: '上传PCB截图或原理图进行AI视觉分析',
   },
 };
 
-let currentAssistant = 'eda-general';
-let conversations = {};      // { assistantId: [{ id, title, messages: [] }] }
-let activeConvId = null;     // currently selected conversation id
-let currentImage = null;
-let convCounter = 0;
-let _activeStreamBubble = null;  // streaming bubble controller
-let _streamTokenCount = 0;
+// ── Assistant instances (multi-instance model) ──
+let assistantInstances = [];   // [{ instanceId, typeId, customName? }]
+let currentAssistantInstance = null;  // instanceId
+let instanceCounter = 0;
 
-// Initialize conversations for each assistant
-Object.keys(ASSISTANTS).forEach(aid => { conversations[aid] = []; });
+// ── Conversations per instance ──
+let conversations = {};        // { instanceId: [{ id, title, messages: [] }] }
+let activeConvId = null;
+let convCounter = 0;
+
+// ── UI state ──
+let sidebarTab = 'assistants'; // 'assistants' | 'topics'
+let currentImage = null;
+let _activeStreamBubble = null;
+let _streamTokenCount = 0;
+let agentMode = false;
+
+function createAssistantInstance(typeId, customName) {
+  const type = ASSISTANT_TYPES[typeId];
+  if (!type) return null;
+  instanceCounter++;
+  const inst = {
+    instanceId: `asst_${Date.now()}_${instanceCounter}`,
+    typeId: typeId,
+    name: customName || type.name,
+  };
+  assistantInstances.push(inst);
+  _persistAssistant(inst);
+  return inst;
+}
 
 // ── Marked.js configuration ──
-// Safe defaults: no raw HTML passthrough, GFM tables & task lists enabled
 if (typeof marked !== 'undefined') {
   marked.setOptions({
-    breaks: true,        // single \n → <br>
-    gfm: true,           // tables, task lists, strikethrough
-    headerIds: false,    // no id attributes on headings
-    mangle: false,       // no email obfuscation
+    breaks: true, gfm: true, headerIds: false, mangle: false,
   });
 }
 
 // ═══════════ Init ═══════════
 
 document.addEventListener('DOMContentLoaded', async () => {
+  await loadPersistedState();
   renderAssistants();
   renderConversations();
-  selectAssistant('eda-general');
 
   // Theme
   try {
@@ -82,11 +98,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
   });
-  // Auto-resize textarea
-  input.addEventListener('input', () => {
-    input.style.height = 'auto';
-    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
-  });
 
   // Paste image
   document.addEventListener('paste', e => {
@@ -105,27 +116,150 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
+// ═══════════ Persistence ═══════════
+
+async function loadPersistedState() {
+  let resp;
+  try { resp = await eel.db_load_all()(); } catch(e) { return; }
+  if (!resp || !resp.ok || !resp.data) return;
+
+  const { assistants: saved, conversations: savedConvs, active_assistant, active_conv } = resp.data;
+
+  // 无持久化数据 → 保持空白状态
+  if (!saved || saved.length === 0) return;
+
+  // 恢复助手实例
+  assistantInstances = saved.map(a => ({
+    instanceId: a.instance_id,
+    typeId: a.type_id,
+    name: a.name,
+  }));
+  conversations = {};
+  saved.forEach(a => {
+    conversations[a.instance_id] = savedConvs[a.instance_id] || [];
+  });
+
+  // 恢复活跃状态
+  if (active_assistant && assistantInstances.find(i => i.instanceId === active_assistant)) {
+    currentAssistantInstance = active_assistant;
+  } else {
+    currentAssistantInstance = assistantInstances[0].instanceId;
+  }
+
+  updateChatHeader();
+  renderQuickActions();
+
+  // 恢复当前对话
+  const convs = conversations[currentAssistantInstance] || [];
+  if (active_conv && convs.find(c => c.id === active_conv)) {
+    activeConvId = active_conv;
+    await restoreConversationMessages(active_conv);
+  } else if (convs.length > 0) {
+    activeConvId = convs[0].id;
+    await restoreConversationMessages(convs[0].id);
+  }
+}
+
+async function restoreConversationMessages(convId) {
+  showEmptyState(false);
+  let resp;
+  try { resp = await eel.db_load_messages(convId)(); } catch(e) { return; }
+  if (!resp || !resp.ok) return;
+  const msgs = resp.messages || [];
+  msgs.forEach(m => {
+    if (m.image) {
+      appendBubbleWithImage(m.role, m.content, m.image);
+    } else {
+      appendBubble(m.role, m.content);
+    }
+  });
+}
+
+// ── Fire-and-forget persistence helpers ──
+
+function _persistAssistant(inst) {
+  try { eel.db_save_assistant(inst.instanceId, inst.typeId, inst.name)(); } catch(e) {}
+}
+
+function _persistDeleteAssistant(instanceId) {
+  try { eel.db_delete_assistant(instanceId)(); } catch(e) {}
+}
+
+function _persistConversation(conv) {
+  const inst = assistantInstances.find(i => i.instanceId === currentAssistantInstance);
+  if (!inst) return;
+  try { eel.db_save_conversation(conv.id, inst.instanceId, conv.title)(); } catch(e) {}
+}
+
+function _persistDeleteConversation(convId) {
+  try { eel.db_delete_conversation(convId)(); } catch(e) {}
+}
+
+function _persistMessage(convId, role, content, image) {
+  try { eel.db_save_message(convId, role, content, image || '')(); } catch(e) {}
+}
+
+function _persistState() {
+  try { eel.db_save_active_state(
+    currentAssistantInstance || '',
+    activeConvId || ''
+  )(); } catch(e) {}
+}
+
+// ═══════════ Sidebar Tabs ═══════════
+
+function switchSidebarTab(tab) {
+  sidebarTab = tab;
+  document.querySelectorAll('.sidebar-tab').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.sidebar-tab[data-tab="${tab}"]`).classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(tab === 'assistants' ? 'sidebarAssistants' : 'sidebarTopics').classList.add('active');
+}
+
 // ═══════════ Assistant Management ═══════════
+
+function getActiveAssistant() {
+  const inst = assistantInstances.find(i => i.instanceId === currentAssistantInstance);
+  if (!inst) return null;
+  const type = ASSISTANT_TYPES[inst.typeId];
+  return { ...type, instanceId: inst.instanceId, name: inst.name };
+}
 
 function renderAssistants() {
   const container = document.getElementById('assistantList');
-  container.innerHTML = Object.values(ASSISTANTS).map(a => `
-    <div class="sb-item ${a.id === currentAssistant ? 'active' : ''}"
-         onclick="selectAssistant('${a.id}')" title="${a.description}">
-      <span class="sb-item-icon">${a.icon}</span>
-      <span class="sb-item-name">${a.name}</span>
-    </div>
-  `).join('');
+  if (assistantInstances.length === 0) {
+    container.innerHTML = '<div class="sidebar-empty">点击 + 新建助手</div>';
+    return;
+  }
+  container.innerHTML = assistantInstances.map(inst => {
+    const type = ASSISTANT_TYPES[inst.typeId];
+    if (!type) return '';
+    const active = inst.instanceId === currentAssistantInstance ? 'active' : '';
+    return `
+      <div class="sb-item ${active}"
+           onclick="selectAssistant('${inst.instanceId}')" title="${type.description}">
+        <span class="sb-item-icon">${type.icon}</span>
+        <span class="sb-item-name">${inst.name}</span>
+        <button class="sb-item-del" onclick="deleteAssistant('${inst.instanceId}', event)" title="删除助手">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+        </button>
+      </div>
+    `;
+  }).join('');
 }
 
-function selectAssistant(id) {
-  currentAssistant = id;
+function selectAssistant(instanceId) {
+  currentAssistantInstance = instanceId;
+  if (!conversations[instanceId]) conversations[instanceId] = [];
+  const inst = assistantInstances.find(i => i.instanceId === instanceId);
+  if (inst) {
+    try { eel.set_active_assistant(inst.typeId)(); } catch(e) {}
+  }
+  _persistState();
   renderAssistants();
   renderConversations();
   updateChatHeader();
-
-  // Auto-select first conversation or show empty state
-  const convs = conversations[id] || [];
+  const convs = conversations[instanceId] || [];
   if (convs.length > 0) {
     switchConversation(convs[0].id);
   } else {
@@ -133,33 +267,152 @@ function selectAssistant(id) {
     showEmptyState(true);
     document.getElementById('chatMessages').querySelectorAll('.msg-row').forEach(el => el.remove());
   }
-
-  // Update quick actions
   renderQuickActions();
 }
 
+function deleteAssistant(instanceId, event) {
+  event.stopPropagation();
+  const inst = assistantInstances.find(i => i.instanceId === instanceId);
+  const name = inst ? inst.name : '此助手';
+  showConfirmDialog({
+    title: '删除助手',
+    message: `确定要删除「${name}」吗？\n该助手的对话记录也会被清除。`,
+    okText: '删除',
+    onOk: () => {
+      _persistDeleteAssistant(instanceId);
+      assistantInstances = assistantInstances.filter(i => i.instanceId !== instanceId);
+      delete conversations[instanceId];
+      if (currentAssistantInstance === instanceId) {
+        if (assistantInstances.length > 0) {
+          currentAssistantInstance = assistantInstances[0].instanceId;
+          selectAssistant(currentAssistantInstance);
+        } else {
+          currentAssistantInstance = null;
+          activeConvId = null;
+          clearChatMessages();
+          showEmptyState(true);
+          updateChatHeader();
+          renderQuickActions();
+        }
+      }
+      _persistState();
+      renderAssistants();
+    },
+  });
+}
+
 function updateChatHeader() {
-  const a = ASSISTANTS[currentAssistant];
+  const a = getActiveAssistant();
+  if (!a) {
+    document.getElementById('assistantIcon').textContent = '';
+    document.getElementById('assistantName').textContent = '新建助手以开始';
+    return;
+  }
   document.getElementById('assistantIcon').textContent = a.icon;
   document.getElementById('assistantName').textContent = a.name;
 }
 
-function switchAssistant(id) {
-  selectAssistant(id);
+function switchAssistant(instanceId) {
+  if (instanceId) selectAssistant(instanceId);
 }
 
+function toggleAgentMode() {
+  agentMode = !agentMode;
+  const btn = document.getElementById('agentToggle');
+  const input = document.getElementById('chatInput');
+  if (agentMode) {
+    btn.classList.add('active');
+    input.placeholder = 'Agent 模式 — 描述你的目标，AI 自主规划执行...';
+  } else {
+    btn.classList.remove('active');
+    input.placeholder = '输入指令... (Enter 发送, Shift+Enter 换行)';
+  }
+}
+
+// ═══════════ Window Mode ═══════════
+
+let companionMode = false;
+
+async function toggleWindowMode() {
+  companionMode = !companionMode;
+  applyWindowMode();
+  try { eel.request_window_toggle()(); } catch(e) {}
+}
+
+function applyWindowMode() {
+  const btn = document.getElementById('modeToggleBtn');
+  if (companionMode) {
+    document.body.classList.add('companion-mode');
+    btn.classList.add('active');
+    window.resizeTo(380, 540);
+    window.moveTo(screen.width - 400, 40);
+  } else {
+    document.body.classList.remove('companion-mode');
+    btn.classList.remove('active');
+    window.resizeTo(1300, 840);
+    window.moveTo(40, 40);
+  }
+}
+
+// Poll Python-side hotkey/tray toggle requests
+setInterval(async () => {
+  try {
+    const resp = await eel.poll_toggle()();
+    if (resp && resp.ok && resp.toggled) {
+      companionMode = resp.companion;
+      applyWindowMode();
+    }
+  } catch(e) {}
+}, 500);
+
 function renderQuickActions() {
-  const a = ASSISTANTS[currentAssistant];
+  const a = getActiveAssistant();
   const container = document.getElementById('quickActions');
+  if (!a) { container.innerHTML = ''; return; }
   container.innerHTML = (a.quickActions || []).map(cmd =>
     `<button class="qa-btn" onclick="quickCmd('${cmd}')">${cmd}</button>`
   ).join('');
 }
 
+// ═══════════ New Assistant Dialog ═══════════
+
+function showNewAssistantDialog() {
+  const grid = document.getElementById('assistantTypeList');
+  grid.innerHTML = Object.values(ASSISTANT_TYPES).map(type => `
+    <div class="assistant-type-card" onclick="createAssistantFromDialog('${type.typeId}')">
+      <span class="assistant-type-icon">${type.icon}</span>
+      <div class="assistant-type-name">${type.name}</div>
+      <div class="assistant-type-desc">${type.description}</div>
+    </div>
+  `).join('');
+  document.getElementById('newAssistantOverlay').classList.add('show');
+}
+
+function closeNewAssistantDialog() {
+  document.getElementById('newAssistantOverlay').classList.remove('show');
+}
+
+function createAssistantFromDialog(typeId) {
+  const inst = createAssistantInstance(typeId);
+  if (!inst) return;
+  conversations[inst.instanceId] = [];
+  closeNewAssistantDialog();
+  selectAssistant(inst.instanceId);
+  // Switch to topics tab and auto-create first conversation
+  switchSidebarTab('topics');
+  newConversation();
+}
+
 // ═══════════ Conversation Management ═══════════
 
 function newConversation() {
-  const convs = conversations[currentAssistant];
+  if (!currentAssistantInstance) {
+    // No assistant yet — prompt user to create one
+    showNewAssistantDialog();
+    return;
+  }
+  if (!conversations[currentAssistantInstance]) conversations[currentAssistantInstance] = [];
+  const convs = conversations[currentAssistantInstance];
   convCounter++;
   const conv = {
     id: `conv_${Date.now()}_${convCounter}`,
@@ -168,6 +421,8 @@ function newConversation() {
   };
   convs.unshift(conv);
   activeConvId = conv.id;
+  _persistConversation(conv);
+  _persistState();
   renderConversations();
   clearChatMessages();
   showEmptyState(true);
@@ -176,6 +431,7 @@ function newConversation() {
 
 function switchConversation(convId) {
   activeConvId = convId;
+  _persistState();
   renderConversations();
   clearChatMessages();
   showEmptyState(false);
@@ -191,21 +447,32 @@ function switchConversation(convId) {
 
 function deleteConversation(convId, event) {
   event.stopPropagation();
-  const convs = conversations[currentAssistant];
-  const idx = convs.findIndex(c => c.id === convId);
-  if (idx < 0) return;
-  convs.splice(idx, 1);
+  const conv = findConversation(convId);
+  const title = conv ? conv.title : '此对话';
+  showConfirmDialog({
+    title: '删除对话',
+    message: `确定要删除「${title}」吗？\n删除后无法恢复。`,
+    okText: '删除',
+    onOk: () => {
+      _persistDeleteConversation(convId);
+      const convs = conversations[currentAssistantInstance];
+      const idx = convs.findIndex(c => c.id === convId);
+      if (idx < 0) return;
+      convs.splice(idx, 1);
 
-  if (activeConvId === convId) {
-    if (convs.length > 0) {
-      switchConversation(convs[0].id);
-    } else {
-      activeConvId = null;
-      clearChatMessages();
-      showEmptyState(true);
-    }
-  }
-  renderConversations();
+      if (activeConvId === convId) {
+        if (convs.length > 0) {
+          switchConversation(convs[0].id);
+        } else {
+          activeConvId = null;
+          clearChatMessages();
+          showEmptyState(true);
+        }
+      }
+      _persistState();
+      renderConversations();
+    },
+  });
 }
 
 function findConversation(convId) {
@@ -225,13 +492,25 @@ function getActiveConversation() {
 
 function renderConversations() {
   const container = document.getElementById('conversationList');
-  const convs = conversations[currentAssistant] || [];
+  if (!currentAssistantInstance) {
+    container.innerHTML = '<div class="sidebar-empty">请先新建助手</div>';
+    return;
+  }
+  const convs = conversations[currentAssistantInstance] || [];
+  if (convs.length === 0) {
+    container.innerHTML = '<div class="sidebar-empty">暂无对话</div>';
+    return;
+  }
   container.innerHTML = convs.map(c => `
     <div class="sb-item ${c.id === activeConvId ? 'active' : ''}"
          onclick="switchConversation('${c.id}')" title="${escapeAttr(c.title)}">
-      <span class="sb-item-icon">▸</span>
+      <span class="sb-item-icon">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,3 11,8 6,13"/></svg>
+      </span>
       <span class="sb-item-name">${escapeHtml(c.title)}</span>
-      <button class="sb-item-del" onclick="deleteConversation('${c.id}', event)">✕</button>
+      <button class="sb-item-del" onclick="deleteConversation('${c.id}', event)" title="删除">
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+      </button>
     </div>
   `).join('');
 }
@@ -272,10 +551,12 @@ async function sendChat() {
 
   // Get or create conversation
   const conv = getActiveConversation();
+  if (!conv) return;  // No assistant yet — newConversation showed the dialog
 
   // Update title from first message
   if (conv.messages.length === 0) {
     conv.title = userText.substring(0, 30) + (userText.length > 30 ? '...' : '');
+    _persistConversation(conv);
     renderConversations();
   }
 
@@ -289,9 +570,11 @@ async function sendChat() {
   if (hasImage) {
     appendBubbleWithImage('user', userText, currentImage);
     conv.messages.push({ role: 'user', content: userText, image: currentImage });
+    _persistMessage(activeConvId, 'user', userText, currentImage);
   } else {
     appendBubble('user', userText);
     conv.messages.push({ role: 'user', content: userText });
+    _persistMessage(activeConvId, 'user', userText);
   }
 
   setStatus('思考中...');
@@ -312,21 +595,27 @@ async function sendChat() {
     if (resp && resp.ok) {
       appendBubble('ai', resp.result);
       conv.messages.push({ role: 'ai', content: resp.result });
+      _persistMessage(activeConvId, 'ai', resp.result);
       showReport(resp.result);
     } else {
       const errMsg = '处理失败: ' + (resp ? resp.result : '未知错误');
       appendBubble('ai', errMsg);
       conv.messages.push({ role: 'ai', content: errMsg });
+      _persistMessage(activeConvId, 'ai', errMsg);
     }
   } else {
-    // Text message: use streaming API
+    // Text message: use streaming API or Agent Loop
     _streamTokenCount = 0;
     _activeStreamBubble = createStreamingBubble();
     document.getElementById('chatMessages').appendChild(_activeStreamBubble.element);
     scrollChat();
 
     try {
-      await eel.send_message_stream(userText)();
+      if (agentMode) {
+        await eel.send_message_agent(userText)();
+      } else {
+        await eel.send_message_stream(userText)();
+      }
       // on_stream_done callback handles finalization
     } catch (e) {
       // Network error: eel call itself failed
@@ -617,7 +906,18 @@ function switchTab(name) {
 }
 
 function toggleRightPanel() {
-  document.getElementById('rightPanel').classList.toggle('collapsed');
+  const panel = document.getElementById('rightPanel');
+  const btn = document.getElementById('panelToggleBtn');
+  const collapsed = panel.classList.toggle('collapsed');
+  const chevronRight = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,3 11,8 6,13"/></svg>';
+  const chevronLeft  = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="10,3 5,8 10,13"/></svg>';
+  if (collapsed) {
+    btn.innerHTML = chevronLeft;
+    btn.classList.add('collapsed');
+  } else {
+    btn.innerHTML = chevronRight;
+    btn.classList.remove('collapsed');
+  }
 }
 
 // ═══════════ Theme ═══════════
@@ -738,6 +1038,42 @@ function escapeAttr(str) {
   return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// ═══════════ Confirm Dialog ═══════════
+
+let _confirmCallback = null;
+
+function showConfirmDialog({ title, message, okText, onOk }) {
+  document.getElementById('confirmTitle').textContent = title || '确认操作';
+  document.getElementById('confirmMessage').textContent = message || '';
+  const okBtn = document.getElementById('confirmOkBtn');
+  okBtn.textContent = okText || '确定';
+  _confirmCallback = onOk || null;
+  okBtn.onclick = () => {
+    const cb = _confirmCallback;
+    closeConfirmDialog();
+    if (cb) cb();
+  };
+  document.getElementById('confirmOverlay').classList.add('show');
+  // Focus the cancel button by default (safer)
+  document.getElementById('confirmCancelBtn').focus();
+}
+
+function closeConfirmDialog() {
+  document.getElementById('confirmOverlay').classList.remove('show');
+  _confirmCallback = null;
+}
+
+// Close on Escape key
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('confirmOverlay').classList.contains('show')) {
+      closeConfirmDialog();
+    } else if (document.getElementById('newAssistantOverlay').classList.contains('show')) {
+      closeNewAssistantDialog();
+    }
+  }
+});
+
 // Called by Python file watcher
 eel.expose(onPCBChanged, 'on_pcb_changed');
 function onPCBChanged(filepath) {
@@ -760,6 +1096,7 @@ function onStreamDone(fullText) {
     _activeStreamBubble.finalize(fullText);
     const conv = getActiveConversation();
     conv.messages.push({ role: 'ai', content: _activeStreamBubble.getText() });
+    _persistMessage(activeConvId, 'ai', _activeStreamBubble.getText());
     showReport(fullText);
     _activeStreamBubble = null;
     _streamTokenCount = 0;

@@ -72,6 +72,7 @@ class AppController:
             base_url=config.llm.base_url,
             model=config.llm.model,
             provider=config.llm.provider,
+            tool_executor=self._dispatch_operation,
         ) if _is_key_usable(effective_key) else None
         self.router = LLMRouter.from_config(effective_key) if _is_key_usable(effective_key) else None
         self.parser = BOMParser()
@@ -88,6 +89,7 @@ class AppController:
                 base_url=base_url or None,
                 model=model or None,
                 provider=provider,
+                tool_executor=self._dispatch_operation,
             )
             self.router = LLMRouter.from_config(api_key)
         else:
@@ -375,6 +377,62 @@ class AppController:
         except Exception:
             logger.exception("chat_message_stream failed")
             return "⚠️ AI 调用失败，请检查网络连接和 API 配置。\n\n建议：\n- 检查 API Key 是否正确\n- 检查网络连接是否通畅\n- 检查 API 额度是否充足"
+
+    def agent_loop(
+        self,
+        user_input: str,
+        on_token: Optional[Callable[[str], None]] = None,
+        max_iterations: int = 5,
+    ) -> str:
+        """Function Calling Agent Loop — LLM 自主选择工具，多步推理
+
+        与 process_input() 的区别：
+        - process_input: 意图分类 → 命令解析 → 执行一个操作 → 返回
+        - agent_loop:    LLM 每轮自主决定调用哪些工具 → 执行 → 基于结果
+                         继续推理 → 循环直到 LLM 输出文本回复
+
+        适用场景：需要多步操作的复杂任务，如
+        - "检查BOM健康，对缺货的元件找替代料"
+        - "合并BOM，然后验证封装，最后生成HTML报告"
+
+        Args:
+            user_input: 用户输入
+            on_token: 流式输出回调（最终文本回复时逐 token 回调）
+            max_iterations: 最大工具调用轮数
+
+        Returns:
+            LLM 的最终文本回复
+        """
+        if not self.is_agent_available():
+            return "⚠️ Agent Loop 需要配置 AI 模型。请在设置中配置 API Key。"
+
+        try:
+            from src.agent.tools import ToolRegistry
+            from src.agent.prompt_templates import PromptTemplates
+
+            functions = ToolRegistry.get_function_definitions()
+            system = PromptTemplates.get_system_prompt("agent")
+
+            # 注入 tool_executor（确保热重载后仍有效）
+            if self.agent.tool_executor is None:
+                self.agent.tool_executor = self._dispatch_operation
+
+            result = self.agent.chat_with_tools(
+                user_message=user_input,
+                functions=functions,
+                system_prompt=system,
+                on_token=on_token,
+                use_history=self._conversation_active,
+                max_iterations=max_iterations,
+            )
+            self._conversation_active = True
+            return result
+        except RuntimeError as e:
+            logger.exception("Agent loop runtime error")
+            return f"⚠️ Agent Loop 错误: {e}"
+        except Exception:
+            logger.exception("Agent loop failed")
+            return "⚠️ Agent Loop 调用失败，请检查网络连接和 API 配置。"
 
     def process_image_input(self, text: str, image_b64: str) -> str:
         """处理带图片的用户输入 — 调用多模态 LLM 分析

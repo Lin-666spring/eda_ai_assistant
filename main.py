@@ -13,6 +13,8 @@ from pathlib import Path
 
 import eel
 
+logger = logging.getLogger(__name__)
+
 # Handle PyInstaller bundle
 if getattr(sys, 'frozen', False):
     PROJECT_ROOT = Path(sys._MEIPASS)
@@ -300,6 +302,171 @@ def send_message_stream(text: str):
     except Exception as e:
         eel.on_stream_error(str(e))()
 
+
+@eel.expose
+def send_message_agent(text: str):
+    """Send a chat message via Agent Loop — LLM autonomously selects and calls tools.
+
+    The LLM receives the full tool list (Function Calling), decides which tools
+    to call, executes them, and iterates until it has a final answer.
+
+    Streaming: on_stream_token is called for the final text response (simulated
+    token-by-token output). Tool execution happens before streaming begins.
+    """
+    try:
+        result = controller.agent_loop(
+            text,
+            on_token=lambda token: eel.on_stream_token(token)()
+        )
+        eel.on_stream_done(result)()
+    except Exception as e:
+        eel.on_stream_error(str(e))()
+
+# ══════════════════════════════════════════
+#  Persistence API (SQLite session store)
+# ══════════════════════════════════════════
+
+from src.core.persistence import SessionStore
+
+_store = SessionStore()
+
+
+@eel.expose
+def db_load_all() -> dict:
+    """启动时加载全部持久化数据"""
+    try:
+        data = _store.load_all()
+        logger.info("DB load_all: %d assistants", len(data.get("assistants", [])))
+        return {"ok": True, "data": data}
+    except Exception as e:
+        logger.exception("db_load_all failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def db_save_assistant(instance_id: str, type_id: str, name: str, sort_order: int = 0):
+    """保存新助手"""
+    try:
+        _store.save_assistant(instance_id, type_id, name, sort_order)
+        _store.save_state("active_assistant", instance_id)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("db_save_assistant failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def db_delete_assistant(instance_id: str):
+    """删除助手及其对话"""
+    try:
+        _store.delete_assistant(instance_id)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("db_delete_assistant failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def db_save_conversation(conv_id: str, instance_id: str, title: str = "新对话"):
+    """保存新对话"""
+    try:
+        _store.save_conversation(conv_id, instance_id, title)
+        _store.save_state("active_conv", conv_id)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("db_save_conversation failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def db_delete_conversation(conv_id: str):
+    """删除对话及其消息"""
+    try:
+        _store.delete_conversation(conv_id)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("db_delete_conversation failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def db_save_message(conv_id: str, role: str, content: str, image: str = "", seq: int = 0):
+    """保存单条消息"""
+    try:
+        _store.save_message(conv_id, role, content, image or None, seq)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("db_save_message failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def db_load_messages(conv_id: str) -> dict:
+    """加载指定对话的历史消息"""
+    try:
+        messages = _store.load_messages(conv_id)
+        return {
+            "ok": True,
+            "messages": [
+                {"role": m.role, "content": m.content, "image": m.image or ""}
+                for m in messages
+            ],
+        }
+    except Exception as e:
+        logger.exception("db_load_messages failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def db_save_active_state(active_assistant: str = "", active_conv: str = ""):
+    """保存当前活跃的助手和对话"""
+    try:
+        if active_assistant:
+            _store.save_state("active_assistant", active_assistant)
+        if active_conv:
+            _store.save_state("active_conv", active_conv)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("db_save_active_state failed")
+        return {"ok": False, "msg": str(e)}
+
+
+# ══════════════════════════════════════════
+#  System bridge (hotkey / tray / window mode)
+# ══════════════════════════════════════════
+
+from src.core.system_bridge import (
+    consume_toggle, start_hotkey_listener, start_tray, stop_tray,
+    is_companion_mode, request_toggle,
+)
+
+
+@eel.expose
+def poll_toggle() -> dict:
+    """JS 轮询：是否有待处理的模式切换"""
+    try:
+        toggled = consume_toggle()
+        return {"ok": True, "toggled": toggled, "companion": is_companion_mode()}
+    except Exception as e:
+        return {"ok": False, "toggled": False, "companion": False}
+
+
+@eel.expose
+def get_window_mode() -> dict:
+    """获取当前窗口模式"""
+    return {"companion": is_companion_mode()}
+
+
+@eel.expose
+def request_window_toggle():
+    """JS 主动请求窗口模式切换"""
+    try:
+        request_toggle()
+        return {"ok": True, "companion": is_companion_mode()}
+    except Exception as e:
+        return {"ok": False}
+
+
 # ══════════════════════════════════════════
 #  Entry point
 # ══════════════════════════════════════════
@@ -309,6 +476,14 @@ def main():
     logger = logging.getLogger(__name__)
     logger.info("启动 EDA AI 智能助手 (Eel)...")
 
+    # 启动全局热键
+    start_hotkey_listener()
+
+    # 启动系统托盘
+    show_cb = lambda: request_toggle()  # 托盘"显示/隐藏" → 切换模式
+    exit_cb = lambda: None  # 退出回调由 eel 结束后处理
+    start_tray(show_callback=show_cb, exit_callback=exit_cb)
+
     try:
         eel.start("index.html", mode="chrome",
                   size=(1300, 840), port=0, block=True)
@@ -316,6 +491,8 @@ def main():
         logger.info("Chrome not found, trying Edge...")
         eel.start("index.html", mode="edge",
                   size=(1300, 840), port=0, block=True)
+    finally:
+        stop_tray()
 
 
 def setup_logging(debug: bool = False):

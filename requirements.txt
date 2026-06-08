@@ -25,6 +25,11 @@ pyinstaller>=5.0.0       # 生成 Windows 可执行文件
 # ── 文件监听 ──
 watchdog>=3.0.0
 
+# ── 系统交互 ──
+pynput>=1.7.0            # 全局快捷键
+pystray>=0.19.0          # 系统托盘
+Pillow>=9.0.0            # 托盘图标生成 (pystray 依赖)
+
 # ── 开发/测试 ──
 pytest>=7.0.0
 pytest-qt>=4.2.0         # PyQt5 测试支持

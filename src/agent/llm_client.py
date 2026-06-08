@@ -122,6 +122,7 @@ class LLMClient:
         base_url: Optional[str] = None,
         model: Optional[str] = None,
         provider: Optional[str] = None,
+        tool_executor: Optional[Callable[[str, dict], str]] = None,
     ):
         self.api_key = api_key
         resolved_url, resolved_model = resolve_provider(provider, base_url, model)
@@ -129,6 +130,7 @@ class LLMClient:
         self.model = resolved_model
         self.provider_name = provider or DEFAULT_PROVIDER
         self._history: list[dict] = []
+        self.tool_executor = tool_executor
 
     @property
     def provider_label(self) -> str:
@@ -255,6 +257,125 @@ class LLMClient:
         )
         response = self._post(payload)
         return _parse_tool_call_from_response(response)
+
+    def chat_with_tools(
+        self,
+        user_message: str,
+        functions: list[dict],
+        system_prompt: Optional[str] = None,
+        on_token: Optional[Callable[[str], None]] = None,
+        use_history: bool = False,
+        max_iterations: int = 5,
+    ) -> str:
+        """多轮 Function Calling Agent Loop
+
+        LLM 在每轮中决定调用工具或直接回复文本。工具执行结果会
+        作为 tool 消息追加回对话，LLM 可以基于结果继续推理。
+
+        Args:
+            user_message: 用户输入
+            functions: OpenAI 兼容的 function definitions
+            system_prompt: 系统提示词
+            on_token: 流式输出回调（最终文本回复时模拟流式 token 输出）
+            use_history: 是否附带历史对话
+            max_iterations: 最大工具调用轮数（防止无限循环）
+
+        Returns:
+            LLM 的最终文本回复
+        """
+        if self.tool_executor is None:
+            raise RuntimeError(
+                "LLMClient.tool_executor not set — Agent Loop requires a tool executor. "
+                "Pass tool_executor=<callable> to LLMClient(...) or set client.tool_executor manually."
+            )
+
+        # 构建初始 messages（含历史 + 当前用户输入）
+        messages: list[dict] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        if use_history:
+            messages.extend(self._history[-self.HISTORY_MAX_TURNS * 2:])
+        messages.append({"role": "user", "content": user_message})
+
+        iteration = 0
+        last_results: list[str] = []  # 收集所有工具执行结果
+
+        while iteration < max_iterations:
+            iteration += 1
+            payload = self._build_tool_payload(messages, functions)
+            response = self._post(payload)
+            msg = response["choices"][0]["message"]
+
+            # 情况1：LLM 要求调用工具
+            if msg.get("tool_calls"):
+                # 记录 assistant 消息（含 tool_calls）
+                messages.append({
+                    "role": "assistant",
+                    "content": msg.get("content"),
+                    "tool_calls": msg["tool_calls"],
+                })
+
+                for tc in msg["tool_calls"]:
+                    func_name = tc["function"]["name"]
+                    try:
+                        func_args = json.loads(tc["function"]["arguments"])
+                    except json.JSONDecodeError:
+                        func_args = {}
+                    try:
+                        result = self.tool_executor(func_name, func_args)
+                        last_results.append(f"[{func_name}] {result}")
+                        logger.info(
+                            "Agent tool: %s(%s) → %s",
+                            func_name,
+                            json.dumps(func_args, ensure_ascii=False),
+                            result[:120],
+                        )
+                    except Exception as exc:
+                        result = f"工具执行失败: {exc}"
+                        logger.error("Tool %s failed: %s", func_name, exc)
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc["id"],
+                        "content": result,
+                    })
+                continue  # 回到循环顶部，让 LLM 消化工具结果
+
+            # 情况2：LLM 返回纯文本（最终回复）
+            full_text = msg.get("content", "")
+            if on_token and full_text:
+                # 模拟流式输出：字符级分块
+                chunk_size = 3
+                for i in range(0, len(full_text), chunk_size):
+                    on_token(full_text[i:i + chunk_size])
+            self._record_turn(user_message, full_text)
+            return full_text
+
+        # 超出 max_iterations → 返回工具执行结果摘要
+        logger.warning(
+            "Agent loop hit max_iterations=%d after %d tool calls",
+            max_iterations, iteration,
+        )
+        summary = "⚠️ 已达到最大操作步数限制。以下是我已完成的操作：\n\n"
+        summary += "\n".join(f"{i}. {r}" for i, r in enumerate(last_results, 1))
+        if on_token:
+            for i in range(0, len(summary), 3):
+                on_token(summary[i:i + 3])
+        self._record_turn(user_message, summary)
+        return summary
+
+    def _build_tool_payload(self, messages: list[dict], functions: list[dict]) -> dict:
+        """构建带 tools 参数的 API 请求体"""
+        # 转换 function definitions 为 tools 格式
+        tools = [{"type": "function", "function": f["function"]} for f in functions]
+        return {
+            "model": self.model,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 4096,
+            "stream": False,
+            "tools": tools,
+            "tool_choice": "auto",
+        }
 
     def clear_history(self):
         self._history.clear()
