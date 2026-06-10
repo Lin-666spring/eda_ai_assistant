@@ -620,7 +620,7 @@ async function sendChat() {
     } catch (e) {
       // Network error: eel call itself failed
       if (_activeStreamBubble) {
-        _activeStreamBubble.finalize('⚠️ 连接错误: ' + e);
+        _activeStreamBubble.finalize(' 连接错误: ' + e);
         const conv2 = getActiveConversation();
         conv2.messages.push({ role: 'ai', content: _activeStreamBubble.getText() });
         _activeStreamBubble = null;
@@ -862,7 +862,7 @@ function onFileSelected(type, input) {
     try {
       if (type === 'bom') {
         const resp = await eel.import_bom_file(file.name, b64)();
-        if (resp.ok) { appendSystem(resp.msg); renderBOMTable(resp.items); setStatus(`已加载 BOM (${resp.count} 条)`); }
+        if (resp.ok) { appendSystem(resp.msg); renderBOMTable(resp.items); setStatus(`已加载 BOM (${resp.count} 条)`); showDesignSuggestions(); }
         else { appendTip(resp.msg, 'error'); setStatus('加载失败'); }
       } else if (type === 'pcb') {
         const resp = await eel.import_pcb_file(file.name, b64)();
@@ -920,49 +920,216 @@ function toggleRightPanel() {
   }
 }
 
-// ═══════════ Theme ═══════════
+// ═══════════ Theme & Accent ═══════════
+
+var _currentAccent = '#5b8def';
 
 function applyTheme(name) {
   document.body.setAttribute('data-theme', name);
   try { eel.save_theme(name)(); } catch(e) {}
+  // update theme radio buttons
+  document.querySelectorAll('.theme-card input').forEach(function(r) {
+    r.checked = r.value === name;
+  });
 }
 
-// ═══════════ LLM Settings ═══════════
+function setAccentColor(color, btn) {
+  _currentAccent = color;
+  document.documentElement.style.setProperty('--accent', color);
+  document.documentElement.style.setProperty('--accent-hover', color + 'dd');
+  document.querySelectorAll('.accent-dot').forEach(function(d) { d.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  try { eel.save_accent(color)(); } catch(e) {}
+}
 
-const PROVIDERS = {
-  deepseek:  { url: 'https://api.deepseek.com/v1', models: ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-v3'], defaultModel: 'deepseek-v4-pro' },
-  openai:    { url: 'https://api.openai.com/v1', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1'], defaultModel: 'gpt-4o' },
-  qwen:      { url: 'https://dashscope.aliyuncs.com/compatible-mode/v1', models: ['qwen3.6-plus', 'qwen3.6-flash'], defaultModel: 'qwen3.6-plus' },
-  glm:       { url: 'https://open.bigmodel.cn/api/paas/v4', models: ['glm-5.1', 'glm-5.1-flash'], defaultModel: 'glm-5.1' },
-  moonshot:  { url: 'https://api.moonshot.cn/v1', models: ['kimi-k2.6', 'kimi-k2-flash'], defaultModel: 'kimi-k2.6' },
-  siliconflow: { url: 'https://api.siliconflow.cn/v1', models: ['deepseek-ai/DeepSeek-V4-Flash', 'Qwen/Qwen3.6-Plus'], defaultModel: 'deepseek-ai/DeepSeek-V4-Flash' },
+function setFontSize(size, btn) {
+  document.documentElement.style.setProperty('--font-size', size + 'px');
+  document.querySelectorAll('.font-size-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  try { eel.save_font_size(size)(); } catch(e) {}
+}
+
+// ═══════════ Premium Settings ═══════════
+
+var PROVIDERS = {
+  deepseek:  { icon: 'DS', name: 'DeepSeek', url: 'https://api.deepseek.com/v1', models: ['deepseek-v4-pro', 'deepseek-v4.5-flash', 'deepseek-v4-flash'], defaultModel: 'deepseek-v4-pro', desc: 'DeepSeek V4-Pro / 1.6T MoE / 100万上下文' },
+  openai:    { icon: 'OA', name: 'OpenAI', url: 'https://api.openai.com/v1', models: ['gpt-5.5', 'gpt-5.4', 'gpt-5.3', 'gpt-4o', 'gpt-4o-mini', 'o4-mini'], defaultModel: 'gpt-5.5', desc: 'GPT-5.5 / 最新旗舰 / 多模态' },
+  gemini:    { icon: 'GM', name: 'Gemini', url: 'https://generativelanguage.googleapis.com/v1beta/openai', models: ['gemini-3.5-flash', 'gemini-3.1-pro-preview', 'gemini-3.1-flash-lite', 'gemini-3.0-flash-preview', 'gemini-2.5-pro', 'gemini-2.5-flash'], defaultModel: 'gemini-3.5-flash', desc: 'Gemini 3.5 Flash / 最新稳定 GA / Agent & Coding' },
+  claude:    { icon: 'CL', name: 'Claude', url: 'https://api.anthropic.com/v1/messages', models: ['claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'], defaultModel: 'claude-opus-4-8', desc: 'Claude Opus 4.8 / 原生 Messages API / 200K上下文' },
+  qwen:      { icon: 'QW', name: '通义千问', url: 'https://dashscope.aliyuncs.com/compatible-mode/v1', models: ['qwen3.7-max', 'qwen3.6-plus', 'qwen3.6-flash', 'qwen3-coder-plus'], defaultModel: 'qwen3.7-max', desc: '通义千问 3.7-Max / 最新旗舰 (2026.05)' },
+  glm:       { icon: 'GL', name: '智谱', url: 'https://open.bigmodel.cn/api/paas/v4', models: ['glm-5.1', 'glm-5.1-flash', 'glm-5.1-coder'], defaultModel: 'glm-5.1', desc: 'GLM-5.1 / 全自治旗舰' },
+  moonshot:  { icon: 'KM', name: 'Kimi', url: 'https://api.moonshot.cn/v1', models: ['kimi-k2.6', 'kimi-k2-flash'], defaultModel: 'kimi-k2.6', desc: 'Kimi K2.6 / 1T MoE / Agent集群' },
+  doubao:    { icon: 'DB', name: '豆包', url: 'https://ark.cn-beijing.volces.com/api/v3', models: ['doubao-1.5-pro-256k', 'doubao-1.5-lite-32k'], defaultModel: 'doubao-1.5-pro-256k', desc: '豆包 1.5 Pro / 字节跳动 / 256K上下文' },
+  minimax:   { icon: 'MM', name: 'MiniMax', url: 'https://api.minimax.io/v1', models: ['MiniMax-M3', 'MiniMax-M2.7', 'MiniMax-M2.5'], defaultModel: 'MiniMax-M3', desc: 'MiniMax M3 / 最新旗舰 / 1M上下文' },
+  siliconflow: { icon: 'SF', name: '硅基流动', url: 'https://api.siliconflow.cn/v1', models: ['deepseek-ai/DeepSeek-V4-Flash', 'Qwen/Qwen3.6-Plus', 'Pro/Claude-Opus-4.8'], defaultModel: 'deepseek-ai/DeepSeek-V4-Flash', desc: '聚合 API / 多模型路由 / 高性价比' },
 };
-const PROVIDER_NAMES = { deepseek:'DeepSeek', openai:'OpenAI', qwen:'通义千问', glm:'智谱', moonshot:'Kimi', siliconflow:'硅基流动' };
 
-function toggleSettings() {
-  document.getElementById('settingsOverlay').classList.toggle('show');
-  if (document.getElementById('settingsOverlay').classList.contains('show')) {
-    eel.get_settings()().then(sett => {
-      if (!sett) return;
-      document.getElementById('setProvider').value = sett.provider || 'deepseek';
-      document.getElementById('setApiKey').value = sett.api_key || '';
-      document.getElementById('setBaseUrl').value = sett.base_url || '';
-      document.getElementById('setTheme').value = sett.theme || 'dark';
-      onProviderChange();
-      const savedModel = sett.model || '';
-      if (savedModel) {
-        const sel = document.getElementById('setModelSelect');
-        for (let i = 0; i < sel.options.length; i++) {
-          if (sel.options[i].value === savedModel) { sel.selectedIndex = i; break; }
-        }
-        if (sel.value !== savedModel) {
-          sel.value = '__custom__';
-          document.getElementById('setModelCustom').value = savedModel;
-          document.getElementById('setModelCustom').style.display = 'block';
-        }
-      }
+var _selectedProvider = 'deepseek';
+var SETTINGS_LOADED = false;
+
+// ── Settings tabs ──
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.settings-nav-item').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var tab = this.getAttribute('data-tab');
+      switchSettingsTab(tab);
     });
+  });
+  renderProviderCards();
+});
+
+function switchSettingsTab(tabId) {
+  document.querySelectorAll('.settings-nav-item').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelector('[data-tab="' + tabId + '"]').classList.add('active');
+  document.querySelectorAll('.settings-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById(tabId).classList.add('active');
+}
+
+// ── Provider cards ──
+function renderProviderCards() {
+  var container = document.getElementById('providerCards');
+  if (!container) return;
+  container.innerHTML = '';
+  Object.keys(PROVIDERS).forEach(function(key) {
+    var p = PROVIDERS[key];
+    var card = document.createElement('div');
+    card.className = 'provider-card' + (key === _selectedProvider ? ' selected' : '');
+    card.innerHTML = '<div class="provider-card-icon provider-icon-text">' + p.icon + '</div>' +
+      '<div class="provider-card-name">' + p.name + '</div>' +
+      '<div class="provider-card-model">' + p.desc + '</div>';
+    card.setAttribute('data-provider', key);
+    card.addEventListener('click', function() { selectProvider(key, card); });
+    container.appendChild(card);
+  });
+}
+
+function selectProvider(key, card) {
+  _selectedProvider = key;
+  document.querySelectorAll('.provider-card').forEach(function(c) { c.classList.remove('selected'); });
+  if (card) card.classList.add('selected');
+  // update URL placeholder
+  var p = PROVIDERS[key] || {};
+  document.getElementById('setBaseUrl').placeholder = p.url || '';
+  // update model selector
+  var sel = document.getElementById('setModelSelect');
+  sel.innerHTML = '';
+  (p.models || []).forEach(function(m) {
+    var opt = document.createElement('option');
+    opt.value = m; opt.textContent = m;
+    if (m === p.defaultModel) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  var custom = document.createElement('option');
+  custom.value = '__custom__'; custom.textContent = '自定义模型...';
+  sel.appendChild(custom);
+  document.getElementById('setModelCustom').style.display = 'none';
+}
+
+function onModelSelectChange() {
+  var sel = document.getElementById('setModelSelect');
+  document.getElementById('setModelCustom').style.display = sel.value === '__custom__' ? 'block' : 'none';
+}
+
+// ── Connection test ──
+async function testConnection() {
+  var btn = document.querySelector('.btn-test-conn');
+  var icon = document.getElementById('connTestIcon');
+  var text = document.getElementById('connTestText');
+  var result = document.getElementById('connTestResult');
+  if (!btn) return;
+  btn.disabled = true; icon.textContent = ''; icon.className = 'spinner'; text.textContent = '检测中...';
+  result.textContent = ''; result.style.color = '';
+
+  var provider = _selectedProvider;
+  var apiKey = document.getElementById('setApiKey').value;
+  var baseUrl = document.getElementById('setBaseUrl').value || (PROVIDERS[provider] || {}).url || '';
+  var modelSel = document.getElementById('setModelSelect');
+  var model = modelSel.value === '__custom__' ? document.getElementById('setModelCustom').value : modelSel.value;
+  if (!model) model = (PROVIDERS[provider] || {}).defaultModel || '';
+
+  try {
+    var resp = await eel.test_llm_connection(provider, apiKey, baseUrl, model)();
+    if (resp.ok) {
+      icon.textContent = ''; icon.className = '';
+      text.textContent = '连接成功';
+      result.textContent = resp.latency ? '延迟 ' + resp.latency + 'ms' : '';
+      result.style.color = '#2ecc71';
+    } else {
+      icon.textContent = ''; icon.className = '';
+      text.textContent = '连接失败';
+      result.textContent = resp.error || '未知错误';
+      result.style.color = '#e74c3c';
+    }
+  } catch(e) {
+    icon.textContent = ''; icon.className = '';
+    text.textContent = '连接失败';
+    result.textContent = e.message || '网络错误';
+    result.style.color = '#e74c3c';
   }
+  btn.disabled = false;
+}
+
+// ── Toggle settings ──
+function toggleSettings() {
+  var overlay = document.getElementById('settingsOverlay');
+  overlay.classList.toggle('show');
+  if (overlay.classList.contains('show') && !SETTINGS_LOADED) {
+    SETTINGS_LOADED = true;
+    loadSettingsIntoUI();
+  }
+}
+
+async function loadSettingsIntoUI() {
+  try {
+    var sett = await eel.get_settings()();
+    if (!sett) return;
+    _selectedProvider = sett.provider || 'deepseek';
+    document.getElementById('setApiKey').value = sett.api_key || '';
+    document.getElementById('setBaseUrl').value = sett.base_url || '';
+    if (sett.temperature != null) {
+      document.getElementById('setTemperature').value = sett.temperature;
+      document.getElementById('tempDisplay').textContent = sett.temperature;
+    }
+    // update provider cards
+    renderProviderCards();
+    // update model selector
+    selectProvider(_selectedProvider);
+    var savedModel = sett.model || '';
+    if (savedModel) {
+      var sel = document.getElementById('setModelSelect');
+      var found = false;
+      for (var i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === savedModel) { sel.selectedIndex = i; found = true; break; }
+      }
+      if (!found && savedModel) {
+        sel.value = '__custom__';
+        document.getElementById('setModelCustom').value = savedModel;
+        document.getElementById('setModelCustom').style.display = 'block';
+      }
+    }
+    // theme
+    if (sett.theme) {
+      applyTheme(sett.theme);
+    }
+    // accent
+    if (sett.accent) {
+      setAccentColor(sett.accent);
+      document.querySelectorAll('.accent-dot').forEach(function(d) {
+        if (d.getAttribute('data-accent') === sett.accent) d.classList.add('active');
+      });
+    }
+    // font size
+    if (sett.font_size) {
+      document.querySelectorAll('.font-size-btn').forEach(function(b) {
+        b.classList.toggle('active', b.getAttribute('data-size') === String(sett.font_size));
+      });
+      document.documentElement.style.setProperty('--font-size', sett.font_size + 'px');
+    }
+    // data dir
+    if (sett.data_dir) {
+      document.getElementById('setDataDir').value = sett.data_dir;
+    }
+  } catch(e) { console.error('Load settings failed:', e); }
 }
 
 function closeSettings(e) {
@@ -971,51 +1138,55 @@ function closeSettings(e) {
   }
 }
 
-function onProviderChange() {
-  const p = document.getElementById('setProvider').value;
-  const preset = PROVIDERS[p] || {};
-  if (!document.getElementById('setBaseUrl').value) {
-    document.getElementById('setBaseUrl').placeholder = preset.url || '';
-  }
-  const sel = document.getElementById('setModelSelect');
-  sel.innerHTML = '';
-  (preset.models || []).forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = m; opt.textContent = m;
-    if (m === preset.defaultModel) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  const custom = document.createElement('option');
-  custom.value = '__custom__'; custom.textContent = '自定义...';
-  sel.appendChild(custom);
-}
+// ── Save all settings ──
+async function saveAllSettings() {
+  var status = document.getElementById('settingsStatus');
+  if (status) { status.textContent = '保存中...'; status.style.color = ''; }
 
-function onModelSelectChange() {
-  const sel = document.getElementById('setModelSelect');
-  document.getElementById('setModelCustom').style.display = sel.value === '__custom__' ? 'block' : 'none';
-}
-
-async function saveLLMSettings() {
-  const provider = document.getElementById('setProvider').value;
-  const apiKey = document.getElementById('setApiKey').value;
-  const baseUrl = document.getElementById('setBaseUrl').value;
-  const modelSel = document.getElementById('setModelSelect');
-  let model = modelSel.value === '__custom__'
+  var provider = _selectedProvider;
+  var apiKey = document.getElementById('setApiKey').value;
+  var baseUrl = document.getElementById('setBaseUrl').value;
+  var modelSel = document.getElementById('setModelSelect');
+  var model = modelSel.value === '__custom__'
     ? document.getElementById('setModelCustom').value
     : modelSel.value;
   if (!model) model = (PROVIDERS[provider] || {}).defaultModel || '';
-  const resp = await eel.update_llm_config(provider, apiKey, baseUrl, model)();
-  if (resp.ok) {
-    const cfg = await eel.get_llm_config()();
-    updateLLMStatus(cfg);
-    appendTip(`${PROVIDER_NAMES[provider] || provider} AI Agent 已就绪 · ${cfg.model}`, 'success');
+  var temperature = parseFloat(document.getElementById('setTemperature').value) || 0.7;
+  var theme = document.body.getAttribute('data-theme') || 'dark';
+  var accent = _currentAccent;
+
+  try {
+    var resp = await eel.save_all_settings(provider, apiKey, baseUrl, model, temperature, theme, accent)();
+    if (resp.ok) {
+      if (status) { status.textContent = '设置已保存'; status.style.color = '#2ecc71'; }
+      setTimeout(function() { document.getElementById('settingsOverlay').classList.remove('show'); }, 600);
+    } else {
+      if (status) { status.textContent = '保存失败: ' + (resp.error || ''); status.style.color = '#e74c3c'; }
+    }
+  } catch(e) {
+    if (status) { status.textContent = '' + (e.message || '保存失败'); status.style.color = '#e74c3c'; }
   }
-  document.getElementById('settingsOverlay').classList.remove('show');
 }
 
-function updateLLMStatus(cfg) {
-  // Status badge removed from header — settings gear indicates config state
-  // Kept for potential future use
+// ── Misc ──
+function toggleApiKeyVisibility(btn) {
+  var input = btn.parentElement.querySelector('input');
+  if (input.type === 'password') { input.type = 'text'; btn.textContent = 'Hide'; }
+  else { input.type = 'password'; btn.textContent = 'Show'; }
+}
+
+function openDataDir() {
+  var dir = document.getElementById('setDataDir').value;
+  if (dir) { window.open('file:///' + dir.replace(/\\/g, '/')); }
+}
+
+async function clearAllData() {
+  if (!confirm('确定要清除所有本地数据吗？此操作不可撤销。')) return;
+  try {
+    await eel.clear_all_data()();
+    alert('数据已清除。应用将重新加载。');
+    location.reload();
+  } catch(e) { alert('清除失败: ' + e.message); }
 }
 
 // ═══════════ Utils ═══════════
@@ -1077,7 +1248,7 @@ document.addEventListener('keydown', e => {
 // Called by Python file watcher
 eel.expose(onPCBChanged, 'on_pcb_changed');
 function onPCBChanged(filepath) {
-  appendSystem(`📁 检测到 PCB 文件变化: ${filepath}`);
+  appendSystem(`[PCB]  检测到 PCB 文件变化: ${filepath}`);
 }
 
 // ── Streaming callbacks (called by Python) ──
@@ -1109,7 +1280,7 @@ function onStreamDone(fullText) {
 eel.expose(onStreamError, 'on_stream_error');
 function onStreamError(errorMsg) {
   if (_activeStreamBubble) {
-    _activeStreamBubble.finalize('⚠️ 流式输出中断: ' + errorMsg);
+    _activeStreamBubble.finalize(' 流式输出中断: ' + errorMsg);
     const conv = getActiveConversation();
     conv.messages.push({ role: 'ai', content: _activeStreamBubble.getText() });
     _activeStreamBubble = null;
@@ -1118,3 +1289,198 @@ function onStreamError(errorMsg) {
   disableInput(false);
   setStatus('错误');
 }
+
+// ══════════════════════════════════════════
+//  Multi-Agent Review
+// ══════════════════════════════════════════
+
+async function runMultiAgentReview() {
+  const startBtn = document.querySelector('.review-start-btn');
+  const resultDiv = document.getElementById('reviewResult');
+  const emptyHint = document.getElementById('reviewEmpty');
+  if (startBtn) startBtn.disabled = true;
+  if (emptyHint) emptyHint.style.display = 'none';
+  setStatus('多智能体审查中...');
+
+  try {
+    const raw = await eel.review_design_multi_agent()();
+    const data = JSON.parse(raw);
+    if (data.error) { setStatus('审查失败'); if (startBtn) startBtn.disabled = false; alert(data.error); return; }
+    renderReviewResult(data);
+    if (resultDiv) resultDiv.style.display = 'block';
+    if (startBtn) startBtn.style.display = 'none';
+    setStatus('审查完成');
+  } catch (e) { console.error(e); setStatus('审查失败'); if (startBtn) startBtn.disabled = false; }
+}
+
+function renderReviewResult(data) {
+  if (data.radar_data) drawRadarChart(data.radar_data);
+  const ge = document.getElementById('reviewGrade');
+  const se = document.getElementById('reviewScore');
+  if (ge) { ge.textContent = data.overall_grade || '?'; ge.style.color = _gradeColor(data.overall_score); }
+  if (se) se.textContent = data.overall_score != null ? data.overall_score : '?';
+  const ce = document.getElementById('reviewConsensus');
+  if (ce) ce.innerHTML = data.consensus || '';
+  _renderAgentCards(data.agents);
+  _renderRoadmap(data.improvement_roadmap);
+}
+
+function drawRadarChart(data) {
+  var c = document.getElementById('radarChart');
+  if (!c || !data || data.length < 3) return;
+  var ctx = c.getContext('2d'), w = c.width, h = c.height, cx = w / 2, cy = h / 2;
+  var n = data.length, maxR = Math.min(cx, cy) - 20;
+  ctx.clearRect(0, 0, w, h);
+  // grid
+  for (var lv = 1; lv <= 4; lv++) {
+    var r = (maxR / 4) * lv; ctx.beginPath();
+    for (var i = 0; i < n; i++) {
+      var a = (Math.PI * 2 / n) * i - Math.PI / 2;
+      var x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath(); ctx.strokeStyle = '#e0e4ea'; ctx.lineWidth = 0.5; ctx.stroke();
+  }
+  // axes
+  for (var i = 0; i < n; i++) {
+    var a = (Math.PI * 2 / n) * i - Math.PI / 2;
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + maxR * Math.cos(a), cy + maxR * Math.sin(a));
+    ctx.strokeStyle = '#e0e4ea'; ctx.lineWidth = 0.5; ctx.stroke();
+  }
+  // polygon
+  ctx.beginPath();
+  for (var i = 0; i < n; i++) {
+    var d = data[i], r = (d.score / 100) * maxR;
+    var a = (Math.PI * 2 / n) * i - Math.PI / 2;
+    var x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.closePath(); ctx.fillStyle = 'rgba(91,141,239,0.15)'; ctx.fill();
+  ctx.strokeStyle = '#5b8def'; ctx.lineWidth = 1.5; ctx.stroke();
+  // dots + labels
+  ctx.font = '9px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#555';
+  for (var i = 0; i < n; i++) {
+    var d = data[i], r = (d.score / 100) * maxR;
+    var a = (Math.PI * 2 / n) * i - Math.PI / 2;
+    ctx.beginPath(); ctx.arc(cx + r * Math.cos(a), cy + r * Math.sin(a), 3, 0, Math.PI * 2);
+    ctx.fillStyle = d.color || '#5b8def'; ctx.fill();
+    ctx.fillText(d.label, cx + (maxR + 14) * Math.cos(a), cy + (maxR + 14) * Math.sin(a) + 3);
+  }
+}
+
+function _renderAgentCards(agents) {
+  var ct = document.getElementById('reviewAgentCards');
+  if (!ct || !agents) return; ct.innerHTML = '';
+  var order = ['power', 'signal', 'thermal', 'emc', 'dfm'];
+  for (var o = 0; o < order.length; o++) {
+    var a = agents[order[o]]; if (!a) continue;
+    var hasCrit = a.findings && a.findings.some(function(f) { return f.severity === 'critical'; });
+    var cls = hasCrit ? 'critical' : (a.score >= 90 ? 'clean' : 'major');
+    var fhtml = '';
+    if (a.findings && a.findings.length) {
+      fhtml = a.findings.map(function(f) {
+        return '<div class="review-finding sev-' + f.severity + '">' + f.title + (f.suggestion ? ' — ' + f.suggestion : '') + '</div>';
+      }).join('');
+    }
+    ct.innerHTML += '<div class="review-agent-card ' + cls + '">' +
+      '<div class="review-agent-header"><span>' + (a.emoji || '') + '</span> ' +
+      '<span class="review-agent-name">' + a.name + '</span>' +
+      '<span class="review-agent-score">' + (a.score != null ? a.score.toFixed(1) : '?') + ' 分</span></div>' +
+      '<div class="review-agent-summary">' + (a.summary || '') + '</div>' +
+      (fhtml ? '<div class="review-agent-findings">' + fhtml + '</div>' : '') + '</div>';
+  }
+}
+
+function _renderRoadmap(items) {
+  var ct = document.getElementById('reviewRoadmap');
+  if (!ct || !items || !items.length) return;
+  ct.innerHTML = '<h3> 改进路线图</h3>' + items.map(function(i) { return '<div class="review-roadmap-item">' + i + '</div>'; }).join('');
+}
+
+function _gradeColor(score) {
+  if (score == null) return '#888';
+  if (score >= 88) return '#2ecc71';
+  if (score >= 70) return '#5b8def';
+  if (score >= 55) return '#e67e22';
+  return '#e74c3c';
+}
+
+// ═══════════ Toast Notifications ═══════════
+
+function showToast(msg, type) {
+  type = type || 'info';
+  var t = document.createElement('div');
+  t.className = 'toast toast-' + type;
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;' +
+    'padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;' +
+    'animation:toastIn .3s ease;pointer-events:none;' +
+    (type === 'success' ? 'background:#2ecc71;color:#fff;' :
+     type === 'error' ? 'background:#e74c3c;color:#fff;' :
+     'background:var(--accent);color:#fff;');
+  document.body.appendChild(t);
+  setTimeout(function() { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; }, 2500);
+  setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 3000);
+}
+
+// ═══════════ Design Suggestions (proactive) ═══════════
+
+async function showDesignSuggestions() {
+  try {
+    var raw = await eel.get_design_suggestions()();
+    if (!raw) return;
+    // Show in right panel report tab
+    var stack = document.getElementById('reportStack');
+    if (stack) {
+      var div = document.createElement('div');
+      div.className = 'design-suggestion-card';
+      div.innerHTML = '<div class="design-suggestion-title">AI 设计意图识别</div>' +
+        '<div class="design-suggestion-body">' + marked.parse(raw) + '</div>';
+      stack.insertBefore(div, stack.firstChild);
+    }
+    // Also toast
+    var firstLine = raw.split('\n')[1] || '';
+    if (firstLine) showToast('AI: ' + firstLine.replace(/^#+\s*/, '').replace(/\[.*?\]/, '').trim(), 'info');
+  } catch(e) { /* silent */ }
+}
+
+// ═══════════ Keyboard Shortcuts ═══════════
+
+document.addEventListener('keydown', function(e) {
+  // Ctrl+Enter: send message
+  if (e.ctrlKey && e.key === 'Enter') {
+    e.preventDefault();
+    sendChat();
+    return;
+  }
+  // Escape: close settings/modal
+  if (e.key === 'Escape') {
+    var overlay = document.getElementById('settingsOverlay');
+    if (overlay && overlay.classList.contains('show')) {
+      closeSettings();
+      return;
+    }
+  }
+  // Ctrl+B: import BOM
+  if (e.ctrlKey && e.key === 'b') {
+    e.preventDefault();
+    document.getElementById('bomFileInput').click();
+    return;
+  }
+  // Ctrl+R: run multi-agent review
+  if (e.ctrlKey && e.key === 'r') {
+    e.preventDefault();
+    runMultiAgentReview();
+    return;
+  }
+});
+
+// ═══════════ Keyboard shortcut hint ═══════════
+
+(function addShortcutHints() {
+  var input = document.getElementById('chatInput');
+  if (input) {
+    input.title = 'Enter 发送 | Shift+Enter 换行 | Ctrl+Enter 快速发送 | Ctrl+B 导入BOM | Ctrl+R 多智能体审查';
+  }
+})();

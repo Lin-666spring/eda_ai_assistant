@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EDA AI v0.5.3-dev</title>
+<title>EDA AI v0.7.0</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%235b8def'/><text x='16' y='22' text-anchor='middle' font-family='sans-serif' font-size='14' font-weight='bold' fill='white'>EDA</text></svg>">
 <link rel="stylesheet" href="css/style.css">
 <script src="/eel.js"></script>
@@ -103,6 +103,7 @@
   <div class="panel-tabs">
     <button class="tab-btn active" data-tab="bom">BOM 表格</button>
     <button class="tab-btn" data-tab="report">报告</button>
+    <button class="tab-btn" data-tab="review">审查</button>
     <button class="tab-btn" data-tab="html">HTML 预览</button>
   </div>
   <div class="panel-content">
@@ -113,6 +114,31 @@
     <div id="tab-report" class="tab-panel">
       <div id="reportStack"></div>
       <div id="reportEmpty" class="empty-hint">执行操作后报告显示于此</div>
+    </div>
+    <div id="tab-review" class="tab-panel">
+      <div id="reviewContent">
+        <button class="review-start-btn" onclick="runMultiAgentReview()">
+          <span class="review-start-icon"></span>
+          <span>启动多智能体协同审查</span>
+          <span class="review-start-hint">5 个专业 AI Agent 并行审查</span>
+        </button>
+        <div id="reviewResult" style="display:none">
+          <div class="review-score-bar">
+            <div class="review-score-main">
+              <canvas id="radarChart" width="200" height="200"></canvas>
+              <div class="review-overall">
+                <span id="reviewGrade" class="review-grade">A+</span>
+                <span id="reviewScore" class="review-score-num">96.5</span>
+                <span class="review-score-label">综合评分</span>
+              </div>
+            </div>
+          </div>
+          <div id="reviewConsensus" class="review-consensus"></div>
+          <div id="reviewAgentCards" class="review-agent-cards"></div>
+          <div id="reviewRoadmap" class="review-roadmap"></div>
+        </div>
+      </div>
+      <div id="reviewEmpty" class="empty-hint">导入 BOM 后启动多智能体审查</div>
     </div>
     <div id="tab-html" class="tab-panel">
       <iframe id="htmlFrame" style="width:100%;height:100%;border:none;display:none;"></iframe>
@@ -130,57 +156,216 @@
 <input type="file" id="pcbFileInput" accept=".json,.epro" style="display:none" onchange="onFileSelected('pcb', this)">
 <input type="file" id="posFileInput" accept=".csv" style="display:none" onchange="onFileSelected('pos', this)">
 
-<!-- ═══════════ Settings Modal ═══════════ -->
+<!-- ═══════════ Settings Modal (Premium) ═══════════ -->
 <div id="settingsOverlay" class="modal-overlay" onclick="closeSettings(event)">
-  <div class="modal" onclick="event.stopPropagation()">
-    <h2>设置</h2>
+  <div class="settings-dialog" onclick="event.stopPropagation()">
+    <!-- Sidebar nav -->
+    <nav class="settings-nav">
+      <div class="settings-nav-title">设置</div>
+      <button class="settings-nav-item active" data-tab="s-ai">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a4 4 0 014 4c0 1.1-.4 2.1-1.2 2.8l2.7 2.7a4 4 0 11-1.4 1.4l-2.7-2.7A4 4 0 0112 2z"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
+        <span>AI 模型</span>
+      </button>
+      <button class="settings-nav-item" data-tab="s-appearance">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 010 20"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+        <span>外观</span>
+      </button>
+      <button class="settings-nav-item" data-tab="s-general">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <span>通用</span>
+      </button>
+      <button class="settings-nav-item" data-tab="s-about">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <span>关于</span>
+      </button>
+    </nav>
 
-    <!-- LLM 配置 -->
-    <div class="settings-section">
-      <div class="settings-section-title">AI 模型</div>
-      <div class="settings-grid">
-        <div>
-          <label>厂商</label>
-          <select id="setProvider" onchange="onProviderChange()">
-            <option value="deepseek">DeepSeek</option>
-            <option value="openai">OpenAI</option>
-            <option value="qwen">通义千问</option>
-            <option value="glm">智谱</option>
-            <option value="moonshot">Kimi 月之暗面</option>
-            <option value="siliconflow">硅基流动</option>
-          </select>
+    <!-- Content area -->
+    <div class="settings-content">
+      <button class="settings-close-btn" onclick="closeSettings(event)">✕</button>
+
+      <!-- ═══ Tab: AI Model ═══ -->
+      <div id="s-ai" class="settings-tab active">
+        <h3 class="settings-tab-title">AI 模型配置</h3>
+        <p class="settings-tab-desc">选择 AI 服务商并配置 API 密钥</p>
+
+        <!-- Provider cards -->
+        <label class="settings-field-label">服务商</label>
+        <div id="providerCards" class="provider-cards"></div>
+
+        <!-- Model -->
+        <div style="margin-top:18px">
+          <label class="settings-field-label">模型</label>
+          <div class="settings-combo-row">
+            <select id="setModelSelect" class="settings-combo-select" onchange="onModelSelectChange()"></select>
+            <input type="text" id="setModelCustom" class="settings-input" placeholder="自定义模型..." style="display:none">
+          </div>
         </div>
-        <div>
-          <label>模型</label>
-          <select id="setModelSelect" onchange="onModelSelectChange()"></select>
-          <input type="text" id="setModelCustom" placeholder="自定义模型名..." style="display:none;margin-top:6px">
+
+        <!-- API Key + Base URL -->
+        <div class="settings-double" style="margin-top:16px">
+          <div>
+            <label class="settings-field-label">API Key</label>
+            <div class="settings-input-icon">
+              <input type="password" id="setApiKey" class="settings-input" placeholder="sk-...">
+              <button class="input-eye-btn" onclick="toggleApiKeyVisibility(this)" title="显示/隐藏">Show</button>
+            </div>
+          </div>
+          <div>
+            <label class="settings-field-label">Base URL <span class="label-hint">可选</span></label>
+            <input type="text" id="setBaseUrl" class="settings-input" placeholder="自动填充">
+          </div>
         </div>
-        <div>
-          <label>API Key</label>
-          <input type="password" id="setApiKey" placeholder="sk-...">
+
+        <!-- Temperature -->
+        <div style="margin-top:18px">
+          <label class="settings-field-label">
+            生成温度 <span id="tempDisplay" class="label-badge">0.7</span>
+          </label>
+          <div class="slider-row">
+            <span class="slider-label">精确</span>
+            <input type="range" id="setTemperature" class="settings-slider" min="0" max="1.5" step="0.05" value="0.7" oninput="document.getElementById('tempDisplay').textContent=this.value">
+            <span class="slider-label">创意</span>
+          </div>
         </div>
-        <div>
-          <label>Base URL (可选)</label>
-          <input type="text" id="setBaseUrl" placeholder="留空使用默认">
+
+        <!-- Connection test -->
+        <div style="margin-top:18px">
+          <button class="btn-test-conn" onclick="testConnection()">
+            <span id="connTestIcon"></span>
+            <span id="connTestText">测试连接</span>
+          </button>
+          <span id="connTestResult" style="margin-left:10px;font-size:12px"></span>
         </div>
       </div>
-    </div>
 
-    <!-- 外观 -->
-    <div class="settings-section">
-      <div class="settings-section-title">外观</div>
-      <div class="settings-row">
-        <span>主题</span>
-        <select id="setTheme" onchange="applyTheme(this.value)">
-          <option value="dark">深色</option>
-          <option value="light">浅色</option>
-        </select>
+      <!-- ═══ Tab: Appearance ═══ -->
+      <div id="s-appearance" class="settings-tab">
+        <h3 class="settings-tab-title">外观设置</h3>
+        <p class="settings-tab-desc">自定义界面主题和配色方案</p>
+
+        <label class="settings-field-label">主题模式</label>
+        <div class="theme-previews">
+          <label class="theme-card" onclick="applyTheme('dark')">
+            <input type="radio" name="theme" value="dark" checked>
+            <div class="theme-preview dark-preview"></div>
+            <span>深色</span>
+          </label>
+          <label class="theme-card" onclick="applyTheme('light')">
+            <input type="radio" name="theme" value="light">
+            <div class="theme-preview light-preview"></div>
+            <span>浅色</span>
+          </label>
+        </div>
+
+        <label class="settings-field-label" style="margin-top:18px">强调色</label>
+        <div class="accent-colors">
+          <button class="accent-dot active" data-accent="#5b8def" style="background:#5b8def" onclick="setAccentColor('#5b8def', this)"></button>
+          <button class="accent-dot" data-accent="#e74c3c" style="background:#e74c3c" onclick="setAccentColor('#e74c3c', this)"></button>
+          <button class="accent-dot" data-accent="#e67e22" style="background:#e67e22" onclick="setAccentColor('#e67e22', this)"></button>
+          <button class="accent-dot" data-accent="#2ecc71" style="background:#2ecc71" onclick="setAccentColor('#2ecc71', this)"></button>
+          <button class="accent-dot" data-accent="#9b59b6" style="background:#9b59b6" onclick="setAccentColor('#9b59b6', this)"></button>
+          <button class="accent-dot" data-accent="#1abc9c" style="background:#1abc9c" onclick="setAccentColor('#1abc9c', this)"></button>
+        </div>
+
+        <label class="settings-field-label" style="margin-top:18px">字体大小</label>
+        <div class="font-size-options">
+          <button class="font-size-btn" data-size="12" onclick="setFontSize('12', this)">小</button>
+          <button class="font-size-btn active" data-size="13" onclick="setFontSize('13', this)">中</button>
+          <button class="font-size-btn" data-size="14" onclick="setFontSize('14', this)">大</button>
+        </div>
       </div>
-    </div>
 
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeSettings(event)">取消</button>
-      <button class="btn-primary" onclick="saveLLMSettings()">保存</button>
+      <!-- ═══ Tab: General ═══ -->
+      <div id="s-general" class="settings-tab">
+        <h3 class="settings-tab-title">通用设置</h3>
+        <p class="settings-tab-desc">数据存储和应用行为</p>
+
+        <div class="setting-toggle-row">
+          <div>
+            <div class="setting-toggle-label">自动保存对话</div>
+            <div class="setting-toggle-desc">退出时自动保存所有对话记录</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setAutoSave" checked>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div class="setting-toggle-row">
+          <div>
+            <div class="setting-toggle-label">文件监听</div>
+            <div class="setting-toggle-desc">立创EDA项目文件变更时自动同步</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setFileWatch" checked>
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div class="setting-toggle-row">
+          <div>
+            <div class="setting-toggle-label">发送前确认</div>
+            <div class="setting-toggle-desc">执行关键操作前弹出确认对话框</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setConfirmOps">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div style="margin-top:18px">
+          <label class="settings-field-label">数据存储位置</label>
+          <div class="settings-path-row">
+            <input type="text" id="setDataDir" class="settings-input" readonly>
+            <button class="btn-sm" onclick="openDataDir()">打开</button>
+          </div>
+        </div>
+
+        <div style="margin-top:18px">
+          <button class="btn-danger-outline" onclick="clearAllData()">
+             清除所有本地数据
+          </button>
+        </div>
+      </div>
+
+      <!-- ═══ Tab: About ═══ -->
+      <div id="s-about" class="settings-tab">
+        <h3 class="settings-tab-title">关于</h3>
+        <div class="about-content">
+          <div class="about-logo">EDA</div>
+          <h4>EDA AI 智能助手</h4>
+          <div class="about-version">v0.7.0-dev</div>
+          <p class="about-desc">
+            基于多智能体协同的 PCB 设计辅助工具<br>
+            51条设计规则 · 22项工具 · 5个专业审查Agent
+          </p>
+          <div class="about-links">
+            <a href="https://github.com/Lin-666spring/eda_ai_assistant" target="_blank" class="about-link">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+              GitHub
+            </a>
+            <span class="about-link" onclick="navigator.clipboard.writeText('https://github.com/Lin-666spring/eda_ai_assistant')">
+               复制链接
+            </span>
+          </div>
+          <div class="about-meta">
+            <div class="about-meta-row"><span>技术栈</span><span>Python + Eel + SQLite + ChromaDB</span></div>
+            <div class="about-meta-row"><span>LLM 支持</span><span>DeepSeek / OpenAI / 通义千问 / 智谱 / Kimi</span></div>
+            <div class="about-meta-row"><span>设计规则</span><span>51 条 PCB 设计规则 (BOM+PCB+布局)</span></div>
+            <div class="about-meta-row"><span>许可证</span><span>MIT</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom bar -->
+      <div class="settings-bottom-bar">
+        <span class="settings-status" id="settingsStatus"></span>
+        <div class="settings-bottom-actions">
+          <button class="btn-secondary" onclick="closeSettings(event)">取消</button>
+          <button class="btn-primary" onclick="saveAllSettings()">保存设置</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -203,7 +388,7 @@
     <button class="confirm-close" onclick="closeConfirmDialog()" title="关闭">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
     </button>
-    <div class="confirm-icon">⚠️</div>
+    <div class="confirm-icon">!</div>
     <h3 id="confirmTitle">确认操作</h3>
     <p id="confirmMessage">确定要执行此操作吗？</p>
     <div class="confirm-actions">

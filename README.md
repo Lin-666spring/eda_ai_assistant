@@ -1,123 +1,106 @@
-# EDA AI 智能助手
+# EDA AI 智能助手 v0.7.0
 
-> 面向立创EDA的AI智能辅助设计软件 —— 内置 Agent 的 BOM 管理与 PCB 设计助手
+> 基于多智能体协同的 PCB 设计辅助工具 — 69条设计规则 · 22项工具 · 10家AI厂商 · 5个专业审查Agent
 
-## 项目简介
+面向立创EDA用户的 AI 辅助设计软件。支持自然语言交互、多智能体协同审查、BOM智能管理、设计规则检查、供应链健康评估、VLM 视觉分析。
 
-本项目面向立创EDA用户，开发一款内置AI Agent的第三方辅助软件。用户只需用中文描述需求，软件内置的Agent即可自动完成BOM整理、元件校验、交互式HTML BOM生成等任务，大幅降低PCB设计中的重复劳动。
+## 核心亮点
 
-### 适用场景
-
-- 🎓 测控专业课程设计、电子竞赛
-- 🔧 硬件开发中的 BOM 物料管理
-- 🔍 封装/型号一致性校验
-- 🌐 焊接辅助（交互式HTML BOM）
-
-## 功能特性
-
-| 功能 | 描述 | 状态 |
-|------|------|------|
-| 🤖 AI Agent 对话 | 基于 LLM 的自然语言交互，支持多厂商 | 🚧 开发中 |
-| 📦 BOM 智能合并 | 同类元件自动合并，输出对比报告 | ✅ 已实现 |
-| ✅ 封装校验 | 检测封装与型号不匹配项 | ✅ 已实现 |
-| 🔍 位号查重 | 跨文件/单文件重复位号检测 | ✅ 已实现 |
-| 🌐 HTML BOM | 交互式网页，点击高亮PCB位置 | 🚧 开发中 |
-| 📏 规则检查 | 去耦电容、信号线等规则 | 🚧 开发中 |
-
-## 技术栈
-
-- **语言**: Python 3.10+
-- **GUI**: PyQt5
-- **AI**: LLM API — 兼容 OpenAI / DeepSeek / 通义千问 / 智谱 GLM / Kimi 等
-- **数据处理**: pandas, openpyxl
-- **HTML模板**: Jinja2
-- **打包**: PyInstaller
-
-## 项目结构
-
-```
-eda_ai_assistant/
-├── main.py                 # 应用入口
-├── requirements.txt        # 依赖清单
-├── README.md
-├── .gitignore
-├── src/
-│   ├── agent/              # AI Agent 核心模块
-│   │   ├── llm_client.py        # 通用 LLM API 封装
-│   │   └── prompt_templates.py  # Prompt 模板库
-│   ├── bom/                # BOM 处理引擎
-│   │   ├── parser.py            # CSV/Excel 解析
-│   │   ├── merger.py            # 同类元件合并
-│   │   ├── validator.py         # 封装校验
-│   │   └── checker.py           # 位号查重
-│   ├── gui/                # PyQt5 图形界面
-│   │   ├── main_window.py       # 主窗口
-│   │   ├── chat_panel.py        # 聊天面板
-│   │   └── bom_table.py         # BOM 表格视图
-│   ├── html_bom/           # 交互式 HTML BOM
-│   │   ├── generator.py         # 生成器
-│   │   └── templates/          # HTML 模板
-│   ├── rules/              # 设计规则检查
-│   │   └── checker.py
-│   └── interfaces/         # 扩展接口
-│       ├── simulator.py         # 仿真器抽象
-│       └── eda_adapter.py       # EDA 工具适配器
-├── tests/                  # 单元测试
-├── docs/                   # 文档
-└── assets/                 # 资源文件
-```
+- **多智能体协同审查**: 5 个专业 AI Agent（电源/信号/热/EMC/可制造性）并行审查，辩论合成
+- **设计质量雷达图**: 6 维度量化评分，可视化展示设计质量
+- **设计意图识别**: AI 主动识别电路类型（STM32最小系统/Buck/电机驱动...），提前建议缺失元件
+- **12 种电路模板**: 覆盖 STM32/ESP32/Buck/锂电池/RS485/USB-UART/H桥/运放/LED/CAN/SD卡/无线模块
+- **10 家 AI 厂商**: DeepSeek / OpenAI / Gemini / Claude / 通义千问 / 智谱 / Kimi / 豆包 / MiniMax / 硅基流动
+- **Claude 原生协议**: 直接支持 Anthropic Messages API（非 OpenAI 兼容）
 
 ## 快速开始
 
-### 1. 安装依赖
-
 ```bash
 pip install -r requirements.txt
-```
-
-### 2. 配置 LLM API
-
-创建 `.env` 文件（项目根目录），选择厂商预设或手动指定：
-
-```env
-# 方式一：厂商预设（推荐）
-LLM_PROVIDER=deepseek
-LLM_API_KEY=your_api_key_here
-
-# 方式二：手动指定
-# LLM_BASE_URL=https://api.openai.com/v1
-# LLM_MODEL=gpt-4o
-```
-
-可选厂商: `deepseek` | `openai` | `qwen` (通义千问) | `glm` (智谱) | `moonshot` (Kimi) | `siliconflow` (硅基流动)
-
-### 3. 运行应用
-
-```bash
 python main.py
+# → 打开设置(Ctrl+,) 配置 AI 厂商和 API Key → 导入 BOM → 开始使用
 ```
 
-### 4. 打包为可执行文件
+快捷键: `Ctrl+B` 导入BOM | `Ctrl+R` 多智能体审查 | `Ctrl+Enter` 快速发送 | `Esc` 关闭弹窗
+
+## 功能总览
+
+| 类别 | 功能 | 状态 |
+|------|------|------|
+| AI 引擎 | 10 厂商 LLM 路由 + Agent Loop (Function Calling) + 流式输出 | 完成 |
+| AI 引擎 | Claude 原生 Messages API（非 OpenAI 兼容） | 完成 |
+| AI 引擎 | VLM 多模态图片分析（粘贴/上传 PCB 截图） | 完成 |
+| BOM 管理 | 智能合并 / AI合并 / 封装校验 / 位号查重 / 筛选 | 完成 |
+| BOM 管理 | CSV 导出 (UTF-8-BOM, Excel 兼容中文) | 完成 |
+| BOM 管理 | HTML 交互式 BOM 生成 | 完成 |
+| 设计规则 | 69 条 PCB 设计规则 (BOM 27 + PCB布线 22 + 布局 20) | 完成 |
+| 多智能体 | 5 Agent 并行审查 + 6维度雷达图 + 共识合成 | 完成 |
+| 设计意图 | 12 电路模板自动识别 + 缺失元件主动建议 | 完成 |
+| 供应链 | 立创商城库存/生命周期/替代料/成本估算 | 完成 |
+| 知识库 | ChromaDB 本地 RAG 知识库 | 完成 |
+| UI/UX | 多助手实例 / 双窗口模式(完整+伴生) / Agent模式 | 完成 |
+| UI/UX | 键盘快捷键 / Toast 通知 / 高级设置面板 | 完成 |
+| 系统 | 全局热键(Ctrl+Shift+E) / 系统托盘 / 文件监听 | 完成 |
+| 持久化 | SQLite 会话/对话/消息/app_state 全量持久化 | 完成 |
+
+## 架构
+
+```
+web/                          # Eel 前端（Cherry Studio 设计系统）
+├── index.html                # 三栏布局 + 设置面板 + 审查面板 + 图片粘贴
+└── js/app.js                 # 雷达图 Canvas + 多Agent卡片 + 键盘快捷键
+
+src/
+├── agent/                    # AI 引擎
+│   ├── nlu_engine.py         # 10 意图语义分类 (embedding + 关键词)
+│   ├── router.py             # 多 LLM 路由 (10 类意图)
+│   ├── llm_client.py         # OpenAI 兼容 LLM 客户端
+│   ├── anthropic_client.py   # Claude 原生 Messages API 客户端
+│   ├── prompt_templates.py   # 提示模板库
+│   ├── tools.py              # 22 工具统一注册表 (SSOT)
+│   ├── review_agents.py      # 5 Agent 多智能体协同审查
+│   └── design_templates.py   # 12 电路模板 + 设计意图识别
+├── core/
+│   ├── controller.py         # AppController 编排层
+│   ├── design_scorer.py      # 6 维度设计质量评分引擎
+│   ├── persistence.py        # SQLite 会话持久化
+│   ├── system_bridge.py      # 全局热键 + 系统托盘
+│   └── file_watcher.py       # 立创EDA 文件监听
+├── bom/                      # BOM 解析/合并/校验/查重
+├── pcb/                      # PCB JSON 解析
+├── rules/                    # 69 条设计规则
+├── supply/                   # 立创商城 API + BOM 健康
+├── rag/                      # ChromaDB 知识库
+├── html_bom/                 # HTML BOM 生成
+└── interfaces/               # EDA 适配器
+
+tests/                        # 367 条测试
+```
+
+## 配置
+
+支持 10 家 AI 厂商，在设置面板中可视化切换:
+
+| 厂商 | 默认模型 | API 协议 |
+|------|---------|---------|
+| DeepSeek | deepseek-v4-pro | OpenAI 兼容 |
+| OpenAI | gpt-5.5 | OpenAI 兼容 |
+| Gemini | gemini-3.5-flash | OpenAI 兼容 |
+| Claude | claude-opus-4-8 | **原生 Messages API** |
+| 通义千问 | qwen3.7-max | OpenAI 兼容 |
+| 智谱 | glm-5.1 | OpenAI 兼容 |
+| Kimi | kimi-k2.6 | OpenAI 兼容 |
+| 豆包 | doubao-1.5-pro-256k | OpenAI 兼容 |
+| MiniMax | MiniMax-M3 | OpenAI 兼容 |
+| 硅基流动 | deepseek-ai/DeepSeek-V4-Flash | OpenAI 兼容 (聚合) |
+
+## 测试
 
 ```bash
-pyinstaller --onefile --windowed --name "EDA_AI_Assistant" main.py
+python -m pytest tests/ -q     # 367 条测试
+python -m pytest tests/ -v     # 详细输出
 ```
-
-## 开发计划
-
-- [x] 第一阶段 (2026.5-6): 需求分析与原型搭建
-- [ ] 第二阶段 (2026.7-10): 核心功能开发
-- [ ] 第三阶段 (2026.11-2027.2): 用户界面与交互功能
-- [ ] 第四阶段 (2027.3-5): 测试优化与成果输出
-
-## 团队
-
-吉林大学 · 测控技术与仪器专业 · 创新训练项目 © 2026
 
 ## 许可证
 
-本项目代码将在 GitHub/Gitee 开源，具体许可证待定。
-
-## 开发日志
-
-- 2026-05-15: BOM引擎完成，AppController架构重构
+MIT License © 2026 吉林大学 · 测控技术与仪器专业 · 创新训练项目

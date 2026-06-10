@@ -180,7 +180,7 @@ class TestClosestCommands:
 class TestLocalFallbackEnhanced:
     def test_invalid_with_suggestions(self, controller_with_data):
         result = controller_with_data._local_fallback("合饼")
-        assert "🤔" in result
+        assert "不确定" in result or "合并BOM" in result
         assert "您是不是想" in result or "可用指令" in result
 
     def test_valid_still_works(self, controller_with_data):
@@ -240,7 +240,6 @@ class TestDispatchClarify:
             "question": "请问您是想合并BOM还是检查规则？",
             "options": ["合并BOM", "检查规则"],
         })
-        assert "🤔" in result
         assert "合并BOM" in result
         assert "检查规则" in result
 
@@ -248,7 +247,7 @@ class TestDispatchClarify:
         result = controller_with_data._dispatch_operation("__clarify__", {
             "question": "不太确定您要做什么",
         })
-        assert "🤔" in result
+        assert "不太确定您要做什么" in result
 
 
 # —── process_image_input ──

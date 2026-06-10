@@ -185,6 +185,75 @@ INTENT_DESCRIPTORS: list[IntentDescriptor] = [
         ],
     ),
     IntentDescriptor(
+        intent_name="BOM_HEALTH",
+        label="BOM供应链健康",
+        description=(
+            "BOM物料供应链健康检查：元器件库存状态查询、生命周期检查(NRND/EOL/停产)、"
+            "替代料推荐、成本估算与价格查询、采购风险评估。"
+            "用户关心元件能不能买到、会不会停产、有没有便宜的替代品。"
+        ),
+        keywords=[
+            "库存", "缺货", "停产", "生命周期", "替代料", "替代",
+            "采购", "报价", "成本", "价格", "货源", "供应",
+            "lcsc", "立创商城", "健康", "供应风险",
+            "stock", "lifecycle", "EOL", "NRND", "alternative",
+            "cost", "price", "purchase",
+        ],
+        examples=[
+            "检查BOM中哪些元件缺货",
+            "这个物料有没有停产？",
+            "帮我找更便宜的替代料",
+            "估算一下所有元件的总成本",
+            "这些料的生命周期如何？",
+        ],
+    ),
+    IntentDescriptor(
+        intent_name="REPORT_GEN",
+        label="报告生成",
+        description=(
+            "生成和导出报告：交互式HTML BOM表格、设计规则检查报告(DRC Report)、"
+            "PCB状态概览、元件统计摘要、成本汇总、BOM物料导出CSV。"
+            "用户想要生成某个报告、导出数据或查看汇总。"
+        ),
+        keywords=[
+            "报告", "报表", "导出", "生成", "html", "csv",
+            "统计报表", "导出报告", "生成报告", "设计报告",
+            "bom报表", "元件统计", "统计摘要",
+            "export", "report", "generate", "summary",
+        ],
+        examples=[
+            "生成HTML交互式BOM",
+            "导出BOM到CSV",
+            "生成设计规则检查报告",
+            "给我一个元件统计摘要",
+            "导出物料清单",
+        ],
+    ),
+    IntentDescriptor(
+        intent_name="COMPONENT_LOOKUP",
+        label="元件信息查询",
+        description=(
+            "查询元器件的详细规格：datasheet数据手册查询、封装尺寸/焊盘图、"
+            "电气参数(电压/电流/功率)、温度范围、制造商信息、RoHS/环保合规。"
+            "用户想要查询某个具体元件的参数或规格。"
+        ),
+        keywords=[
+            "查询", "搜索", "找", "规格", "参数", "datasheet",
+            "数据手册", "封装尺寸", "引脚", "pinout", "封装",
+            "耐压", "额定电流", "功耗", "温度范围",
+            "什么封装", "什么参数", "规格书",
+            "lookup", "search", "specification", "specs",
+            "find component", "component info",
+        ],
+        examples=[
+            "查询STM32F103C8T6的规格参数",
+            "0603封装的尺寸是多少？",
+            "AMS1117-3.3的datasheet",
+            "找一个5V转3.3V的LDO",
+            "这个电容的耐压是多少？",
+        ],
+    ),
+    IntentDescriptor(
         intent_name="LOCAL_ONLY",
         label="本地处理",
         description=(

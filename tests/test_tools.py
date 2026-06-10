@@ -15,7 +15,7 @@ from src.agent.tools import ToolDef, ToolRegistry, TOOLS
 
 class TestRegistryIntegrity:
     def test_has_all_tools(self):
-        assert ToolRegistry.count() == 12
+        assert ToolRegistry.count() == 22
 
     def test_all_tools_have_names(self):
         for t in ToolRegistry.get_all():
@@ -36,7 +36,9 @@ class TestRegistryIntegrity:
             assert len(t.keywords) >= 3, f"{t.name} needs >= 3 keywords"
 
     def test_all_tools_have_intent(self):
-        valid_intents = {"BOM_ANALYSIS", "RULE_CHECK", "PCB_ANALYSIS", "LOCAL_ONLY", "VISUAL"}
+        valid_intents = {"BOM_ANALYSIS", "BOM_HEALTH", "RULE_CHECK", "PCB_ANALYSIS",
+                         "CODE_RULE_GEN", "REPORT_GEN", "COMPONENT_LOOKUP",
+                         "LOCAL_ONLY", "VISUAL"}
         for t in ToolRegistry.get_all():
             assert t.intent in valid_intents, f"{t.name} intent {t.intent} not in {valid_intents}"
 
@@ -64,7 +66,7 @@ class TestQueries:
 
     def test_get_by_intent(self):
         bom_tools = ToolRegistry.get_by_intent("BOM_ANALYSIS")
-        assert len(bom_tools) >= 6  # merge, ai_merge, validate, duplicates, filter, health
+        assert len(bom_tools) >= 5  # merge, ai_merge, validate, duplicates, filter
 
     def test_get_by_category(self):
         pcb_tools = ToolRegistry.get_by_category("pcb")
@@ -88,7 +90,7 @@ class TestQueries:
 class TestDerivedData:
     def test_keyword_map_structure(self):
         km = ToolRegistry.get_keyword_map()
-        assert len(km) >= 11  # 包含新增的 analyze_image
+        assert len(km) >= 19  # all tools with keywords
         # ai_merge_bom 应在 merge_bom 之前（优先级）
         names = [name for _, name in km]
         ai_idx = names.index("ai_merge_bom")
@@ -120,7 +122,7 @@ class TestDerivedData:
 
     def test_function_definitions(self):
         funcs = ToolRegistry.get_function_definitions()
-        assert len(funcs) >= 8  # at least tools with params_schema
+        assert len(funcs) >= 22  # all tools have function definitions
         for f in funcs:
             assert f["type"] == "function"
             assert "name" in f["function"]
@@ -131,7 +133,9 @@ class TestDerivedData:
         assert "merge_bom" in names
         assert "bom_health" in names
         assert "analyze_image" in names
-        assert len(names) == 12
+        assert "component_lookup" in names
+        assert "calc_trace_width" in names
+        assert len(names) == 22
 
 
 # ——— ToolDef 方法 ———

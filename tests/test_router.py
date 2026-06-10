@@ -32,12 +32,15 @@ def router_with_key():
 class TestTaskIntent:
     def test_all_intents(self):
         intents = list(TaskIntent)
-        assert len(intents) == 7
+        assert len(intents) == 10
         assert TaskIntent.TEXT_CHAT in intents
         assert TaskIntent.BOM_ANALYSIS in intents
+        assert TaskIntent.BOM_HEALTH in intents
         assert TaskIntent.RULE_CHECK in intents
         assert TaskIntent.PCB_ANALYSIS in intents
         assert TaskIntent.CODE_RULE_GEN in intents
+        assert TaskIntent.REPORT_GEN in intents
+        assert TaskIntent.COMPONENT_LOOKUP in intents
         assert TaskIntent.VISUAL in intents
         assert TaskIntent.LOCAL_ONLY in intents
 

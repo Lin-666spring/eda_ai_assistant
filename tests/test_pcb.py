@@ -421,7 +421,10 @@ class TestCheckerEdgeCases:
         pcb = PCBData(format="lceda_json", layers=["TopLayer"],
                       nets={"VCC": PCBNet(name="VCC")})
         violations = checker.check_all([], {}, pcb_data=pcb)
-        assert len(violations) == 0
+        # INFO-level violations about copper pours and testpoints are expected
+        # even when no traces exist — they're informational hints for the designer
+        errors_and_warnings = [v for v in violations if v.severity != RuleSeverity.INFO]
+        assert len(errors_and_warnings) == 0
 
     def test_power_same_net_different_widths(self, checker):
         """同网络多条走线——应检查最细那条"""

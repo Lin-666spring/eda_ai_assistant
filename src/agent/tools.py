@@ -139,10 +139,34 @@ TOOLS: list[ToolDef] = [
         description="将BOM导出为可搜索、排序、筛选的交互式HTML表格",
         keywords=("html", "网页", "交互", "导出", "ibom",
                   "网页bom", "bom网页", "web bom", "生成html"),
-        intent="BOM_ANALYSIS",
+        intent="REPORT_GEN",
         handler="generate_html_bom",
         params_schema={"properties": {}, "required": []},
         category="report",
+    ),
+    ToolDef(
+        name="export_bom_csv",
+        label="导出BOM CSV",
+        description="将当前BOM数据导出为标准CSV文件，可被Excel/立创EDA打开",
+        keywords=("导出csv", "csv", "excel", "导出表格", "保存bom",
+                  "导出bom", "bom导出", "导出到excel", "表格导出",
+                  "csv导出", "保存为csv"),
+        intent="REPORT_GEN",
+        handler="export_bom_csv",
+        params_schema={"properties": {}, "required": []},
+        category="report",
+    ),
+    ToolDef(
+        name="bom_cost_summary",
+        label="BOM成本汇总",
+        description="汇总估算BOM中所有元件的总成本和各项成本分布",
+        keywords=("成本", "总价", "预算", "费用", "花费", "每个多少钱",
+                  "价格汇总", "成本汇总", "成本估算", "总成本",
+                  "多少钱", "cost", "price total"),
+        intent="BOM_HEALTH",
+        handler="check_bom_health",
+        params_schema={"properties": {}, "required": []},
+        category="health",
     ),
     # ── PCB & 规则 ──
     ToolDef(
@@ -185,18 +209,114 @@ TOOLS: list[ToolDef] = [
         params_schema={"properties": {}, "required": []},
         category="pcb",
     ),
-    # ── BOM 健康 ──
+    # ── BOM 健康 / 供应链 ──
     ToolDef(
         name="bom_health",
         label="BOM健康检查",
-        description="通过立创商城API检查每个元件的库存状态、生命周期、可替代料、成本估算",
+        description="通过立创商城API检查每个元件的库存状态、生命周期(NRND/EOL)、可替代料推荐、成本估算",
         keywords=("健康", "库存", "采购", "报价", "替代料", "缺货",
                   "生命周期", "lcsc", "立创商城", "供应", "货源",
                   "成本", "价格"),
-        intent="BOM_ANALYSIS",
+        intent="BOM_HEALTH",
         handler="check_bom_health",
         params_schema={"properties": {}, "required": []},
         category="health",
+    ),
+    ToolDef(
+        name="find_alternatives",
+        label="查找替代料",
+        description="为指定元件在立创商城中查找可替代型号（pin-to-pin兼容或功能兼容）",
+        keywords=("替代", "替换", "替代料", "替代型号", "代替", "换一个",
+                  "有什么替代", "替换料", "替代方案", "可替代",
+                  "alternative", "replace", "substitute"),
+        intent="BOM_HEALTH",
+        handler="check_bom_health",  # 复用健康检查，其已包含替代料
+        params_schema={
+            "properties": {"keyword": {"type": "string", "description": "要查找替代的元件型号或描述"}},
+            "required": [],
+        },
+        category="health",
+    ),
+    ToolDef(
+        name="supply_risk",
+        label="供应链风险评估",
+        description="评估BOM整体供应链风险：缺货率、停产风险、单一供应商依赖、交期风险",
+        keywords=("供应风险", "缺货风险", "停产风险", "交期", "供应链",
+                  "采购风险", "风险评估", "风险分析", "供货风险"),
+        intent="BOM_HEALTH",
+        handler="check_bom_health",
+        params_schema={"properties": {}, "required": []},
+        category="health",
+    ),
+    # ── 元件信息查询 ──
+    ToolDef(
+        name="component_lookup",
+        label="元件信息查询",
+        description="查询元器件的详细规格参数：封装尺寸、电气参数、datasheet信息、制造商详情",
+        keywords=("查询元件", "规格", "datasheet", "数据手册", "参数查询",
+                  "什么封装", "尺寸", "引脚定义", "pinout", "规格书",
+                  "技术参数", "电气参数", "额定电压", "额定电流",
+                  "lookup", "specs", "datasheet"),
+        intent="COMPONENT_LOOKUP",
+        handler="_filter_input",  # LLM Agent Loop 处理查询
+        params_schema={
+            "properties": {"part_number": {"type": "string", "description": "要查询的元件型号"}},
+            "required": ["part_number"],
+        },
+        requires_data=False,
+        category="bom",
+    ),
+    ToolDef(
+        name="search_component",
+        label="搜索元件",
+        description="在元件库中搜索符合需求的元件型号（如：找一款5V转3.3V的LDO）",
+        keywords=("找", "搜索", "查找", "选型", "选一个", "找一个",
+                  "有什么", "哪种", "推荐一款", "选型推荐",
+                  "find", "search", "recommend", "suggest"),
+        intent="COMPONENT_LOOKUP",
+        handler="_filter_input",
+        params_schema={
+            "properties": {"requirement": {"type": "string", "description": "元件需求描述"}},
+            "required": ["requirement"],
+        },
+        requires_data=False,
+        category="bom",
+    ),
+    # ── PCB 设计工具 ──
+    ToolDef(
+        name="calc_trace_width",
+        label="计算走线宽度",
+        description="根据电流和温升计算所需PCB走线宽度（IPC-2221标准）",
+        keywords=("走线宽度", "线宽计算", "载流计算", "铜厚", "温升",
+                  "多宽走线", "线宽要多少", "走多宽", "载流能力",
+                  "trace width", "current capacity", "ipc2221"),
+        intent="PCB_ANALYSIS",
+        handler="_pcb_analysis_cmd",
+        params_schema={
+            "properties": {
+                "current_a": {"type": "number", "description": "电流(A)"},
+                "temp_rise": {"type": "number", "description": "允许温升(°C)，默认10"},
+                "copper_oz": {"type": "number", "description": "铜厚(oz)，默认1"},
+            },
+            "required": ["current_a"],
+        },
+        requires_data=False,
+        category="pcb",
+    ),
+    ToolDef(
+        name="explain_design_rule",
+        label="解释设计规则",
+        description="详细解释某条PCB设计规则的理论依据和实际应用",
+        keywords=("解释规则", "设计规则说明", "为什么需要", "原理",
+                  "什么原理", "解释一下", "这条规则", "为什么这样",
+                  "explain rule", "rule explanation"),
+        intent="RULE_CHECK",
+        handler="check_design_rules",
+        params_schema={
+            "properties": {"rule_name": {"type": "string", "description": "要解释的规则名称"}},
+            "required": ["rule_name"],
+        },
+        category="pcb",
     ),
     # ── 视觉分析 ──
     ToolDef(
@@ -222,10 +342,42 @@ TOOLS: list[ToolDef] = [
         description="按类型统计BOM元件数量和分布",
         keywords=("统计", "概览", "summary", "汇总", "总览",
                   "统计信息", "摘要"),
-        intent="LOCAL_ONLY",
+        intent="REPORT_GEN",
         handler="_summary_report",
         params_schema={"properties": {}, "required": []},
         category="report",
+    ),
+    # ── 多智能体协同审查 ──
+    ToolDef(
+        name="review_multi_agent",
+        label="多智能体审查",
+        description="启动5个专业AI Agent并行审查PCB设计（电源/信号/热/EMC/可制造性），生成综合评分报告和雷达图",
+        keywords=("多智能体", "全面审查", "综合检查", "质量评分", "多维度",
+                  "全面分析", "agent审查", "多agent", "五个agent",
+                  "review", "multi agent", "full review", "audit"),
+        intent="RULE_CHECK",
+        handler="review_design_multi_agent",
+        params_schema={"properties": {}, "required": []},
+        category="pcb",
+    ),
+    # ── DRC 规则自动生成 ──
+    ToolDef(
+        name="generate_drc_rule",
+        label="生成DRC规则",
+        description="根据自然语言描述自动生成PCB设计规则检查代码，返回完整的RuleViolation格式Python代码",
+        keywords=("生成规则", "创建规则", "编写drc", "写一个检查", "新增规则",
+                  "自定义规则", "生成drc", "dr规则生成", "写规则",
+                  "generate rule", "create rule", "new drc"),
+        intent="CODE_RULE_GEN",
+        handler="_generate_drc_rule",
+        params_schema={
+            "properties": {
+                "rule_description": {"type": "string", "description": "用户对需要生成的设计规则的文字描述"},
+            },
+            "required": ["rule_description"],
+        },
+        requires_data=False,
+        category="pcb",
     ),
 ]
 
@@ -379,12 +531,3 @@ class ToolRegistry:
 #         output = controller._dispatch_operation(result["name"], result["arguments"])
 #         result = llm_client.function_call(output, functions=tools)
 
-# [PLANNED] DRC 规则自动生成
-#   新增 ToolDef:
-#     ToolDef(
-#         name="generate_drc_rule", label="生成DRC规则",
-#         description="根据自然语言描述自动生成PCB设计规则检查代码",
-#         keywords=("生成规则", "创建规则", "编写drc", "写一个检查"),
-#         intent="CODE_RULE_GEN", handler="_generate_drc_rule",
-#         requires_data=False, category="pcb",
-#     )

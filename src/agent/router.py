@@ -19,14 +19,17 @@ logger = logging.getLogger(__name__)
 
 
 class TaskIntent(Enum):
-    """任务意图分类"""
-    TEXT_CHAT = auto()         # 通用文本对话
-    BOM_ANALYSIS = auto()      # BOM 分析/合并
-    RULE_CHECK = auto()        # 规则检查
-    PCB_ANALYSIS = auto()      # PCB 布局分析
-    CODE_RULE_GEN = auto()     # 代码/DRC 规则生成
-    VISUAL = auto()            # 图像分析（原理图/PCB截图）
-    LOCAL_ONLY = auto()        # 纯本地处理
+    """任务意图分类 — 10 大类覆盖电子设计全流程"""
+    TEXT_CHAT = auto()          # 通用文本对话/电子知识问答
+    BOM_ANALYSIS = auto()       # BOM 物料分析/合并/校验
+    BOM_HEALTH = auto()         # BOM 供应链健康（库存/替代料/成本/采购）
+    RULE_CHECK = auto()         # PCB 设计规则检查 (DRC)
+    PCB_ANALYSIS = auto()       # PCB 布局布线分析
+    CODE_RULE_GEN = auto()      # 代码/DRC 规则/脚本生成
+    REPORT_GEN = auto()         # 报告生成（HTML BOM/设计报告/统计）
+    COMPONENT_LOOKUP = auto()   # 元件信息查询（datasheet/规格/参数/封装）
+    VISUAL = auto()             # 图像分析（原理图/PCB截图/波形）
+    LOCAL_ONLY = auto()         # 纯本地处理（统计/状态/文件操作）
 
 
 @dataclass
@@ -64,6 +67,15 @@ class RouterConfig:
         name="deepseek", model="deepseek-v4-pro",
     ))
     code_rule_gen: ProviderBinding = field(default_factory=lambda: ProviderBinding(
+        name="deepseek", model="deepseek-v4-pro",
+    ))
+    bom_health: ProviderBinding = field(default_factory=lambda: ProviderBinding(
+        name="deepseek", model="deepseek-v4-pro",
+    ))
+    report_gen: ProviderBinding = field(default_factory=lambda: ProviderBinding(
+        name="deepseek", model="deepseek-v4-pro",
+    ))
+    component_lookup: ProviderBinding = field(default_factory=lambda: ProviderBinding(
         name="deepseek", model="deepseek-v4-pro",
     ))
     visual: ProviderBinding = field(default_factory=lambda: ProviderBinding(
@@ -104,9 +116,9 @@ class LLMRouter:
         )
 
         bindings = {intent: binding for intent in TaskIntent}
-        # 视觉任务优先用多模态模型
+        # 视觉任务优先用原生多模态模型
         bindings[TaskIntent.VISUAL] = ProviderBinding(
-            name="moonshot", model="kimi-k2.6", api_key=key, base_url="https://api.moonshot.cn/v1",
+            name="gemini", model="gemini-2.5-pro", api_key=key, base_url="https://generativelanguage.googleapis.com/v1beta/openai",
         )
         # 纯本地处理不需要模型
         bindings[TaskIntent.LOCAL_ONLY] = ProviderBinding(name="local", model="")

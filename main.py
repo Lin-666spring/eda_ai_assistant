@@ -25,7 +25,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from src.core.controller import AppController
 from src.core.file_watcher import FileWatcher
 from src.bom.parser import BOMItem
-from src.config import config, load_settings, save_settings
+from src.config import config, load_settings, save_settings, SETTINGS_DIR
+from src.constants import LLM_PROVIDER_PRESETS, ProviderPreset
 
 # ── Init ──
 
@@ -213,6 +214,12 @@ def clear_chat():
 
 
 @eel.expose
+def review_design_multi_agent() -> str:
+    """多智能体协同设计审查 — 返回 JSON"""
+    return controller.review_design_multi_agent()
+
+
+@eel.expose
 def set_active_assistant(assistant_id: str) -> dict:
     """切换当前助手"""
     try:
@@ -252,7 +259,11 @@ def get_settings() -> dict:
         "api_key": saved.get("llm_api_key", ""),
         "base_url": saved.get("llm_base_url", ""),
         "model": saved.get("llm_model", ""),
+        "temperature": saved.get("llm_temperature", 0.7),
         "theme": saved.get("selected_theme", "dark"),
+        "accent": saved.get("selected_accent", "#5b8def"),
+        "font_size": saved.get("font_size", 13),
+        "data_dir": str(SETTINGS_DIR),
     }
 
 
@@ -262,6 +273,91 @@ def save_theme(theme: str):
     saved["selected_theme"] = theme
     save_settings(saved)
     return {"ok": True}
+
+
+@eel.expose
+def save_accent(color: str):
+    saved = load_settings()
+    saved["selected_accent"] = color
+    save_settings(saved)
+    return {"ok": True}
+
+
+@eel.expose
+def save_font_size(size: int):
+    saved = load_settings()
+    saved["font_size"] = size
+    save_settings(saved)
+    return {"ok": True}
+
+
+@eel.expose
+def save_all_settings(provider: str, api_key: str, base_url: str, model: str,
+                      temperature: float, theme: str, accent: str) -> dict:
+    try:
+        controller.reconfigure_llm(provider, api_key, base_url, model)
+        saved = load_settings()
+        saved["llm_provider"] = provider
+        saved["llm_api_key"] = api_key
+        saved["llm_base_url"] = base_url
+        saved["llm_model"] = model
+        saved["llm_temperature"] = temperature
+        saved["selected_theme"] = theme
+        saved["selected_accent"] = accent
+        save_settings(saved)
+        logger.info("All settings saved: provider=%s, theme=%s", provider, theme)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("Failed to save settings")
+        return {"ok": False, "error": str(e)}
+
+
+@eel.expose
+def test_llm_connection(provider: str, api_key: str, base_url: str, model: str) -> dict:
+    """Test LLM API connection with a minimal request."""
+    import time
+    try:
+        # Use the OpenAI-compatible client directly
+        from openai import OpenAI
+        url = base_url or LLM_PROVIDER_PRESETS.get(provider, ProviderPreset(
+            name=provider, base_url="", default_model="", description="")).base_url
+        if not url:
+            return {"ok": False, "error": "未配置 API 地址"}
+
+        client = OpenAI(api_key=api_key, base_url=url)
+        start = time.time()
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": "Hi"}],
+            max_tokens=5,
+            temperature=0,
+        )
+        latency = round((time.time() - start) * 1000)
+        return {"ok": True, "latency": latency, "model_used": resp.model}
+    except Exception as e:
+        msg = str(e)
+        if len(msg) > 200:
+            msg = msg[:200] + "..."
+        return {"ok": False, "error": msg}
+
+
+@eel.expose
+def clear_all_data() -> dict:
+    """Clear all local data (settings + DB)."""
+    import shutil
+    try:
+        if SETTINGS_DIR.exists():
+            shutil.rmtree(str(SETTINGS_DIR))
+            SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@eel.expose
+def get_design_suggestions() -> str:
+    """设计意图识别：BOM加载后自动调用，返回Markdown格式的主动建议"""
+    return controller.get_design_suggestions()
 
 
 @eel.expose

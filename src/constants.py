@@ -65,12 +65,12 @@ LLM_PROVIDER_PRESETS: dict[str, ProviderPreset] = {
         "DeepSeek V4-Pro — 1.6T MoE, 100万上下文 (2026.04)",
     ),
     "openai": ProviderPreset(
-        "openai", "https://api.openai.com/v1", "gpt-5.4",
-        "OpenAI GPT-5.4 — 目前 API 最新旗舰 (2026.03)",
+        "openai", "https://api.openai.com/v1", "gpt-5.5",
+        "OpenAI GPT-5.5 — 最新旗舰, 多模态 (2026.05)",
     ),
     "qwen": ProviderPreset(
-        "qwen", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen3.6-plus",
-        "通义千问 3.6-Plus — 100万上下文, 性能与成本均衡 (2026.04)",
+        "qwen", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen3.7-max",
+        "通义千问 3.7-Max — 最新旗舰, Coding Agent (2026.05)",
     ),
     "glm": ProviderPreset(
         "glm", "https://open.bigmodel.cn/api/paas/v4", "glm-5.1",
@@ -83,6 +83,22 @@ LLM_PROVIDER_PRESETS: dict[str, ProviderPreset] = {
     "siliconflow": ProviderPreset(
         "siliconflow", "https://api.siliconflow.cn/v1", "deepseek-ai/DeepSeek-V4-Flash",
         "硅基流动 — 第三方聚合 API (DeepSeek V4-Flash, 高性价比)",
+    ),
+    "gemini": ProviderPreset(
+        "gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.5-flash",
+        "Google Gemini 3.5 Flash — 最新稳定版, Agent/Coding (2026.05)",
+    ),
+    "claude": ProviderPreset(
+        "claude", "https://api.anthropic.com/v1/messages", "claude-opus-4-8",
+        "Anthropic Claude Opus 4.8 — 深度推理, 原生协议 (2026.05)",
+    ),
+    "doubao": ProviderPreset(
+        "doubao", "https://ark.cn-beijing.volces.com/api/v3", "doubao-1.5-pro-256k",
+        "豆包 1.5 Pro — 字节跳动, 256K上下文, 高性价比 (2026.05)",
+    ),
+    "minimax": ProviderPreset(
+        "minimax", "https://api.minimax.io/v1", "MiniMax-M3",
+        "MiniMax M3 — 最新旗舰, 1M上下文, 128K输出 (2026.06)",
     ),
 }
 

@@ -34,7 +34,7 @@ class TestIntentDescriptors:
     """验证所有 7 个意图都有完整描述"""
 
     def test_all_seven_intents(self):
-        assert len(INTENT_DESCRIPTORS) == 7
+        assert len(INTENT_DESCRIPTORS) == 10
 
     def test_each_has_name_label_description(self):
         for d in INTENT_DESCRIPTORS:
@@ -97,8 +97,8 @@ class TestKeywordOnlyClassification:
     def test_bom_health_keywords(self, engine_no_embedding):
         name, confidence, debug = engine_no_embedding.classify("检查元件库存和替代料")
         # "检查" 也可能命中 RULE_CHECK，所以接受多种结果
-        assert name in ("BOM_ANALYSIS", "TEXT_CHAT", "RULE_CHECK"), f"Unexpected intent: {name}"
-        # "库存" 和 "替代料" 都在 BOM 关键词列表中
+        assert name in ("BOM_ANALYSIS", "TEXT_CHAT", "RULE_CHECK", "BOM_HEALTH"), f"Unexpected intent: {name}"
+        # "库存" 和 "替代料" 都在 BOM/BOM_HEALTH 关键词列表中
 
 
 # ——— 置信度阈值 ———
@@ -164,7 +164,7 @@ class TestEngineProperties:
         assert not engine_no_embedding.embedding_available
 
     def test_intent_count(self, engine_no_embedding):
-        assert engine_no_embedding.intent_count == 7
+        assert engine_no_embedding.intent_count == 10
 
     def test_get_label(self, engine_no_embedding):
         assert engine_no_embedding._get_label("BOM_ANALYSIS") == "BOM物料分析"
@@ -183,8 +183,8 @@ class TestHybridScore:
         assert hybrid["BOM_ANALYSIS"] == 0.8
 
     def test_with_embedding_combines(self, engine_no_embedding):
-        emb = {"BOM_ANALYSIS": 0.9, "TEXT_CHAT": 0.3, "RULE_CHECK": 0.5, "PCB_ANALYSIS": 0.2, "CODE_RULE_GEN": 0.1, "VISUAL": 0.05, "LOCAL_ONLY": 0.05}
-        kw = {"BOM_ANALYSIS": 0.7, "TEXT_CHAT": 0.1, "RULE_CHECK": 0.3, "PCB_ANALYSIS": 0.1, "CODE_RULE_GEN": 0.05, "VISUAL": 0.05, "LOCAL_ONLY": 0.05}
+        emb = {"BOM_ANALYSIS": 0.9, "TEXT_CHAT": 0.3, "RULE_CHECK": 0.5, "PCB_ANALYSIS": 0.2, "CODE_RULE_GEN": 0.1, "BOM_HEALTH": 0.15, "REPORT_GEN": 0.1, "COMPONENT_LOOKUP": 0.1, "VISUAL": 0.05, "LOCAL_ONLY": 0.05}
+        kw = {"BOM_ANALYSIS": 0.7, "TEXT_CHAT": 0.1, "RULE_CHECK": 0.3, "PCB_ANALYSIS": 0.1, "CODE_RULE_GEN": 0.05, "BOM_HEALTH": 0.1, "REPORT_GEN": 0.05, "COMPONENT_LOOKUP": 0.05, "VISUAL": 0.05, "LOCAL_ONLY": 0.05}
         hybrid = engine_no_embedding._hybrid_score(emb, kw)
         assert "BOM_ANALYSIS" in hybrid
         # 混合后 BOM 应该得分最高

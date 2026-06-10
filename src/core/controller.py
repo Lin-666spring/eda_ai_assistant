@@ -65,14 +65,37 @@ class AppController:
 
     # ── Lifecycle ──
 
+    @staticmethod
+    def _create_llm_client(api_key: str, base_url: str, model: str, provider: str,
+                            tool_executor=None) -> Optional[LLMClient]:
+        """工厂方法：根据 provider 创建对应的客户端
+
+        Claude 使用 Anthropic 原生 Messages API（非 OpenAI 兼容），
+        其余厂商使用 OpenAI 兼容的 LLMClient。
+        """
+        if provider == "claude":
+            from src.agent.anthropic_client import AnthropicClient
+            return AnthropicClient(
+                api_key=api_key,
+                base_url=base_url or None,
+                model=model or None,
+                provider=provider,
+                tool_executor=tool_executor,
+            )
+        else:
+            return LLMClient(
+                api_key=api_key,
+                base_url=base_url or None,
+                model=model or None,
+                provider=provider,
+                tool_executor=tool_executor,
+            )
+
     def __init__(self, api_key: Optional[str] = None):
         effective_key = api_key or config.llm.api_key
-        self.agent = LLMClient(
-            api_key=effective_key,
-            base_url=config.llm.base_url,
-            model=config.llm.model,
-            provider=config.llm.provider,
-            tool_executor=self._dispatch_operation,
+        self.agent = self._create_llm_client(
+            effective_key, config.llm.base_url, config.llm.model,
+            config.llm.provider, self._dispatch_operation,
         ) if _is_key_usable(effective_key) else None
         self.router = LLMRouter.from_config(effective_key) if _is_key_usable(effective_key) else None
         self.parser = BOMParser()
@@ -84,12 +107,9 @@ class AppController:
     def reconfigure_llm(self, provider: str, api_key: str, base_url: str, model: str):
         """热重载 LLM 客户端 — 用户通过设置面板修改配置后调用。"""
         if _is_key_usable(api_key):
-            self.agent = LLMClient(
-                api_key=api_key,
-                base_url=base_url or None,
-                model=model or None,
-                provider=provider,
-                tool_executor=self._dispatch_operation,
+            self.agent = self._create_llm_client(
+                api_key, base_url or "", model or "", provider,
+                self._dispatch_operation,
             )
             self.router = LLMRouter.from_config(api_key)
         else:
@@ -131,7 +151,19 @@ class AppController:
         name = Path(file_path).name
         n = len(self.context.bom_items)
         logger.info("BOM loaded: %s (%d items)", name, n)
-        return n, f"✅ 已加载 BOM: {name}\n共 {n} 条物料记录"
+        return n, f" 已加载 BOM: {name}\n共 {n} 条物料记录"
+
+    def get_design_suggestions(self) -> str:
+        """设计意图识别：扫描 BOM 匹配电路模板，主动建议缺失元件"""
+        if not self.context.bom_items:
+            return ""
+        try:
+            from src.agent.design_templates import DesignTemplateEngine
+            engine = DesignTemplateEngine()
+            return engine.get_suggestions_report(self.context.bom_items)
+        except Exception as e:
+            logger.exception("Design suggestions failed")
+            return ""
 
     def load_positions(self, file_path: str) -> tuple[int, str]:
         """Parse a Pick & Place file, return (count, message)."""
@@ -139,7 +171,7 @@ class AppController:
         name = Path(file_path).name
         n = len(self.context.positions)
         logger.info("Positions loaded: %s (%d entries)", name, n)
-        return n, f"✅ 已加载坐标: {name}\n共 {n} 个位号坐标"
+        return n, f" 已加载坐标: {name}\n共 {n} 个位号坐标"
 
     def load_pcb(self, file_path: str) -> tuple[int, str]:
         """Parse a PCB layout file, populate context, return (net_count, message)."""
@@ -151,7 +183,7 @@ class AppController:
             name, pcb.net_count, pcb.trace_count, pcb.via_count,
         )
         summary = (
-            f"✅ 已加载 PCB: {name}\n"
+            f" 已加载 PCB: {name}\n"
             f"  格式: {pcb.format}\n"
             f"  网络: {pcb.net_count} 个\n"
             f"  走线: {pcb.trace_count} 条\n"
@@ -172,7 +204,7 @@ class AppController:
     def ai_merge_bom(self) -> str:
         """AI-assisted BOM merge: rule-based merge + AI suggestions for further merging."""
         if not self.is_agent_available():
-            return self.merge_bom() + "\n\n⚠️ AI 未配置，仅执行了规则合并"
+            return self.merge_bom() + "\n\n AI 未配置，仅执行了规则合并"
 
         merger = BOMMerger()
         rule_merged = merger.merge(self.context.bom_items)
@@ -195,9 +227,9 @@ class AppController:
 
         report = merger.get_merge_report(self.context.bom_items, final_merged)
         if ai_count > 0:
-            report += f"\n\n🤖 AI 额外识别了 {ai_count} 组合并"
+            report += f"\n\n AI 额外识别了 {ai_count} 组合并"
         else:
-            report += "\n\n🤖 AI 未发现额外合并机会"
+            report += "\n\n AI 未发现额外合并机会"
         return report
 
     def _format_merged_for_ai(self, merged: list) -> str:
@@ -234,7 +266,48 @@ class AppController:
         generator = HTMLBOMGenerator(HTMLBOMConfig(title=title))
         generator.generate(self.context.bom_items, self.context.positions, output_path)
         logger.info("HTML BOM generated: %s", output_path)
-        return f"🌐 HTML BOM 已生成:\n{output_path}"
+        return f" HTML BOM 已生成:\n{output_path}"
+
+    def export_bom_csv(self, output_path: Optional[str] = None) -> str:
+        """导出 BOM 为 UTF-8-BOM CSV 文件（Excel 兼容中文）"""
+        if not self.context.bom_items:
+            return " 请先导入 BOM 文件再导出。"
+
+        if output_path is None:
+            out_dir = Path(__file__).parent.parent.parent / "output"
+            out_dir.mkdir(exist_ok=True)
+            # 生成带时间戳的文件名
+            from datetime import datetime
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            name = Path(self.context.bom_file).stem if self.context.bom_file else "bom_export"
+            output_path = str(out_dir / f"{name}_{ts}.csv")
+
+        try:
+            import csv
+            # 使用 UTF-8-BOM 编码确保 Excel 正确显示中文
+            with open(output_path, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f)
+                # 表头
+                writer.writerow(["位号", "参数值", "封装", "型号", "描述", "数量", "制造商"])
+                for item in self.context.bom_items:
+                    writer.writerow([
+                        item.reference,
+                        item.value,
+                        item.package,
+                        item.part_number,
+                        item.description,
+                        item.quantity,
+                        item.manufacturer,
+                    ])
+            logger.info("BOM CSV exported: %s", output_path)
+            return (
+                f" BOM CSV 已导出（UTF-8-BOM 编码，Excel 兼容中文）:\n"
+                f"`{output_path}`\n\n"
+                f"共计 {len(self.context.bom_items)} 行物料数据。"
+            )
+        except Exception as e:
+            logger.error("BOM CSV export failed: %s", e)
+            return f" CSV 导出失败: {str(e)}"
 
     def check_design_rules(self) -> str:
         checker = DesignRuleChecker()
@@ -245,10 +318,84 @@ class AppController:
         )
         return checker.get_report(violations)
 
+    def review_design_multi_agent(self) -> str:
+        """多智能体协同设计审查 — 5 个专业 Agent 并行审查 + 合成报告
+
+        返回 JSON 格式的结构化审查报告（供前端雷达图 + 卡片渲染）。
+        """
+        if not self.context.bom_items:
+            return json.dumps({"error": "请先导入 BOM 文件"}, ensure_ascii=False)
+
+        try:
+            # 运行设计规则检查
+            checker = DesignRuleChecker()
+            violations = checker.check_all(
+                self.context.bom_items,
+                self.context.positions,
+                pcb_data=self.context.pcb_data,
+            )
+
+            # 多智能体审查（如果 LLM 可用则深度分析，否则基于规则）
+            from src.agent.review_agents import MultiAgentReviewer
+            reviewer = MultiAgentReviewer(llm_client=self.agent if self.is_agent_available() else None)
+
+            if self.is_agent_available():
+                report = reviewer.review_with_llm(
+                    violations,
+                    self.context.bom_items,
+                    self.context.positions,
+                    self.context.pcb_data,
+                )
+            else:
+                report = reviewer.review(
+                    violations,
+                    self.context.bom_items,
+                    self.context.positions,
+                    self.context.pcb_data,
+                )
+
+            # 构建前端可渲染的 JSON
+            result = {
+                "radar_data": report.radar_data,
+                "overall_score": report.overall_score,
+                "overall_grade": report.overall_grade,
+                "consensus": report.consensus_summary,
+                "agents": {},
+                "critical_issues": report.critical_issues,
+                "improvement_roadmap": report.improvement_roadmap,
+            }
+
+            for key, ar in report.agent_reports.items():
+                result["agents"][key] = {
+                    "name": ar.agent_name,
+                    "emoji": ar.agent_emoji,
+                    "domain": ar.domain,
+                    "summary": ar.summary,
+                    "score": ar.score,
+                    "findings": [
+                        {
+                            "severity": f.severity,
+                            "title": f.title,
+                            "detail": f.detail,
+                            "suggestion": f.suggestion,
+                            "location": f.location,
+                        }
+                        for f in ar.findings[:5]
+                    ],
+                }
+
+            logger.info("Multi-agent review completed: score=%s, grade=%s",
+                        report.overall_score, report.overall_grade)
+            return json.dumps(result, ensure_ascii=False)
+
+        except Exception as e:
+            logger.exception("Multi-agent review failed")
+            return json.dumps({"error": f"多智能体审查失败: {e}"}, ensure_ascii=False)
+
     def check_bom_health(self) -> str:
         """BOM 健康检查 — 库存 / 生命周期 / 替代料 / 成本。"""
         if not self.context.has_data:
-            return "⚠️ 请先导入 BOM 文件"
+            return " 请先导入 BOM 文件"
         client = LcscSearchClient()
         checker = BOMHealthChecker(client)
         report = checker.check(self.context.bom_items)
@@ -274,8 +421,8 @@ class AppController:
             question = params.get("question", "不太确定您的意思，能再说详细一点吗？")
             options = params.get("options", [])
             if options:
-                return "🤔 " + question + "\n\n可选项：\n" + "\n".join(f"  • {o}" for o in options)
-            return "🤔 " + question
+                return " " + question + "\n\n可选项：\n" + "\n".join(f"  • {o}" for o in options)
+            return " " + question
 
         # 从 ToolRegistry 获取 handler 映射（带懒加载降级）
         dispatch = self._build_dispatch_map()
@@ -284,7 +431,7 @@ class AppController:
             return handler()
 
         return (
-            f"🤔 无法识别操作「{operation}」\n\n"
+            f" 无法识别操作「{operation}」\n\n"
             "可用操作：合并BOM / 校验封装 / 检查重复 / 筛选元件 / "
             "生成HTML BOM / 设计规则检查 / BOM健康检查"
         )
@@ -314,7 +461,7 @@ class AppController:
             handlers["filter_components"] = lambda: self._filter_components({})
 
         # 向后兼容旧指令名
-        handlers["load_pcb"] = lambda: "⚠️ 请通过 文件→导入PCB 加载电路板文件。"
+        handlers["load_pcb"] = lambda: " 请通过 文件→导入PCB 加载电路板文件。"
         return handlers
 
     # ══════════════════════════════════════════════════
@@ -326,7 +473,7 @@ class AppController:
 
     def _require_data(self) -> Optional[str]:
         if not self.context.has_data:
-            return "⚠️ 请先导入 BOM 文件再输入指令。"
+            return " 请先导入 BOM 文件再输入指令。"
         return None
 
     def process_input(self, user_input: str) -> str:
@@ -376,7 +523,7 @@ class AppController:
             return raw
         except Exception:
             logger.exception("chat_message_stream failed")
-            return "⚠️ AI 调用失败，请检查网络连接和 API 配置。\n\n建议：\n- 检查 API Key 是否正确\n- 检查网络连接是否通畅\n- 检查 API 额度是否充足"
+            return " AI 调用失败，请检查网络连接和 API 配置。\n\n建议：\n- 检查 API Key 是否正确\n- 检查网络连接是否通畅\n- 检查 API 额度是否充足"
 
     def agent_loop(
         self,
@@ -404,7 +551,7 @@ class AppController:
             LLM 的最终文本回复
         """
         if not self.is_agent_available():
-            return "⚠️ Agent Loop 需要配置 AI 模型。请在设置中配置 API Key。"
+            return " Agent Loop 需要配置 AI 模型。请在设置中配置 API Key。"
 
         try:
             from src.agent.tools import ToolRegistry
@@ -429,10 +576,10 @@ class AppController:
             return result
         except RuntimeError as e:
             logger.exception("Agent loop runtime error")
-            return f"⚠️ Agent Loop 错误: {e}"
+            return f" Agent Loop 错误: {e}"
         except Exception:
             logger.exception("Agent loop failed")
-            return "⚠️ Agent Loop 调用失败，请检查网络连接和 API 配置。"
+            return " Agent Loop 调用失败，请检查网络连接和 API 配置。"
 
     def process_image_input(self, text: str, image_b64: str) -> str:
         """处理带图片的用户输入 — 调用多模态 LLM 分析
@@ -440,13 +587,13 @@ class AppController:
         不需要 BOM 预加载（图片分析独立于 BOM 数据）。
         """
         if not self.is_agent_available():
-            return "⚠️ 图片分析需要配置 AI 模型。请在设置中配置支持多模态的 API（如 Kimi、GPT-4o、Qwen-VL）。"
+            return " 图片分析需要配置 AI 模型。请在设置中配置支持多模态的 API（如 Kimi、GPT-4o、Qwen-VL）。"
 
         try:
             return self._analyze_image(text, image_b64)
         except Exception as e:
             logger.exception("Image analysis failed")
-            return f"⚠️ 图片分析失败: {e}"
+            return f" 图片分析失败: {e}"
 
     # ── AI helpers ──
 
@@ -512,7 +659,7 @@ class AppController:
             parsed.get("operation", ""), parsed.get("params", {})
         )
         explanation = parsed.get("explanation", "")
-        return f"🤖 AI 理解: {explanation}\n\n{result}" if explanation else result
+        return f" AI 理解: {explanation}\n\n{result}" if explanation else result
 
     def _try_ai(self, user_input: str) -> Optional[str]:
         """两阶段 NLU 管线
@@ -630,7 +777,7 @@ class AppController:
         if nlu is not None:
             return nlu.get_clarification_question(user_input)
         return (
-            "🤔 不太确定您的意思，能再说详细一点吗？\n\n"
+            " 不太确定您的意思，能再说详细一点吗？\n\n"
             "可用操作：合并BOM / 校验封装 / 检查重复 / 设计规则 / PCB分析 / BOM健康"
         )
 
@@ -651,11 +798,11 @@ class AppController:
                 image_b64=image_b64,
                 system_prompt=system,
             )
-            return f"🤖 AI 视觉分析:\n\n{raw}"
+            return f" AI 视觉分析:\n\n{raw}"
         except Exception as e:
             logger.exception("Multimodal LLM call failed")
             return (
-                f"⚠️ 视觉分析调用失败: {e}\n\n"
+                f" 视觉分析调用失败: {e}\n\n"
                 "请确认:\n"
                 "• 已配置支持多模态的 API（如 Kimi、GPT-4o、Qwen-VL）\n"
                 "• 当前模型支持图片输入\n"
@@ -665,14 +812,14 @@ class AppController:
     def _filter_components(self, params: dict) -> str:
         keyword = (params.get("keyword") or "").lower()
         if not keyword:
-            return "🔍 请指定筛选关键词"
+            return " 请指定筛选关键词"
         matched = [
             item for item in self.context.bom_items
             if keyword in f"{item.reference} {item.value} {item.package} {item.part_number} {item.description}".lower()
         ]
         if not matched:
-            return f"🔍 未找到包含「{keyword}」的元件"
-        lines = [f"🔍 筛选结果 ({len(matched)} 条):"]
+            return f" 未找到包含「{keyword}」的元件"
+        lines = [f" 筛选结果 ({len(matched)} 条):"]
         for item in matched:
             lines.append(
                 f"   {item.reference:15s} {item.value:10s} "
@@ -727,10 +874,29 @@ class AppController:
     def _resolve_handler_by_tool(self, tool_name: str) -> Optional[Callable[[], str]]:
         """通过 ToolRegistry 解析 tool name → handler callable"""
         # 特殊处理：需要参数或特殊逻辑的工具
-        if tool_name == "filter_components":
+        # 所有 filter/search/lookup 类工具都使用 _filter_input_handler
+        filter_tools = {"filter_components", "search_component", "component_lookup"}
+        analysis_tools = {"pcb_analysis", "calc_trace_width"}
+        health_tools = {"bom_health", "find_alternatives", "supply_risk", "bom_cost_summary"}
+        report_tools = {"generate_html_bom"}
+        rule_tools = {"check_rule", "explain_design_rule"}
+        code_gen_tools = {"generate_drc_rule"}
+        review_tools = {"review_multi_agent"}
+
+        if tool_name in filter_tools:
             return self._filter_input_handler
-        if tool_name == "pcb_analysis":
+        if tool_name in analysis_tools:
             return self._pcb_analysis_handler
+        if tool_name in health_tools:
+            return self.check_bom_health
+        if tool_name in report_tools:
+            return self.generate_html_bom
+        if tool_name in rule_tools:
+            return self.check_design_rules
+        if tool_name in code_gen_tools:
+            return self._generate_drc_rule
+        if tool_name in review_tools:
+            return self.review_design_multi_agent
 
         # 标准工具：从 Registry 获取 handler 名称
         try:
@@ -756,7 +922,7 @@ class AppController:
         # 这个方法在本地降级时被调用，但我们没有保存原始输入
         # 返回引导信息
         return (
-            "🔍 请在指令中指定要筛选的关键词，例如：\n"
+            " 请在指令中指定要筛选的关键词，例如：\n"
             "• \"筛选0603封装的电阻\"\n"
             "• \"查找STM32\"\n"
             "• \"搜索10kΩ\""
@@ -765,7 +931,7 @@ class AppController:
     def _pcb_analysis_handler(self) -> str:
         """处理 PCB 分析请求（本地降级时）"""
         if self.agent is None:
-            return "⚠️ PCB 分析需要 AI 支持，请先配置 API Key。"
+            return " PCB 分析需要 AI 支持，请先配置 API Key。"
         return self.agent.chat(
             PromptTemplates.get("pcb_analysis", pcb_summary=str(self.context.pcb_data or "未加载")),
             system_prompt=PromptTemplates.get_system_prompt("pcb"),
@@ -820,7 +986,7 @@ class AppController:
         suggestions = self._get_closest_commands(user_input, top=3)
         suggestion_text = ""
         if suggestions:
-            suggestion_text = "\n💡 您是不是想:\n"
+            suggestion_text = "\n 您是不是想:\n"
             for tool_name, score in suggestions:
                 label = ToolRegistry.get_label(tool_name) if 'ToolRegistry' in dir() else tool_name
                 suggestion_text += f"  • {label}\n"
@@ -844,7 +1010,7 @@ class AppController:
                 "• 统计 / 概览        — 元件统计"
             )
 
-        return "🤔 无法识别指令。" + suggestion_text + "\n" + help_text
+        return " 无法识别指令。" + suggestion_text + "\n" + help_text
 
     @staticmethod
     def _method_label(method_name: str) -> str:
@@ -873,13 +1039,114 @@ class AppController:
         lines.append("=" * 50)
         return "\n".join(lines)
 
+    def _generate_drc_rule(self) -> str:
+        """DRC 规则自动生成 — 根据自然语言描述生成检查规则代码
+
+        利用 LLM 将用户对 PCB 设计规则的自然语言描述
+        转换为可运行的 Python 规则检查代码（RuleViolation 格式）。
+        """
+        guard = self._require_llm()
+        if guard:
+            return guard
+
+        # 从用户最后一条输入获取规则描述
+        history = self.context.conversation_history
+        rule_desc = ""
+        for msg in reversed(history):
+            if msg.get("role") == "user":
+                rule_desc = msg.get("content", "")
+                break
+
+        if not rule_desc:
+            return " 请先描述你想生成的 DRC 规则。例如：'生成一个检查LED限流电阻的规则'"
+
+        # 构建生成提示
+        sample_code = '''def _check_example(self, bom_items, positions, netlist):
+    """规则名称：简短描述触发的条件"""
+    violations = []
+    # 遍历 BOM 元件
+    for item in bom_items:
+        ref = getattr(item, "reference", "").split(",")[0].strip()
+        desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
+        part_number = (getattr(item, "part_number", "") or "").strip().upper()
+        pkg = (getattr(item, "package", "") or "").strip().upper()
+        value = (getattr(item, "value", "") or "").strip().upper()
+        # 在此编写检查逻辑
+        # 如果需要位置信息:
+        # if positions and ref in positions:
+        #     pos = positions[ref]
+        #     x = pos.get("x", 0) if isinstance(pos, dict) else (pos[0] if isinstance(pos, (list, tuple)) else 0)
+        # 如果需要PCB数据:
+        # pcb = self._pcb_data
+        # if pcb and pcb.traces: ...
+    return violations'''
+
+        prompt = (
+            "你是一个 PCB 设计规则检查代码生成器。根据用户的自然语言描述，"
+            "生成一个完整的 Python 规则检查方法。\n\n"
+            "## 代码规范\n"
+            f"```python\n{sample_code}\n```\n\n"
+            "## 要求\n"
+            "1. 方法名格式: `_check_<英文简短描述>` (如 _check_led_current_limit)\n"
+            "2. 必须包含完整的文档字符串（规则名称：xxx）\n"
+            "3. 使用 RuleViolation 返回违规项，包含: rule_name, description, severity, location, suggestion, theory\n"
+            "4. severity 取值: RuleSeverity.INFO / WARNING / ERROR\n"
+            "5. 使用 getattr(item, 'field', default) 安全访问 BOMItem 字段\n"
+            "6. 每个违规项必须提供 theory（理论基础）字段\n"
+            "7. 如果所需数据不足，返回空列表\n\n"
+            f"## 用户需求\n{rule_desc}\n\n"
+            "请只输出 Python 代码，不要附带任何解释文字。代码应该可以直接复制到 DesignRuleChecker 类中。"
+        )
+
+        try:
+            llm = self.agent
+            code = llm.chat(prompt)
+            # 清理可能存在的 markdown 代码块标记
+            code = code.strip()
+            if code.startswith("```python"):
+                code = code[9:]
+            elif code.startswith("```"):
+                code = code[3:]
+            if code.endswith("```"):
+                code = code[:-3]
+            code = code.strip()
+
+            # 验证生成的代码是否语法正确
+            try:
+                compile(code, "<generated_drc_rule>", "exec")
+            except SyntaxError as e:
+                return (
+                    f" 生成的规则代码存在语法错误:\n```\n{e}\n```\n\n"
+                    f"请修改规则描述后重试。"
+                )
+
+            # 格式化为用户可查看的结果
+            return (
+                "##  DRC 规则已生成\n\n"
+                "以下规则代码可直接添加到 `src/rules/checker.py` 的 DesignRuleChecker 类中：\n\n"
+                f"```python\n{code}\n```\n\n"
+                "### 使用方式\n"
+                "1. 复制上方代码到 `src/rules/checker.py`\n"
+                "2. 保存文件后规则自动生效（`_check_` 前缀方法自动注册）\n"
+                "3. 运行 `python -m pytest tests/ -q` 验证无误\n\n"
+                " 提示: AI 生成的规则建议人工审核后再投入使用。"
+            )
+        except Exception as e:
+            return f" DRC 规则生成失败: {str(e)}\n\n请确保 LLM API 配置正确并重试。"
+
+    def _require_llm(self) -> Optional[str]:
+        """检查 LLM 是否可用"""
+        if not self.is_agent_available():
+            return " 此功能需要配置 LLM API Key。请在设置中配置 AI 模型。"
+        return None
+
     def _pcb_status(self) -> str:
         """返回已加载 PCB 的状态摘要"""
         pcb = self.context.pcb_data
         if not pcb:
-            return "⚠️ 未加载 PCB 文件。请通过 文件→导入PCB 加载电路板文件。"
+            return " 未加载 PCB 文件。请通过 文件→导入PCB 加载电路板文件。"
         return (
-            f"📐 PCB 状态:\n"
+            f" PCB 状态:\n"
             f"  格式: {pcb.format}\n"
             f"  网络: {pcb.net_count} 个\n"
             f"  走线: {pcb.trace_count} 条\n"

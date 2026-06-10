@@ -79,6 +79,103 @@ class TestCheckAll:
         assert result == []  # 不崩溃，返回空列表
 
 
+class TestLEDCurrentLimit:
+    def test_led_without_resistor(self, checker):
+        items = [
+            BOMItem(reference="LED1", value="Red", package="0603",
+                    part_number="C170687", description="发光二极管", quantity=1),
+        ]
+        violations = checker._check_led_current_limit(items, {}, {})
+        assert len(violations) >= 1
+        assert "LED" in violations[0].rule_name
+
+    def test_led_with_resistor(self, checker):
+        items = [
+            BOMItem(reference="LED1", value="Red", package="0603",
+                    part_number="C170687", description="发光二极管", quantity=1),
+            BOMItem(reference="R1", value="1kΩ", package="0603",
+                    part_number="C25804", description="贴片电阻", quantity=1),
+        ]
+        violations = checker._check_led_current_limit(items, {}, {})
+        assert len(violations) == 0
+
+
+class TestRelayFlybackDiode:
+    def test_relay_without_diode(self, checker):
+        items = [
+            BOMItem(reference="K1", value="5V", package="DIP-5",
+                    part_number="SRD-05VDC", description="继电器", quantity=1),
+        ]
+        violations = checker._check_relay_flyback_diode(items, {}, {})
+        assert len(violations) >= 1
+        assert "继电器" in violations[0].rule_name
+
+    def test_relay_with_diode(self, checker):
+        items = [
+            BOMItem(reference="K1", value="5V", package="DIP-5",
+                    part_number="SRD-05VDC", description="继电器", quantity=1),
+            BOMItem(reference="D1", value="", package="SOD-123",
+                    part_number="1N4148", description="开关二极管", quantity=1),
+        ]
+        violations = checker._check_relay_flyback_diode(items, {}, {})
+        assert len(violations) == 0
+
+
+class TestCapacitorVoltageDerating:
+    def test_cap_with_sufficient_rating(self, checker):
+        items = [
+            BOMItem(reference="C1", value="25V 100μF", package="SMD",
+                    part_number="C43353", description="铝电解电容", quantity=1),
+            BOMItem(reference="U1", value="5V", package="SOT-23-5",
+                    part_number="TPS54331", description="DC-DC降压", quantity=1),
+        ]
+        violations = checker._check_capacitor_voltage_derating(items, {}, {})
+        # 5V system, 25V cap rating — sufficient margin
+        assert len(violations) == 0
+
+    def test_cap_with_insufficient_rating(self, checker):
+        items = [
+            BOMItem(reference="C1", value="10V 100μF", package="SMD",
+                    part_number="C43353", description="铝电解电容", quantity=1),
+            BOMItem(reference="U1", value="OUT=12V", package="SOT-23-5",
+                    part_number="TPS54331", description="DC-DC降压", quantity=1),
+        ]
+        violations = checker._check_capacitor_voltage_derating(items, {}, {})
+        # 12V system, 10V cap — insufficient
+        assert len(violations) >= 1
+        assert "耐压" in violations[0].rule_name
+
+
+class TestDCDFeedbackNetwork:
+    def test_dcdc_without_fb_resistor(self, checker):
+        items = [
+            BOMItem(reference="U1", value="3.3V", package="SOT-23-5",
+                    part_number="MP1584EN", description="DC-DC Buck", quantity=1),
+        ]
+        violations = checker._check_dcdc_feedback_network(items, {}, {})
+        assert len(violations) >= 1
+        assert violations[0].severity == RuleSeverity.ERROR
+
+    def test_dcdc_with_fb_network(self, checker):
+        items = [
+            BOMItem(reference="U1", value="3.3V", package="SOT-23-5",
+                    part_number="MP1584EN", description="DC-DC Buck", quantity=1),
+            BOMItem(reference="R1", value="10kΩ", package="0603",
+                    part_number="C25804", description="贴片电阻", quantity=1),
+            BOMItem(reference="R2", value="2kΩ", package="0603",
+                    part_number="C25905", description="贴片电阻", quantity=1),
+        ]
+        violations = checker._check_dcdc_feedback_network(items, {}, {})
+        assert len(violations) == 0
+
+
+class TestNewRuleCount:
+    """验证规则总数 ≥50"""
+    def test_at_least_50_rules(self, checker):
+        rules = [name for name in dir(checker) if name.startswith('_check_')]
+        assert len(rules) >= 50, f"规则数={len(rules)}，应≥50"
+
+
 class TestGetReport:
     def test_no_violations(self, checker):
         report = checker.get_report([])
