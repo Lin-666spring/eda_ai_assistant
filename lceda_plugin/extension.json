@@ -1,0 +1,56 @@
+{
+  "name": "eda-ai-assistant",
+  "uuid": "eda-ai-assistant-001",
+  "displayName": "EDA AI 助手",
+  "description": "AI 驱动的 BOM 管理、PCB 设计审查与智能对话助手",
+  "version": "1.0.0",
+  "publisher": "Lin",
+  "license": "MIT",
+  "engines": {
+    "eda": "^2.3.0"
+  },
+  "entry": "dist/main.js",
+  "permissions": [
+    "External Interactions"
+  ],
+  "headerMenus": {
+    "sch": [
+      {
+        "label": "EDA AI 助手",
+        "submenus": [
+          { "label": "打开 AI 助手面板", "command": "eda-ai.open-panel" },
+          { "label": "分析当前 BOM", "command": "eda-ai.analyze-bom" },
+          { "label": "BOM 健康检查", "command": "eda-ai.bom-health" }
+        ]
+      }
+    ],
+    "pcb": [
+      {
+        "label": "EDA AI 助手",
+        "submenus": [
+          { "label": "打开 AI 助手面板", "command": "eda-ai.open-panel" },
+          { "label": "DRC 检查", "command": "eda-ai.drc-check" },
+          { "label": "多智能体审查", "command": "eda-ai.multi-agent-review" }
+        ]
+      }
+    ],
+    "blank": [
+      {
+        "label": "EDA AI 助手",
+        "submenus": [
+          { "label": "打开 AI 助手面板", "command": "eda-ai.open-panel" },
+          { "label": "关于 EDA AI", "command": "eda-ai.about" }
+        ]
+      }
+    ]
+  },
+  "commands": {
+    "eda-ai.open-panel": { "handler": "openPanel" },
+    "eda-ai.analyze-bom": { "handler": "analyzeBom" },
+    "eda-ai.bom-health": { "handler": "bomHealth" },
+    "eda-ai.drc-check": { "handler": "drcCheck" },
+    "eda-ai.multi-agent-review": { "handler": "multiAgentReview" },
+    "eda-ai.about": { "handler": "showAbout" }
+  },
+  "activationEvents": ["*"]
+}

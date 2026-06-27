@@ -379,6 +379,25 @@ TOOLS: list[ToolDef] = [
         requires_data=False,
         category="pcb",
     ),
+    # ── RAG 知识库查询 ──
+    ToolDef(
+        name="rag_query",
+        label="知识库查询",
+        description="查询PCB设计知识库，获取IPC标准、高速数字设计、信号完整性、EMC、DFM、热管理、BGA封装、射频设计等专业工程知识和设计规范",
+        keywords=("知识库", "文档查询", "标准", "规范", "IPC", "设计指南", "知识",
+                  "查询知识", "手册", "指南", "规格", "参数查询", "知识查询",
+                  "pcb知识", "工程知识", "技术资料", "资料查询", "文档"),
+        intent="PCB_ANALYSIS",
+        handler="query_knowledge_base",
+        params_schema={
+            "properties": {
+                "query": {"type": "string", "description": "知识查询的具体问题，如'IPC-2221载流计算公式'或'DDR5布线规范'"},
+            },
+            "required": ["query"],
+        },
+        requires_data=False,
+        category="pcb",
+    ),
 ]
 
 # ── 路由优先级: 同名关键词谁排前面谁优先 ──

@@ -450,3 +450,117 @@ class TestCheckerEdgeCases:
         violations = checker.check_all(bom, positions, pcb_data=None)
         ad_v = [v for v in violations if "分离" in v.rule_name]
         assert len(ad_v) == 0
+
+
+# ══════════════════ RAG Integration ══════════════════
+
+
+class TestRAGIntegration:
+    """RAG 知识库集成测试 — 验证 index_directory、query_knowledge_base 等"""
+
+    @pytest.fixture
+    def controller(self):
+        """Create a controller without LLM (no API key needed for RAG queries)"""
+        from src.core.controller import AppController
+        return AppController(api_key=None)
+
+    def test_ensure_rag_indexed_with_md_files(self, tmp_path):
+        """index_directory 正确索引目录中的 .md 文件"""
+        from src.rag.indexer import RAGIndexer
+
+        rag_dir = tmp_path / "rag_test"
+        rag_dir.mkdir()
+        test_file = rag_dir / "test_knowledge.md"
+        test_file.write_text("## 测试章节\n\n0603封装尺寸为1.6mm x 0.8mm。", encoding="utf-8")
+
+        indexer = RAGIndexer(persist_dir=str(rag_dir))
+        stats = indexer.index_directory(str(rag_dir))
+        assert stats["indexed"] >= 1
+        assert stats["errors"] == []
+        assert indexer.chunk_count > 0
+
+    def test_ensure_rag_indexed_skip_unchanged(self, tmp_path):
+        """增量索引：未变更文件跳过"""
+        from src.rag.indexer import RAGIndexer
+
+        rag_dir = tmp_path / "rag_incr"
+        rag_dir.mkdir()
+        test_file = rag_dir / "data.md"
+        test_file.write_text("## 章节\n\n测试内容。", encoding="utf-8")
+
+        indexer = RAGIndexer(persist_dir=str(rag_dir))
+        stats1 = indexer.index_directory(str(rag_dir))
+        assert stats1["indexed"] >= 1
+
+        stats2 = indexer.index_directory(str(rag_dir))
+        assert stats2["skipped"] >= 1  # 第二轮应跳过
+        assert stats2["indexed"] == 0
+
+    def test_ensure_rag_indexed_manifest_cleanup(self, tmp_path):
+        """manifest 清理：已删除文件的条目被移除"""
+        from src.rag.indexer import RAGIndexer
+
+        rag_dir = tmp_path / "rag_clean"
+        rag_dir.mkdir()
+        f1 = rag_dir / "keep.md"
+        f2 = rag_dir / "delete_me.md"
+        f1.write_text("## K1\n\n保留。", encoding="utf-8")
+        f2.write_text("## K2\n\n删除。", encoding="utf-8")
+
+        indexer = RAGIndexer(persist_dir=str(rag_dir))
+        indexer.index_directory(str(rag_dir))
+
+        # 删除 f2
+        import os
+        f2.unlink()
+        stats = indexer.index_directory(str(rag_dir))
+        assert stats["indexed"] == 0  # 无新文件
+        assert stats["skipped"] >= 1  # f1 跳过
+
+        # 检查 manifest 中无 delete_me.md
+        manifest_path = rag_dir / ".index_manifest.json"
+        import json
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert "delete_me.md" not in manifest
+        assert "keep.md" in manifest
+
+    def test_query_knowledge_base_empty(self, controller):
+        """空查询返回帮助文本"""
+        result = controller.query_knowledge_base("")
+        assert "知识库" in result
+        assert "IPC" in result or "DDR" in result or "查询" in result
+
+    def test_query_knowledge_base_with_query(self, controller, tmp_path):
+        """带查询参数返回检索结果——使用独立索引"""
+        from src.rag.indexer import RAGIndexer
+        from src.rag.retriever import RAGRetriever
+
+        rag_dir = tmp_path / "rag_ctrl_test"
+        rag_dir.mkdir()
+        indexer = RAGIndexer(persist_dir=str(rag_dir))
+        indexer.index_text(
+            title="封装手册",
+            text="## 0603\n\n0603封装尺寸为1.6mm x 0.8mm，功率1/10W。\n\n## 0805\n\n0805封装尺寸为2.0mm x 1.25mm。",
+        )
+
+        retriever = RAGRetriever(persist_dir=str(rag_dir))
+        results = retriever.query("0603尺寸")
+        assert len(results) >= 1
+        # 至少一个结果包含关键内容
+        content_found = any("0603" in r["content"] or "0603" in r["title"] for r in results)
+        assert content_found, f"查询 0603 尺寸应返回相关结果，但得到: {results}"
+
+    def test_query_knowledge_base_not_found(self, tmp_path):
+        """查询无匹配内容返回友好提示"""
+        from src.rag.indexer import RAGIndexer
+        from src.rag.retriever import RAGRetriever
+
+        rag_dir = tmp_path / "rag_nomatch"
+        rag_dir.mkdir()
+        indexer = RAGIndexer(persist_dir=str(rag_dir))
+        indexer.index_text("测试", "## 章节\n\n这是一段测试内容。")
+
+        retriever = RAGRetriever(persist_dir=str(rag_dir))
+        ctx = retriever.query_with_context("XYZNotFound99999999")
+        # query_with_context 应返回字符串
+        assert isinstance(ctx, str)

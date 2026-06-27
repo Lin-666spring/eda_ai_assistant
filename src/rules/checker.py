@@ -38,7 +38,9 @@ class DesignRuleChecker:
     # ═══ BOM-only rules ═══
 
     def _check_decoupling_caps(self, bom_items, positions, netlist):
-        """去耦电容检查：每个 IC 应有 0.1μF 去耦电容"""
+        """去耦电容检查：每个 IC 应有匹配的去耦电容，基于 Z-F 分析"""
+        from src.pcb.calculator import analyze_decoupling_capacitor
+
         violations = []
         passive_kw = ["电阻", "电容", "电感", "Resistor", "Capacitor", "Inductor"]
         ics, caps = [], []
@@ -49,18 +51,65 @@ class DesignRuleChecker:
                     caps.append(item)
             else:
                 ics.append(item)
+
+        # 分析可用电容
+        available_caps = []
+        for c in caps:
+            val_str = getattr(c, "value", "").strip().upper().replace(" ", "")
+            try:
+                from src.bom.normalizer import ValueNormalizer
+                nv = ValueNormalizer.normalize(val_str)
+                cap_f = nv.base_value
+            except Exception:
+                cap_f = None
+            # Fallback: EIA 3-digit code (e.g. "104" = 10*10^4 pF = 100nF)
+            if not cap_f and val_str and val_str.isdigit() and len(val_str) == 3:
+                try:
+                    cap_f = int(val_str[0:2]) * 10 ** int(val_str[2]) * 1e-12
+                except Exception:
+                    pass
+            pkg = getattr(c, "package", "0603") or "0603"
+            available_caps.append((c, cap_f, pkg))
+
         for ic in ics:
             ic_ref = getattr(ic, "reference", "?")
-            has = any(getattr(c, "value", "").replace(" ", "").upper() in
-                      {"0.1UF", "100NF", "0.1ΜF", "104"} for c in caps)
-            if not has:
+            ic_desc = f"{getattr(ic, 'part_number', '')} {getattr(ic, 'description', '')}".lower()
+
+            # 检查是否有 100nF 去耦
+            has_100nf = any(
+                cf and 50e-9 <= cf <= 500e-9
+                for _, cf, _ in available_caps
+            )
+            # 检查是否有 10µF 大电容（低频去耦）
+            has_bulk = any(
+                cf and 1e-6 <= cf <= 100e-6
+                for _, cf, _ in available_caps
+            )
+
+            if not has_100nf:
+                # Z-F 分析：100nF 在 1-100MHz 有效
+                result = analyze_decoupling_capacitor(100e-9, "0603", "typical")
                 violations.append(RuleViolation(
                     rule_name="去耦电容检查",
-                    description=f"IC {ic_ref} 附近可能缺少去耦电容",
+                    description=f"IC {ic_ref} 缺少 100nF 高频去耦电容",
+                    severity=RuleSeverity.ERROR,
+                    location=ic_ref,
+                    suggestion=(
+                        f"在 {ic_ref} 电源引脚附近(≤10mm)放置 100nF MLCC。"
+                        f"该电容 SRF≈{result.self_resonant_freq_hz/1e6:.0f}MHz，"
+                        f"有效去耦 {result.effective_freq_range[0]/1e6:.1f}-{result.effective_freq_range[1]/1e6:.0f}MHz"
+                    ),
+                    theory="IC 晶体管开关产生 di/dt 瞬态，PCB 走线寄生电感(~5-10nH/cm)导致 VDD 跌落(V=L×di/dt)。"
+                           "100nF MLCC Z 最低点在 SRF 附近(~10-15MHz)，有效覆盖数字电路主要噪声频段。",
+                ))
+            elif not has_bulk:
+                violations.append(RuleViolation(
+                    rule_name="去耦电容检查",
+                    description=f"IC {ic_ref} 有高频去耦但缺少体电容(10µF)用于低频纹波",
                     severity=RuleSeverity.WARNING,
                     location=ic_ref,
-                    suggestion="在电源引脚附近放置 0.1μF (100nF) 陶瓷电容",
-                    theory="IC 内部晶体管开关产生 di/dt 瞬态电流，PCB 走线寄生电感(~5-10nH/cm)阻碍电流响应，造成 VDD 跌落(V=L×di/dt)。去耦电容提供就近电荷池，距引脚 ≤10mm。",
+                    suggestion="在电源入口处添加 10µF 钽电容或 MLCC 以抑制低频纹波(≤1MHz)",
+                    theory="大电容(10-100µF)提供低频能量储备，小电容(100nF)处理高频瞬态。两者并联扩大有效频率范围。",
                 ))
         return violations
 
@@ -721,7 +770,9 @@ class DesignRuleChecker:
         return violations
 
     def _check_power_traces(self, bom_items, positions, netlist):
-        """电源线载流：电源走线需满足 IPC-2221 载流要求"""
+        """电源线载流 — 使用 IPC-2221 真实计算，结合电流估算"""
+        from src.pcb.calculator import ipc2221_current_capacity, ipc2221_trace_width
+
         pcb = self._pcb_data
         if not pcb or not pcb.traces: return []
         violations = []
@@ -729,26 +780,71 @@ class DesignRuleChecker:
                      if t.width_mm > 0 and any(kw.upper() in t.net_name.upper()
                      for kw in PCB.POWER_NET_KEYWORDS) if t.net_name]
         if not pw_traces: return violations
-        k, tr, cu = PCB.IPC_K_FACTOR, PCB.IPC_TEMP_RISE, PCB.IPC_COPPER_OZ
-        cu_mil = cu * 1.37
+
+        # 从 BOM 估算电源电流
+        est_current_a = self._estimate_power_current(bom_items)
+        tr, cu = PCB.IPC_TEMP_RISE, PCB.IPC_COPPER_OZ
+        is_inner = any(hasattr(t, 'layer') and 'inner' in str(t.layer).lower()
+                      for t in pw_traces)
+
         net_min: dict[str, float] = {}
         for t in pw_traces:
             if not t.net_name: continue
             prev = net_min.get(t.net_name, float("inf"))
             if t.width_mm < prev: net_min[t.net_name] = t.width_mm
+
         for name, mw in net_min.items():
-            I = PCB.POWER_CURRENT_DEFAULT_A
-            a_mil2 = (I / (k * tr ** 0.44)) ** (1.0 / 0.725)
-            req_w = round((a_mil2 / cu_mil) * 0.0254, 3)
-            cur_a = (mw / 0.0254) * cu_mil
-            sup_I = k * tr ** 0.44 * cur_a ** 0.725
-            if mw < req_w * 0.8:
+            # 用估算电流或按网络名定制
+            I = self._estimate_net_current(name, est_current_a)
+            capacity = ipc2221_current_capacity(mw, cu, tr, is_inner)
+            req_w = ipc2221_trace_width(I, cu, tr, is_inner)
+
+            if capacity < I:
                 violations.append(RuleViolation(
-                    rule_name="电源线宽度检查", description=f"电源网络 [{name}] 最细走线 {mw:.3f}mm，不满足载流 {I}A 需 ≥{req_w:.3f}mm",
-                    severity=RuleSeverity.ERROR, location=name,
-                    suggestion=f"当前 {mw:.3f}mm 仅支持约 {sup_I:.1f}A，加宽至 ≥{req_w:.3f}mm 或增厚铜箔",
-                    theory="IPC-2221: I=k×ΔT^0.44×A^0.725。k外层=0.048,ΔT=温升°C,A=截面积 mil²。1oz 铜=1.37mil，增加铜厚(2oz)或加宽走线可提升载流。"))
+                    rule_name="电源线载流检查",
+                    description=(
+                        f"电源网络 [{name}]: 线宽 {mw:.3f}mm 载流 {capacity:.2f}A "
+                        f"< 需求 {I:.2f}A，需宽 ≥{req_w:.3f}mm"
+                    ),
+                    severity=RuleSeverity.ERROR,
+                    location=name,
+                    suggestion=(
+                        f"当前 {mw:.3f}mm (1oz) 仅承载 {capacity:.2f}A。"
+                        f"加宽至 ≥{req_w:.3f}mm 或改用 {cu*2}oz 铜厚。"
+                        f"1oz → 2oz 载流提升约 {ipc2221_current_capacity(mw,cu*2,tr,is_inner)/capacity:.1f}×"
+                    ),
+                    theory="IPC-2221 §6.2: I=k·ΔT^0.44·A^0.725。基于铜箔截面积与允许温升的物理模型，"
+                           "是 PCB 行业标准载流公式。",
+                ))
         return violations
+
+    def _estimate_power_current(self, bom_items) -> float:
+        """从 BOM 估算总功耗电流 (粗略)"""
+        total = 0.5  # 最小 0.5A
+        for item in bom_items:
+            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')} {getattr(item, 'value', '')}".upper()
+            # MCU/FPGA: ~100-300mA
+            if any(kw in desc for kw in ("STM32", "MCU", "ARM", "ESP32", "单片机", "FPGA", "CPLD")):
+                total += 0.3
+            # 电机驱动: ~1-2A
+            if any(kw in desc for kw in ("L298", "L293", "DRV", "电机", "MOTOR", "A4988", "TB6612")):
+                total += 1.5
+            # WiFi/BT 模块: ~200mA peak
+            if any(kw in desc for kw in ("WIFI", "蓝牙", "BLE", "ESP", "NRF", "CC25")):
+                total += 0.2
+            # LED 驱动: ~500mA
+            if any(kw in desc for kw in ("LED 驱动", "WS2812", "SK6812")):
+                total += 0.5
+        return round(total, 2)
+
+    def _estimate_net_current(self, net_name: str, total_current: float) -> float:
+        """按网络名分配电流"""
+        name = net_name.upper()
+        if any(kw in name for kw in ("VCC", "VDD", "+5V", "+3.3V", "+3V3", "VIN")):
+            return total_current * 0.6  # 主电源承担 60%
+        elif any(kw in name for kw in ("VMOTOR", "VM", "POWER", "VBAT", "+12V")):
+            return max(total_current * 0.4, 1.0)  # 动力电至少 1A
+        return total_current * 0.3
 
     def _check_trace_acute_angles(self, bom_items, positions, netlist):
         """走线锐角：PCB 走线不应出现锐角或直角"""
@@ -1739,6 +1835,94 @@ class DesignRuleChecker:
             )]
         return []
 
+    def _check_impedance_matching(self, bom_items, positions, netlist):
+        """特征阻抗匹配 — 使用微带线/带状线公式计算关键网络的 Z₀"""
+        from src.pcb.calculator import microstrip_impedance, trace_width_for_impedance
+
+        pcb = self._pcb_data
+        if not pcb or not pcb.traces: return []
+
+        violations = []
+        # 关注高速/特定阻抗网络
+        impedance_targets = {
+            "USB": 90,       # USB 差分 90Ω
+            "HDMI": 100,     # HDMI 差分 100Ω
+            "LVDS": 100,     # LVDS 差分 100Ω
+            "ETH": 100,      # 以太网 100Ω
+            "RF": 50,        # RF 单端 50Ω
+            "CLK": 50,       # 时钟 50Ω
+        }
+
+        for t in pcb.traces[:50]:  # 取样分析
+            if not t.net_name or t.width_mm <= 0:
+                continue
+            name_upper = t.net_name.upper()
+
+            # 确定目标阻抗
+            z_target = None
+            for kw, z in impedance_targets.items():
+                if kw in name_upper:
+                    z_target = z
+                    break
+            if z_target is None:
+                continue  # 非关键网络跳过
+
+            # 使用 4 层板典型参数: 0.2mm 介质, FR4
+            z_actual = microstrip_impedance(t.width_mm, 0.2, er=4.5)
+            if abs(z_actual - z_target) > z_target * 0.25:  # ±25% tolerance
+                w_target = trace_width_for_impedance(z_target, 0.2, er=4.5)
+                violations.append(RuleViolation(
+                    rule_name="特征阻抗匹配检查",
+                    description=(
+                        f"网络 [{t.net_name}]: 线宽 {t.width_mm}mm → Z₀≈{z_actual:.0f}Ω，"
+                        f"偏离目标 {z_target}Ω 超过 ±25%"
+                    ),
+                    severity=RuleSeverity.ERROR,
+                    location=t.net_name,
+                    suggestion=(
+                        f"调整线宽至 {w_target:.3f}mm 使 Z₀≈{z_target}Ω。"
+                        f"如需精确控制，使用 Polar Si9000 或 PCB 厂商提供的叠层参数计算。"
+                    ),
+                    theory=f"微带线 Z₀={(87/math.sqrt(4.5+1.41)):.1f}·ln(5.98h/(0.8w+t))。"
+                           "阻抗不匹配→信号反射(Γ=(ZL-Z₀)/(ZL+Z₀))→过冲/振铃/EMI↑。"
+                           "USB/HDMI/LVDS/以太网等高速接口对阻抗匹配有严格要求。",
+                ))
+        return violations
+
+    def _check_pdn_target_impedance(self, bom_items, positions, netlist):
+        """PDN 目标阻抗 — 检查电源分配网络是否满足目标阻抗"""
+        from src.pcb.calculator import analyze_pdn, pdn_target_impedance
+
+        violations = []
+        # 从 BOM 推断电压和电流
+        voltage = 3.3
+        current = self._estimate_power_current(bom_items)
+        # 检测实际电压
+        for item in bom_items:
+            desc = f"{getattr(item, 'value', '')} {getattr(item, 'description', '')}".upper()
+            if "5V" in desc or "5.0V" in desc:
+                voltage = 5.0
+                break
+
+        pdn = analyze_pdn(voltage, current, board_area_mm2=5000, ripple_percent=5.0)
+
+        violations.append(RuleViolation(
+            rule_name="PDN 目标阻抗分析",
+            description=(
+                f"{voltage}V/{current:.2f}A 电源: 目标阻抗 Z_target={pdn.target_impedance_ohm*1000:.0f}mΩ，"
+                f"平面电容 {pdn.plane_capacitance_f*1e9:.2f}nF，"
+                f"建议 ≥{pdn.decoupling_count} 个去耦电容，IR压降≈{pdn.voltage_drop_mv:.1f}mV"
+            ),
+            severity=RuleSeverity.WARNING if pdn.decoupling_count > 3 else RuleSeverity.INFO,
+            suggestion=(
+                f"推荐电容组合: {', '.join(f'{c*1e6:.0f}µF' if c>=1e-6 else f'{c*1e9:.0f}nF' for c in pdn.recommended_caps[:4])}。"
+                "各频段去耦: 100µF(≤10kHz) + 10µF(≤1MHz) + 100nF(1-100MHz) + 10nF(≥100MHz)。"
+            ),
+            theory="PDN 目标阻抗 Z_target = (Vdd × ripple%) / I_transient。全频段内 Z_PDN < Z_target 才能保证电源纹波在允许范围内。"
+                   "多层陶瓷电容(MLCC)并联降低等效 ESL，扩展有效去耦频率范围。",
+        ))
+        return violations
+
     # ═══ Init + orchestration ═══
 
     def __init__(self):
@@ -1756,6 +1940,62 @@ class DesignRuleChecker:
                 logger.warning(f"规则检查异常 ({rule_func.__name__}): {e}")
         logger.info(f"规则检查完成: 发现 {len(violations)} 项违规")
         return violations
+
+    def get_heatmap_data(self, violations, grid_size_mm=5.0):
+        """将违规映射到 PCB 坐标网格，生成热力图数据 [x, y, count]。
+
+        ECharts heatmap 格式: [[x_bin, y_bin, count], ...]
+        若无位置数据，返回空列表。
+        """
+        if not violations or not self._pcb_data:
+            return []
+
+        positions = self._pcb_data.component_positions
+        if not positions:
+            return []
+
+        # 计算坐标范围
+        xs, ys = [], []
+        ref_to_pos: dict[str, tuple[float, float]] = {}
+
+        for ref, pos in positions.items():
+            if isinstance(pos, dict):
+                px, py = pos.get("x", 0), pos.get("y", 0)
+            elif isinstance(pos, (tuple, list)) and len(pos) >= 2:
+                px, py = float(pos[0]), float(pos[1])
+            else:
+                continue
+            xs.append(px)
+            ys.append(py)
+            ref_to_pos[ref.upper()] = (px, py)
+
+        if not xs:
+            return []
+
+        # 按 grid_size 分桶
+        g = grid_size_mm
+        x_min, x_max = min(xs) - g, max(xs) + g
+        y_min, y_max = min(ys) - g, max(ys) + g
+
+        grid: dict[tuple[int, int], int] = {}
+
+        for v in violations:
+            if not v.location:
+                continue
+            refs = re.findall(r'[A-Z]+\d+', v.location.upper())
+            for ref in refs:
+                pos = ref_to_pos.get(ref)
+                if pos is None:
+                    continue
+                bx = int((pos[0] - x_min) / g)
+                by = int((pos[1] - y_min) / g)
+                key = (bx, by)
+                grid[key] = grid.get(key, 0) + 1
+
+        if not grid:
+            return []
+
+        return [[bx, by, cnt] for (bx, by), cnt in grid.items()]
 
     def get_report(self, violations):
         if not violations:

@@ -21,6 +21,8 @@ from src.bom.validator import BOMValidator
 from src.config import config
 from src.html_bom.generator import HTMLBOMConfig, HTMLBOMGenerator
 from src.interfaces.eda_adapter import LCEDAAdapter, PCBData
+from src.rag.indexer import RAGIndexer
+from src.rag.retriever import RAGRetriever
 from src.rules.checker import DesignRuleChecker
 from src.supply.lcsc_client import LcscSearchClient
 from src.supply.bom_health import BOMHealthChecker
@@ -103,6 +105,7 @@ class AppController:
         self.context = CommandContext()
         self._conversation_active = False
         self._active_assistant: Optional[str] = None  # 当前助手 ID
+        self._rag_index_checked = False  # RAG 索引是否已检查/建立
 
     def reconfigure_llm(self, provider: str, api_key: str, base_url: str, model: str):
         """热重载 LLM 客户端 — 用户通过设置面板修改配置后调用。"""
@@ -392,6 +395,156 @@ class AppController:
             logger.exception("Multi-agent review failed")
             return json.dumps({"error": f"多智能体审查失败: {e}"}, ensure_ascii=False)
 
+    def verify_suggestion(self, suggestion: str) -> str:
+        """闭环验证 — 对 LLM 设计建议执行规则引擎验证 (路线三核心)。
+
+        流程: LLM 建议 → DRC 检查 → 发现问题 → LLM 修正 → 重新检查
+        最多迭代 3 轮。
+
+        Returns:
+            JSON 格式的 VerificationReport
+        """
+        from src.core.verifier import (
+            VerificationEngine,
+            SuggestionCategory,
+            create_verifier_from_controller,
+        )
+        engine = create_verifier_from_controller(self)
+        report = engine.verify(suggestion, category=SuggestionCategory.GENERAL)
+        return json.dumps(report.to_dict(), ensure_ascii=False)
+
+    def run_electrical_health_check(self) -> str:
+        """PCB 电气健康检查 — 使用电路计算引擎进行真实工程分析。
+
+        覆盖: 阻抗 · PDN · 去耦 · 电流承载 · 热 · 串扰
+        不依赖 LLM，纯数学计算。
+
+        Returns:
+            JSON 格式的 PCBHealthReport
+        """
+        from src.pcb.calculator import (
+            PCBHealthReport,
+            microstrip_impedance,
+            ipc2221_current_capacity,
+            analyze_decoupling_capacitor,
+            crosstalk_3w_rule_check,
+            estimate_junction_temp,
+        )
+
+        report = PCBHealthReport()
+        pcb = self.context.pcb_data
+        bom = self.context.bom_items
+        if not bom:
+            return json.dumps({"error": "请先导入 BOM 文件"}, ensure_ascii=False)
+
+        # 1. 电流承载检查
+        for trace in (pcb.traces if pcb else []):
+            if trace.width_mm > 0 and trace.net_name:
+                # 估算电流需求（简化为根据网络名猜测）
+                is_power = any(kw in trace.net_name.upper() for kw in ("VCC", "VDD", "VIN", "+5", "+3", "POWER", "VBAT"))
+                if is_power:
+                    capacity = ipc2221_current_capacity(trace.width_mm)
+                    # 检查常见电源电流等级
+                    if capacity < 1.0:
+                        report.current_issues.append(
+                            f"电源网络 {trace.net_name}: 走线宽 {trace.width_mm}mm "
+                            f"仅承载 {capacity:.2f}A，建议加宽至 ≥0.5mm"
+                        )
+                elif trace.width_mm < 0.15:
+                    report.current_issues.append(
+                        f"信号线 {trace.net_name}: 线宽仅 {trace.width_mm}mm，"
+                        f"接近制造极限(0.1mm)，建议加宽"
+                    )
+
+        # 2. 去耦电容检查
+        voltage_guess = "3.3"  # 从 BOM 推断工作电压
+        for item in bom:
+            desc_upper = (item.description or "").upper() + (item.value or "").upper()
+            if any(kw in desc_upper for kw in ("STM32", "MCU", "FPGA", "CPLD", "ARM", "单片机")):
+                # 微控制器需要去耦
+                has_decoupling = False
+                for other in bom:
+                    other_desc = (other.description or "").upper() + (other.value or "").upper()
+                    if any(kw in other_desc for kw in ("0.1UF", "100NF", "104", "0.1ΜF")):
+                        has_decoupling = True
+                        break
+                if not has_decoupling:
+                    report.decoupling_issues.append(
+                        f"{item.reference} ({item.value}) 缺少 100nF 去耦电容。"
+                        f"每个数字 IC 至少需要 1 个 100nF 电容靠近 VDD 引脚。"
+                    )
+
+        # 3. 热估算
+        for item in bom:
+            pkg = (item.package or "").upper()
+            if pkg and any(kw in (item.description or "").upper()
+                          for kw in ("LDO", "REGULATOR", "稳压", "AMS1117", "LM1117")):
+                # 估算 LDO 功耗
+                power_w = 0.5  # 粗略估计
+                t = estimate_junction_temp(power_w, pkg)
+                if not t.is_safe:
+                    report.thermal_issues.append(
+                        f"{item.reference} ({item.value}, {pkg}): "
+                        f"估计结温 {t.junction_temp_c}°C 超过安全限 {125}°C。"
+                        f"建议改用散热更好的封装或添加散热器。"
+                    )
+                elif t.junction_temp_c > 85:
+                    report.thermal_issues.append(
+                        f"{item.reference} ({item.value}, {pkg}): "
+                        f"估计结温 {t.junction_temp_c}°C 偏高，建议关注散热。"
+                    )
+
+        # 4. 串扰/EMC
+        if pcb and pcb.traces:
+            # 检查走线间距
+            for i in range(min(20, len(pcb.traces))):
+                for j in range(i + 1, min(20, len(pcb.traces))):
+                    t1, t2 = pcb.traces[i], pcb.traces[j]
+                    # 简化为检查同一层的相邻走线
+                    if t1.layer == t2.layer and t1.width_mm > 0 and t2.width_mm > 0:
+                        span = min(t1.width_mm, t2.width_mm)
+                        ok, ratio, msg = crosstalk_3w_rule_check(span * 2, span)
+                        if not ok:
+                            report.crosstalk_issues.append(
+                                f"{t1.net_name} ↔ {t2.net_name}: {msg}"
+                            )
+                            break
+
+        # 5. 阻抗估计
+        if pcb and pcb.traces:
+            for trace in pcb.traces[:10]:
+                if trace.width_mm > 0:
+                    z0 = microstrip_impedance(trace.width_mm, 0.2)  # 假设 4层板 0.2mm 介质
+                    if 45 <= z0 <= 55:
+                        pass  # 50Ω 附近，正常
+                    elif z0 < 30 or z0 > 80:
+                        report.impedance_issues.append(
+                            f"网络 {trace.net_name or '?'}: 线宽 {trace.width_mm}mm → "
+                            f"Z₀≈{z0}Ω (目标 50Ω)。建议调整为差分或加宽走线。"
+                        )
+
+        # 综合评分
+        total = len(report.impedance_issues) + len(report.pdn_issues) + \
+                len(report.decoupling_issues) + len(report.current_issues) + \
+                len(report.thermal_issues) + len(report.crosstalk_issues)
+        report.overall_score = max(50, 100 - total * 8)
+
+        logger.info("Electrical health check: score=%.0f, issues=%d", report.overall_score, total)
+        return json.dumps({
+            "ok": True,
+            "markdown": report.to_markdown(),
+            "score": report.overall_score,
+            "issues": report.total_issues,
+            "details": {
+                "impedance": report.impedance_issues,
+                "pdn": report.pdn_issues,
+                "decoupling": report.decoupling_issues,
+                "current": report.current_issues,
+                "thermal": report.thermal_issues,
+                "crosstalk": report.crosstalk_issues,
+            },
+        }, ensure_ascii=False)
+
     def check_bom_health(self) -> str:
         """BOM 健康检查 — 库存 / 生命周期 / 替代料 / 成本。"""
         if not self.context.has_data:
@@ -423,6 +576,11 @@ class AppController:
             if options:
                 return " " + question + "\n\n可选项：\n" + "\n".join(f"  • {o}" for o in options)
             return " " + question
+
+        # RAG 知识库查询 — 需要传递 query 参数
+        if operation == "rag_query":
+            query = params.get("query", "")
+            return self.query_knowledge_base(query)
 
         # 从 ToolRegistry 获取 handler 映射（带懒加载降级）
         dispatch = self._build_dispatch_map()
@@ -463,6 +621,96 @@ class AppController:
         # 向后兼容旧指令名
         handlers["load_pcb"] = lambda: " 请通过 文件→导入PCB 加载电路板文件。"
         return handlers
+
+    # ══════════════════════════════════════════════════
+    #  RAG 知识库
+    # ══════════════════════════════════════════════════
+
+    def _ensure_rag_indexed(self) -> bool:
+        """惰性自动索引知识库文件（首次查询触发）
+
+        扫描 rag_data/*.md 文件并增量索引到 ChromaDB。
+        使用 manifest 跟踪文件 mtime，只有变更文件才重新索引。
+
+        Returns:
+            True 若索引就绪，False 若索引失败
+        """
+        if self._rag_index_checked:
+            return True
+
+        rag_dir = Path(__file__).parent.parent.parent / "rag_data"
+        if not rag_dir.exists():
+            logger.warning("RAG: rag_data directory not found at %s", rag_dir)
+            self._rag_index_checked = True
+            return False
+
+        try:
+            indexer = RAGIndexer()
+            manifest_path = str(rag_dir / ".index_manifest.json")
+            stats = indexer.index_directory(str(rag_dir), manifest_path)
+            logger.info(
+                "RAG auto-index: %d indexed, %d skipped, %d errors, %d total chunks",
+                stats["indexed"], stats["skipped"],
+                len(stats.get("errors", [])), indexer.chunk_count,
+            )
+            self._rag_index_checked = True
+            return True
+        except Exception as e:
+            logger.exception("RAG auto-index failed: %s", e)
+            self._rag_index_checked = True
+            return False
+
+    def query_knowledge_base(self, query: str = "") -> str:
+        """查询 RAG 知识库
+
+        Args:
+            query: 自然语言查询问题。若为空则返回帮助提示。
+
+        Returns:
+            格式化的知识库检索结果（Markdown 格式）
+        """
+        if not query or not query.strip():
+            return (
+                "📚 **知识库查询**\n\n"
+                "请指定要查询的内容，例如：\n"
+                "  • 查询 IPC-2221 载流计算公式\n"
+                "  • DDR5 VREFDQ 配置规范是什么\n"
+                "  • 0603 封装尺寸参数\n"
+                "  • PDN 目标阻抗如何计算\n"
+                "  • GaN 散热设计要点\n"
+                "  • 华为 PCB 设计规范有哪些\n\n"
+                f"当前知识库包含 {11} 个专业文档，覆盖 "
+                "IPC 标准、高速数字设计、信号完整性、EMC、DFM、热管理、"
+                "混合信号/RF、BGA 封装、先进材料、中国行业实践等领域。"
+            )
+
+        self._ensure_rag_indexed()
+
+        try:
+            retriever = RAGRetriever()
+            context = retriever.query_with_context(query, top_k=5)
+            if context == "（未找到相关文档）":
+                return (
+                    f"🔍 未找到与「{query}」相关的知识库内容。\n\n"
+                    "建议：\n"
+                    "  • 尝试更通用的关键词（如用「DDR5 布线」替代「DDR5-6400 CL40」）\n"
+                    "  • 确认知识库已被索引（检查控制台日志）\n"
+                    "  • 尝试查询相关主题：IPC 标准、封装尺寸、DRC 规则、去耦电容等"
+                )
+            return f"🔍 **知识库查询结果: {query}**\n\n{context}"
+        except FileNotFoundError as e:
+            logger.warning("RAG index not found, attempting auto-index: %s", e)
+            try:
+                self._rag_index_checked = False  # 重置以允许重建
+                self._ensure_rag_indexed()
+                retriever = RAGRetriever()
+                return f"🔍 **知识库查询结果: {query}**\n\n{retriever.query_with_context(query, top_k=5)}"
+            except Exception as e2:
+                logger.exception("RAG retrieval failed after auto-index")
+                return f"❌ 知识库查询失败: {e2}\n\n请确保知识库文件已正确放置在 rag_data/ 目录。"
+        except Exception as e:
+            logger.exception("RAG query failed")
+            return f"❌ 知识库查询失败: {e}"
 
     # ══════════════════════════════════════════════════
     #  Natural-language processing

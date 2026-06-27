@@ -1,0 +1,13 @@
+{
+  "name": "eda-ai-assistant",
+  "version": "1.0.0",
+  "description": "EDA AI Assistant — LCEDA plugin",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}

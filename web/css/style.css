@@ -931,6 +931,22 @@ body.companion-mode #assistantIcon { font-size: 16px; }
 .review-roadmap h3 { font-size: 13px; margin: 0 0 6px; }
 .review-roadmap-item { font-size: 11.5px; line-height: 1.5; padding: 2px 0; }
 
+/* ── DRC Heatmap ── */
+.heatmap-section {
+  margin-top: 16px; border-top: 1px solid var(--border-color, #333);
+  padding-top: 12px;
+}
+.heatmap-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.heatmap-header h4 { margin: 0; font-size: 14px; color: var(--accent, #5b8def); }
+.heatmap-desc { font-size: 11px; color: var(--fg-muted, #888); }
+.heatmap-load-btn {
+  margin-left: auto; padding: 4px 12px; border-radius: 6px;
+  border: 1px solid var(--accent, #5b8def); background: transparent;
+  color: var(--accent, #5b8def); cursor: pointer; font-size: 12px;
+  transition: all 0.2s;
+}
+.heatmap-load-btn:hover { background: var(--accent, #5b8def); color: #fff; }
+
 /* ════════════════════════════════════════
    Toast & Design Suggestions
    ═══════════════════════════════════════ */

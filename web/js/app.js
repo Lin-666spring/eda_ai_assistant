@@ -8,7 +8,7 @@ const ASSISTANT_TYPES = {
   'eda-general': {
     typeId: 'eda-general', name: 'EDA 通用助手', icon: '(´｡• ᵕ •｡`)',
     systemPrompt: 'general',
-    quickActions: ['合并 BOM', '校验封装', '设计规则', 'BOM健康'],
+    quickActions: ['合并 BOM', '校验封装', '设计规则', 'BOM健康', '查询知识库'],
     description: 'BOM管理、设计规则检查、PCB分析的通用助手',
   },
   'bom-expert': {
@@ -20,7 +20,7 @@ const ASSISTANT_TYPES = {
   'pcb-reviewer': {
     typeId: 'pcb-reviewer', name: 'PCB 设计审查', icon: '(｡･ω･｡)',
     systemPrompt: 'pcb',
-    quickActions: ['设计规则', '分析PCB', '检查走线', '查看PCB'],
+    quickActions: ['设计规则', '分析PCB', '检查走线', '查看PCB', '查询知识库'],
     description: '专注于PCB布局分析、设计规则检查和信号完整性',
   },
   'vision-analyst': {
@@ -533,6 +533,11 @@ function showEmptyState(show) {
 
 function quickCmd(text) {
   if (text === '生成 HTML') { generateHTMLBOM(); return; }
+  if (text === '查询知识库') {
+    document.getElementById('chatInput').value = '查询知识库: ';
+    document.getElementById('chatInput').focus();
+    return;
+  }
   document.getElementById('chatInput').value = text;
   sendChat();
 }
@@ -547,6 +552,62 @@ async function sendChat() {
   const userText = text || '帮我分析这张图片';
   input.value = '';
   input.style.height = 'auto';
+
+  // RAG 知识库查询路由 — 无图片且以「查询知识库:」开头时直接查询
+  const isKnowledgeQuery = !hasImage && !agentMode && /^查询知识库[：:]\s*(.+)/.test(userText);
+  if (isKnowledgeQuery) {
+    const queryText = userText.replace(/^查询知识库[：:]\s*/, '').trim();
+    if (!queryText) {
+      appendBubble('ai', '📚 请输入要查询的内容，如「查询知识库: IPC-2221载流能力」');
+      return;
+    }
+    showEmptyState(false);
+    const conv = getActiveConversation();
+    if (!conv) return;
+
+    // Update title from first message
+    if (conv.messages.length === 0) {
+      conv.title = '知识库: ' + queryText.substring(0, 20) + (queryText.length > 20 ? '...' : '');
+      _persistConversation(conv);
+      renderConversations();
+    }
+
+    appendBubble('user', userText);
+    conv.messages.push({ role: 'user', content: userText });
+    _persistMessage(activeConvId, 'user', userText);
+
+    setStatus('查询知识库...');
+    disableInput(true);
+    _streamTokenCount = 0;
+    _activeStreamBubble = createStreamingBubble();
+    document.getElementById('chatMessages').appendChild(_activeStreamBubble.element);
+    scrollChat();
+
+    try {
+      const resp = await eel.query_knowledge_base(queryText)();
+      if (resp && resp.ok) {
+        _activeStreamBubble.finalize(resp.result);
+        conv.messages.push({ role: 'ai', content: resp.result });
+        _persistMessage(activeConvId, 'ai', resp.result);
+      } else {
+        _activeStreamBubble.finalize('❌ 查询失败: ' + (resp ? resp.result : '未知错误'));
+        conv.messages.push({ role: 'ai', content: _activeStreamBubble.text });
+        _persistMessage(activeConvId, 'ai', _activeStreamBubble.text);
+      }
+    } catch(e) {
+      if (_activeStreamBubble) {
+        _activeStreamBubble.finalize('❌ 网络错误: ' + e);
+        conv.messages.push({ role: 'ai', content: _activeStreamBubble.text });
+        _persistMessage(activeConvId, 'ai', _activeStreamBubble.text);
+      }
+    }
+    _activeStreamBubble = null;
+    disableInput(false);
+    setStatus('就绪');
+    renderConversations();
+    return;
+  }
+
   showEmptyState(false);
 
   // Get or create conversation
@@ -903,6 +964,9 @@ function switchTab(name) {
   if (btn) btn.classList.add('active');
   const panel = document.getElementById(`tab-${name}`);
   if (panel) panel.classList.add('active');
+  // Show heatmap section when review tab is active
+  var hs = document.getElementById('drcHeatmapSection');
+  if (hs) hs.style.display = (name === 'review') ? 'block' : 'none';
 }
 
 function toggleRightPanel() {
@@ -1404,6 +1468,109 @@ function _gradeColor(score) {
   if (score >= 70) return '#5b8def';
   if (score >= 55) return '#e67e22';
   return '#e74c3c';
+}
+
+// ═══════════ DRC Heatmap ═══════════
+
+var drcHeatmapChart = null;
+
+async function loadDrcHeatmap() {
+  var section = document.getElementById('drcHeatmapSection');
+  var chartDom = document.getElementById('drcHeatmapChart');
+  var emptyHint = document.getElementById('drcHeatmapEmpty');
+  if (!section || !chartDom) return;
+
+  section.style.display = 'block';
+  emptyHint.style.display = 'none';
+
+  try {
+    var raw = await eel.get_drc_heatmap()();
+    var data = JSON.parse(raw);
+    if (!data.ok || !data.data || !data.data.length) {
+      chartDom.style.display = 'none';
+      emptyHint.style.display = 'block';
+      return;
+    }
+    chartDom.style.display = 'block';
+    renderDrcHeatmap(chartDom, data.data);
+  } catch (e) {
+    console.error('Heatmap load failed:', e);
+    emptyHint.style.display = 'block';
+    chartDom.style.display = 'none';
+  }
+}
+
+function renderDrcHeatmap(chartDom, gridData) {
+  if (!window.echarts) {
+    console.warn('ECharts not loaded');
+    return;
+  }
+  if (drcHeatmapChart) drcHeatmapChart.dispose();
+
+  drcHeatmapChart = echarts.init(chartDom, 'dark');
+  var xs = gridData.map(function(d) { return d[0]; });
+  var ys = gridData.map(function(d) { return d[1]; });
+  var counts = gridData.map(function(d) { return d[2]; });
+  var xMin = Math.min.apply(null, xs), xMax = Math.max.apply(null, xs);
+  var yMin = Math.min.apply(null, ys), yMax = Math.max.apply(null, ys);
+  var maxCount = Math.max.apply(null, counts);
+
+  var xLabels = xs.map(function(v, i) {
+    return i === 0 || xs.indexOf(v) === i ? '#' + v : '';
+  });
+  var yLabels = ys.map(function(v, i) {
+    return i === 0 || ys.indexOf(v) === i ? '#' + v : '';
+  });
+
+  var option = {
+    tooltip: {
+      formatter: function(p) {
+        return '网格 [' + p.value[0] + ', ' + p.value[1] + ']<br/>违规数: <b>' + p.value[2] + '</b>';
+      }
+    },
+    grid: { left: 60, right: 20, top: 20, bottom: 40 },
+    xAxis: {
+      type: 'category',
+      data: Array.from(new Set(xs)).sort(function(a, b) { return a - b; }),
+      name: 'X 网格',
+      nameLocation: 'center',
+      nameGap: 25,
+      axisLabel: { fontSize: 9 }
+    },
+    yAxis: {
+      type: 'category',
+      data: Array.from(new Set(ys)).sort(function(a, b) { return a - b; }),
+      name: 'Y 网格',
+      nameLocation: 'center',
+      nameGap: 45,
+      axisLabel: { fontSize: 9 }
+    },
+    visualMap: {
+      min: 0,
+      max: maxCount,
+      calculable: true,
+      orient: 'vertical',
+      right: 5,
+      top: 'center',
+      inRange: { color: ['#1a2a4a', '#4a90d9', '#e6a23c', '#e74c3c'] },
+      text: ['高', '低'],
+      textStyle: { color: '#aaa' }
+    },
+    series: [{
+      type: 'heatmap',
+      data: gridData,
+      label: { show: true, fontSize: 9, color: '#ccc' },
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowColor: 'rgba(255,255,255,0.3)'
+        }
+      }
+    }]
+  };
+
+  drcHeatmapChart.setOption(option);
+  window.addEventListener('resize', function() { drcHeatmapChart && drcHeatmapChart.resize(); });
 }
 
 // ═══════════ Toast Notifications ═══════════

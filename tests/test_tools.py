@@ -15,7 +15,7 @@ from src.agent.tools import ToolDef, ToolRegistry, TOOLS
 
 class TestRegistryIntegrity:
     def test_has_all_tools(self):
-        assert ToolRegistry.count() == 22
+        assert ToolRegistry.count() == 23
 
     def test_all_tools_have_names(self):
         for t in ToolRegistry.get_all():
@@ -122,7 +122,7 @@ class TestDerivedData:
 
     def test_function_definitions(self):
         funcs = ToolRegistry.get_function_definitions()
-        assert len(funcs) >= 22  # all tools have function definitions
+        assert len(funcs) >= 23  # all tools have function definitions
         for f in funcs:
             assert f["type"] == "function"
             assert "name" in f["function"]
@@ -135,7 +135,7 @@ class TestDerivedData:
         assert "analyze_image" in names
         assert "component_lookup" in names
         assert "calc_trace_width" in names
-        assert len(names) == 22
+        assert len(names) == 23
 
 
 # ——— ToolDef 方法 ———
@@ -199,3 +199,28 @@ class TestConsistency:
         """analyze_image 需要 image_data 参数"""
         t = ToolRegistry.get_by_name("analyze_image")
         assert "image_data" in t.params_schema.get("required", [])
+
+    def test_rag_query_registered(self):
+        """rag_query 知识库查询工具已注册"""
+        t = ToolRegistry.get_by_name("rag_query")
+        assert t is not None, "rag_query tool must be registered"
+        assert t.label == "知识库查询"
+        assert t.intent == "PCB_ANALYSIS"
+        assert t.category == "pcb"
+        assert not t.requires_data
+        assert t.handler == "query_knowledge_base"
+
+    def test_rag_query_keywords(self):
+        """rag_query 关键词覆盖知识库查询场景"""
+        t = ToolRegistry.get_by_name("rag_query")
+        assert len(t.keywords) >= 10
+        keywords_str = " ".join(t.keywords)
+        assert "知识库" in keywords_str
+        assert "IPC" in keywords_str
+        assert "标准" in keywords_str
+
+    def test_rag_query_params_schema(self):
+        """rag_query 需要 query 参数"""
+        t = ToolRegistry.get_by_name("rag_query")
+        assert "query" in t.params_schema.get("required", [])
+        assert "query" in t.params_schema.get("properties", {})

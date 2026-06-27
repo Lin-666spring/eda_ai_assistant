@@ -1,7 +1,30 @@
-"""PCB 解析模块 — 轻量提取网络/走线/层信息"""
+"""PCB 解析模块 — 轻量提取网络/走线/层信息 + 电路计算引擎"""
 
 from .models import PCBData, PCBTrace, PCBNet, PCBVia
 from .parser import PCBParseStrategy, LCEDAJsonParser, LCEDAProParser, create_parser
+from .calculator import (
+    microstrip_impedance,
+    stripline_impedance,
+    trace_width_for_impedance,
+    differential_impedance,
+    decoupling_impedance,
+    capacitor_self_resonant_freq,
+    analyze_decoupling_capacitor,
+    decoupling_impedance_sweep,
+    pdn_target_impedance,
+    plane_capacitance,
+    analyze_pdn,
+    ipc2221_current_capacity,
+    ipc2221_trace_width,
+    analyze_current_capacity,
+    estimate_junction_temp,
+    estimate_power_from_voltage_current,
+    estimate_power_from_voltage_drop,
+    crosstalk_3w_rule_check,
+    loop_inductance_estimate,
+    via_impedance_estimate,
+    PCBHealthReport,
+)
 
 __all__ = [
     "PCBData",
@@ -12,4 +35,26 @@ __all__ = [
     "LCEDAJsonParser",
     "LCEDAProParser",
     "create_parser",
+    # circuit calculator
+    "microstrip_impedance",
+    "stripline_impedance",
+    "trace_width_for_impedance",
+    "differential_impedance",
+    "decoupling_impedance",
+    "capacitor_self_resonant_freq",
+    "analyze_decoupling_capacitor",
+    "decoupling_impedance_sweep",
+    "pdn_target_impedance",
+    "plane_capacitance",
+    "analyze_pdn",
+    "ipc2221_current_capacity",
+    "ipc2221_trace_width",
+    "analyze_current_capacity",
+    "estimate_junction_temp",
+    "estimate_power_from_voltage_current",
+    "estimate_power_from_voltage_drop",
+    "crosstalk_3w_rule_check",
+    "loop_inductance_estimate",
+    "via_impedance_estimate",
+    "PCBHealthReport",
 ]

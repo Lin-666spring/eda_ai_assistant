@@ -3,7 +3,9 @@
 使用 chromadb 做向量存储，硅基流动 API (BGE-M3) 做嵌入。
 """
 
+import json
 import logging
+import os
 import re
 from pathlib import Path
 from typing import Optional
@@ -95,6 +97,83 @@ class RAGIndexer:
             metadata={"description": "立创EDA中文PCB知识库"},
         )
         logger.info("RAG index cleared")
+
+    def index_directory(self, dir_path: str, manifest_path: str = "") -> dict:
+        """增量索引目录中的所有 .md 文件
+
+        基于 .index_manifest.json 记录的文件 mtime 实现增量索引：
+        — 新文件或 mtime 变更的文件重新索引
+        — 未变更文件跳过
+
+        Args:
+            dir_path: 包含 .md 文件的目录路径
+            manifest_path: manifest 文件路径，默认为 dir_path/.index_manifest.json
+
+        Returns:
+            {"indexed": int, "skipped": int, "errors": list}
+        """
+        dir_path = str(dir_path)
+        if manifest_path:
+            manifest_path = str(manifest_path)
+        else:
+            manifest_path = os.path.join(dir_path, ".index_manifest.json")
+
+        # 加载已有 manifest
+        manifest: dict[str, float] = {}
+        if os.path.exists(manifest_path):
+            try:
+                with open(manifest_path, "r", encoding="utf-8") as f:
+                    manifest = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                logger.warning("Manifest corrupted, rebuilding from scratch")
+                manifest = {}
+
+        # 扫描 .md 文件（跳过以 . 开头的文件和 ChromaDB 内部文件）
+        md_files: list[Path] = []
+        for entry in os.scandir(dir_path):
+            if entry.is_file() and entry.name.endswith(".md"):
+                md_files.append(Path(entry.path))
+
+        stats: dict[str, any] = {"indexed": 0, "skipped": 0, "errors": []}
+
+        for file_path in sorted(md_files):
+            file_key = file_path.name
+            current_mtime = file_path.stat().st_mtime
+
+            # 检查是否需要重新索引
+            if file_key in manifest and abs(manifest[file_key] - current_mtime) < 1.0:
+                stats["skipped"] += 1
+                logger.debug("RAG index skip (unchanged): %s", file_key)
+                continue
+
+            try:
+                indexed = self.index_file(str(file_path), source=file_key)
+                manifest[file_key] = current_mtime
+                stats["indexed"] += 1
+                logger.info("RAG indexed: %s (%d chunks)", file_key, indexed)
+            except Exception as e:
+                stats["errors"].append({"file": file_key, "error": str(e)})
+                logger.exception("RAG index error: %s", file_key)
+
+        # 清理已删除文件的 manifest 条目
+        existing_names = {f.name for f in md_files}
+        stale_keys = [k for k in manifest if k not in existing_names]
+        for k in stale_keys:
+            del manifest[k]
+            logger.debug("RAG manifest removed stale entry: %s", k)
+
+        # 写回 manifest
+        try:
+            with open(manifest_path, "w", encoding="utf-8") as f:
+                json.dump(manifest, f, indent=2)
+        except OSError as e:
+            logger.warning("Failed to write manifest: %s", e)
+
+        logger.info(
+            "RAG index_directory complete: %d indexed, %d skipped, %d errors, %d total chunks",
+            stats["indexed"], stats["skipped"], len(stats["errors"]), self._collection.count(),
+        )
+        return stats
 
     @property
     def chunk_count(self) -> int:

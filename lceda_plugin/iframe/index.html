@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EDA AI 助手</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header id="header">
+      <span class="logo">EDA AI</span>
+      <span class="version">v1.0</span>
+      <div class="header-actions">
+        <button class="action-btn" onclick="handleAction('import-current-bom')" title="导入当前BOM">BOM</button>
+        <button class="action-btn" onclick="handleAction('drc-check')" title="DRC检查">DRC</button>
+        <button class="action-btn" onclick="handleAction('multi-agent-review')" title="多智能体审查">Review</button>
+      </div>
+    </header>
+
+    <!-- Messages -->
+    <div id="messages">
+      <div class="empty-state">
+        <div class="empty-icon">AI</div>
+        <div class="empty-text">EDA AI 助手已就绪</div>
+        <div class="empty-sub">点击上方按钮或输入问题开始</div>
+      </div>
+    </div>
+
+    <!-- Input area -->
+    <div id="input-area">
+      <textarea id="chat-input"
+                placeholder="输入问题... (Enter 发送, Shift+Enter 换行)"
+                rows="2"
+                onkeydown="handleKeyDown(event)"></textarea>
+      <button id="send-btn" onclick="sendMessage()" title="发送 (Enter)">&#10148;</button>
+    </div>
+
+    <!-- Status bar -->
+    <div id="status-bar">
+      <span id="connection-status" class="status-disconnected">● 未连接</span>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

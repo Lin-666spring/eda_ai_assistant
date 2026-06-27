@@ -220,6 +220,34 @@ def review_design_multi_agent() -> str:
 
 
 @eel.expose
+def verify_suggestion(suggestion: str) -> str:
+    """闭环验证 — LLM 建议经规则引擎验证后反馈修正 (路线三核心)"""
+    return controller.verify_suggestion(suggestion)
+
+
+@eel.expose
+def run_electrical_health_check() -> str:
+    """PCB 电气健康检查 — 真实电路计算 (阻抗/PDN/去耦/电流/热/串扰)"""
+    return controller.run_electrical_health_check()
+
+
+@eel.expose
+def get_drc_heatmap(grid_size_mm: float = 5.0) -> str:
+    """DRC 违规热力图数据 — 返回 JSON {ok, data: [[x,y,count],...]}"""
+    import json
+    from src.rules.checker import DesignRuleChecker
+    ctx = controller.context
+    if not ctx.pcb_data or not ctx.has_data:
+        return json.dumps({"ok": True, "data": []})
+    checker = DesignRuleChecker()
+    violations = checker.check_all(
+        ctx.bom_items, ctx.positions, ctx.netlist, ctx.pcb_data
+    )
+    heatmap_data = checker.get_heatmap_data(violations, grid_size_mm)
+    return json.dumps({"ok": True, "data": heatmap_data})
+
+
+@eel.expose
 def set_active_assistant(assistant_id: str) -> dict:
     """切换当前助手"""
     try:
@@ -563,6 +591,24 @@ def request_window_toggle():
         return {"ok": False}
 
 
+@eel.expose
+def query_knowledge_base(query: str) -> dict:
+    """查询 RAG 知识库
+
+    Args:
+        query: 自然语言查询问题
+
+    Returns:
+        {"ok": True, "result": "..."} 或 {"ok": False, "result": "错误信息"}
+    """
+    try:
+        result = controller.query_knowledge_base(query)
+        return {"ok": True, "result": result}
+    except Exception as e:
+        logger.exception("Eel RAG query failed")
+        return {"ok": False, "result": str(e)}
+
+
 # ══════════════════════════════════════════
 #  Entry point
 # ══════════════════════════════════════════
@@ -571,6 +617,12 @@ def main():
     setup_logging()
     logger = logging.getLogger(__name__)
     logger.info("启动 EDA AI 智能助手 (Eel)...")
+
+    # 启动时自动索引 RAG 知识库
+    try:
+        controller._ensure_rag_indexed()
+    except Exception as e:
+        logger.warning("RAG auto-index skipped: %s", e)
 
     # 启动全局热键
     start_hotkey_listener()

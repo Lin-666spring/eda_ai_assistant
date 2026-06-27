@@ -4,9 +4,11 @@ __pycache__/
 *$py.class
 *.so
 *.egg-info/
-dist/
+/dist/
 build/
+node_modules/
 *.spec
+!eda_ai_assistant.spec
 
 # 虚拟环境
 venv/
