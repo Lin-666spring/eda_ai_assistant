@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🏆 长期目标 (2026-07-09)
+
+- **EI 论文**: 闭环验证引擎 (LLM→DRC→反馈→迭代)，目标 2026年9月投稿
+- **软件著作权**: EDA AI 智能助手 V1.0，目标 2026年8月提交
+- **详细路线图**: 见 [PAPER_ROADMAP.md](PAPER_ROADMAP.md)
+
 ## Commands
 
 ```bash
@@ -53,7 +59,7 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 
 ### ToolRegistry — Single Source of Truth
 
-`src/agent/tools.py` — All 12 system capabilities are defined as `ToolDef` dataclasses in the `TOOLS` list. Every other module **derives** from here:
+`src/agent/tools.py` — All 24 system capabilities are defined as `ToolDef` dataclasses in the `TOOLS` list. Every other module **derives** from here:
 - Controller dispatch map ← `get_dispatch_map()`
 - Keyword matching ← `get_keyword_map()`
 - NLU keywords per intent ← `get_keywords_by_intent()`

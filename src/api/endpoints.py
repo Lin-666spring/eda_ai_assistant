@@ -28,6 +28,7 @@ from src.api.models import (
     KnowledgeQueryResponse,
     LLMConfigRequest,
     LLMConfigResponse,
+    VerifySuggestionRequest,
     LLMTestRequest,
     LLMTestResponse,
     OkResponse,
@@ -328,7 +329,7 @@ def get_drc_heatmap(grid_size_mm: float = Query(default=5.0)):
 
 
 @router.post("/verify/suggestion")
-def verify_suggestion(suggestion: str):
+def verify_suggestion(body: VerifySuggestionRequest):
     """Closed-loop verification — validate LLM design suggestion against rules engine.
 
     Request body: { "suggestion": "..." }
@@ -336,7 +337,7 @@ def verify_suggestion(suggestion: str):
     """
     import json
     ctrl = get_controller()
-    result = ctrl.verify_suggestion(suggestion)
+    result = ctrl.verify_suggestion(body.suggestion)
     return json.loads(result)
 
 

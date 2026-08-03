@@ -10,7 +10,7 @@
 
 工作流程:
 1. 所有 Agent 接收相同的违规列表（已按维度预分组）
-2. 每个 Agent 从专业角度深度分析其领域的违规
+2. 每个 Agent 从专业角度深度分析其领域的违规（并发执行）
 3. Synthesizer 合并所有 Agent 的发现，解决冲突，生成统一报告
 
 使用方式:
@@ -21,6 +21,7 @@
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -247,7 +248,7 @@ class MultiAgentReviewer:
     ) -> MultiAgentReviewReport:
         """带 LLM 深度分析的多智能体审查
 
-        每个 Agent 使用 LLM 从专业角度深度解读违规。
+        5 个 Agent 并发调用 LLM，总耗时 = 最慢单个 Agent 的耗时。
         """
         if not self.llm:
             logger.warning("No LLM client, falling back to rule-based review")
@@ -259,30 +260,43 @@ class MultiAgentReviewer:
         scorer = DesignScorer()
         score_report = scorer.score(violations, bom_items, positions)
 
+        # ── 并发执行 5 个 Agent 的 LLM 分析 ──
         agent_reports: dict[str, AgentReport] = {}
-        for agent_key, agent_def in AGENT_DEFINITIONS.items():
-            agent_violations = self._filter_violations(violations, agent_def["focus_rules"])
-            dim_score = score_report.dimensions.get(agent_key)
-            agent_score = dim_score.score if dim_score else 100.0
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {}
+            for agent_key, agent_def in AGENT_DEFINITIONS.items():
+                agent_violations = self._filter_violations(violations, agent_def["focus_rules"])
+                dim_score = score_report.dimensions.get(agent_key)
+                agent_score = dim_score.score if dim_score else 100.0
+                futures[executor.submit(
+                    self._process_agent_llm, agent_key, agent_def,
+                    agent_violations, agent_score, bom_items,
+                )] = agent_key
 
-            # 尝试用 LLM 深度分析
-            try:
-                findings = self._llm_deep_analyze(agent_key, agent_def, agent_violations)
-                summary = self._llm_summarize(agent_def, findings, agent_score)
-            except Exception as e:
-                logger.warning("LLM deep analysis failed for %s: %s, falling back", agent_key, e)
-                findings = self._analyze_violations(agent_key, agent_def, agent_violations, bom_items)
-                summary = self._summarize_findings(agent_def, findings, agent_score)
-
-            agent_reports[agent_key] = AgentReport(
-                agent_key=agent_key,
-                agent_name=agent_def["name"],
-                agent_emoji=agent_def["emoji"],
-                domain=agent_def["domain"],
-                summary=summary,
-                findings=findings,
-                score=agent_score,
-            )
+            for future in as_completed(futures):
+                agent_key = futures[future]
+                try:
+                    agent_reports[agent_key] = future.result()
+                except Exception as e:
+                    logger.error("Agent %s failed: %s", agent_key, e)
+                    # Fallback: rule-based analysis
+                    agent_def = AGENT_DEFINITIONS[agent_key]
+                    agent_violations = self._filter_violations(
+                        violations, agent_def["focus_rules"])
+                    dim_score = score_report.dimensions.get(agent_key)
+                    agent_score = dim_score.score if dim_score else 100.0
+                    findings = self._analyze_violations(
+                        agent_key, agent_def, agent_violations, bom_items)
+                    summary = self._summarize_findings(agent_def, findings, agent_score)
+                    agent_reports[agent_key] = AgentReport(
+                        agent_key=agent_key,
+                        agent_name=agent_def["name"],
+                        agent_emoji=agent_def["emoji"],
+                        domain=agent_def["domain"],
+                        summary=summary,
+                        findings=findings,
+                        score=agent_score,
+                    )
 
         critical_issues = self._synthesize_critical(agent_reports)
         consensus = self._build_consensus(agent_reports, score_report)
@@ -296,6 +310,30 @@ class MultiAgentReviewer:
             critical_issues=critical_issues,
             consensus_summary=consensus,
             improvement_roadmap=roadmap,
+        )
+
+    def _process_agent_llm(
+        self, agent_key: str, agent_def: dict, agent_violations: list,
+        agent_score: float, bom_items: list,
+    ) -> AgentReport:
+        """单个 Agent 的 LLM 分析流程（供 ThreadPoolExecutor 并发调用）。"""
+        try:
+            findings = self._llm_deep_analyze(agent_key, agent_def, agent_violations)
+            summary = self._llm_summarize(agent_def, findings, agent_score)
+        except Exception as e:
+            logger.warning("LLM deep analysis failed for %s: %s, falling back", agent_key, e)
+            findings = self._analyze_violations(
+                agent_key, agent_def, agent_violations, bom_items)
+            summary = self._summarize_findings(agent_def, findings, agent_score)
+
+        return AgentReport(
+            agent_key=agent_key,
+            agent_name=agent_def["name"],
+            agent_emoji=agent_def["emoji"],
+            domain=agent_def["domain"],
+            summary=summary,
+            findings=findings,
+            score=agent_score,
         )
 
     # ── 内部方法 ──

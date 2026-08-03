@@ -12,6 +12,7 @@ PCB 设计质量评分引擎 — 6 维度量化评分 + 雷达图数据
 """
 
 import logging
+import math
 from dataclasses import dataclass, field
 from collections import defaultdict
 
@@ -290,8 +291,10 @@ class DesignScorer:
             elif v.severity == RuleSeverity.INFO and max_sev not in ("error", "warning"):
                 max_sev = "info"
 
-        # 使用平方根衰减让分数在低违规数时不至于太低
-        score = max(0, 100 - total_penalty * 0.8)
+        # 平方根衰减：少量违规温和扣分，大量违规不瞬间归零。
+        # 契合实际使用——评分是"健康度"而非"扣分竞赛"，
+        # 修复部分违规后分数可逐步恢复，而不是被一两条重违规打穿到 0。
+        score = max(0.0, 100 - 2.2 * math.sqrt(total_penalty))
         score = round(score, 1)
 
         # 提取最重要的违规项

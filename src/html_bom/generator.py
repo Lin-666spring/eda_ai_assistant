@@ -11,6 +11,8 @@ from typing import Optional
 
 from jinja2 import Environment, FileSystemLoader
 
+from .shared import prepare_component_data, calculate_board_stats
+
 logger = logging.getLogger(__name__)
 
 
@@ -57,9 +59,9 @@ class HTMLBOMGenerator:
         Returns:
             HTML 字符串
         """
-        # 准备数据
-        components = self._prepare_component_data(bom_items, positions)
-        board_stats = self._calculate_board_stats(positions)
+        # 准备数据（委托到 shared.py）
+        components = prepare_component_data(bom_items, positions)
+        board_stats = calculate_board_stats(positions)
 
         # 渲染模板
         template = self._env.get_template("ibom.html")
@@ -79,53 +81,5 @@ class HTMLBOMGenerator:
 
         return html
 
-    def _prepare_component_data(
-        self, bom_items: list, positions: dict
-    ) -> list[dict]:
-        """将 BOM 数据与坐标数据融合"""
-        components = []
-
-        for item in bom_items:
-            refs = item.reference.split(",") if hasattr(item, "reference") else []
-
-            for ref in refs:
-                ref = ref.strip()
-                pos = positions.get(ref, {})
-
-                components.append({
-                    "reference": ref,
-                    "value": getattr(item, "value", ""),
-                    "package": getattr(item, "package", ""),
-                    "part_number": getattr(item, "part_number", ""),
-                    "description": getattr(item, "description", ""),
-                    "x": pos.get("x", 0),
-                    "y": pos.get("y", 0),
-                    "rotation": pos.get("rotation", 0),
-                    "layer": pos.get("layer", "Top"),
-                    "has_position": bool(pos),
-                })
-
-        return components
-
-    def _calculate_board_stats(self, positions: dict) -> dict:
-        """计算板级统计信息"""
-        if not positions:
-            return {
-                "total": 0,
-                "top_count": 0,
-                "bottom_count": 0,
-                "width_mm": 0,
-                "height_mm": 0,
-            }
-
-        pos_list = list(positions.values())
-        x_vals = [p.get("x", 0) for p in pos_list if p]
-        y_vals = [p.get("y", 0) for p in pos_list if p]
-
-        return {
-            "total": len(pos_list),
-            "top_count": sum(1 for p in pos_list if p.get("layer") == "Top"),
-            "bottom_count": sum(1 for p in pos_list if p.get("layer") == "Bottom"),
-            "width_mm": max(x_vals) - min(x_vals) if x_vals else 0,
-            "height_mm": max(y_vals) - min(y_vals) if y_vals else 0,
-        }
+    # _prepare_component_data() and _calculate_board_stats() have been
+    # extracted to src/html_bom/shared.py — imported at the top of this module.

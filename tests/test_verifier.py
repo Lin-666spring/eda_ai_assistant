@@ -98,6 +98,63 @@ class TestVerificationEngine:
         report = engine.verify("Some suggestion")
         assert report.final_status == VerificationStatus.UNCERTAIN
 
+    def test_passes_with_only_info_level_issues(self):
+        """Info-level violations are NOT blocking — accepted=True."""
+        issues = [
+            FakeViolation("E24_CHECK", "100nF not in E24 series", "info"),
+            FakeViolation("E24_CHECK", "100Ω not in E24 series", "info"),
+        ]
+        engine = VerificationEngine(check_callback=lambda: issues, llm_callback=None)
+        report = engine.verify("Keep BOM as-is")
+        assert report.accepted is True
+        assert report.final_status == VerificationStatus.PASSED
+        assert report.round_count == 1
+        # All issues still recorded
+        assert report.total_issues == 2
+        # But zero blocking
+        d = report.to_dict()
+        assert d["blocking_issues"] == 0
+
+    def test_fails_with_mixed_severity(self):
+        """Error + info → still fails due to error."""
+        issues = [
+            FakeViolation("E24_CHECK", "100nF not in E24 series", "info"),
+            FakeViolation("POWER_TRACE", "Trace too thin for 5A", "error"),
+        ]
+        engine = VerificationEngine(check_callback=lambda: issues, llm_callback=None)
+        report = engine.verify("Use thin trace for power")
+        assert report.accepted is False
+        assert report.final_status == VerificationStatus.FAILED
+        # 2 total, 1 blocking
+        d = report.to_dict()
+        assert d["total_issues"] == 2
+        assert d["blocking_issues"] == 1
+
+    def test_llm_feedback_only_includes_blocking(self):
+        """LLM correction feedback only contains error/warning, not info."""
+        issues = [
+            FakeViolation("E24_CHECK", "Not E24 series", "info"),
+            FakeViolation("DECOUPLING", "Missing cap", "error"),
+        ]
+        call_count = [0]
+        last_feedback = [""]
+
+        def check():
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return issues
+            return []
+
+        def llm_cb(suggestion, feedback):
+            last_feedback[0] = feedback
+            return "Fixed"
+
+        engine = VerificationEngine(check_callback=check, llm_callback=llm_cb)
+        engine.verify("Test")
+        # Feedback should mention DECOUPLING but not E24_CHECK
+        assert "DECOUPLING" in last_feedback[0]
+        assert "E24_CHECK" not in last_feedback[0]
+
     def test_report_to_dict(self):
         engine = _make_engine(issues_per_round=[[]])
         report = engine.verify("Safe suggestion")
@@ -105,6 +162,8 @@ class TestVerificationEngine:
         assert d["accepted"] is True
         assert d["final_status"] == "passed"
         assert d["rounds"] == 1
+        assert "blocking_issues" in d
+        assert d["blocking_issues"] == 0
 
     def test_report_to_markdown(self):
         engine = _make_engine(issues_per_round=[[]])
@@ -112,6 +171,7 @@ class TestVerificationEngine:
         md = report.to_markdown()
         assert "闭环验证报告" in md
         assert "Safe suggestion" in md
+        assert "阻断性违规" in md
 
 
 class TestVerificationRound:

@@ -12,6 +12,10 @@ xlrd>=2.0.0              # 旧版 .xls 读取
 # ── AI / LLM ──
 requests>=2.28.0         # HTTP 请求（LLM API，兼容 OpenAI/DeepSeek/通义千问/智谱/Kimi 等）
 sseclient-py>=1.8.0      # SSE 流式响应（可选）
+anthropic>=0.30.0        # Anthropic Claude API (Messages API)
+
+# ── RAG 知识库 ──
+chromadb>=0.4.0          # 向量数据库 (RAG 检索增强生成)
 
 # ── API 服务器 (LCEDA 插件后端) ──
 fastapi>=0.110.0         # REST API 框架
@@ -37,4 +41,4 @@ Pillow>=9.0.0            # 托盘图标生成 (pystray 依赖)
 
 # ── 开发/测试 ──
 pytest>=7.0.0
-pytest-qt>=4.2.0         # PyQt5 测试支持
+pytest-cov>=4.0.0        # 测试覆盖率

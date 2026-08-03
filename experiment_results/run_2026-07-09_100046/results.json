@@ -1,0 +1,102 @@
+{
+  "timestamp": "2026-07-09_100046",
+  "output_dir": "C:\\Users\\lin\\Desktop\\eda_ai_assistant\\experiment_results\\run_2026-07-09_100046",
+  "designs": [
+    "STM32_Minimal",
+    "Power_Supply",
+    "Bad_Design"
+  ],
+  "providers": [],
+  "suggestion_categories": [
+    "safe",
+    "dangerous",
+    "optimization"
+  ],
+  "drc_count": 3,
+  "verify_count": 0,
+  "ma_count": 0,
+  "drc_results": [
+    {
+      "design": "STM32_Minimal",
+      "total_violations": 26,
+      "errors": 0,
+      "warnings": 8,
+      "infos": 18,
+      "violations_by_rule": {
+        "参数范围检查": 5,
+        "时钟信号包地检查": 2,
+        "信号线宽度检查": 2,
+        "电容温度系数检查": 1,
+        "元件高度分区检查": 1,
+        "连接器边沿布局检查": 1,
+        "铜皮连接检查": 1,
+        "晶振频率匹配": 1,
+        "晶振负载电容检查": 1,
+        "调试接口检查": 1,
+        "去耦电容距离检查": 1,
+        "ESD 保护检查": 1,
+        "光学定位点检查": 1,
+        "悬空引脚检查": 1,
+        "地平面连续性检查": 1,
+        "高速信号参考平面检查": 1,
+        "电感饱和电流检查": 1,
+        "PDN 目标阻抗分析": 1,
+        "电阻功率降额检查": 1,
+        "测试点覆盖检查": 1
+      },
+      "elapsed_seconds": 0.01,
+      "error": null,
+      "timestamp": "2026-07-09T10:00:46.300914"
+    },
+    {
+      "design": "Power_Supply",
+      "total_violations": 17,
+      "errors": 0,
+      "warnings": 3,
+      "infos": 14,
+      "violations_by_rule": {
+        "参数范围检查": 8,
+        "电容温度系数检查": 1,
+        "元件高度分区检查": 1,
+        "ESD 保护检查": 1,
+        "电感饱和电流检查": 1,
+        "封装一致性检查": 1,
+        "PDN 目标阻抗分析": 1,
+        "极性元件方向检查": 1,
+        "开关电源布局检查": 1,
+        "热焊盘检查": 1
+      },
+      "elapsed_seconds": 0.0,
+      "error": null,
+      "timestamp": "2026-07-09T10:00:46.304273"
+    },
+    {
+      "design": "Bad_Design",
+      "total_violations": 18,
+      "errors": 0,
+      "warnings": 7,
+      "infos": 11,
+      "violations_by_rule": {
+        "参数范围检查": 3,
+        "时钟信号包地检查": 2,
+        "信号线宽度检查": 2,
+        "铜皮连接检查": 1,
+        "晶振频率匹配": 1,
+        "晶振负载电容检查": 1,
+        "去耦电容距离检查": 1,
+        "ESD 保护检查": 1,
+        "光学定位点检查": 1,
+        "悬空引脚检查": 1,
+        "地平面连续性检查": 1,
+        "高速信号参考平面检查": 1,
+        "PDN 目标阻抗分析": 1,
+        "测试点覆盖检查": 1
+      },
+      "elapsed_seconds": 0.0,
+      "error": null,
+      "timestamp": "2026-07-09T10:00:46.307756"
+    }
+  ],
+  "verify_results": [],
+  "ma_results": []
+}

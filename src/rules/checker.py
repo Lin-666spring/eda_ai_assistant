@@ -32,62 +32,144 @@ class RuleViolation:
     theory: str = ""
 
 
+# ═══ 元件分类辅助 ═══
+# 真实立创 BOM 的描述常只是值/型号（如 "100nF"、"4kHz"），part_number 可能为空，
+# 因此元件分类必须以位号前缀为主要信号，描述关键词兜底。
+# 策略：默认"非 IC"，只有明确是 IC（U/IC/LDO 前缀或强 IC 描述词）才算，宁缺毋滥。
+
+
+def _parse_capacitance(val_str: str) -> Optional[float]:
+    """解析容值字符串（含 EIA 三位码），返回法拉，失败返回 None。"""
+    if not val_str:
+        return None
+    val_str = val_str.strip().upper().replace(" ", "")
+    try:
+        from src.bom.normalizer import ValueNormalizer
+        nv = ValueNormalizer.normalize(val_str)
+        if nv.base_value:  # normalize("104") 返回 0，需继续走 EIA fallback
+            return nv.base_value
+    except Exception:
+        pass
+    # Fallback: EIA 3-digit code (e.g. "104" = 10*10^4 pF = 100nF)
+    if val_str.isdigit() and len(val_str) == 3:
+        try:
+            return int(val_str[0:2]) * 10 ** int(val_str[2]) * 1e-12
+        except Exception:
+            pass
+    return None
+
+
+def _component_count(item) -> int:
+    """元件总数 = max(quantity, 位号列表长度)。真实 BOM 常以逗号分隔多位号同行。"""
+    qty = getattr(item, "quantity", 1) or 1
+    n_refs = len(item.reference_list)
+    return max(int(qty), n_refs)
+
+
+def _classify_component(item) -> str:
+    """按位号前缀 + 描述关键词分类：'ic' | 'cap' | 'passive' | 'other'。
+
+    优先排除明确非 IC 的类别（电容/电阻/二极管/三极管/连接器/晶振/开关/机械件等），
+    避免把被动元件和连接器误判为需要去耦电容的 IC。
+    """
+    ref_list = item.reference_list
+    ref = ref_list[0] if ref_list else ""
+    prefix = "".join(ch for ch in ref if ch.isalpha()).upper()
+    desc = (
+        f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')} "
+        f"{getattr(item, 'value', '')}"
+    ).lower()
+
+    # ── 明确类别，优先判定 ──
+    if prefix == "C" or "电容" in desc or "capacitor" in desc:
+        return "cap"
+    if prefix in ("R", "RN", "RNC") or "电阻" in desc or "resistor" in desc:
+        return "passive"
+    if prefix in ("L", "FB") or "电感" in desc or "inductor" in desc or "磁珠" in desc:
+        return "passive"
+    if prefix == "D" or "二极管" in desc or "diode" in desc or "led" in desc:
+        return "passive"
+    # 三极管/MOSFET/晶闸管：开关器件，不由去耦检查按 IC 要求
+    if prefix in ("Q", "T", "SCR", "TRIAC") or any(k in desc for k in ("三极管", "mosfet", "晶体管", "晶闸管")):
+        return "passive"
+    # 晶振/振荡器
+    if prefix in ("X", "Y", "XTAL", "OSC") or any(k in desc for k in ("晶振", "crystal", "oscillator", "mhz", "khz", "32.768")):
+        return "other"
+    # 连接器/机械件/测试点/端子
+    conn_words = ("连接器", "端子", "排针", "排母", "插座", "排线", "wafer", "connector",
+                  "header", "socket", "螺丝", "螺母", "测试点", "压接", "fpc", "xh")
+    if prefix in ("J", "CN", "CON", "HDR", "P", "FPC", "TP", "MP", "H", "USB", "SH", "SM") or any(k in desc for k in conn_words):
+        return "other"
+    # 开关/保险丝/蜂鸣器/继电器
+    if prefix in ("SW", "K", "S", "BUTTON", "BUZZ", "BZ", "BUZZER", "LS", "SPK", "F", "FU", "RL", "RELAY"):
+        return "other"
+    # LED（位号 LED 前缀）
+    if prefix == "LED":
+        return "passive"
+
+    # ── IC 判定 ──
+    if prefix in ("U", "IC", "LDO"):
+        return "ic"
+    ic_words = ("芯片", "单片机", "处理器", "控制器", "稳压", "dc-dc", "dc/dc", "降压",
+                "升压", "转换器", "驱动", "fpga", "dsp", "soc", "传感器", "运放",
+                "放大器", "比较器", "wroom", "esp32", "stm32", "mcu", "chip",
+                "regulator", "controller", "converter", "driver", "sensor",
+                "amplifier", "module", "模块")
+    if any(k in desc for k in ic_words):
+        return "ic"
+    return "other"
+
+
 class DesignRuleChecker:
     """PCB 设计规则检查器 — 测控电路/电子设计专用规则（69条）"""
 
     # ═══ BOM-only rules ═══
 
     def _check_decoupling_caps(self, bom_items, positions, netlist):
-        """去耦电容检查：每个 IC 应有匹配的去耦电容，基于 Z-F 分析"""
+        """去耦电容检查：每个 IC 应有匹配的去耦电容，基于 Z-F 分析。
+
+        契合实际使用的设计（2026-08 重构）：
+        1. 元件分类基于位号前缀 + 描述关键词，而非仅描述关键词。
+           真实立创 BOM 的描述常只是值/型号（如 "100nF"、"4kHz"），旧逻辑
+           会把电容/二极管/连接器/蜂鸣器误判为 IC，产生大量虚假违规。
+        2. 去耦覆盖按"可用 100nF 总量 vs 需去耦 IC 数量"的供需关系判断，
+           而非"全 BOM 有一个就满足全部 / 一个没有就全部报错"。
+        3. 数量统计包含 quantity / 多位号数量，覆盖真实 BOM 的逗号分隔位号。
+        """
         from src.pcb.calculator import analyze_decoupling_capacitor
 
         violations = []
-        passive_kw = ["电阻", "电容", "电感", "Resistor", "Capacitor", "Inductor"]
         ics, caps = [], []
         for item in bom_items:
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
-            if any(kw.lower() in desc for kw in passive_kw):
-                if "电容" in desc or "capacitor" in desc:
-                    caps.append(item)
-            else:
+            cls = _classify_component(item)
+            if cls == "cap":
+                caps.append(item)
+            elif cls == "ic":
                 ics.append(item)
 
-        # 分析可用电容
-        available_caps = []
+        # ── 统计可用去耦电容总量（含数量）──
+        total_100nf = 0   # 50nF-500nF 高频去耦
+        total_bulk = 0    # 1µF-100µF 体电容
         for c in caps:
-            val_str = getattr(c, "value", "").strip().upper().replace(" ", "")
-            try:
-                from src.bom.normalizer import ValueNormalizer
-                nv = ValueNormalizer.normalize(val_str)
-                cap_f = nv.base_value
-            except Exception:
-                cap_f = None
-            # Fallback: EIA 3-digit code (e.g. "104" = 10*10^4 pF = 100nF)
-            if not cap_f and val_str and val_str.isdigit() and len(val_str) == 3:
-                try:
-                    cap_f = int(val_str[0:2]) * 10 ** int(val_str[2]) * 1e-12
-                except Exception:
-                    pass
-            pkg = getattr(c, "package", "0603") or "0603"
-            available_caps.append((c, cap_f, pkg))
+            count = _component_count(c)
+            cap_f = _parse_capacitance(getattr(c, "value", ""))
+            if cap_f is None:
+                continue
+            if 50e-9 <= cap_f <= 500e-9:
+                total_100nf += count
+            elif 1e-6 <= cap_f <= 100e-6:
+                total_bulk += count
 
-        for ic in ics:
-            ic_ref = getattr(ic, "reference", "?")
-            ic_desc = f"{getattr(ic, 'part_number', '')} {getattr(ic, 'description', '')}".lower()
+        # IC 总数按位号统计（真实 BOM 常以逗号分隔多位号同行，如 "U1,U2,...,U29"）
+        ic_count = sum(_component_count(i) for i in ics)
+        if ic_count == 0:
+            return violations
 
-            # 检查是否有 100nF 去耦
-            has_100nf = any(
-                cf and 50e-9 <= cf <= 500e-9
-                for _, cf, _ in available_caps
-            )
-            # 检查是否有 10µF 大电容（低频去耦）
-            has_bulk = any(
-                cf and 1e-6 <= cf <= 100e-6
-                for _, cf, _ in available_caps
-            )
-
-            if not has_100nf:
-                # Z-F 分析：100nF 在 1-100MHz 有效
+        # ── 高频去耦 100nF 覆盖 ──
+        if total_100nf == 0:
+            # 全板无任何高频去耦电容：逐 IC 报 ERROR（严重问题，便于定位）
+            for ic in ics:
+                ic_ref = getattr(ic, "reference", "?")
                 result = analyze_decoupling_capacitor(100e-9, "0603", "typical")
                 violations.append(RuleViolation(
                     rule_name="去耦电容检查",
@@ -102,54 +184,115 @@ class DesignRuleChecker:
                     theory="IC 晶体管开关产生 di/dt 瞬态，PCB 走线寄生电感(~5-10nH/cm)导致 VDD 跌落(V=L×di/dt)。"
                            "100nF MLCC Z 最低点在 SRF 附近(~10-15MHz)，有效覆盖数字电路主要噪声频段。",
                 ))
-            elif not has_bulk:
+        elif total_100nf < ic_count:
+            # 供需缺口：报一条汇总 WARNING，避免逐 IC 刷屏
+            gap = ic_count - total_100nf
+            violations.append(RuleViolation(
+                rule_name="去耦电容检查",
+                description=(
+                    f"高频去耦电容不足：{total_100nf} 个 100nF 需覆盖 {ic_count} 个 IC，"
+                    f"缺口 {gap} 个"
+                ),
+                severity=RuleSeverity.WARNING,
+                location=",".join(getattr(i, "reference", "?") for i in ics[:5]),
+                suggestion=f"为缺口中的 {gap} 个 IC 各补充 1 个 100nF MLCC（≤10mm 靠近电源引脚）",
+                theory="每颗 IC 的电源引脚都应有就近的高频去耦电容(100nF)，覆盖不足会导"
+                       "致 IC 供电瞬态跌落，影响信号完整性与 EMC。",
+            ))
+
+        # ── 体电容 10µF 覆盖 ──
+        if total_bulk == 0:
+            for ic in ics:
+                ic_ref = getattr(ic, "reference", "?")
                 violations.append(RuleViolation(
                     rule_name="去耦电容检查",
-                    description=f"IC {ic_ref} 有高频去耦但缺少体电容(10µF)用于低频纹波",
+                    description=f"IC {ic_ref} 缺少体电容(10µF)用于低频纹波",
                     severity=RuleSeverity.WARNING,
                     location=ic_ref,
                     suggestion="在电源入口处添加 10µF 钽电容或 MLCC 以抑制低频纹波(≤1MHz)",
                     theory="大电容(10-100µF)提供低频能量储备，小电容(100nF)处理高频瞬态。两者并联扩大有效频率范围。",
                 ))
+        elif total_bulk < ic_count:
+            gap = ic_count - total_bulk
+            violations.append(RuleViolation(
+                rule_name="去耦电容检查",
+                description=f"体电容不足：{total_bulk} 个 10µF 需覆盖 {ic_count} 个 IC，缺口 {gap} 个",
+                severity=RuleSeverity.WARNING,
+                location=",".join(getattr(i, "reference", "?") for i in ics[:5]),
+                suggestion=f"在电源入口处为缺口中的 {gap} 个 IC 补充 10µF 体电容",
+                theory="体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。",
+            ))
         return violations
 
     def _check_crystal_load_caps(self, bom_items, positions, netlist):
-        """晶振负载电容检查：每个晶振应配备 2 个匹配负载电容"""
+        """晶振负载电容检查：每个晶振应配备 2 个匹配负载电容。
+
+        契合实际使用的修复（2026-08-03）：
+        1. 晶振判定必须描述含频率/晶振关键词——"X" 前缀可能是连接器
+           （如 dcdc 板的 X3=AFC07 排线座），纯前缀判定会产生误报。
+        2. 负载电容不要求与晶振同前缀（真实设计负载电容均为 C 前缀），
+           退化为统计板上负载电容级小电容（1-47pF）的供需关系。
+        """
         violations = []
-        crystal_kw = ["晶振", "crystal", "XTAL", "OSC", "振荡"]
-        cap_kw = ["电容", "capacitor", "pF", "pf", "PF"]
+        crystal_kw = ["晶振", "crystal", "oscillator", "谐振", "mhz", "khz", "32.768"]
+        crystals = []
         for item in bom_items:
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')} {getattr(item, 'value', '')}".lower()
-            if not any(kw.lower() in desc for kw in crystal_kw):
-                continue
-            ref = getattr(item, "reference", "?")
-            prefix = "".join(c for c in ref if c.isalpha())
-            nearby = [c for c in bom_items
-                      if "".join(ch for ch in getattr(c, "reference", "") if ch.isalpha()) == prefix
-                      and any(kw.lower() in (f"{getattr(c, 'part_number', '')} {getattr(c, 'description', '')} {getattr(c, 'value', '')}").lower() for kw in cap_kw)]
-            if len(nearby) < 2:
-                violations.append(RuleViolation(
-                    rule_name="晶振负载电容检查",
-                    description=f"晶振 {ref} 负载电容不足({len(nearby)}/2)",
-                    severity=RuleSeverity.WARNING,
-                    location=ref,
-                    suggestion="晶振需 2 个匹配负载电容(通常 12~22pF)，参见数据手册",
-                    theory="皮尔斯振荡器是最常用 MCU 晶振电路。CL=(CL1×CL2)/(CL1+CL2)+Cstray，Cstray 包含 PCB 寄生和 MCU 引脚电容(~3-7pF)。CL 偏差过大致起振失败或频率偏移。",
-                ))
+            desc = (
+                f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')} "
+                f"{getattr(item, 'value', '')}"
+            ).lower()
+            if any(kw in desc for kw in crystal_kw):
+                crystals.append(item)
+        if not crystals:
+            return violations
+
+        # 统计板上负载电容级小电容总量（1-47pF，皮尔斯振荡器典型 12-22pF）
+        load_count = sum(
+            _component_count(c)
+            for c in bom_items
+            if _classify_component(c) == "cap"
+            and (cf := _parse_capacitance(getattr(c, "value", ""))) is not None
+            and 1e-12 <= cf <= 47e-12
+        )
+        need = 2 * len(crystals)
+        if load_count < need:
+            refs = ",".join(getattr(i, "reference", "?").split(",")[0] for i in crystals)
+            violations.append(RuleViolation(
+                rule_name="晶振负载电容检查",
+                description=(
+                    f"晶振负载电容可能不足：板上 {load_count} 颗 1-47pF 小电容，"
+                    f"需 {need} 颗覆盖 {len(crystals)} 个晶振"
+                ),
+                severity=RuleSeverity.WARNING,
+                location=refs,
+                suggestion="每颗晶振需 2 个匹配负载电容(通常 12~22pF)，参见数据手册",
+                theory="皮尔斯振荡器是最常用 MCU 晶振电路。CL=(CL1×CL2)/(CL1+CL2)+Cstray，Cstray 包含 PCB 寄生和 MCU 引脚电容(~3-7pF)。CL 偏差过大致起振失败或频率偏移。",
+            ))
         return violations
 
     def _check_crystal_frequency(self, bom_items, positions, netlist):
         """晶振频率匹配：不同频率晶振应匹配对应负载电容值"""
         violations = []
+        crystal_kw = ["晶振", "crystal", "xtal", "oscillator", " resonator"]
+        crystal_ref_prefixes = {"X", "Y"}
         crystal_map = {"32.768": ("12.5pF", "15pF"), "8M": ("18pF", "22pF"),
-                       "12M": ("15pF", "22pF"), "16M": ("12pF", "18pF"), "25M": ("12pF", "18pF")}
+                       "12M": ("15pF", "22pF"), "16M": ("12pF", "18pF"), "25M": ("12pF", "18pF"),
+                       "32.768K": ("12.5pF", "15pF"), "8MHZ": ("18pF", "22pF")}
         for item in bom_items:
-            val = getattr(item, "value", "") or ""
+            val = (getattr(item, "value", "") or "").strip()
             desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}"
-            if not any(kw in desc.lower() for kw in ["晶振", "crystal", "xtal"]):
-                continue
             ref = getattr(item, "reference", "").split(",")[0].strip()
+            ref_prefix = "".join(c for c in ref if c.isalpha()).upper()
+            is_crystal = (
+                any(kw in desc.lower() for kw in crystal_kw)
+                or ref_prefix in crystal_ref_prefixes
+            )
+            if not is_crystal:
+                continue
             freq = val.replace(" ", "").upper()
+            # Also check description for frequency info
+            if not any(c.isdigit() for c in freq):
+                freq = desc.replace(" ", "").upper()
             matched = next(((k, c) for k, c in crystal_map.items() if freq.startswith(k.upper())), None)
             if matched:
                 fname, (cl_min, cl_max) = matched
@@ -294,9 +437,17 @@ class DesignRuleChecker:
         """ESD 保护：外部接口应有 TVS/ESD 保护器件"""
         violations = []
         conn_kw = ["USB", "HDMI", "RJ45", "DB9", "FPC", "排针", "端子", "CONNECTOR", "connector", "HEADER", "header", "JACK", "jack"]
-        esd_kw = ["TVS", "ESD", "SRV05", "USBLC6", "RCLAMP", "PESD", "SMAJ", "SMBJ", "压敏", "防静电", "保护管"]
-        has_conn = any(any(kw.lower() in (getattr(i, "part_number", "") + " " + getattr(i, "description", "")).lower()
-                           for kw in conn_kw) for i in bom_items)
+        esd_kw = ["TVS", "ESD", "SRV05", "USBLC6", "RCLAMP", "PESD", "SMAJ", "SMBJ", "压敏", "防静电", "保护管", "BDFN"]
+        # Connector reference prefixes (common for headers, FPC, USB, etc.)
+        conn_ref_prefixes = {"J", "P", "H", "CN", "USB", "FPC"}
+        # Check for connectors by keyword OR reference prefix
+        has_conn = any(
+            any(kw.lower() in (getattr(i, "part_number", "") + " " + getattr(i, "description", "")).lower()
+                for kw in conn_kw)
+            or any("".join(c for c in r if c.isalpha()).upper() in conn_ref_prefixes
+                   for r in getattr(i, "reference", "").split(","))
+            for i in bom_items
+        )
         if not has_conn:
             return violations
         has_esd = any(any(kw.lower() in (getattr(i, "part_number", "") + " " + getattr(i, "description", "")).lower()
@@ -598,26 +749,42 @@ class DesignRuleChecker:
     def _check_capacitor_voltage_derating(self, bom_items, positions, netlist):
         """电容耐压降额：电容耐压应有 ≥20% 降额裕量"""
         violations = []
-        # 常见电压轨
+        # 常见电压轨 + IC 型号推断
         voltage_rails = {"3.3V": 3.3, "5V": 5.0, "12V": 12.0, "24V": 24.0}
+        # IC models that imply a supply voltage
+        ic_voltage_hints = {
+            "ams1117-3.3": 3.3, "ams1117-5.0": 5.0, "me6211c33": 3.3,
+            "mp1584": 5.0, "mp2451": 5.0, "tps5430": 5.0,
+            "lm2596-3.3": 3.3, "lm2596-5.0": 5.0,
+        }
         supply_voltages = set()
         for item in bom_items:
             val = (getattr(item, "value", "") or "").upper().replace(" ", "")
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".upper()
+            pn = (getattr(item, "part_number", "") or "").upper().replace(" ", "")
+            desc = f"{pn} {getattr(item, 'description', '')}".upper()
             for rail_v, rail_num in voltage_rails.items():
                 if rail_v in val or rail_v in desc or f"VOUT={rail_v}" in desc or f"VOUT {rail_v}" in desc:
                     supply_voltages.add(rail_num)
-        max_voltage = max(supply_voltages) if supply_voltages else 0
-        if max_voltage < 3.0:
-            return violations
+            # Check IC hints
+            for ic_hint, ic_voltage in ic_voltage_hints.items():
+                if ic_hint in (pn + " " + val).lower():
+                    supply_voltages.add(ic_voltage)
+        # If no explicit voltage found, assume at least 3.3V (most common MCU supply)
+        max_voltage = max(supply_voltages) if supply_voltages else 3.3
+        # Capacitor detection: keyword OR reference prefix 'C'
+        cap_kw = {"电容", "capacitor", "电解", "electrolytic", "MLCC", "陶瓷"}
         for item in bom_items:
+            ref = getattr(item, "reference", "").split(",")[0].strip()
             desc = f"{getattr(item, 'part_number', '') or ''} {getattr(item, 'description', '') or ''}".lower()
-            if not any(kw in desc for kw in ["电容", "capacitor", "电解", "electrolytic"]):
+            is_cap = (
+                any(kw.lower() in desc for kw in cap_kw)
+                or ref.upper().startswith("C")
+            )
+            if not is_cap:
                 continue
             val = (getattr(item, "value", "") or "").strip().upper()
             pn = (getattr(item, "part_number", "") or "").strip().upper()
-            ref = getattr(item, "reference", "").split(",")[0].strip()
-            # 尝试从 value 或 part_number 提取耐压
+            # Try to extract voltage rating from value or part_number
             voltage_match = re.search(r'(\d+)V', val + " " + pn)
             if voltage_match:
                 rated_v = float(voltage_match.group(1))
@@ -2041,3 +2208,48 @@ def _parse_component_value(val: str):
             exp = e
             break
     return (num, exp)
+
+
+def group_violations_by_component(violations: list) -> dict:
+    """将违规列表按元件引用分组，用于 AI Verification Map 叠加层。
+
+    从 violation.location 字段中用正则提取元件引用（如 U1, R5, C3），
+    将每条违规归类到对应元件。location 为空的违规归入 "__board__" 键。
+
+    Args:
+        violations: RuleViolation 列表
+
+    Returns:
+        {
+            "U1": [{"rule": "去耦电容检查", "severity": "error",
+                     "desc": "...", "suggestion": "..."}, ...],
+            "__board__": [...],   # 板级违规（无明确元件引用）
+        }
+    """
+    result: dict[str, list[dict]] = {}
+
+    for v in violations:
+        # 尝试从 location 提取元件引用
+        if v.location:
+            refs = re.findall(r'[A-Z]+\d+', v.location.upper())
+        else:
+            refs = []
+
+        sev = v.severity.value if hasattr(v.severity, 'value') else str(v.severity)
+
+        entry = {
+            "rule": v.rule_name,
+            "severity": sev,
+            "desc": v.description,
+            "suggestion": v.suggestion,
+            "theory": v.theory,
+        }
+
+        if refs:
+            for ref in refs:
+                result.setdefault(ref, []).append(entry)
+        else:
+            # 无元件引用的违规归入板级
+            result.setdefault("__board__", []).append(entry)
+
+    return result

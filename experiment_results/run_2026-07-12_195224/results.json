@@ -1,0 +1,1586 @@
+{
+  "timestamp": "2026-07-12_195224",
+  "output_dir": "C:\\Users\\lin\\Desktop\\eda_ai_assistant\\experiment_results\\run_2026-07-12_195224",
+  "designs": [
+    "bldc_esc_motor",
+    "dcdc_power_v62",
+    "esp32_audio_moji2",
+    "stm32f103_devboard"
+  ],
+  "providers": [
+    "deepseek"
+  ],
+  "suggestion_categories": [
+    "safe",
+    "optimization",
+    "dangerous"
+  ],
+  "drc_count": 4,
+  "verify_count": 20,
+  "ma_count": 4,
+  "defect_count": 18,
+  "drc_results": [
+    {
+      "design": "bldc_esc_motor",
+      "total_violations": 43,
+      "errors": 27,
+      "warnings": 3,
+      "infos": 13,
+      "violations_by_rule": {
+        "去耦电容检查": 27,
+        "参数范围检查": 5,
+        "位号连续性检查": 3,
+        "板边间距检查": 1,
+        "EMI 滤波检查": 1,
+        "光学定位点检查": 1,
+        "电感饱和电流检查": 1,
+        "MOSFET 栅极电阻检查": 1,
+        "PDN 目标阻抗分析": 1,
+        "电源滤波检查": 1,
+        "电源极性保护检查": 1
+      },
+      "elapsed_seconds": 0.19,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.351730"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "total_violations": 131,
+      "errors": 93,
+      "warnings": 4,
+      "infos": 34,
+      "violations_by_rule": {
+        "去耦电容检查": 93,
+        "参数范围检查": 25,
+        "位号连续性检查": 5,
+        "板边间距检查": 1,
+        "调试接口检查": 1,
+        "多电源引脚去耦检查": 1,
+        "光学定位点检查": 1,
+        "悬空引脚检查": 1,
+        "电感饱和电流检查": 1,
+        "MOSFET 栅极电阻检查": 1,
+        "PDN 目标阻抗分析": 1
+      },
+      "elapsed_seconds": 0.03,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.380018"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "total_violations": 53,
+      "errors": 38,
+      "warnings": 3,
+      "infos": 12,
+      "violations_by_rule": {
+        "去耦电容检查": 38,
+        "参数范围检查": 5,
+        "位号连续性检查": 2,
+        "天线净空区检查": 1,
+        "板边间距检查": 1,
+        "元件间距检查": 1,
+        "光学定位点检查": 1,
+        "悬空引脚检查": 1,
+        "电感饱和电流检查": 1,
+        "PDN 目标阻抗分析": 1,
+        "开关电源布局检查": 1
+      },
+      "elapsed_seconds": 0.02,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.397653"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "total_violations": 28,
+      "errors": 18,
+      "warnings": 4,
+      "infos": 6,
+      "violations_by_rule": {
+        "去耦电容检查": 18,
+        "参数范围检查": 2,
+        "LED 限流电阻检查": 2,
+        "位号连续性检查": 2,
+        "多电源引脚去耦检查": 1,
+        "光学定位点检查": 1,
+        "悬空引脚检查": 1,
+        "PDN 目标阻抗分析": 1
+      },
+      "elapsed_seconds": 0.01,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.406968"
+    }
+  ],
+  "verify_results": [
+    {
+      "design": "bldc_esc_motor",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "general",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.01,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.421291"
+    },
+    {
+      "design": "bldc_esc_motor",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "bom_change",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.01,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.435518"
+    },
+    {
+      "design": "bldc_esc_motor",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在每个 IC VDD 引脚旁增加 100nF+10μF 去耦电容组合",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "bom_change",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.02,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.451062"
+    },
+    {
+      "design": "bldc_esc_motor",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "optimization",
+      "suggestion_text": "检查所有电源轨的去耦电容配置，确保每个电源引脚 100nF+10μF 组合",
+      "suggestion_desc": "优化建议 — 电源完整性检查",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "general",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.05,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.502461"
+    },
+    {
+      "design": "bldc_esc_motor",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "将所有 3.3V 元件改为 5V 供电，删除电平转换电路",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "bom_change",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.01,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.516864"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "general",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.03,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.550717"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "bom_change",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.03,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.584065"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在每个 IC VDD 引脚旁增加 100nF+10μF 去耦电容组合",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "bom_change",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.03,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.617954"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "optimization",
+      "suggestion_text": "检查所有电源轨的去耦电容配置，确保每个电源引脚 100nF+10μF 组合",
+      "suggestion_desc": "优化建议 — 电源完整性检查",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "general",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.03,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.651989"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "将所有 3.3V 元件改为 5V 供电，删除电平转换电路",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "bom_change",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.03,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.686438"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "general",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.02,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.705644"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "bom_change",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.02,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.723107"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在每个 IC VDD 引脚旁增加 100nF+10μF 去耦电容组合",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "bom_change",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.02,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.741019"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "optimization",
+      "suggestion_text": "检查所有电源轨的去耦电容配置，确保每个电源引脚 100nF+10μF 组合",
+      "suggestion_desc": "优化建议 — 电源完整性检查",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "general",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.02,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.758793"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "将所有 3.3V 元件改为 5V 供电，删除电平转换电路",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "bom_change",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.02,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.776262"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "general",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.01,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.786902"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "bom_change",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.01,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.797554"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在每个 IC VDD 引脚旁增加 100nF+10μF 去耦电容组合",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "bom_change",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.01,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.808181"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "optimization",
+      "suggestion_text": "检查所有电源轨的去耦电容配置，确保每个电源引脚 100nF+10μF 组合",
+      "suggestion_desc": "优化建议 — 电源完整性检查",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "general",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.01,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.820395"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "将所有 3.3V 元件改为 5V 供电，删除电平转换电路",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "accepted": true,
+        "final_status": "passed",
+        "rounds": 1,
+        "total_issues": 0,
+        "blocking_issues": 0,
+        "category": "bom_change",
+        "summary": "✅ 建议已通过 1 轮闭环验证，未发现任何违规。",
+        "details": [
+          {
+            "round": 1,
+            "status": "passed",
+            "issues": [],
+            "corrected": ""
+          }
+        ]
+      },
+      "elapsed_seconds": 0.01,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:24.831006"
+    }
+  ],
+  "ma_results": [
+    {
+      "design": "bldc_esc_motor",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "overall_score": 76.6,
+      "overall_grade": "B",
+      "radar_scores": {
+        "power": 0,
+        "signal": 100.0,
+        "thermal": 100.0,
+        "emc": 96.0,
+        "dfm": 91.2,
+        "cost": 92.0
+      },
+      "agent_scores": {
+        "signal": 100.0,
+        "thermal": 100.0,
+        "emc": 96.0,
+        "dfm": 91.2,
+        "power": 0
+      },
+      "critical_count": 1,
+      "total_findings": 11,
+      "consensus_preview": "## 多智能体协同审查共识\n\n 设计存在改进空间，各领域 Agent 提出了优化建议。\n\n### 优先修复项（11 项）\n\n- [EMC] [电磁兼容审查师] **电源入口缺少共模电感/EMI滤波器件**: 添加两级EMI滤波：第一级共模电感(>1mH)+X电容(0.47μF)+Y电容(2.2nF)，第二级差模电感，并确保输入与输出回路分离，使用短而宽的走线。\n- [Power] [电源完整性审查",
+      "elapsed_seconds": 25.58,
+      "error": null,
+      "timestamp": "2026-07-12T19:52:50.410617"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "overall_score": 71.7,
+      "overall_grade": "B",
+      "radar_scores": {
+        "power": 0,
+        "signal": 93.6,
+        "thermal": 100.0,
+        "emc": 98.4,
+        "dfm": 86.4,
+        "cost": 60.0
+      },
+      "agent_scores": {
+        "thermal": 100.0,
+        "signal": 93.6,
+        "dfm": 86.4,
+        "emc": 98.4,
+        "power": 0
+      },
+      "critical_count": 1,
+      "total_findings": 8,
+      "consensus_preview": "## 多智能体协同审查共识\n\n 设计存在改进空间，各领域 Agent 提出了优化建议。\n\n### 优先修复项（2 项）\n\n- [Signal] [信号完整性审查师] **控制引脚悬空导致状态不确定**: 为RST加上拉电阻至VCC、BOOT接确定性电平、EN通过电阻上拉或下拉，并靠近引脚放置去耦电容。\n- [Power] [电源完整性审查师] **主控U146无去耦电容**: 在每个电源引脚旁放置",
+      "elapsed_seconds": 36.84,
+      "error": null,
+      "timestamp": "2026-07-12T19:53:27.254700"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "overall_score": 75.0,
+      "overall_grade": "B",
+      "radar_scores": {
+        "power": 0,
+        "signal": 93.6,
+        "thermal": 100.0,
+        "emc": 93.6,
+        "dfm": 92.0,
+        "cost": 92.0
+      },
+      "agent_scores": {
+        "thermal": 100.0,
+        "signal": 93.6,
+        "emc": 93.6,
+        "dfm": 92.0,
+        "power": 0
+      },
+      "critical_count": 1,
+      "total_findings": 10,
+      "consensus_preview": "## 多智能体协同审查共识\n\n 设计存在改进空间，各领域 Agent 提出了优化建议。\n\n### 优先修复项（4 项）\n\n- [Power] [电源完整性审查师] **多IC组1缺失100nF高频去耦电容**: 为每个IC的VDD-GND引脚对就近放置100nF MLCC，距离引脚≤2mm，优先内层连接电源地平面。\n- [Power] [电源完整性审查师] **多IC组2缺失100nF高频去耦电容",
+      "elapsed_seconds": 24.23,
+      "error": null,
+      "timestamp": "2026-07-12T19:53:51.488258"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "overall_score": 76.3,
+      "overall_grade": "B",
+      "radar_scores": {
+        "power": 0,
+        "signal": 93.6,
+        "thermal": 100.0,
+        "emc": 93.6,
+        "dfm": 98.4,
+        "cost": 96.8
+      },
+      "agent_scores": {
+        "thermal": 100.0,
+        "emc": 93.6,
+        "signal": 93.6,
+        "dfm": 98.4,
+        "power": 0
+      },
+      "critical_count": 1,
+      "total_findings": 8,
+      "consensus_preview": "## 多智能体协同审查共识\n\n 设计存在改进空间，各领域 Agent 提出了优化建议。\n\n### 优先修复项（3 项）\n\n- [Signal] [信号完整性审查师] **控制引脚悬空导致状态不确定**: RST上拉并加电容去抖；BOOT按启动要求固定电平；EN通过电阻上拉或连接电源监控电路，确保确定状态。\n- [Power] [电源完整性审查师] **主控U1多电源引脚去耦电容完全缺失**: 每个",
+      "elapsed_seconds": 60.82,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.304551"
+    }
+  ],
+  "defect_results": [
+    {
+      "design": "bldc_esc_motor",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 1 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查"
+      ],
+      "missed_rules": [
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "电源滤波检查",
+        "EMI 滤波检查",
+        "MOSFET 栅极电阻检查",
+        "板边间距检查",
+        "位号连续性检查",
+        "电源极性保护检查",
+        "电感饱和电流检查"
+      ],
+      "total_violations": 41,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.317579"
+    },
+    {
+      "design": "bldc_esc_motor",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "光学定位点检查",
+        "PDN 目标阻抗分析",
+        "去耦电容检查",
+        "电源滤波检查",
+        "EMI 滤波检查",
+        "MOSFET 栅极电阻检查",
+        "板边间距检查",
+        "位号连续性检查",
+        "电源极性保护检查",
+        "电感饱和电流检查"
+      ],
+      "total_violations": 49,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.320484"
+    },
+    {
+      "design": "bldc_esc_motor",
+      "defect_id": "no_crystal_load_caps",
+      "defect_name": "删除晶振负载电容",
+      "defect_description": "删除晶振旁边的负载电容",
+      "expected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "extra_violations": [
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "去耦电容检查",
+        "电源滤波检查",
+        "EMI 滤波检查",
+        "MOSFET 栅极电阻检查",
+        "板边间距检查",
+        "位号连续性检查",
+        "电源极性保护检查",
+        "电感饱和电流检查"
+      ],
+      "total_violations": 40,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.323443"
+    },
+    {
+      "design": "bldc_esc_motor",
+      "defect_id": "no_esd_diodes",
+      "defect_name": "删除 TVS/ESD 保护二极管",
+      "defect_description": "删除 2 个保护二极管",
+      "expected_rules": [
+        "ESD 保护检查"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "ESD 保护检查"
+      ],
+      "extra_violations": [
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "去耦电容检查",
+        "电源滤波检查",
+        "EMI 滤波检查",
+        "MOSFET 栅极电阻检查",
+        "板边间距检查",
+        "位号连续性检查",
+        "电源极性保护检查",
+        "电感饱和电流检查"
+      ],
+      "total_violations": 41,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.326079"
+    },
+    {
+      "design": "bldc_esc_motor",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容电压降额检查"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "电容电压降额检查"
+      ],
+      "extra_violations": [
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "去耦电容检查",
+        "电源滤波检查",
+        "EMI 滤波检查",
+        "MOSFET 栅极电阻检查",
+        "板边间距检查",
+        "位号连续性检查",
+        "电源极性保护检查",
+        "电感饱和电流检查"
+      ],
+      "total_violations": 43,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.328831"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 4 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查"
+      ],
+      "missed_rules": [
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "调试接口检查",
+        "电感饱和电流检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "复位电路检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "MOSFET 栅极电阻检查",
+        "板边间距检查",
+        "多电源引脚去耦检查"
+      ],
+      "total_violations": 124,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.355529"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "调试接口检查",
+        "电感饱和电流检查",
+        "光学定位点检查",
+        "PDN 目标阻抗分析",
+        "复位电路检查",
+        "去耦电容检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "MOSFET 栅极电阻检查",
+        "板边间距检查",
+        "多电源引脚去耦检查"
+      ],
+      "total_violations": 152,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.364069"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "no_crystal_load_caps",
+      "defect_name": "删除晶振负载电容",
+      "defect_description": "删除晶振旁边的负载电容",
+      "expected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "extra_violations": [
+        "调试接口检查",
+        "电感饱和电流检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "去耦电容检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "MOSFET 栅极电阻检查",
+        "板边间距检查",
+        "多电源引脚去耦检查"
+      ],
+      "total_violations": 129,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.372656"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "no_esd_diodes",
+      "defect_name": "删除 TVS/ESD 保护二极管",
+      "defect_description": "删除 4 个保护二极管",
+      "expected_rules": [
+        "ESD 保护检查"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "ESD 保护检查"
+      ],
+      "extra_violations": [
+        "调试接口检查",
+        "电感饱和电流检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "去耦电容检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "MOSFET 栅极电阻检查",
+        "板边间距检查",
+        "多电源引脚去耦检查"
+      ],
+      "total_violations": 126,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.380993"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容电压降额检查"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "电容电压降额检查"
+      ],
+      "extra_violations": [
+        "调试接口检查",
+        "电感饱和电流检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "去耦电容检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "MOSFET 栅极电阻检查",
+        "板边间距检查",
+        "多电源引脚去耦检查"
+      ],
+      "total_violations": 131,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.389405"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 2 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查"
+      ],
+      "missed_rules": [
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "复位电路检查",
+        "开关电源布局检查",
+        "天线净空区检查",
+        "悬空引脚检查",
+        "元件间距检查",
+        "位号连续性检查",
+        "板边间距检查",
+        "电感饱和电流检查"
+      ],
+      "total_violations": 50,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.404523"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "光学定位点检查",
+        "PDN 目标阻抗分析",
+        "复位电路检查",
+        "去耦电容检查",
+        "开关电源布局检查",
+        "天线净空区检查",
+        "悬空引脚检查",
+        "元件间距检查",
+        "位号连续性检查",
+        "板边间距检查",
+        "电感饱和电流检查"
+      ],
+      "total_violations": 60,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.407974"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "defect_id": "no_esd_diodes",
+      "defect_name": "删除 TVS/ESD 保护二极管",
+      "defect_description": "删除 2 个保护二极管",
+      "expected_rules": [
+        "ESD 保护检查"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "ESD 保护检查"
+      ],
+      "extra_violations": [
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "去耦电容检查",
+        "开关电源布局检查",
+        "天线净空区检查",
+        "悬空引脚检查",
+        "元件间距检查",
+        "位号连续性检查",
+        "板边间距检查",
+        "电感饱和电流检查"
+      ],
+      "total_violations": 51,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.411319"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容电压降额检查"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "电容电压降额检查"
+      ],
+      "extra_violations": [
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "去耦电容检查",
+        "开关电源布局检查",
+        "天线净空区检查",
+        "悬空引脚检查",
+        "元件间距检查",
+        "位号连续性检查",
+        "板边间距检查",
+        "电感饱和电流检查"
+      ],
+      "total_violations": 53,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.414687"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 1 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查"
+      ],
+      "missed_rules": [
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "复位电路检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "LED 限流电阻检查",
+        "多电源引脚去耦检查"
+      ],
+      "total_violations": 27,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.425321"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "光学定位点检查",
+        "PDN 目标阻抗分析",
+        "复位电路检查",
+        "去耦电容检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "LED 限流电阻检查",
+        "多电源引脚去耦检查"
+      ],
+      "total_violations": 33,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.427073"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "defect_id": "no_crystal_load_caps",
+      "defect_name": "删除晶振负载电容",
+      "defect_description": "删除晶振旁边的负载电容",
+      "expected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "extra_violations": [
+        "光学定位点检查",
+        "PDN 目标阻抗分析",
+        "复位电路检查",
+        "去耦电容检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "LED 限流电阻检查",
+        "多电源引脚去耦检查"
+      ],
+      "total_violations": 24,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.428635"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容电压降额检查"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "电容电压降额检查"
+      ],
+      "extra_violations": [
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "去耦电容检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "LED 限流电阻检查",
+        "多电源引脚去耦检查"
+      ],
+      "total_violations": 28,
+      "error": null,
+      "timestamp": "2026-07-12T19:54:52.430354"
+    }
+  ],
+  "defect_detection_rate": 44.44444444444444,
+  "defect_total_detected": 8,
+  "defect_total_missed": 10
+}

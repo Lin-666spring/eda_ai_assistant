@@ -80,11 +80,17 @@ class VerificationReport:
         return sum(len(r.issues) for r in self.rounds)
 
     def to_dict(self) -> dict:
+        # 计算阻断性违规数
+        blocking_count = sum(
+            1 for r in self.rounds for i in r.issues
+            if i.severity in ("error", "warning")
+        )
         return {
             "accepted": self.accepted,
             "final_status": self.final_status.value,
             "rounds": self.round_count,
             "total_issues": self.total_issues,
+            "blocking_issues": blocking_count,
             "category": self.category.value,
             "summary": self.summary,
             "details": [
@@ -109,12 +115,16 @@ class VerificationReport:
     def to_markdown(self) -> str:
         """生成可读的验证报告"""
         icon = "✅" if self.accepted else "❌"
+        blocking = sum(
+            1 for r in self.rounds for i in r.issues
+            if i.severity in ("error", "warning")
+        )
         lines = [
             f"## {icon} 闭环验证报告",
             f"**类别**: {self.category.value}",
             f"**最终状态**: {self.final_status.value}",
             f"**迭代轮次**: {self.round_count}",
-            f"**发现问题**: {self.total_issues} 项",
+            f"**发现问题**: {self.total_issues} 项（其中 {blocking} 项阻断性违规）",
             "",
             "---",
             "",
@@ -156,6 +166,10 @@ class VerificationEngine:
     """
 
     MAX_ROUNDS = 3  # 最大迭代轮次
+
+    # 阻断性严重度：只有 error 和 warning 会导致验证失败
+    # info 级别记录在报告中但不影响 accepted 决策
+    BLOCKING_SEVERITIES = {"error", "warning"}
 
     def __init__(
         self,
@@ -219,7 +233,11 @@ class VerificationEngine:
             issues = self._analyze_violations(violations, baseline, current_suggestion)
             vr.issues = issues
 
-            if not issues:
+            # 分离阻断性违规 (error/warning) 和 info 提示
+            blocking = self._get_blocking_issues(issues)
+
+            if not blocking:
+                # 无阻断性违规 → 通过（info 级别仅记录不阻断）
                 vr.status = VerificationStatus.PASSED
                 report.rounds.append(vr)
                 report.final_status = VerificationStatus.PASSED
@@ -227,9 +245,9 @@ class VerificationEngine:
                 break
             else:
                 vr.status = VerificationStatus.FAILED
-                # 尝试 LLM 修正
+                # 仅用阻断性违规反馈给 LLM 修正
                 if self._llm_callback and round_num < self.MAX_ROUNDS:
-                    feedback = self._format_feedback(issues)
+                    feedback = self._format_feedback(blocking)
                     try:
                         corrected = self._llm_callback(current_suggestion, feedback)
                         vr.corrected_suggestion = corrected
@@ -348,6 +366,14 @@ class VerificationEngine:
 
     # ── 内部方法 ──
 
+    @classmethod
+    def _get_blocking_issues(cls, issues: list[VerificationIssue]) -> list[VerificationIssue]:
+        """筛选阻断性违规：仅 error 和 warning 级别阻止建议通过。
+
+        info 级别（如 E24 标准系列提示）记录在报告中但不影响决策。
+        """
+        return [i for i in issues if i.severity in cls.BLOCKING_SEVERITIES]
+
     def _analyze_violations(
         self,
         current_violations: list,
@@ -437,18 +463,31 @@ class VerificationEngine:
     def _generate_summary(self, report: VerificationReport) -> str:
         """生成验证总结"""
         if report.accepted:
-            return (
-                f"✅ 建议已通过 {report.round_count} 轮闭环验证，"
-                f"共检查 {report.total_issues} 项，未发现违规。"
+            total = report.total_issues
+            blocking = sum(
+                len(self._get_blocking_issues(r.issues))
+                for r in report.rounds
             )
+            if total == 0:
+                return (
+                    f"✅ 建议已通过 {report.round_count} 轮闭环验证，未发现任何违规。"
+                )
+            else:
+                return (
+                    f"✅ 建议已通过 {report.round_count} 轮闭环验证。"
+                    f"发现 {total} 项提示（info 级别，不阻断），"
+                    f"无 error/warning 级别违规。"
+                )
         elif report.final_status == VerificationStatus.UNCERTAIN:
             return "⚠️ 无法完成验证，可能缺少必要的设计数据。请导入 BOM 和 PCB 文件后重试。"
         else:
             last_round = report.rounds[-1] if report.rounds else None
             remaining = len(last_round.issues) if last_round else 0
+            blocking_remaining = len(self._get_blocking_issues(last_round.issues)) if last_round else 0
             return (
                 f"❌ 建议未通过验证。经过 {report.round_count} 轮迭代，"
-                f"仍有 {remaining} 项违规未解决。建议人工审查后修改。"
+                f"仍有 {blocking_remaining} 项阻断性违规（共 {remaining} 项）未解决。"
+                f"建议人工审查后修改。"
             )
 
 
@@ -488,7 +527,7 @@ def create_verifier_from_controller(controller) -> VerificationEngine:
                 f"验证反馈:\n{feedback}\n\n"
                 f"请根据反馈重新生成修正后的设计建议。只输出修正后的建议，不要解释。"
             )
-            return controller.llm_client.chat(prompt)
+            return controller.agent.chat(prompt)
         except Exception as e:
             logger.warning(f"LLM callback failed: {e}")
             return suggestion  # fallback: return original

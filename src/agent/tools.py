@@ -68,7 +68,7 @@ class ToolDef:
 
 
 # ══════════════════════════════════════════════════════
-#  工具注册表 — 10 个系统能力
+#  工具注册表 — 24 个系统能力
 # ══════════════════════════════════════════════════════
 
 TOOLS: list[ToolDef] = [
@@ -358,6 +358,25 @@ TOOLS: list[ToolDef] = [
         intent="RULE_CHECK",
         handler="review_design_multi_agent",
         params_schema={"properties": {}, "required": []},
+        category="pcb",
+    ),
+    # ── 闭环验证 (路线三核心) ──
+    ToolDef(
+        name="verify_suggestion",
+        label="闭环验证",
+        description="对PCB设计建议执行闭环验证：LLM建议 → DRC规则引擎实时检查 → 发现新违规 → LLM自动修正 → 迭代至收敛（最多3轮）。确保任何AI建议不会引入新的设计违规",
+        keywords=("闭环验证", "验证建议", "检查建议", "设计验证", "建议验证",
+                  "闭环检查", "校验建议", "确认建议", "设计审查验证",
+                  "verify", "validation", "闭环", "设计规则验证",
+                  "drc验证", "规则验证", "设计建议检查"),
+        intent="RULE_CHECK",
+        handler="verify_suggestion",
+        params_schema={
+            "properties": {
+                "suggestion": {"type": "string", "description": "需要验证的PCB设计建议或变更方案"},
+            },
+            "required": ["suggestion"],
+        },
         category="pcb",
     ),
     # ── DRC 规则自动生成 ──

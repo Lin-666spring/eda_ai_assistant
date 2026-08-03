@@ -1,0 +1,272 @@
+{
+  "timestamp": "2026-07-12_203342",
+  "output_dir": "experiment_results\\test_phaseb",
+  "designs": [
+    "stm32f103_devboard"
+  ],
+  "providers": [
+    "deepseek"
+  ],
+  "suggestion_categories": [
+    "optimization"
+  ],
+  "drc_count": 1,
+  "verify_count": 1,
+  "ma_count": 1,
+  "defect_count": 4,
+  "drc_results": [
+    {
+      "design": "stm32f103_devboard",
+      "total_violations": 32,
+      "errors": 18,
+      "warnings": 7,
+      "infos": 7,
+      "violations_by_rule": {
+        "去耦电容检查": 18,
+        "参数范围检查": 2,
+        "晶振频率匹配": 2,
+        "晶振负载电容检查": 2,
+        "LED 限流电阻检查": 2,
+        "位号连续性检查": 2,
+        "多电源引脚去耦检查": 1,
+        "ESD 保护检查": 1,
+        "悬空引脚检查": 1,
+        "PDN 目标阻抗分析": 1
+      },
+      "elapsed_seconds": 0.19,
+      "error": null,
+      "timestamp": "2026-07-12T20:33:43.043705"
+    }
+  ],
+  "verify_results": [
+    {
+      "design": "stm32f103_devboard",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C15,C16,C17,C18,C19,C20,C21,C22 的电容值从 100nF 改为 1uF 以提高去耦效果，封装保持 0603",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": false,
+      "final_status": "failed",
+      "rounds": 3,
+      "total_issues": 96,
+      "blocking_issues": 3,
+      "info_issues": 0,
+      "max_severity": "warning",
+      "llm_correction_rounds": 2,
+      "hallucination_elimination": 0.0,
+      "per_round_blocking": [
+        1,
+        1,
+        1
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 8,
+            "total_violations": 32,
+            "new_violations": 1,
+            "new_violations_list": [
+              {
+                "rule": "复位电路检查",
+                "severity": "warning",
+                "desc": "MCU U1 复位电路缺少: 对地电容(0.1μF)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 8,
+            "total_violations": 32,
+            "new_violations": 1,
+            "new_violations_list": [
+              {
+                "rule": "复位电路检查",
+                "severity": "warning",
+                "desc": "MCU U1 复位电路缺少: 对地电容(0.1μF)"
+              }
+            ]
+          },
+          {
+            "round": 3,
+            "changes_applied": 8,
+            "total_violations": 32,
+            "new_violations": 1,
+            "new_violations_list": [
+              {
+                "rule": "复位电路检查",
+                "severity": "warning",
+                "desc": "MCU U1 复位电路缺少: 对地电容(0.1μF)"
+              }
+            ]
+          }
+        ]
+      },
+      "elapsed_seconds": 61.11,
+      "error": null,
+      "timestamp": "2026-07-12T20:34:44.152167",
+      "suggested_changes_count": 8,
+      "new_violations_introduced": 1,
+      "correction_rounds": 3,
+      "final_violation_delta": 1,
+      "converged": false
+    }
+  ],
+  "ma_results": [
+    {
+      "design": "stm32f103_devboard",
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "overall_score": 69.7,
+      "overall_grade": "C",
+      "radar_scores": {
+        "power": 0,
+        "signal": 69.6,
+        "thermal": 100.0,
+        "emc": 84.0,
+        "dfm": 98.4,
+        "cost": 96.8
+      },
+      "agent_scores": {
+        "thermal": 100.0,
+        "emc": 84.0,
+        "dfm": 98.4,
+        "signal": 69.6,
+        "power": 0
+      },
+      "critical_count": 1,
+      "total_findings": 13,
+      "consensus_preview": "## 多智能体协同审查共识\n\n 设计存在改进空间，各领域 Agent 提出了优化建议。\n\n### 优先修复项（7 项）\n\n- [EMC] [电磁兼容审查师] **外部连接器缺少ESD保护器件**: 在连接器信号引脚近端添加低电容TVS管至PGND，布局靠近连接器，走线短粗，并确保低阻抗回流路径。\n- [Signal] [信号完整性审查师] **晶振X3负载电容缺失**: 立即补加两颗18~22pF",
+      "elapsed_seconds": 32.35,
+      "error": null,
+      "timestamp": "2026-07-12T20:35:16.503500"
+    }
+  ],
+  "defect_results": [
+    {
+      "design": "stm32f103_devboard",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 1 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查"
+      ],
+      "missed_rules": [
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "复位电路检查",
+        "晶振频率匹配",
+        "参数范围检查",
+        "晶振负载电容检查",
+        "多电源引脚去耦检查",
+        "ESD 保护检查",
+        "位号连续性检查",
+        "悬空引脚检查",
+        "LED 限流电阻检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 31,
+      "error": null,
+      "timestamp": "2026-07-12T20:35:16.513389"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "复位电路检查",
+        "晶振频率匹配",
+        "晶振负载电容检查",
+        "多电源引脚去耦检查",
+        "ESD 保护检查",
+        "位号连续性检查",
+        "LED 限流电阻检查",
+        "悬空引脚检查",
+        "去耦电容检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 37,
+      "error": null,
+      "timestamp": "2026-07-12T20:35:16.515154"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "defect_id": "no_crystal_load_caps",
+      "defect_name": "删除晶振负载电容",
+      "defect_description": "删除晶振旁边的负载电容",
+      "expected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "复位电路检查",
+        "多电源引脚去耦检查",
+        "ESD 保护检查",
+        "位号连续性检查",
+        "LED 限流电阻检查",
+        "悬空引脚检查",
+        "去耦电容检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 28,
+      "error": null,
+      "timestamp": "2026-07-12T20:35:16.517022"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容耐压降额检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "电容耐压降额检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "晶振频率匹配",
+        "参数范围检查",
+        "晶振负载电容检查",
+        "多电源引脚去耦检查",
+        "ESD 保护检查",
+        "位号连续性检查",
+        "LED 限流电阻检查",
+        "悬空引脚检查",
+        "去耦电容检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 35,
+      "error": null,
+      "timestamp": "2026-07-12T20:35:16.518729"
+    }
+  ],
+  "defect_detection_rate": 100.0,
+  "defect_total_detected": 4,
+  "defect_total_missed": 0
+}

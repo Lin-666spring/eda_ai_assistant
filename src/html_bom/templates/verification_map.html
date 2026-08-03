@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ config.title }} — AI Verification Map</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0f0f1a;
+            --panel-bg: #16162a;
+            --card-bg: #1c1c35;
+            --text: #e0e0e0;
+            --text-dim: #8899aa;
+            --border: #2a2a45;
+            --accent: #4fc3f7;
+            --error: #e74c3c;
+            --warning: #f39c12;
+            --info: #3498db;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --safe: #27ae60;
+            --analysis: #4fc3f7;
+            --top-layer: #4fc3f7;
+            --bot-layer: #e040fb;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg); color: var(--text); overflow: hidden; height: 100vh;
+        }
+        /* ── Header ── */
+        .header {
+            background: var(--panel-bg); border-bottom: 1px solid var(--border);
+            padding: 8px 20px; display: flex; align-items: center; justify-content: space-between;
+            height: 48px; flex-shrink: 0;
+        }
+        .header h1 { font-size: 16px; font-weight: 600; }
+        .header h1 .icon { margin-right: 6px; }
+        .stats-bar { display: flex; gap: 16px; font-size: 12px; }
+        .stat-chip {
+            display: flex; align-items: center; gap: 4px; padding: 3px 10px;
+            border-radius: 12px; background: var(--card-bg); font-weight: 500;
+        }
+        .stat-chip.err { color: var(--error); }
+        .stat-chip.warn { color: var(--warning); }
+        .stat-chip.info { color: var(--info); }
+        .stat-chip.ok { color: var(--success); }
+        .toolbar { display: flex; gap: 6px; align-items: center; }
+        .toolbar button, .toolbar select {
+            padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px;
+            background: var(--card-bg); color: var(--text); font-size: 12px; cursor: pointer;
+        }
+        .toolbar button:hover { background: #2a2a50; }
+        .toolbar select { min-width: 70px; }
+
+        /* ── Main Layout ── */
+        .main { display: flex; height: calc(100vh - 48px); }
+        .filter-panel {
+            width: 250px; flex-shrink: 0; background: var(--panel-bg);
+            border-right: 1px solid var(--border); padding: 12px;
+            overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
+        }
+        .filter-group {}
+        .filter-group h3 {
+            font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+            color: var(--text-dim); margin-bottom: 6px;
+        }
+        .filter-group label {
+            display: flex; align-items: center; gap: 6px; font-size: 12px;
+            padding: 3px 0; cursor: pointer;
+        }
+        .filter-group input[type="checkbox"] { accent-color: var(--accent); }
+        .legend-item {
+            display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 2px 0;
+        }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .legend-dot.err { background: var(--error); }
+        .legend-dot.warn { background: var(--warning); }
+        .legend-dot.info { background: var(--info); }
+        .legend-dot.safe { background: var(--safe); }
+        .legend-dot.danger { background: var(--danger); }
+        .legend-dot.analysis { background: var(--analysis); }
+
+        /* ── Canvas Area ── */
+        .canvas-area { flex: 1; position: relative; min-width: 0; }
+        .canvas-wrap { width: 100%; height: 100%; position: relative; }
+        .canvas-wrap canvas { width: 100%; height: 100%; cursor: grab; display: block; }
+        .canvas-wrap canvas:active { cursor: grabbing; }
+        .canvas-overlay {
+            position: absolute; pointer-events: none;
+        }
+        .zoom-badge {
+            position: absolute; top: 10px; right: 14px;
+            font-size: 11px; color: var(--text-dim); background: rgba(22,22,42,0.85);
+            padding: 3px 10px; border-radius: 10px;
+        }
+        .coords-display {
+            position: absolute; top: 34px; right: 14px;
+            font-size: 10px; color: var(--text-dim); background: rgba(22,22,42,0.85);
+            padding: 2px 8px; border-radius: 4px;
+        }
+        .legend-bottom {
+            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 16px; padding: 5px 16px;
+            background: rgba(22,22,42,0.9); border-radius: 14px;
+            font-size: 11px; color: var(--text-dim);
+        }
+
+        /* ── Detail Panel ── */
+        .detail-panel {
+            width: 340px; flex-shrink: 0; background: var(--panel-bg);
+            border-left: 1px solid var(--border); display: flex; flex-direction: column;
+        }
+        .detail-header {
+            padding: 12px 14px; border-bottom: 1px solid var(--border);
+            font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px;
+        }
+        .detail-header .ref { font-family: Consolas, monospace; color: var(--accent); }
+        .detail-tabs { display: flex; border-bottom: 1px solid var(--border); }
+        .detail-tab {
+            flex: 1; padding: 8px; text-align: center; font-size: 12px; cursor: pointer;
+            border-bottom: 2px solid transparent; color: var(--text-dim); transition: all 0.15s;
+        }
+        .detail-tab:hover { color: var(--text); }
+        .detail-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .detail-tab .count {
+            display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 8px;
+            margin-left: 4px; background: var(--card-bg);
+        }
+        .detail-content { flex: 1; overflow-y: auto; padding: 10px 14px; }
+        .detail-empty { text-align: center; padding: 40px 20px; color: var(--text-dim); font-size: 13px; }
+        .detail-empty .icon { font-size: 36px; margin-bottom: 8px; }
+        .violation-card {
+            padding: 8px 10px; margin-bottom: 6px; border-radius: 6px;
+            background: var(--card-bg); border-left: 3px solid var(--border);
+            font-size: 12px; line-height: 1.5;
+        }
+        .violation-card.sev-error { border-left-color: var(--error); }
+        .violation-card.sev-warning { border-left-color: var(--warning); }
+        .violation-card.sev-info { border-left-color: var(--info); }
+        .violation-card .rule-name { font-weight: 600; }
+        .violation-card .sev-tag {
+            font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 6px;
+        }
+        .sev-tag.error { background: rgba(231,76,60,0.2); color: var(--error); }
+        .sev-tag.warning { background: rgba(243,156,18,0.2); color: var(--warning); }
+        .sev-tag.info { background: rgba(52,152,219,0.2); color: var(--info); }
+        .violation-card .suggestion { color: var(--text-dim); margin-top: 3px; }
+
+        .change-card {
+            padding: 8px 10px; margin-bottom: 6px; border-radius: 6px;
+            background: var(--card-bg); font-size: 12px;
+        }
+        .change-card .field-name { color: var(--accent); font-weight: 600; }
+        .change-card .old-val { color: var(--error); text-decoration: line-through; }
+        .change-card .new-val { color: var(--success); }
+
+        /* ── No data placeholder ── */
+        .no-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            text-align: center; color: var(--text-dim); pointer-events: none; z-index: 5;
+        }
+        .no-overlay .icon { font-size: 48px; margin-bottom: 10px; }
+        .no-overlay .msg { font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════ Header ═══════════ -->
+<div class="header">
+    <h1><span class="icon">🔬</span>{{ config.title }}</h1>
+    <div class="stats-bar" id="statsBar">
+        <span class="stat-chip err" id="statErrors">❌ <span>0</span> 错误</span>
+        <span class="stat-chip warn" id="statWarnings">⚠️ <span>0</span> 警告</span>
+        <span class="stat-chip info" id="statInfos">ℹ️ <span>0</span> 信息</span>
+        <span class="stat-chip ok" id="statConvergence">✅ 收敛率 <span>—</span></span>
+    </div>
+    <div class="toolbar">
+        <select id="layerFilter" onchange="onLayerChange()">
+            <option value="all">全部图层</option>
+            <option value="Top">顶层 Top</option>
+            <option value="Bottom">底层 Bottom</option>
+        </select>
+        <button onclick="resetView()" title="复位视图">↺ 复位</button>
+        <button onclick="exportPNG()" title="导出 PNG">📸 导出</button>
+    </div>
+</div>
+
+<!-- ═══════════ Main Layout ═══════════ -->
+<div class="main">
+    <!-- ── Filter Panel ── -->
+    <div class="filter-panel" id="filterPanel">
+        <div class="filter-group">
+            <h3>🔴 严重度筛选</h3>
+            <label><input type="checkbox" checked onchange="onFilterChange()" data-sev="error"> 错误 Error</label>
+            <label><input type="checkbox" checked onchange="onFilterChange()" data-sev="warning"> 警告 Warning</label>
+            <label><input type="checkbox" checked onchange="onFilterChange()" data-sev="info"> 信息 Info</label>
+        </div>
+        <div class="filter-group">
+            <h3>📊 覆盖层</h3>
+            <label><input type="checkbox" checked onchange="onFilterChange()" data-layer="heatmap"> 🔥 DRC 热力图</label>
+            <label><input type="checkbox" checked onchange="onFilterChange()" data-layer="ai_changes"> 🎯 AI 变更标记</label>
+            <label><input type="checkbox" checked onchange="onFilterChange()" data-layer="agent_markers"> 🤖 Agent 发现</label>
+        </div>
+        <div class="filter-group">
+            <h3>🎨 图例</h3>
+            <div class="legend-item"><span class="legend-dot err"></span> 多个 ERROR</div>
+            <div class="legend-item"><span class="legend-dot warn"></span> 警告 / 轻微</div>
+            <div class="legend-item"><span class="legend-dot info"></span> 信息</div>
+            <div class="legend-item"><span class="legend-dot safe"></span> 安全变更 (AI)</div>
+            <div class="legend-item"><span class="legend-dot danger"></span> 危险变更 (AI)</div>
+            <div class="legend-item"><span class="legend-dot analysis"></span> 纯分析 (AI)</div>
+        </div>
+        <div class="filter-group" id="designList">
+            <h3>📋 实验设计</h3>
+            <div id="designListInner" style="font-size:11px;color:var(--text-dim);"></div>
+        </div>
+    </div>
+
+    <!-- ── Canvas ── -->
+    <div class="canvas-area">
+        <div class="canvas-wrap" id="canvasWrap">
+            <canvas id="mainCanvas"></canvas>
+            <div class="zoom-badge" id="zoomBadge">100%</div>
+            <div class="coords-display" id="coordsDisplay">点击元件查看详情</div>
+            <div class="legend-bottom" id="canvasLegend">
+                <span>🟢 顶层</span><span>🟣 底层</span>
+                <span>🔥 热力图覆盖</span><span>⭕ AI 变更环</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Detail Panel ── -->
+    <div class="detail-panel" id="detailPanel">
+        <div class="detail-header" id="detailHeader">
+            <span>📌 点击 PCB 元件查看详情</span>
+        </div>
+        <div class="detail-tabs" id="detailTabs" style="display:none;">
+            <div class="detail-tab active" onclick="switchTab('violations')" id="tabViolations">
+                违规<span class="count" id="countViolations">0</span>
+            </div>
+            <div class="detail-tab" onclick="switchTab('ai_changes')" id="tabAIChanges">
+                AI 变更<span class="count" id="countAIChanges">0</span>
+            </div>
+            <div class="detail-tab" onclick="switchTab('agent')" id="tabAgent">
+                审查<span class="count" id="countAgent">0</span>
+            </div>
+        </div>
+        <div class="detail-content" id="detailContent">
+            <div class="detail-empty">
+                <div class="icon">👆</div>
+                <div>点击左侧 PCB 视图中的元件</div>
+                <div style="font-size:11px;margin-top:4px;">查看 DRC 违规、AI 变更和审查结果</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  Data
+// ═══════════════════════════════════════════════════════════════
+const components = {{ components_json | safe }};
+const overlay = {{ overlay_json | safe }};
+
+// ═══════════════════════════════════════════════════════════════
+//  View State
+// ═══════════════════════════════════════════════════════════════
+var zoom = 1.0, panX = 0, panY = 0;
+var ZOOM_MIN = 0.2, ZOOM_MAX = 8, ZOOM_STEP = 0.12;
+var activeLayer = 'all';
+var activeRef = null;
+var activeTab = 'violations';
+
+// Filter state
+var showSev = { error: true, warning: true, info: true };
+var showLayer = { heatmap: true, ai_changes: true, agent_markers: true };
+
+// Drag state
+var dragging = false, dragSX = 0, dragSY = 0, dragPX = 0, dragPY = 0;
+
+// ═══════════════════════════════════════════════════════════════
+//  Package Size Lookup
+// ═══════════════════════════════════════════════════════════════
+const PACKAGE_SIZE = {
+    '0201':[0.6,0.3],'0402':[1.0,0.5],'0603':[1.6,0.8],'0805':[2.0,1.25],
+    '1206':[3.2,1.6],'1210':[3.2,2.5],'2512':[6.3,3.2],
+    'SOT-23':[2.9,2.8],'SOT-223':[6.5,7.0],'SOP-8':[5.0,6.0],'SOP-16':[10.0,6.0],
+    'TSSOP-16':[5.0,6.4],'LQFP-48':[7.0,7.0],'LQFP-64':[10.0,10.0],
+    'QFN-24':[4.0,4.0],'QFN-32':[5.0,5.0],'TO-220':[10.2,15.8],
+    'SMA':[4.5,2.7],'SMB':[4.6,3.6],'SOD-123':[2.7,1.6],
+    '5032-2P':[5.0,3.2],'3225-4P':[3.2,2.5]
+};
+
+function getPackageSize(pkg) {
+    if (!pkg) return [3, 3];
+    var k = pkg.replace(/[ _-]/g, '').toUpperCase();
+    if (PACKAGE_SIZE[k]) return PACKAGE_SIZE[k];
+    var m = k.match(/^(\d{4})/);
+    if (m && PACKAGE_SIZE[m[1]]) return PACKAGE_SIZE[m[1]];
+    if (/SOP|SOIC|TSSOP|MSOP/i.test(pkg)) return [5, 6];
+    if (/QFN|LGA|BGA/i.test(pkg)) return [5, 5];
+    if (/LQFP|TQFP|QFP/i.test(pkg)) return [10, 10];
+    if (/TO-|SOT/i.test(pkg)) return [5, 5];
+    if (/USB|CON|排/i.test(pkg)) return [8, 6];
+    return [3, 3];
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Layout Computation
+// ═══════════════════════════════════════════════════════════════
+function computeLayout(canvas) {
+    var pos = components.filter(function(c) { return c.has_position; });
+    if (!pos.length) return null;
+    var xs = pos.map(function(c) { return c.x; });
+    var ys = pos.map(function(c) { return c.y; });
+    var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
+    var minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
+    // Expand to include package outlines
+    var pminX = Infinity, pmaxX = -Infinity, pminY = Infinity, pmaxY = -Infinity;
+    pos.forEach(function(c) {
+        var sz = getPackageSize(c.package);
+        var hw = sz[0] / 2, hh = sz[1] / 2;
+        if (c.rotation == 90 || c.rotation == 270) { var t = hw; hw = hh; hh = t; }
+        pminX = Math.min(pminX, c.x - hw); pmaxX = Math.max(pmaxX, c.x + hw);
+        pminY = Math.min(pminY, c.y - hh); pmaxY = Math.max(pmaxY, c.y + hh);
+    });
+    var rx = pmaxX - pminX || 1, ry = pmaxY - pminY || 1;
+    var base = Math.min((canvas.width - 120) / rx, (canvas.height - 120) / ry);
+    var s = base * zoom;
+    return {
+        s: s, base: base,
+        ox: (canvas.width - rx * s) / 2 - pminX * s + panX,
+        oy: (canvas.height - ry * s) / 2 - pminY * s + panY,
+        minX: minX, maxX: maxX, minY: minY, maxY: maxY,
+        pminX: pminX, pmaxX: pmaxX, pminY: pminY, pmaxY: pmaxY
+    };
+}
+
+function pt(comp, lay) { return { x: lay.ox + comp.x * lay.s, y: lay.oy + comp.y * lay.s }; }
+
+// ═══════════════════════════════════════════════════════════════
+//  Drawing — Layer Stack (bottom → top)
+// ═══════════════════════════════════════════════════════════════
+
+function drawAll() {
+    var c = document.getElementById('mainCanvas');
+    var wrap = document.getElementById('canvasWrap');
+    c.width = wrap.clientWidth; c.height = wrap.clientHeight;
+    var ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+
+    // Fill background
+    ctx.fillStyle = '#0f0f1a'; ctx.fillRect(0, 0, c.width, c.height);
+
+    if (!hasPositions()) {
+        drawNoData(ctx, c, '📋', '尚未导入 Pick & Place 坐标文件');
+        return;
+    }
+
+    var lay = computeLayout(c);
+    if (!lay) return;
+
+    // ── Layer 1: Grid ──
+    drawGrid(ctx, c, lay);
+    // ── Layer 2: Board outline ──
+    drawBoardOutline(ctx, lay);
+    // ── Layer 3: Heatmap (under components) ──
+    if (showLayer.heatmap) drawHeatmap(ctx, lay);
+    // ── Layer 4: Component dots ──
+    drawComponents(ctx, lay);
+    // ── Layer 5: AI change rings ──
+    if (showLayer.ai_changes) drawAIChangeRings(ctx, lay);
+    // ── Layer 6: Agent markers ──
+    if (showLayer.agent_markers) drawAgentMarkers(ctx, lay);
+    // ── Layer 7: Selection highlight ──
+    if (activeRef) drawSelectionHighlight(ctx, lay);
+
+    // Badges
+    drawZoomBadge(c);
+}
+
+function hasPositions() {
+    return components.some(function(c) { return c.has_position; });
+}
+
+function drawNoData(ctx, c, icon, msg) {
+    ctx.fillStyle = '#8899aa'; ctx.font = '48px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(icon, c.width / 2, c.height / 2 - 10);
+    ctx.font = '14px sans-serif';
+    ctx.fillText(msg, c.width / 2, c.height / 2 + 40);
+}
+
+// ── Grid ──
+function drawGrid(ctx, c, lay) {
+    var gs = 30 * zoom;
+    var sx = ((panX % gs) + gs) % gs;
+    var sy = ((panY % gs) + gs) % gs;
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 0.5;
+    for (var gx = sx; gx < c.width; gx += gs) {
+        ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, c.height); ctx.stroke();
+    }
+    for (var gy = sy; gy < c.height; gy += gs) {
+        ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(c.width, gy); ctx.stroke();
+    }
+}
+
+// ── Board Outline ──
+function drawBoardOutline(ctx, lay) {
+    var bx = lay.ox + lay.pminX * lay.s;
+    var by = lay.oy + lay.pminY * lay.s;
+    var bw = (lay.pmaxX - lay.pminX) * lay.s;
+    var bh = (lay.pmaxY - lay.pminY) * lay.s;
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1.5;
+    ctx.setLineDash([8, 4]);
+    ctx.strokeRect(bx, by, bw, bh);
+    ctx.setLineDash([]);
+}
+
+// ── DRC Heatmap ──
+function drawHeatmap(ctx, lay) {
+    var heatmap = overlay.drc_heatmap || {};
+    var compMap = {};
+    components.forEach(function(c) {
+        if (c.has_position) compMap[c.reference.toUpperCase()] = c;
+    });
+
+    Object.keys(heatmap).forEach(function(ref) {
+        var c = compMap[ref.toUpperCase()];
+        if (!c) return;
+        if (activeLayer !== 'all' && c.layer !== activeLayer) return;
+
+        var data = heatmap[ref];
+        var sev = data.max_severity;
+        if (!showSev[sev]) return;
+
+        var p = pt(c, lay);
+        var r = Math.max(10, lay.s * 5 + 4);
+
+        // Radial gradient for heatmap glow
+        var grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+        var alpha = 0.55;
+        if (sev === 'error') {
+            grad.addColorStop(0, 'rgba(231,76,60,' + alpha + ')');
+            grad.addColorStop(0.4, 'rgba(231,76,60,' + (alpha * 0.6) + ')');
+            grad.addColorStop(1, 'rgba(231,76,60,0)');
+        } else if (sev === 'warning') {
+            grad.addColorStop(0, 'rgba(243,156,18,' + alpha + ')');
+            grad.addColorStop(0.4, 'rgba(243,156,18,' + (alpha * 0.6) + ')');
+            grad.addColorStop(1, 'rgba(243,156,18,0)');
+        } else {
+            grad.addColorStop(0, 'rgba(52,152,219,' + (alpha * 0.7) + ')');
+            grad.addColorStop(0.4, 'rgba(52,152,219,' + (alpha * 0.4) + ')');
+            grad.addColorStop(1, 'rgba(52,152,219,0)');
+        }
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Count badge
+        if (data.count >= 2) {
+            ctx.fillStyle = sev === 'error' ? '#e74c3c' : (sev === 'warning' ? '#f39c12' : '#3498db');
+            ctx.font = 'bold ' + Math.max(9, 10 * zoom) + 'px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(data.count, p.x, p.y + Math.max(3, 4 * zoom));
+        }
+    });
+}
+
+// ── Components ──
+function drawComponents(ctx, lay) {
+    components.forEach(function(comp) {
+        if (!comp.has_position) return;
+        if (activeLayer !== 'all' && comp.layer !== activeLayer) return;
+
+        var p = pt(comp, lay);
+        var isTop = comp.layer === 'Top';
+        var isSelected = comp.reference === activeRef;
+        var r = Math.max(3, 4 * zoom);
+
+        // Component dot
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, isSelected ? r * 2.5 : r, 0, Math.PI * 2);
+        ctx.fillStyle = isSelected ? '#fff' : (isTop ? '#4fc3f7' : '#e040fb');
+        ctx.fill();
+
+        if (isSelected) {
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+            // Glow
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, r * 3.5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fill();
+        }
+
+        // Reference label
+        if (zoom >= 0.45 || isSelected) {
+            ctx.fillStyle = isSelected ? '#fff' : (isTop ? '#a0d8ef' : '#e8a0f8');
+            ctx.font = (isSelected ? 'bold ' : '') + Math.max(8, 9 * zoom) + 'px Consolas, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText(comp.reference, p.x + r + 3, p.y + r / 2 + 1);
+        }
+    });
+}
+
+// ── AI Change Rings ──
+function drawAIChangeRings(ctx, lay) {
+    var changes = overlay.ai_changes || [];
+    var compMap = {};
+    components.forEach(function(c) {
+        if (c.has_position) compMap[c.reference.toUpperCase()] = c;
+    });
+
+    changes.forEach(function(ch) {
+        var refs = ch.refs || [];
+        var safety = ch.safety || 'analysis';
+
+        var ringColor;
+        switch (safety) {
+            case 'safe': ringColor = '#27ae60'; break;
+            case 'warning': ringColor = '#f39c12'; break;
+            case 'dangerous': ringColor = '#e74c3c'; break;
+            default: ringColor = '#4fc3f7'; break;
+        }
+
+        refs.forEach(function(ref) {
+            var c = compMap[ref.toUpperCase()];
+            if (!c) return;
+            if (activeLayer !== 'all' && c.layer !== activeLayer) return;
+
+            var p = pt(c, lay);
+            var r = Math.max(6, 6 * zoom);
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, r + 3, 0, Math.PI * 2);
+            ctx.strokeStyle = ringColor; ctx.lineWidth = Math.max(2, 2.5 * zoom);
+            ctx.setLineDash(safety === 'analysis' ? [3, 3] : []);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Small badge
+            if (zoom >= 0.5) {
+                var badgeR = 8;
+                ctx.beginPath();
+                ctx.arc(p.x + r + 2, p.y - r - 2, badgeR, 0, Math.PI * 2);
+                ctx.fillStyle = ringColor; ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold ' + Math.max(6, 7 * zoom) + 'px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('AI', p.x + r + 2, p.y - r - 2 + Math.max(2, 3 * zoom));
+            }
+        });
+    });
+}
+
+// ── Agent Markers ──
+function drawAgentMarkers(ctx, lay) {
+    var findings = overlay.agent_findings || [];
+    var compMap = {};
+    components.forEach(function(c) {
+        if (c.has_position) compMap[c.reference.toUpperCase()] = c;
+    });
+
+    findings.forEach(function(f) {
+        var c = compMap[f.ref.toUpperCase()];
+        if (!c) return;
+        if (activeLayer !== 'all' && c.layer !== activeLayer) return;
+
+        var p = pt(c, lay);
+        var r = Math.max(9, 8 * zoom);
+
+        // Diamond marker
+        ctx.save();
+        ctx.translate(p.x - r - 4, p.y);
+        ctx.rotate(Math.PI / 4);
+        var s = Math.max(4, 4 * zoom);
+        ctx.fillStyle = '#ff9800';
+        ctx.fillRect(-s, -s, s * 2, s * 2);
+        ctx.restore();
+
+        if (zoom >= 0.6) {
+            ctx.fillStyle = '#fff';
+            ctx.font = Math.max(7, 8 * zoom) + 'px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText('🤖', p.x - r - 8, p.y + Math.max(2, 3 * zoom));
+        }
+    });
+}
+
+// ── Selection Highlight ──
+function drawSelectionHighlight(ctx, lay) {
+    if (!activeRef) return;
+    var comp = null;
+    for (var i = 0; i < components.length; i++) {
+        if (components[i].reference === activeRef && components[i].has_position) {
+            comp = components[i]; break;
+        }
+    }
+    if (!comp) return;
+    var p = pt(comp, lay);
+    var sz = getPackageSize(comp.package);
+    var hw = sz[0] * lay.s / 2, hh = sz[1] * lay.s / 2;
+    if (comp.rotation == 90 || comp.rotation == 270) { var t = hw; hw = hh; hh = t; }
+
+    // Pulsing ring animation uses CSS — draw static highlight
+    ctx.beginPath();
+    ctx.rect(p.x - hw - 3, p.y - hh - 3, (hw + 3) * 2, (hh + 3) * 2);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    ctx.setLineDash([4, 2]); ctx.stroke();
+    ctx.setLineDash([]);
+}
+
+function drawZoomBadge(c) {
+    var badge = document.getElementById('zoomBadge');
+    if (badge) badge.textContent = Math.round(zoom * 100) + '%';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Interaction
+// ═══════════════════════════════════════════════════════════════
+
+function getCanvasPos(e) {
+    var c = document.getElementById('mainCanvas');
+    var rect = c.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function screenToWorld(sx, sy, lay) {
+    // screen → board coordinates (mm)
+    return { x: (sx - lay.ox) / lay.s, y: (sy - lay.oy) / lay.s };
+}
+
+document.getElementById('mainCanvas').addEventListener('mousedown', function(e) {
+    dragging = true;
+    var pos = getCanvasPos(e);
+    dragSX = pos.x; dragSY = pos.y;
+    dragPX = panX; dragPY = panY;
+});
+
+document.getElementById('mainCanvas').addEventListener('mousemove', function(e) {
+    var pos = getCanvasPos(e);
+    if (dragging) {
+        panX = dragPX + (pos.x - dragSX);
+        panY = dragPY + (pos.y - dragSY);
+        drawAll();
+    }
+    // Update coordinates display
+    var c = document.getElementById('mainCanvas');
+    var lay = computeLayout(c);
+    if (lay) {
+        var world = screenToWorld(pos.x, pos.y, lay);
+        document.getElementById('coordsDisplay').textContent =
+            'X: ' + world.x.toFixed(1) + 'mm  Y: ' + world.y.toFixed(1) + 'mm';
+    }
+});
+
+document.getElementById('mainCanvas').addEventListener('mouseup', function(e) {
+    if (!dragging) return;
+    var pos = getCanvasPos(e);
+    var dx = Math.abs(pos.x - dragSX);
+    var dy = Math.abs(pos.y - dragSY);
+    dragging = false;
+
+    // If barely moved, treat as click
+    if (dx < 3 && dy < 3) {
+        handleClick(pos);
+    }
+});
+
+document.getElementById('mainCanvas').addEventListener('wheel', function(e) {
+    e.preventDefault();
+    var pos = getCanvasPos(e);
+    var oldZoom = zoom;
+    if (e.deltaY < 0) zoom = Math.min(ZOOM_MAX, zoom * (1 + ZOOM_STEP));
+    else zoom = Math.max(ZOOM_MIN, zoom * (1 - ZOOM_STEP));
+
+    // Zoom toward mouse position
+    if (Math.abs(zoom - oldZoom) > 0.001) {
+        var ratio = zoom / oldZoom;
+        panX = pos.x - ratio * (pos.x - panX);
+        panY = pos.y - ratio * (pos.y - panY);
+    }
+    drawAll();
+});
+
+document.getElementById('mainCanvas').addEventListener('dblclick', function(e) {
+    zoom = 1; panX = 0; panY = 0; drawAll();
+});
+
+// ── Click Handling ──
+function handleClick(pos) {
+    var c = document.getElementById('mainCanvas');
+    var lay = computeLayout(c);
+    if (!lay) return;
+
+    // Hit test: find closest component within threshold
+    var bestRef = null, bestDist = Infinity;
+    components.forEach(function(comp) {
+        if (!comp.has_position) return;
+        if (activeLayer !== 'all' && comp.layer !== activeLayer) return;
+        var p = pt(comp, lay);
+        var d = Math.sqrt((pos.x - p.x) * (pos.x - p.x) + (pos.y - p.y) * (pos.y - p.y));
+        var threshold = Math.max(10, 8 * zoom);
+        if (d < threshold && d < bestDist) {
+            bestDist = d; bestRef = comp.reference;
+        }
+    });
+
+    if (bestRef) {
+        activeRef = bestRef;
+        updateDetailPanel(bestRef);
+    } else {
+        activeRef = null;
+        clearDetailPanel();
+    }
+    drawAll();
+}
+
+// ── Detail Panel ──
+function updateDetailPanel(ref) {
+    var comp = null;
+    for (var i = 0; i < components.length; i++) {
+        if (components[i].reference === ref) { comp = components[i]; break; }
+    }
+    if (!comp) return;
+
+    // Header
+    var header = document.getElementById('detailHeader');
+    header.innerHTML = '<span style="font-family:Consolas,monospace;color:#4fc3f7;">' + comp.reference +
+        '</span> <span style="color:#f39c12;">' + (comp.value || '?') + '</span>' +
+        ' <span style="color:#8899aa;">' + (comp.package || '?') + '</span>' +
+        ' <span style="font-size:11px;color:#8899aa;">(' +
+        comp.x.toFixed(1) + ', ' + comp.y.toFixed(1) + 'mm) ' + comp.layer + '</span>';
+
+    // Tabs
+    document.getElementById('detailTabs').style.display = 'flex';
+
+    // Collect data
+    var heatmap = overlay.drc_heatmap || {};
+    var drcData = heatmap[ref.toUpperCase()] || null;
+    var violations = drcData ? drcData.violations || [] : [];
+
+    var changes = overlay.ai_changes || [];
+    var compChanges = [];
+    changes.forEach(function(ch) {
+        if ((ch.refs || []).indexOf(ref) >= 0) compChanges.push(ch);
+    });
+
+    var findings = overlay.agent_findings || [];
+    var compFindings = [];
+    findings.forEach(function(f) {
+        if (f.ref.toUpperCase() === ref.toUpperCase()) compFindings.push(f);
+    });
+
+    // Counts
+    document.getElementById('countViolations').textContent = violations.length;
+    document.getElementById('countAIChanges').textContent = compChanges.length;
+    document.getElementById('countAgent').textContent = compFindings.length;
+
+    // Render current tab
+    switchTab(activeTab);
+}
+
+function clearDetailPanel() {
+    document.getElementById('detailHeader').innerHTML = '<span>📌 点击 PCB 元件查看详情</span>';
+    document.getElementById('detailTabs').style.display = 'none';
+    document.getElementById('detailContent').innerHTML =
+        '<div class="detail-empty"><div class="icon">👆</div>' +
+        '<div>点击左侧 PCB 视图中的元件</div>' +
+        '<div style="font-size:11px;margin-top:4px;">查看 DRC 违规、AI 变更和审查结果</div></div>';
+}
+
+function switchTab(tab) {
+    activeTab = tab;
+    // Tab styling
+    ['violations', 'ai_changes', 'agent'].forEach(function(t) {
+        var el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1).replace('_', ''));
+        // The IDs are: tabViolations, tabAIChanges, tabAgent
+    });
+    document.querySelectorAll('.detail-tab').forEach(function(el) { el.classList.remove('active'); });
+
+    var tabMap = { violations: 'tabViolations', ai_changes: 'tabAIChanges', agent: 'tabAgent' };
+    var tabEl = document.getElementById(tabMap[tab]);
+    if (tabEl) tabEl.classList.add('active');
+
+    if (!activeRef) return;
+    renderTabContent(tab);
+}
+
+function renderTabContent(tab) {
+    var content = document.getElementById('detailContent');
+    var ref = activeRef;
+
+    var heatmap = overlay.drc_heatmap || {};
+    var drcData = heatmap[ref.toUpperCase()] || null;
+    var violations = drcData ? drcData.violations || [] : [];
+
+    var changes = overlay.ai_changes || [];
+    var compChanges = [];
+    changes.forEach(function(ch) {
+        if ((ch.refs || []).indexOf(ref) >= 0) compChanges.push(ch);
+    });
+
+    var findings = overlay.agent_findings || [];
+    var compFindings = [];
+    findings.forEach(function(f) {
+        if (f.ref.toUpperCase() === ref.toUpperCase()) compFindings.push(f);
+    });
+
+    if (tab === 'violations') {
+        if (violations.length === 0) {
+            content.innerHTML = '<div class="detail-empty"><div class="icon">✅</div><div>该元件无 DRC 违规</div></div>';
+            return;
+        }
+        var html = '';
+        violations.forEach(function(v) {
+            html += '<div class="violation-card sev-' + v.severity + '">' +
+                '<span class="rule-name">' + v.rule + '</span>' +
+                '<span class="sev-tag ' + v.severity + '">' + v.severity.toUpperCase() + '</span>' +
+                '<div style="margin-top:2px;">' + v.desc + '</div>';
+            if (v.suggestion) {
+                html += '<div class="suggestion">💡 ' + v.suggestion + '</div>';
+            }
+            html += '</div>';
+        });
+        content.innerHTML = html;
+    } else if (tab === 'ai_changes') {
+        if (compChanges.length === 0) {
+            content.innerHTML = '<div class="detail-empty"><div class="icon">🔵</div><div>该元件无 AI 建议变更</div></div>';
+            return;
+        }
+        var html = '';
+        compChanges.forEach(function(ch) {
+            var safetyIcon = { safe: '🟢', warning: '🟠', dangerous: '🔴', analysis: '🔵' };
+            html += '<div class="change-card">' +
+                '<div style="margin-bottom:4px;"><strong>' + ch.design + '</strong> ' +
+                (safetyIcon[ch.safety] || '') + ' ' + ch.safety.toUpperCase() +
+                (ch.converged ? ' ✅收敛' : ' ❌未收敛') + '</div>';
+            (ch.changes || []).forEach(function(c) {
+                html += '<div style="font-size:11px;padding:2px 0;">' +
+                    '<span class="field-name">' + c.field + '</span>: ' +
+                    '<span class="old-val">' + (c.old_value || '?') + '</span> → ' +
+                    '<span class="new-val">' + (c.new_value || '?') + '</span>' +
+                    '</div>';
+            });
+            html += '<div style="font-size:10px;color:#8899aa;">新违规: ' + ch.new_violations +
+                ' | 修正轮次: ' + ch.correction_rounds + '</div>';
+            html += '</div>';
+        });
+        content.innerHTML = html;
+    } else if (tab === 'agent') {
+        if (compFindings.length === 0) {
+            content.innerHTML = '<div class="detail-empty"><div class="icon">🤖</div><div>该元件无 Agent 审查发现</div></div>';
+            return;
+        }
+        var html = '';
+        compFindings.forEach(function(f) {
+            html += '<div class="violation-card">' +
+                '<span class="rule-name">🤖 多智能体审查</span>' +
+                '<div style="margin-top:2px;">被提及 <strong>' + f.mentions + '</strong> 次</div>';
+            if (f.agents && f.agents.length > 0) {
+                html += '<div style="font-size:10px;color:#8899aa;">审查维度: ' + f.agents.join(', ') + '</div>';
+            }
+            html += '</div>';
+        });
+        content.innerHTML = html;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Filter Handlers
+// ═══════════════════════════════════════════════════════════════
+
+function onLayerChange() {
+    activeLayer = document.getElementById('layerFilter').value;
+    drawAll();
+}
+
+function onFilterChange() {
+    document.querySelectorAll('#filterPanel input[type=checkbox]').forEach(function(cb) {
+        var sev = cb.getAttribute('data-sev');
+        var layer = cb.getAttribute('data-layer');
+        if (sev) showSev[sev] = cb.checked;
+        if (layer) showLayer[layer] = cb.checked;
+    });
+    drawAll();
+}
+
+function resetView() {
+    zoom = 1; panX = 0; panY = 0; activeLayer = 'all';
+    document.getElementById('layerFilter').value = 'all';
+    drawAll();
+}
+
+// ── Export PNG ──
+function exportPNG() {
+    var c = document.getElementById('mainCanvas');
+    var link = document.createElement('a');
+    link.download = 'verification_map.png';
+    link.href = c.toDataURL('image/png');
+    link.click();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Stats bar update
+// ═══════════════════════════════════════════════════════════════
+
+function updateStatsBar() {
+    var stats = overlay.stats || {};
+    document.querySelector('#statErrors span').textContent = stats.total_errors || 0;
+    document.querySelector('#statWarnings span').textContent = stats.total_warnings || 0;
+    document.querySelector('#statInfos span').textContent = stats.total_infos || 0;
+
+    if (stats.converged_count !== undefined && stats.bom_change_count) {
+        var rate = stats.bom_change_count > 0
+            ? Math.round(stats.converged_count / stats.bom_change_count * 100) + '%'
+            : '—';
+        document.querySelector('#statConvergence span').textContent = rate;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Design list in filter panel
+// ═══════════════════════════════════════════════════════════════
+
+function populateDesignList() {
+    var stats = overlay.stats || {};
+    var maResults = stats.ma_results || [];
+    var inner = document.getElementById('designListInner');
+    if (maResults.length === 0) {
+        inner.innerHTML = '<div style="color:#8899aa;">无多智能体数据</div>';
+        return;
+    }
+    var html = '';
+    maResults.forEach(function(r) {
+        var gradeColor = r.grade === 'A' ? '#27ae60' : (r.grade === 'B' ? '#f39c12' : '#e74c3c');
+        html += '<div style="padding:3px 0;display:flex;justify-content:space-between;">' +
+            '<span>' + r.design + '</span>' +
+            '<span style="color:' + gradeColor + ';">' + r.score + '/100 (' + r.grade + ')</span>' +
+            '</div>';
+    });
+    inner.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Init
+// ═══════════════════════════════════════════════════════════════
+
+function init() {
+    updateStatsBar();
+    populateDesignList();
+    drawAll();
+
+    // Handle window resize
+    window.addEventListener('resize', function() { drawAll(); });
+}
+
+init();
+</script>
+</body>
+</html>

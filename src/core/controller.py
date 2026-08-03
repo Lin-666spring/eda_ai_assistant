@@ -45,6 +45,7 @@ class CommandContext:
 
     bom_items: list = field(default_factory=list)
     positions: dict = field(default_factory=dict)
+    netlist: list = field(default_factory=list)
     bom_file: Optional[str] = None
     pcb_data: Optional[PCBData] = None
 
@@ -395,6 +396,22 @@ class AppController:
             logger.exception("Multi-agent review failed")
             return json.dumps({"error": f"多智能体审查失败: {e}"}, ensure_ascii=False)
 
+    def verify_suggestion_handler(self) -> str:
+        """闭环验证的本地降级处理 — 引导用户提供待验证的建议。"""
+        if not self.context.bom_items:
+            return json.dumps(
+                {"error": "请先导入 BOM 文件，然后再进行闭环验证"},
+                ensure_ascii=False,
+            )
+        return (
+            " 闭环验证已就绪（已加载 BOM 数据）。\n\n"
+            "请告诉我你想验证的 PCB 设计建议，例如：\n"
+            "• \"验证建议：将 C1 改为 10µF 陶瓷电容\"\n"
+            "• \"检查这个修改：在电源引脚附近增加 100nF 去耦电容\"\n"
+            "• \"帮我验证：移除 R5 是否安全\"\n\n"
+            "我会运行 DRC 规则引擎检查你的建议，如果发现问题会自动要求修正。"
+        )
+
     def verify_suggestion(self, suggestion: str) -> str:
         """闭环验证 — 对 LLM 设计建议执行规则引擎验证 (路线三核心)。
 
@@ -581,6 +598,18 @@ class AppController:
         if operation == "rag_query":
             query = params.get("query", "")
             return self.query_knowledge_base(query)
+
+        # 闭环验证 — 需要传递 suggestion 参数
+        if operation == "verify_suggestion":
+            suggestion = params.get("suggestion", "")
+            if not suggestion:
+                return (
+                    " 闭环验证需要提供待验证的设计建议。\n\n"
+                    "使用方法：请描述你想验证的PCB设计建议，例如：\n"
+                    "• \"验证建议：在U1附近添加100nF去耦电容\"\n"
+                    "• \"验证这个修改：将电源线宽改为1.5mm\""
+                )
+            return self.verify_suggestion(suggestion)
 
         # 从 ToolRegistry 获取 handler 映射（带懒加载降级）
         dispatch = self._build_dispatch_map()
@@ -1130,6 +1159,7 @@ class AppController:
         rule_tools = {"check_rule", "explain_design_rule"}
         code_gen_tools = {"generate_drc_rule"}
         review_tools = {"review_multi_agent"}
+        verify_tools = {"verify_suggestion"}
 
         if tool_name in filter_tools:
             return self._filter_input_handler
@@ -1145,6 +1175,8 @@ class AppController:
             return self._generate_drc_rule
         if tool_name in review_tools:
             return self.review_design_multi_agent
+        if tool_name in verify_tools:
+            return self.verify_suggestion_handler
 
         # 标准工具：从 Registry 获取 handler 名称
         try:

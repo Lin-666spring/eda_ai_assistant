@@ -15,7 +15,7 @@ from src.agent.tools import ToolDef, ToolRegistry, TOOLS
 
 class TestRegistryIntegrity:
     def test_has_all_tools(self):
-        assert ToolRegistry.count() == 23
+        assert ToolRegistry.count() == 24
 
     def test_all_tools_have_names(self):
         for t in ToolRegistry.get_all():
@@ -135,7 +135,7 @@ class TestDerivedData:
         assert "analyze_image" in names
         assert "component_lookup" in names
         assert "calc_trace_width" in names
-        assert len(names) == 23
+        assert len(names) == 24
 
 
 # ——— ToolDef 方法 ———

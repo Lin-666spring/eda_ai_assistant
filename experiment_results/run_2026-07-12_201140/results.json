@@ -1,0 +1,708 @@
+{
+  "timestamp": "2026-07-12_201140",
+  "output_dir": "C:\\Users\\lin\\Desktop\\eda_ai_assistant\\experiment_results\\run_2026-07-12_201140",
+  "designs": [
+    "bldc_esc_motor",
+    "dcdc_power_v62",
+    "esp32_audio_moji2",
+    "stm32f103_devboard"
+  ],
+  "providers": [],
+  "suggestion_categories": [
+    "optimization",
+    "safe",
+    "dangerous"
+  ],
+  "drc_count": 4,
+  "verify_count": 0,
+  "ma_count": 0,
+  "defect_count": 18,
+  "drc_results": [
+    {
+      "design": "bldc_esc_motor",
+      "total_violations": 45,
+      "errors": 27,
+      "warnings": 4,
+      "infos": 14,
+      "violations_by_rule": {
+        "去耦电容检查": 27,
+        "参数范围检查": 5,
+        "位号连续性检查": 3,
+        "板边间距检查": 1,
+        "晶振频率匹配": 1,
+        "晶振负载电容检查": 1,
+        "EMI 滤波检查": 1,
+        "光学定位点检查": 1,
+        "电感饱和电流检查": 1,
+        "MOSFET 栅极电阻检查": 1,
+        "PDN 目标阻抗分析": 1,
+        "电源滤波检查": 1,
+        "电源极性保护检查": 1
+      },
+      "elapsed_seconds": 0.22,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.177032"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "total_violations": 134,
+      "errors": 93,
+      "warnings": 6,
+      "infos": 35,
+      "violations_by_rule": {
+        "去耦电容检查": 93,
+        "参数范围检查": 25,
+        "位号连续性检查": 5,
+        "晶振负载电容检查": 2,
+        "板边间距检查": 1,
+        "晶振频率匹配": 1,
+        "调试接口检查": 1,
+        "多电源引脚去耦检查": 1,
+        "光学定位点检查": 1,
+        "悬空引脚检查": 1,
+        "电感饱和电流检查": 1,
+        "MOSFET 栅极电阻检查": 1,
+        "PDN 目标阻抗分析": 1
+      },
+      "elapsed_seconds": 0.03,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.207216"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "total_violations": 53,
+      "errors": 38,
+      "warnings": 3,
+      "infos": 12,
+      "violations_by_rule": {
+        "去耦电容检查": 38,
+        "参数范围检查": 5,
+        "位号连续性检查": 2,
+        "天线净空区检查": 1,
+        "板边间距检查": 1,
+        "元件间距检查": 1,
+        "光学定位点检查": 1,
+        "悬空引脚检查": 1,
+        "电感饱和电流检查": 1,
+        "PDN 目标阻抗分析": 1,
+        "开关电源布局检查": 1
+      },
+      "elapsed_seconds": 0.02,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.223135"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "total_violations": 33,
+      "errors": 18,
+      "warnings": 7,
+      "infos": 8,
+      "violations_by_rule": {
+        "去耦电容检查": 18,
+        "参数范围检查": 2,
+        "晶振频率匹配": 2,
+        "晶振负载电容检查": 2,
+        "LED 限流电阻检查": 2,
+        "位号连续性检查": 2,
+        "多电源引脚去耦检查": 1,
+        "ESD 保护检查": 1,
+        "光学定位点检查": 1,
+        "悬空引脚检查": 1,
+        "PDN 目标阻抗分析": 1
+      },
+      "elapsed_seconds": 0.01,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.233826"
+    }
+  ],
+  "verify_results": [],
+  "ma_results": [],
+  "defect_results": [
+    {
+      "design": "bldc_esc_motor",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 1 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查"
+      ],
+      "missed_rules": [
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "电感饱和电流检查",
+        "MOSFET 栅极电阻检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "电源滤波检查",
+        "PDN 目标阻抗分析",
+        "EMI 滤波检查",
+        "晶振频率匹配",
+        "位号连续性检查",
+        "板边间距检查",
+        "晶振负载电容检查",
+        "电源极性保护检查"
+      ],
+      "total_violations": 43,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.246689"
+    },
+    {
+      "design": "bldc_esc_motor",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "电感饱和电流检查",
+        "MOSFET 栅极电阻检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "电源滤波检查",
+        "PDN 目标阻抗分析",
+        "EMI 滤波检查",
+        "晶振频率匹配",
+        "位号连续性检查",
+        "板边间距检查",
+        "晶振负载电容检查",
+        "电源极性保护检查"
+      ],
+      "total_violations": 51,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.249886"
+    },
+    {
+      "design": "bldc_esc_motor",
+      "defect_id": "no_crystal_load_caps",
+      "defect_name": "删除晶振负载电容",
+      "defect_description": "删除晶振旁边的负载电容",
+      "expected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "电感饱和电流检查",
+        "MOSFET 栅极电阻检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "电源滤波检查",
+        "PDN 目标阻抗分析",
+        "EMI 滤波检查",
+        "位号连续性检查",
+        "板边间距检查",
+        "电源极性保护检查"
+      ],
+      "total_violations": 42,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.253176"
+    },
+    {
+      "design": "bldc_esc_motor",
+      "defect_id": "no_esd_diodes",
+      "defect_name": "删除 TVS/ESD 保护二极管",
+      "defect_description": "删除 2 个保护二极管",
+      "expected_rules": [
+        "ESD 保护检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "ESD 保护检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "电感饱和电流检查",
+        "MOSFET 栅极电阻检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "电源滤波检查",
+        "PDN 目标阻抗分析",
+        "EMI 滤波检查",
+        "天线净空区检查",
+        "晶振频率匹配",
+        "位号连续性检查",
+        "板边间距检查",
+        "晶振负载电容检查",
+        "电源极性保护检查"
+      ],
+      "total_violations": 45,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.256143"
+    },
+    {
+      "design": "bldc_esc_motor",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容电压降额检查"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "电容电压降额检查"
+      ],
+      "extra_violations": [
+        "电感饱和电流检查",
+        "MOSFET 栅极电阻检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "电源滤波检查",
+        "PDN 目标阻抗分析",
+        "电容耐压降额检查",
+        "EMI 滤波检查",
+        "晶振频率匹配",
+        "位号连续性检查",
+        "板边间距检查",
+        "晶振负载电容检查",
+        "电源极性保护检查"
+      ],
+      "total_violations": 48,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.259162"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 4 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查"
+      ],
+      "missed_rules": [
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "电感饱和电流检查",
+        "MOSFET 栅极电阻检查",
+        "复位电路检查",
+        "调试接口检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "晶振频率匹配",
+        "多电源引脚去耦检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "板边间距检查",
+        "晶振负载电容检查"
+      ],
+      "total_violations": 127,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.288525"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "电感饱和电流检查",
+        "MOSFET 栅极电阻检查",
+        "复位电路检查",
+        "调试接口检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "PDN 目标阻抗分析",
+        "多电源引脚去耦检查",
+        "晶振频率匹配",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "板边间距检查",
+        "晶振负载电容检查"
+      ],
+      "total_violations": 155,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.297831"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "no_crystal_load_caps",
+      "defect_name": "删除晶振负载电容",
+      "defect_description": "删除晶振旁边的负载电容",
+      "expected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "电感饱和电流检查",
+        "MOSFET 栅极电阻检查",
+        "调试接口检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "多电源引脚去耦检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "板边间距检查"
+      ],
+      "total_violations": 132,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.306901"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "no_esd_diodes",
+      "defect_name": "删除 TVS/ESD 保护二极管",
+      "defect_description": "删除 4 个保护二极管",
+      "expected_rules": [
+        "ESD 保护检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "ESD 保护检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "电感饱和电流检查",
+        "MOSFET 栅极电阻检查",
+        "调试接口检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "晶振频率匹配",
+        "多电源引脚去耦检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "板边间距检查",
+        "晶振负载电容检查"
+      ],
+      "total_violations": 130,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.316894"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容电压降额检查"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "电容电压降额检查"
+      ],
+      "extra_violations": [
+        "电感饱和电流检查",
+        "MOSFET 栅极电阻检查",
+        "调试接口检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "电容耐压降额检查",
+        "晶振频率匹配",
+        "多电源引脚去耦检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "板边间距检查",
+        "晶振负载电容检查"
+      ],
+      "total_violations": 137,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.329055"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 2 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查"
+      ],
+      "missed_rules": [
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "电感饱和电流检查",
+        "复位电路检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "天线净空区检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "板边间距检查",
+        "开关电源布局检查",
+        "元件间距检查"
+      ],
+      "total_violations": 50,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.393622"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "电感饱和电流检查",
+        "复位电路检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "PDN 目标阻抗分析",
+        "天线净空区检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "板边间距检查",
+        "开关电源布局检查",
+        "元件间距检查"
+      ],
+      "total_violations": 60,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.397258"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "defect_id": "no_esd_diodes",
+      "defect_name": "删除 TVS/ESD 保护二极管",
+      "defect_description": "删除 2 个保护二极管",
+      "expected_rules": [
+        "ESD 保护检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "ESD 保护检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "电感饱和电流检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "天线净空区检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "板边间距检查",
+        "开关电源布局检查",
+        "元件间距检查"
+      ],
+      "total_violations": 52,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.400782"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容电压降额检查"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "电容电压降额检查"
+      ],
+      "extra_violations": [
+        "电感饱和电流检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "电容耐压降额检查",
+        "天线净空区检查",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "板边间距检查",
+        "开关电源布局检查",
+        "元件间距检查"
+      ],
+      "total_violations": 56,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.404379"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 1 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查"
+      ],
+      "missed_rules": [
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "LED 限流电阻检查",
+        "复位电路检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "ESD 保护检查",
+        "PDN 目标阻抗分析",
+        "多电源引脚去耦检查",
+        "晶振频率匹配",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "晶振负载电容检查"
+      ],
+      "total_violations": 32,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.414594"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "LED 限流电阻检查",
+        "复位电路检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "ESD 保护检查",
+        "PDN 目标阻抗分析",
+        "多电源引脚去耦检查",
+        "晶振频率匹配",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "晶振负载电容检查"
+      ],
+      "total_violations": 38,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.416543"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "defect_id": "no_crystal_load_caps",
+      "defect_name": "删除晶振负载电容",
+      "defect_description": "删除晶振旁边的负载电容",
+      "expected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "LED 限流电阻检查",
+        "复位电路检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "ESD 保护检查",
+        "PDN 目标阻抗分析",
+        "多电源引脚去耦检查",
+        "悬空引脚检查",
+        "位号连续性检查"
+      ],
+      "total_violations": 29,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.418244"
+    },
+    {
+      "design": "stm32f103_devboard",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容电压降额检查"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "电容电压降额检查"
+      ],
+      "extra_violations": [
+        "LED 限流电阻检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "参数范围检查",
+        "ESD 保护检查",
+        "PDN 目标阻抗分析",
+        "电容耐压降额检查",
+        "多电源引脚去耦检查",
+        "晶振频率匹配",
+        "悬空引脚检查",
+        "位号连续性检查",
+        "晶振负载电容检查"
+      ],
+      "total_violations": 36,
+      "error": null,
+      "timestamp": "2026-07-12T20:11:41.420173"
+    }
+  ],
+  "defect_detection_rate": 77.77777777777779,
+  "defect_total_detected": 14,
+  "defect_total_missed": 4
+}

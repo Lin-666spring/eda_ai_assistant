@@ -196,6 +196,10 @@ class SummaryResponse(BaseModel):
     summary: dict[str, Any] = {}
 
 
+class VerifySuggestionRequest(BaseModel):
+    suggestion: str = ""
+
+
 class KnowledgeQueryRequest(BaseModel):
     query: str = ""
     top_k: int = Field(default=5, ge=1, le=20)

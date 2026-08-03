@@ -1,0 +1,1367 @@
+{
+  "timestamp": "2026-07-12_235151",
+  "output_dir": "experiment_results\\run_vmap_test",
+  "designs": [
+    "STM32_Minimal",
+    "Power_Supply",
+    "Bad_Design"
+  ],
+  "providers": [],
+  "suggestion_categories": [
+    "safe",
+    "optimization",
+    "dangerous"
+  ],
+  "drc_count": 3,
+  "verify_count": 0,
+  "ma_count": 0,
+  "defect_count": 22,
+  "drc_results": [
+    {
+      "design": "STM32_Minimal",
+      "total_violations": 26,
+      "errors": 0,
+      "warnings": 8,
+      "infos": 18,
+      "violations_by_rule": {
+        "参数范围检查": 5,
+        "时钟信号包地检查": 2,
+        "信号线宽度检查": 2,
+        "电容温度系数检查": 1,
+        "元件高度分区检查": 1,
+        "连接器边沿布局检查": 1,
+        "铜皮连接检查": 1,
+        "晶振频率匹配": 1,
+        "晶振负载电容检查": 1,
+        "调试接口检查": 1,
+        "去耦电容距离检查": 1,
+        "ESD 保护检查": 1,
+        "光学定位点检查": 1,
+        "悬空引脚检查": 1,
+        "地平面连续性检查": 1,
+        "高速信号参考平面检查": 1,
+        "电感饱和电流检查": 1,
+        "PDN 目标阻抗分析": 1,
+        "电阻功率降额检查": 1,
+        "测试点覆盖检查": 1
+      },
+      "violations_by_component": {
+        "R6": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R6 参数 [100Ω] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C1": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C1 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C2": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C2 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C3": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C3 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C6": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C6 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "__board__": [
+          {
+            "rule": "电容温度系数检查",
+            "severity": "info",
+            "desc": "BOM 含 7 个电容，振荡/滤波/定时电路应选用 NP0/C0G(温漂<30ppm/°C)",
+            "suggestion": "晶振负载电容、RC 定时电路、ADC 采样保持电容选用 NP0/C0G。X7R 温漂 ±15%+DC Bias 效应。",
+            "theory": "X7R 的 EIA 编码: -55~+125°C, ±15%。实际 DC Bias 下有效容量可降至标称 20~50%。NP0/C0G 几乎无 DC Bias 效应和温漂，但容积比低。"
+          },
+          {
+            "rule": "时钟信号包地检查",
+            "severity": "info",
+            "desc": "时钟网络 [SPI_SCLK] 建议添加包地走线",
+            "suggestion": "时钟走线两侧加接地护线(GND guard trace)，每隔 λ/20 打过孔接地。护线距时钟线 ≥3W。",
+            "theory": "时钟是 PCB 上最强 EMI 源—高幅值、固定频率、陡峭边沿(tr<1ns 含数百 MHz 谐波)。包地走线将电场约束在信号-护线间,降低对邻线的串扰。接地过孔间距≤λ/20(如 100MHz→FR4 λ≈1.5m→λ/20≈7.5mm)。"
+          },
+          {
+            "rule": "时钟信号包地检查",
+            "severity": "info",
+            "desc": "时钟网络 [SPI_SCLK] 建议添加包地走线",
+            "suggestion": "时钟走线两侧加接地护线(GND guard trace)，每隔 λ/20 打过孔接地。护线距时钟线 ≥3W。",
+            "theory": "时钟是 PCB 上最强 EMI 源—高幅值、固定频率、陡峭边沿(tr<1ns 含数百 MHz 谐波)。包地走线将电场约束在信号-护线间,降低对邻线的串扰。接地过孔间距≤λ/20(如 100MHz→FR4 λ≈1.5m→λ/20≈7.5mm)。"
+          },
+          {
+            "rule": "元件高度分区检查",
+            "severity": "info",
+            "desc": "高元件(2个)与矮元件(21个)混合布局",
+            "suggestion": "高元件(>10mm)置于PCB无遮挡区域或背面。同面布局时矮元件靠近PCB边沿,高元件在中心。",
+            "theory": "波峰焊时高元件会产生阴影效应→后方焊点虚焊。同时装配后矮元件难以目检和维护。IPC-A-610 要求人工检查视线无遮挡。"
+          },
+          {
+            "rule": "铜皮连接检查",
+            "severity": "info",
+            "desc": "PCB 文件未包含铜皮数据，请确认覆铜无孤岛",
+            "suggestion": "覆铜后执行 DRC 检查孤岛铜皮(Dead Copper/Islands)。孤岛铜皮应删除或添加过孔接地。",
+            "theory": "孤岛铜皮既不接地也不接任何网络，相当于悬浮的天线→接收/辐射 EMI。GHz 频段时长度=λ/4 即可成为有效天线。删除或接地均可解决。"
+          },
+          {
+            "rule": "调试接口检查",
+            "severity": "info",
+            "desc": "检测到调试接口器件，请确认调试排针位置便于连接",
+            "suggestion": "SWD 接口: 3.3V/GND/SWDIO/SWCLK 四针排针(2.54mm间距)，置于 PCB 边沿。加丝印标注引脚功能。UART 串口: TX/RX/GND 三针。",
+            "theory": "调试接口在研发阶段使用频率极高——难连接的调试口严重降低开发效率。量产可保留测试点但不焊接排针以节省成本。"
+          },
+          {
+            "rule": "去耦电容距离检查",
+            "severity": "warning",
+            "desc": "63 个去耦电容距 IC >15.0mm: C1/U1(34.2mm), C1/U2(34.5mm), C1/U3(47.0mm)",
+            "suggestion": "去耦电容距 IC 电源引脚 ≤15mm。距离每增加 1cm，退耦效果显著下降。",
+            "theory": "PCB 走线寄生电感≈5~10nH/cm。去耦电容距 IC 每增 1cm，环路 L≈+8nH——10ns 内切换 50mA 时 Vdrop=L·di/dt=8nH×5×10⁶A/s=40mV。多层板建议电容同层距引脚≤10mm。"
+          },
+          {
+            "rule": "ESD 保护检查",
+            "severity": "warning",
+            "desc": "存在外部连接器但未检测到 TVS/ESD 保护器件",
+            "suggestion": "外露接口各信号线加装 TVS 管(如 USBLC6-2)",
+            "theory": "HBM ESD 放电可达 ±2~15kV，峰值电流数十安培，上升时间≤1ns。TVS 利用雪崩击穿在 ns 级钳位电压。IEC 61000-4-2 规定 4 级=接触±8kV/空气±15kV。高速信号需结电容≤0.5pF。"
+          },
+          {
+            "rule": "光学定位点检查",
+            "severity": "info",
+            "desc": "PCB 含较多元件但未确认是否有光学定位(Mark)点",
+            "suggestion": "PCB 对角放置≥2个全局 Mark 点(Φ1.0mm 铜箔+Φ3.0mm 阻焊开窗)。细间距IC(QFP/BGA)局部加Mark点。",
+            "theory": "SMT 贴片机通过识别 Mark 点校正 PCB 位置偏差。全局 Mark 用于整板定位，局部 Mark 用于精细间距元件定位。无 Mark 点→贴片精度不足→立碑/偏移。"
+          },
+          {
+            "rule": "地平面连续性检查",
+            "severity": "info",
+            "desc": "高速信号需要连续的地平面作为回流路径。割裂的地平面增加环路面积和EMI。",
+            "suggestion": "关键信号(时钟/高频)下方保证完整 GND 平面。信号跨分割区需加stitching电容(10nF)桥接回流。",
+            "theory": "高速信号的回流电流沿最小阻抗路径(紧邻信号线下方)流回源端。地平面割裂→回流绕行→环路面积↑→EMI↑。>50MHz 信号必须保证连续参考平面。"
+          },
+          {
+            "rule": "高速信号参考平面检查",
+            "severity": "warning",
+            "desc": "1 个高速网络需确认邻层为完整 GND 参考平面",
+            "suggestion": "高速信号邻层必须是完整 GND 平面(不分割)。4层板推荐 SIG-GND-PWR-SIG 叠层。",
+            "theory": "微带线/带状线特性阻抗取决于信号到参考平面的距离(H)。邻层跨分割区→阻抗突变→反射、串扰↑。IPC-2221 建议高速信号不能跨越参考平面分割区。"
+          },
+          {
+            "rule": "PDN 目标阻抗分析",
+            "severity": "info",
+            "desc": "5.0V/0.80A 电源: 目标阻抗 Z_target=625mΩ，平面电容 1.00nF，建议 ≥1 个去耦电容，IR压降≈0.8mV",
+            "suggestion": "推荐电容组合: 100µF, 10µF, 100nF, 10nF。各频段去耦: 100µF(≤10kHz) + 10µF(≤1MHz) + 100nF(1-100MHz) + 10nF(≥100MHz)。",
+            "theory": "PDN 目标阻抗 Z_target = (Vdd × ripple%) / I_transient。全频段内 Z_PDN < Z_target 才能保证电源纹波在允许范围内。多层陶瓷电容(MLCC)并联降低等效 ESL，扩展有效去耦频率范围。"
+          },
+          {
+            "rule": "信号线宽度检查",
+            "severity": "warning",
+            "desc": "网络 [SPI_SCLK] 最小线宽 0.150mm < 0.2mm",
+            "suggestion": "线宽 0.150mm 过细，加宽至 ≥ 0.2mm。高速信号确认阻抗匹配。",
+            "theory": "走线宽度由 PCB 工艺能力和信号完整性共同决定。一般厂最小 4mil(0.1mm)，低成本 6mil(0.15mm)。线宽过细→电阻↑、散热难。"
+          },
+          {
+            "rule": "信号线宽度检查",
+            "severity": "warning",
+            "desc": "网络 [SPI_MISO] 最小线宽 0.150mm < 0.2mm",
+            "suggestion": "线宽 0.150mm 过细，加宽至 ≥ 0.2mm。高速信号确认阻抗匹配。",
+            "theory": "走线宽度由 PCB 工艺能力和信号完整性共同决定。一般厂最小 4mil(0.1mm)，低成本 6mil(0.15mm)。线宽过细→电阻↑、散热难。"
+          },
+          {
+            "rule": "测试点覆盖检查",
+            "severity": "info",
+            "desc": "2 个关键网络缺少测试点: VCC, +5V",
+            "suggestion": "电源轨、复位、调试接口、关键信号预留 φ1.0mm 测试焊盘(TP)。间距≥2.54mm 便于探针/ICT。",
+            "theory": "无测试点→调试时需手工飞线,成品批量测试用 ICT(在线测试)/飞针测试需夹具兼容的测试点布局。IPC-2221 建议测试点直径≥0.9mm,间距≥2.5mm。"
+          }
+        ],
+        "U4": [
+          {
+            "rule": "连接器边沿布局检查",
+            "severity": "info",
+            "desc": "连接器 U4 距板边较远(70,30)，可能影响插拔操作",
+            "suggestion": "连接器/接口紧贴 PCB 边沿，开口朝外。机壳开孔位置与连接器对准，预留插头空间(如 USB 插头长度 ≈15mm)。",
+            "theory": "连接器置于板中心→机壳内部需延长开孔通道,增加机械设计难度且插拔力会使 PCB 弯曲。板边布局插拔力直接由机壳/固定柱承受。"
+          }
+        ],
+        "X1": [
+          {
+            "rule": "晶振频率匹配",
+            "severity": "info",
+            "desc": "晶振 X1 (8MHz) 建议 CL=18pF~22pF",
+            "suggestion": "匹配负载电容 = 18pF~22pF，配合 Cstray≈5pF",
+            "theory": "石英晶振的频率稳定性依赖正确 CL。32.768kHz 晶振 CL 偏差 2pF 可引起 ≥10ppm 误差。"
+          },
+          {
+            "rule": "晶振负载电容检查",
+            "severity": "warning",
+            "desc": "晶振 X1 负载电容不足(1/2)",
+            "suggestion": "晶振需 2 个匹配负载电容(通常 12~22pF)，参见数据手册",
+            "theory": "皮尔斯振荡器是最常用 MCU 晶振电路。CL=(CL1×CL2)/(CL1+CL2)+Cstray，Cstray 包含 PCB 寄生和 MCU 引脚电容(~3-7pF)。CL 偏差过大致起振失败或频率偏移。"
+          }
+        ],
+        "U1": [
+          {
+            "rule": "悬空引脚检查",
+            "severity": "warning",
+            "desc": "主控 U1 的 RST/BOOT/EN 等控制引脚可能悬空",
+            "suggestion": "RST 上拉(10kΩ)，BOOT 明确上下拉。悬空=不可预知行为。",
+            "theory": "CMOS 输入阻抗>10MΩ，悬空时引脚电压由漏电流和 EMI 决定，处于亚稳态——可能引起振荡、功耗增大、闩锁效应(latch-up)。"
+          }
+        ],
+        "L1": [
+          {
+            "rule": "电感饱和电流检查",
+            "severity": "info",
+            "desc": "功率电感 L1 建议验证额定电流 ≥1.3× Ipeak",
+            "suggestion": "Buck 电感 Ipeak = Iout + ΔIL/2。Isat 需 ≥1.3× Ipeak 防饱和。饱和后 L↓→ΔIL↑→磁芯损耗↑→温升↑。",
+            "theory": "铁氧体电感在电流超过 Isat 时磁导率骤降，感值可降至标称的 10~30%→纹波电流剧增→输出纹波↑、EMI↑。屏蔽电感 EMI 优于非屏蔽。"
+          },
+          {
+            "rule": "电阻功率降额检查",
+            "severity": "warning",
+            "desc": "功率电阻 L1 封装 0805 可能功率不足",
+            "suggestion": "采样/限流电阻选用大封装(1206/2512)或专用金属膜电阻。0805 额定功率: 0402=1/16W,0603=1/10W,0805=1/8W。",
+            "theory": "电阻额定功率在 70°C 以上需降额(derating)。采样电阻功耗 P=I²R,若实际功率超过额定 50% 则温升过大,阻值漂移加剧。大封装不仅提升功率,也降低寄生电感(感抗影响高频采样精度)。"
+          }
+        ]
+      },
+      "elapsed_seconds": 0.01,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.164791"
+    },
+    {
+      "design": "Power_Supply",
+      "total_violations": 17,
+      "errors": 0,
+      "warnings": 3,
+      "infos": 14,
+      "violations_by_rule": {
+        "参数范围检查": 8,
+        "电容温度系数检查": 1,
+        "元件高度分区检查": 1,
+        "ESD 保护检查": 1,
+        "电感饱和电流检查": 1,
+        "封装一致性检查": 1,
+        "PDN 目标阻抗分析": 1,
+        "极性元件方向检查": 1,
+        "开关电源布局检查": 1,
+        "热焊盘检查": 1
+      },
+      "violations_by_component": {
+        "R4": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R4 参数 [100kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R5": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R5 参数 [0.1Ω] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C1": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C1 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C2": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C2 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C3": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C3 参数 [220μF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          },
+          {
+            "rule": "封装一致性检查",
+            "severity": "warning",
+            "desc": "型号 [C43353] 出现多种封装: 0805, 6.3x7.7",
+            "suggestion": "同型号应采用相同封装。多封装可能为采购错误或 BOM 录入疏忽。",
+            "theory": "同一物料号出现不同封装(如 0805 和 0603 混用)通常表示手动替换未统一，可能导致 SMT 贴片程序不匹配。IPC-7351 规定标准封装命名。"
+          }
+        ],
+        "C4": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C4 参数 [100μF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C6": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C6 参数 [22μF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "L1": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "L1 参数 [22μH] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          },
+          {
+            "rule": "电感饱和电流检查",
+            "severity": "info",
+            "desc": "功率电感 L1 建议验证额定电流 ≥1.3× Ipeak",
+            "suggestion": "Buck 电感 Ipeak = Iout + ΔIL/2。Isat 需 ≥1.3× Ipeak 防饱和。饱和后 L↓→ΔIL↑→磁芯损耗↑→温升↑。",
+            "theory": "铁氧体电感在电流超过 Isat 时磁导率骤降，感值可降至标称的 10~30%→纹波电流剧增→输出纹波↑、EMI↑。屏蔽电感 EMI 优于非屏蔽。"
+          }
+        ],
+        "__board__": [
+          {
+            "rule": "电容温度系数检查",
+            "severity": "info",
+            "desc": "BOM 含 6 个电容，振荡/滤波/定时电路应选用 NP0/C0G(温漂<30ppm/°C)",
+            "suggestion": "晶振负载电容、RC 定时电路、ADC 采样保持电容选用 NP0/C0G。X7R 温漂 ±15%+DC Bias 效应。",
+            "theory": "X7R 的 EIA 编码: -55~+125°C, ±15%。实际 DC Bias 下有效容量可降至标称 20~50%。NP0/C0G 几乎无 DC Bias 效应和温漂，但容积比低。"
+          },
+          {
+            "rule": "元件高度分区检查",
+            "severity": "info",
+            "desc": "高元件(5个)与矮元件(14个)混合布局",
+            "suggestion": "高元件(>10mm)置于PCB无遮挡区域或背面。同面布局时矮元件靠近PCB边沿,高元件在中心。",
+            "theory": "波峰焊时高元件会产生阴影效应→后方焊点虚焊。同时装配后矮元件难以目检和维护。IPC-A-610 要求人工检查视线无遮挡。"
+          },
+          {
+            "rule": "ESD 保护检查",
+            "severity": "warning",
+            "desc": "存在外部连接器但未检测到 TVS/ESD 保护器件",
+            "suggestion": "外露接口各信号线加装 TVS 管(如 USBLC6-2)",
+            "theory": "HBM ESD 放电可达 ±2~15kV，峰值电流数十安培，上升时间≤1ns。TVS 利用雪崩击穿在 ns 级钳位电压。IEC 61000-4-2 规定 4 级=接触±8kV/空气±15kV。高速信号需结电容≤0.5pF。"
+          },
+          {
+            "rule": "PDN 目标阻抗分析",
+            "severity": "info",
+            "desc": "5.0V/0.50A 电源: 目标阻抗 Z_target=1000mΩ，平面电容 1.00nF，建议 ≥1 个去耦电容，IR压降≈0.5mV",
+            "suggestion": "推荐电容组合: 100µF, 10µF, 100nF, 10nF。各频段去耦: 100µF(≤10kHz) + 10µF(≤1MHz) + 100nF(1-100MHz) + 10nF(≥100MHz)。",
+            "theory": "PDN 目标阻抗 Z_target = (Vdd × ripple%) / I_transient。全频段内 Z_PDN < Z_target 才能保证电源纹波在允许范围内。多层陶瓷电容(MLCC)并联降低等效 ESL，扩展有效去耦频率范围。"
+          },
+          {
+            "rule": "极性元件方向检查",
+            "severity": "info",
+            "desc": "BOM 含 4 个极性元件，建议丝印标注极性方向和统一朝向",
+            "suggestion": "电解电容/二极管/Tantalum 丝印标注正极(+)标记。同一类型极性元件朝向统一(便于人工目检和自动插件)。",
+            "theory": "极性反接→电解电容反向击穿(短路/爆炸)、二极管反向击穿、LED不亮。SMT 极性标记需在 IPC-7351 指定的丝印层。"
+          },
+          {
+            "rule": "热焊盘检查",
+            "severity": "warning",
+            "desc": "大功率器件需确认散热方案: U1(SOP-8-EP)",
+            "suggestion": "带散热焊盘的器件需 PCB 设计散热铜皮+过孔阵列传导热量至内层/底层铜皮",
+            "theory": "Tj=Ta+Pd×θja。无散热 θja≈100°C/W——0.5W→ΔT=50°C。散热焊盘将 θja 降至 20~40°C/W。一般 1W 功耗需≥500mm² 散热铜皮(1oz)。"
+          }
+        ],
+        "C5": [
+          {
+            "rule": "封装一致性检查",
+            "severity": "warning",
+            "desc": "型号 [C43353] 出现多种封装: 0805, 6.3x7.7",
+            "suggestion": "同型号应采用相同封装。多封装可能为采购错误或 BOM 录入疏忽。",
+            "theory": "同一物料号出现不同封装(如 0805 和 0603 混用)通常表示手动替换未统一，可能导致 SMT 贴片程序不匹配。IPC-7351 规定标准封装命名。"
+          }
+        ],
+        "U1": [
+          {
+            "rule": "开关电源布局检查",
+            "severity": "info",
+            "desc": "DC-DC U1 建议优化输入回路布局以降低 EMI",
+            "suggestion": "Buck: Cin→SW→L→Cout 的 di/dt 回路面积最小化。输入电容紧靠 IC VIN/GND 引脚。SW 节点铜皮面积最小,避免成为天线。",
+            "theory": "Buck 的开关回路(VIN→HS MOSFET→SW→L→Cout→GND→VIN)承载高频脉冲电流,其环路面积与 EMI 强度成正比。SW 节点电压在 0 和 VIN 间高速切换(dv/dt≈数 V/ns),是 PCB 最强 dV/dt 源。"
+          }
+        ]
+      },
+      "elapsed_seconds": 0.0,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.168310"
+    },
+    {
+      "design": "Bad_Design",
+      "total_violations": 18,
+      "errors": 0,
+      "warnings": 7,
+      "infos": 11,
+      "violations_by_rule": {
+        "参数范围检查": 3,
+        "时钟信号包地检查": 2,
+        "信号线宽度检查": 2,
+        "铜皮连接检查": 1,
+        "晶振频率匹配": 1,
+        "晶振负载电容检查": 1,
+        "去耦电容距离检查": 1,
+        "ESD 保护检查": 1,
+        "光学定位点检查": 1,
+        "悬空引脚检查": 1,
+        "地平面连续性检查": 1,
+        "高速信号参考平面检查": 1,
+        "PDN 目标阻抗分析": 1,
+        "测试点覆盖检查": 1
+      },
+      "violations_by_component": {
+        "R4": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R4 参数 [100Ω] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C1": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C1 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C2": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C2 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "__board__": [
+          {
+            "rule": "时钟信号包地检查",
+            "severity": "info",
+            "desc": "时钟网络 [SPI_SCLK] 建议添加包地走线",
+            "suggestion": "时钟走线两侧加接地护线(GND guard trace)，每隔 λ/20 打过孔接地。护线距时钟线 ≥3W。",
+            "theory": "时钟是 PCB 上最强 EMI 源—高幅值、固定频率、陡峭边沿(tr<1ns 含数百 MHz 谐波)。包地走线将电场约束在信号-护线间,降低对邻线的串扰。接地过孔间距≤λ/20(如 100MHz→FR4 λ≈1.5m→λ/20≈7.5mm)。"
+          },
+          {
+            "rule": "时钟信号包地检查",
+            "severity": "info",
+            "desc": "时钟网络 [SPI_SCLK] 建议添加包地走线",
+            "suggestion": "时钟走线两侧加接地护线(GND guard trace)，每隔 λ/20 打过孔接地。护线距时钟线 ≥3W。",
+            "theory": "时钟是 PCB 上最强 EMI 源—高幅值、固定频率、陡峭边沿(tr<1ns 含数百 MHz 谐波)。包地走线将电场约束在信号-护线间,降低对邻线的串扰。接地过孔间距≤λ/20(如 100MHz→FR4 λ≈1.5m→λ/20≈7.5mm)。"
+          },
+          {
+            "rule": "铜皮连接检查",
+            "severity": "info",
+            "desc": "PCB 文件未包含铜皮数据，请确认覆铜无孤岛",
+            "suggestion": "覆铜后执行 DRC 检查孤岛铜皮(Dead Copper/Islands)。孤岛铜皮应删除或添加过孔接地。",
+            "theory": "孤岛铜皮既不接地也不接任何网络，相当于悬浮的天线→接收/辐射 EMI。GHz 频段时长度=λ/4 即可成为有效天线。删除或接地均可解决。"
+          },
+          {
+            "rule": "去耦电容距离检查",
+            "severity": "warning",
+            "desc": "21 个去耦电容距 IC >15.0mm: C1/U1(34.2mm), C1/U2(34.5mm), C1/D1(64.3mm)",
+            "suggestion": "去耦电容距 IC 电源引脚 ≤15mm。距离每增加 1cm，退耦效果显著下降。",
+            "theory": "PCB 走线寄生电感≈5~10nH/cm。去耦电容距 IC 每增 1cm，环路 L≈+8nH——10ns 内切换 50mA 时 Vdrop=L·di/dt=8nH×5×10⁶A/s=40mV。多层板建议电容同层距引脚≤10mm。"
+          },
+          {
+            "rule": "ESD 保护检查",
+            "severity": "warning",
+            "desc": "存在外部连接器但未检测到 TVS/ESD 保护器件",
+            "suggestion": "外露接口各信号线加装 TVS 管(如 USBLC6-2)",
+            "theory": "HBM ESD 放电可达 ±2~15kV，峰值电流数十安培，上升时间≤1ns。TVS 利用雪崩击穿在 ns 级钳位电压。IEC 61000-4-2 规定 4 级=接触±8kV/空气±15kV。高速信号需结电容≤0.5pF。"
+          },
+          {
+            "rule": "光学定位点检查",
+            "severity": "info",
+            "desc": "PCB 含较多元件但未确认是否有光学定位(Mark)点",
+            "suggestion": "PCB 对角放置≥2个全局 Mark 点(Φ1.0mm 铜箔+Φ3.0mm 阻焊开窗)。细间距IC(QFP/BGA)局部加Mark点。",
+            "theory": "SMT 贴片机通过识别 Mark 点校正 PCB 位置偏差。全局 Mark 用于整板定位，局部 Mark 用于精细间距元件定位。无 Mark 点→贴片精度不足→立碑/偏移。"
+          },
+          {
+            "rule": "地平面连续性检查",
+            "severity": "info",
+            "desc": "高速信号需要连续的地平面作为回流路径。割裂的地平面增加环路面积和EMI。",
+            "suggestion": "关键信号(时钟/高频)下方保证完整 GND 平面。信号跨分割区需加stitching电容(10nF)桥接回流。",
+            "theory": "高速信号的回流电流沿最小阻抗路径(紧邻信号线下方)流回源端。地平面割裂→回流绕行→环路面积↑→EMI↑。>50MHz 信号必须保证连续参考平面。"
+          },
+          {
+            "rule": "高速信号参考平面检查",
+            "severity": "warning",
+            "desc": "1 个高速网络需确认邻层为完整 GND 参考平面",
+            "suggestion": "高速信号邻层必须是完整 GND 平面(不分割)。4层板推荐 SIG-GND-PWR-SIG 叠层。",
+            "theory": "微带线/带状线特性阻抗取决于信号到参考平面的距离(H)。邻层跨分割区→阻抗突变→反射、串扰↑。IPC-2221 建议高速信号不能跨越参考平面分割区。"
+          },
+          {
+            "rule": "PDN 目标阻抗分析",
+            "severity": "info",
+            "desc": "5.0V/0.80A 电源: 目标阻抗 Z_target=625mΩ，平面电容 1.00nF，建议 ≥1 个去耦电容，IR压降≈0.8mV",
+            "suggestion": "推荐电容组合: 100µF, 10µF, 100nF, 10nF。各频段去耦: 100µF(≤10kHz) + 10µF(≤1MHz) + 100nF(1-100MHz) + 10nF(≥100MHz)。",
+            "theory": "PDN 目标阻抗 Z_target = (Vdd × ripple%) / I_transient。全频段内 Z_PDN < Z_target 才能保证电源纹波在允许范围内。多层陶瓷电容(MLCC)并联降低等效 ESL，扩展有效去耦频率范围。"
+          },
+          {
+            "rule": "信号线宽度检查",
+            "severity": "warning",
+            "desc": "网络 [SPI_SCLK] 最小线宽 0.150mm < 0.2mm",
+            "suggestion": "线宽 0.150mm 过细，加宽至 ≥ 0.2mm。高速信号确认阻抗匹配。",
+            "theory": "走线宽度由 PCB 工艺能力和信号完整性共同决定。一般厂最小 4mil(0.1mm)，低成本 6mil(0.15mm)。线宽过细→电阻↑、散热难。"
+          },
+          {
+            "rule": "信号线宽度检查",
+            "severity": "warning",
+            "desc": "网络 [SPI_MISO] 最小线宽 0.150mm < 0.2mm",
+            "suggestion": "线宽 0.150mm 过细，加宽至 ≥ 0.2mm。高速信号确认阻抗匹配。",
+            "theory": "走线宽度由 PCB 工艺能力和信号完整性共同决定。一般厂最小 4mil(0.1mm)，低成本 6mil(0.15mm)。线宽过细→电阻↑、散热难。"
+          },
+          {
+            "rule": "测试点覆盖检查",
+            "severity": "info",
+            "desc": "2 个关键网络缺少测试点: VCC, +5V",
+            "suggestion": "电源轨、复位、调试接口、关键信号预留 φ1.0mm 测试焊盘(TP)。间距≥2.54mm 便于探针/ICT。",
+            "theory": "无测试点→调试时需手工飞线,成品批量测试用 ICT(在线测试)/飞针测试需夹具兼容的测试点布局。IPC-2221 建议测试点直径≥0.9mm,间距≥2.5mm。"
+          }
+        ],
+        "X1": [
+          {
+            "rule": "晶振频率匹配",
+            "severity": "info",
+            "desc": "晶振 X1 (8MHz) 建议 CL=18pF~22pF",
+            "suggestion": "匹配负载电容 = 18pF~22pF，配合 Cstray≈5pF",
+            "theory": "石英晶振的频率稳定性依赖正确 CL。32.768kHz 晶振 CL 偏差 2pF 可引起 ≥10ppm 误差。"
+          },
+          {
+            "rule": "晶振负载电容检查",
+            "severity": "warning",
+            "desc": "晶振 X1 负载电容不足(1/2)",
+            "suggestion": "晶振需 2 个匹配负载电容(通常 12~22pF)，参见数据手册",
+            "theory": "皮尔斯振荡器是最常用 MCU 晶振电路。CL=(CL1×CL2)/(CL1+CL2)+Cstray，Cstray 包含 PCB 寄生和 MCU 引脚电容(~3-7pF)。CL 偏差过大致起振失败或频率偏移。"
+          }
+        ],
+        "U1": [
+          {
+            "rule": "悬空引脚检查",
+            "severity": "warning",
+            "desc": "主控 U1 的 RST/BOOT/EN 等控制引脚可能悬空",
+            "suggestion": "RST 上拉(10kΩ)，BOOT 明确上下拉。悬空=不可预知行为。",
+            "theory": "CMOS 输入阻抗>10MΩ，悬空时引脚电压由漏电流和 EMI 决定，处于亚稳态——可能引起振荡、功耗增大、闩锁效应(latch-up)。"
+          }
+        ]
+      },
+      "elapsed_seconds": 0.0,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.171935"
+    }
+  ],
+  "verify_results": [],
+  "ma_results": [],
+  "defect_results": [
+    {
+      "design": "STM32_Minimal",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 4 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查"
+      ],
+      "missed_rules": [
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "复位电路检查",
+        "晶振负载电容检查",
+        "PDN 目标阻抗分析",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "元件高度分区检查",
+        "电阻功率降额检查",
+        "参数范围检查",
+        "位号连续性检查",
+        "调试接口检查",
+        "电感饱和电流检查",
+        "连接器边沿布局检查",
+        "铜皮连接检查",
+        "晶振频率匹配",
+        "地平面连续性检查",
+        "ESD 保护检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查",
+        "光学定位点检查"
+      ],
+      "total_violations": 32,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.176186"
+    },
+    {
+      "design": "STM32_Minimal",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "去耦电容距离检查",
+        "复位电路检查",
+        "晶振负载电容检查",
+        "PDN 目标阻抗分析",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "元件高度分区检查",
+        "电阻功率降额检查",
+        "调试接口检查",
+        "电感饱和电流检查",
+        "连接器边沿布局检查",
+        "铜皮连接检查",
+        "晶振频率匹配",
+        "地平面连续性检查",
+        "ESD 保护检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查",
+        "电容温度系数检查",
+        "光学定位点检查"
+      ],
+      "total_violations": 32,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.179157"
+    },
+    {
+      "design": "STM32_Minimal",
+      "defect_id": "no_crystal_load_caps",
+      "defect_name": "删除晶振负载电容",
+      "defect_description": "删除晶振旁边的负载电容",
+      "expected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "去耦电容距离检查",
+        "电阻功率降额检查",
+        "电容温度系数检查",
+        "参数范围检查",
+        "铜皮连接检查",
+        "地平面连续性检查",
+        "PDN 目标阻抗分析",
+        "调试接口检查",
+        "ESD 保护检查",
+        "光学定位点检查",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查",
+        "元件高度分区检查",
+        "电感饱和电流检查",
+        "连接器边沿布局检查"
+      ],
+      "total_violations": 24,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.182034"
+    },
+    {
+      "design": "STM32_Minimal",
+      "defect_id": "no_bulk_caps",
+      "defect_name": "删除大容量滤波电容",
+      "defect_description": "删除 3 个大容量电容",
+      "expected_rules": [
+        "电源滤波检查",
+        "PDN 目标阻抗分析"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "PDN 目标阻抗分析"
+      ],
+      "missed_rules": [
+        "电源滤波检查"
+      ],
+      "extra_violations": [
+        "去耦电容距离检查",
+        "晶振负载电容检查",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "元件高度分区检查",
+        "电阻功率降额检查",
+        "参数范围检查",
+        "去耦电容检查",
+        "位号连续性检查",
+        "调试接口检查",
+        "电感饱和电流检查",
+        "连接器边沿布局检查",
+        "铜皮连接检查",
+        "晶振频率匹配",
+        "地平面连续性检查",
+        "ESD 保护检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查",
+        "光学定位点检查"
+      ],
+      "total_violations": 35,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.184569"
+    },
+    {
+      "design": "STM32_Minimal",
+      "defect_id": "no_esd_diodes",
+      "defect_name": "删除 TVS/ESD 保护二极管",
+      "defect_description": "删除 2 个保护二极管",
+      "expected_rules": [
+        "ESD 保护检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "ESD 保护检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "去耦电容距离检查",
+        "晶振负载电容检查",
+        "PDN 目标阻抗分析",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "元件高度分区检查",
+        "电阻功率降额检查",
+        "参数范围检查",
+        "调试接口检查",
+        "电感饱和电流检查",
+        "连接器边沿布局检查",
+        "铜皮连接检查",
+        "晶振频率匹配",
+        "地平面连续性检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查",
+        "电容温度系数检查",
+        "光学定位点检查"
+      ],
+      "total_violations": 26,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.187288"
+    },
+    {
+      "design": "STM32_Minimal",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容耐压降额检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "电容耐压降额检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "去耦电容距离检查",
+        "晶振负载电容检查",
+        "PDN 目标阻抗分析",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "元件高度分区检查",
+        "电阻功率降额检查",
+        "参数范围检查",
+        "调试接口检查",
+        "电感饱和电流检查",
+        "连接器边沿布局检查",
+        "铜皮连接检查",
+        "晶振频率匹配",
+        "地平面连续性检查",
+        "ESD 保护检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查",
+        "电容温度系数检查",
+        "光学定位点检查"
+      ],
+      "total_violations": 29,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.190776"
+    },
+    {
+      "design": "STM32_Minimal",
+      "defect_id": "wrong_ldo_voltage",
+      "defect_name": "LDO 输出电压错误",
+      "defect_description": "将 3.3V LDO 改为 5.0V (可能导致 MCU 烧毁)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "去耦电容距离检查",
+        "晶振负载电容检查",
+        "PDN 目标阻抗分析",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "元件高度分区检查",
+        "电阻功率降额检查",
+        "调试接口检查",
+        "电感饱和电流检查",
+        "连接器边沿布局检查",
+        "铜皮连接检查",
+        "晶振频率匹配",
+        "地平面连续性检查",
+        "ESD 保护检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查",
+        "电容温度系数检查",
+        "光学定位点检查"
+      ],
+      "total_violations": 26,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.193653"
+    },
+    {
+      "design": "STM32_Minimal",
+      "defect_id": "no_opamp_feedback",
+      "defect_name": "删除运放反馈电阻",
+      "defect_description": "删除运放的反馈网络电阻",
+      "expected_rules": [
+        "运放反馈网络检查"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "运放反馈网络检查"
+      ],
+      "extra_violations": [
+        "去耦电容距离检查",
+        "晶振负载电容检查",
+        "PDN 目标阻抗分析",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "元件高度分区检查",
+        "电阻功率降额检查",
+        "参数范围检查",
+        "调试接口检查",
+        "电感饱和电流检查",
+        "连接器边沿布局检查",
+        "铜皮连接检查",
+        "晶振频率匹配",
+        "地平面连续性检查",
+        "ESD 保护检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查",
+        "电容温度系数检查",
+        "光学定位点检查"
+      ],
+      "total_violations": 26,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.196660"
+    },
+    {
+      "design": "Power_Supply",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 2 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查"
+      ],
+      "missed_rules": [
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "热焊盘检查",
+        "电源滤波检查",
+        "开关电源布局检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "ESD 保护检查",
+        "极性元件方向检查",
+        "元件高度分区检查",
+        "电感饱和电流检查",
+        "封装一致性检查"
+      ],
+      "total_violations": 22,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.199867"
+    },
+    {
+      "design": "Power_Supply",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "热焊盘检查",
+        "开关电源布局检查",
+        "电容温度系数检查",
+        "PDN 目标阻抗分析",
+        "ESD 保护检查",
+        "极性元件方向检查",
+        "元件高度分区检查",
+        "电感饱和电流检查",
+        "封装一致性检查"
+      ],
+      "total_violations": 20,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.201897"
+    },
+    {
+      "design": "Power_Supply",
+      "defect_id": "no_bulk_caps",
+      "defect_name": "删除大容量滤波电容",
+      "defect_description": "删除 4 个大容量电容",
+      "expected_rules": [
+        "电源滤波检查",
+        "PDN 目标阻抗分析"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "电源滤波检查",
+        "PDN 目标阻抗分析"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "热焊盘检查",
+        "开关电源布局检查",
+        "参数范围检查",
+        "去耦电容检查",
+        "ESD 保护检查",
+        "元件高度分区检查",
+        "电感饱和电流检查"
+      ],
+      "total_violations": 19,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.203494"
+    },
+    {
+      "design": "Power_Supply",
+      "defect_id": "no_esd_diodes",
+      "defect_name": "删除 TVS/ESD 保护二极管",
+      "defect_description": "删除 2 个保护二极管",
+      "expected_rules": [
+        "ESD 保护检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "ESD 保护检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "热焊盘检查",
+        "开关电源布局检查",
+        "电容温度系数检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "元件高度分区检查",
+        "电感饱和电流检查",
+        "封装一致性检查"
+      ],
+      "total_violations": 16,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.205418"
+    },
+    {
+      "design": "Power_Supply",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容耐压降额检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "电容耐压降额检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "热焊盘检查",
+        "电源滤波检查",
+        "开关电源布局检查",
+        "电容温度系数检查",
+        "参数范围检查",
+        "去耦电容检查",
+        "PDN 目标阻抗分析",
+        "ESD 保护检查",
+        "极性元件方向检查",
+        "元件高度分区检查",
+        "电感饱和电流检查",
+        "封装一致性检查"
+      ],
+      "total_violations": 28,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.207526"
+    },
+    {
+      "design": "Power_Supply",
+      "defect_id": "wrong_ldo_voltage",
+      "defect_name": "LDO 输出电压错误",
+      "defect_description": "将 3.3V LDO 改为 5.0V (可能导致 MCU 烧毁)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "热焊盘检查",
+        "开关电源布局检查",
+        "电容温度系数检查",
+        "PDN 目标阻抗分析",
+        "ESD 保护检查",
+        "极性元件方向检查",
+        "元件高度分区检查",
+        "电感饱和电流检查",
+        "封装一致性检查"
+      ],
+      "total_violations": 17,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.209551"
+    },
+    {
+      "design": "Power_Supply",
+      "defect_id": "inductor_saturation",
+      "defect_name": "电感饱和电流不足",
+      "defect_description": "将功率电感值改为远小于要求的数值",
+      "expected_rules": [
+        "电感饱和电流检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "电感饱和电流检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "热焊盘检查",
+        "开关电源布局检查",
+        "电容温度系数检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "ESD 保护检查",
+        "极性元件方向检查",
+        "元件高度分区检查",
+        "封装一致性检查"
+      ],
+      "total_violations": 16,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.211528"
+    },
+    {
+      "design": "Bad_Design",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 2 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查"
+      ],
+      "missed_rules": [
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "多电源引脚去耦检查",
+        "复位电路检查",
+        "参数范围检查",
+        "铜皮连接检查",
+        "晶振频率匹配",
+        "晶振负载电容检查",
+        "地平面连续性检查",
+        "PDN 目标阻抗分析",
+        "ESD 保护检查",
+        "光学定位点检查",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查"
+      ],
+      "total_violations": 25,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.215024"
+    },
+    {
+      "design": "Bad_Design",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "去耦电容距离检查",
+        "复位电路检查",
+        "铜皮连接检查",
+        "晶振频率匹配",
+        "晶振负载电容检查",
+        "地平面连续性检查",
+        "PDN 目标阻抗分析",
+        "ESD 保护检查",
+        "光学定位点检查",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查"
+      ],
+      "total_violations": 22,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.216945"
+    },
+    {
+      "design": "Bad_Design",
+      "defect_id": "no_crystal_load_caps",
+      "defect_name": "删除晶振负载电容",
+      "defect_description": "删除晶振旁边的负载电容",
+      "expected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "去耦电容距离检查",
+        "多电源引脚去耦检查",
+        "复位电路检查",
+        "参数范围检查",
+        "去耦电容检查",
+        "铜皮连接检查",
+        "地平面连续性检查",
+        "PDN 目标阻抗分析",
+        "ESD 保护检查",
+        "光学定位点检查",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查"
+      ],
+      "total_violations": 25,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.218569"
+    },
+    {
+      "design": "Bad_Design",
+      "defect_id": "no_bulk_caps",
+      "defect_name": "删除大容量滤波电容",
+      "defect_description": "删除 1 个大容量电容",
+      "expected_rules": [
+        "电源滤波检查",
+        "PDN 目标阻抗分析"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "PDN 目标阻抗分析"
+      ],
+      "missed_rules": [
+        "电源滤波检查"
+      ],
+      "extra_violations": [
+        "去耦电容距离检查",
+        "多电源引脚去耦检查",
+        "参数范围检查",
+        "铜皮连接检查",
+        "去耦电容检查",
+        "晶振频率匹配",
+        "晶振负载电容检查",
+        "地平面连续性检查",
+        "ESD 保护检查",
+        "光学定位点检查",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查"
+      ],
+      "total_violations": 26,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.220390"
+    },
+    {
+      "design": "Bad_Design",
+      "defect_id": "no_esd_diodes",
+      "defect_name": "删除 TVS/ESD 保护二极管",
+      "defect_description": "删除 2 个保护二极管",
+      "expected_rules": [
+        "ESD 保护检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "ESD 保护检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "去耦电容距离检查",
+        "参数范围检查",
+        "铜皮连接检查",
+        "晶振频率匹配",
+        "晶振负载电容检查",
+        "地平面连续性检查",
+        "PDN 目标阻抗分析",
+        "光学定位点检查",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查"
+      ],
+      "total_violations": 18,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.222179"
+    },
+    {
+      "design": "Bad_Design",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容耐压降额检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "电容耐压降额检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "去耦电容距离检查",
+        "参数范围检查",
+        "铜皮连接检查",
+        "去耦电容检查",
+        "晶振频率匹配",
+        "晶振负载电容检查",
+        "地平面连续性检查",
+        "PDN 目标阻抗分析",
+        "ESD 保护检查",
+        "光学定位点检查",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查"
+      ],
+      "total_violations": 28,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.224108"
+    },
+    {
+      "design": "Bad_Design",
+      "defect_id": "wrong_ldo_voltage",
+      "defect_name": "LDO 输出电压错误",
+      "defect_description": "将 3.3V LDO 改为 5.0V (可能导致 MCU 烧毁)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "去耦电容距离检查",
+        "铜皮连接检查",
+        "晶振频率匹配",
+        "晶振负载电容检查",
+        "地平面连续性检查",
+        "PDN 目标阻抗分析",
+        "ESD 保护检查",
+        "光学定位点检查",
+        "时钟信号包地检查",
+        "高速信号参考平面检查",
+        "悬空引脚检查",
+        "信号线宽度检查",
+        "测试点覆盖检查"
+      ],
+      "total_violations": 18,
+      "error": null,
+      "timestamp": "2026-07-12T23:51:51.226000"
+    }
+  ],
+  "defect_detection_rate": 95.45454545454545,
+  "defect_total_detected": 21,
+  "defect_total_missed": 1
+}

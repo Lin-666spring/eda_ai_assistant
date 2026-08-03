@@ -44,8 +44,9 @@ class BOMParser:
         "reference":  ["位号", "Designator", "Reference", "Ref", "编号"],
         "value":      ["参数", "Value", "阻值/容值", "规格"],
         "package":    ["封装", "Package", "Footprint", "封装类型"],
-        "part_number":["产品编号", "Part Number", "型号", "MPN", "LCSC Part #", "商品编号"],
-        "description":["描述", "Description", "说明"],
+        "part_number":["产品编号", "Part Number", "型号", "MPN", "LCSC Part #", "商品编号",
+                       "Manufacturer Part", "Supplier Part"],
+        "description":["描述", "Description", "说明", "Comment"],
         "quantity":   ["数量", "Quantity", "Qty"],
         "manufacturer":["制造商", "Manufacturer", "品牌"],
     }
