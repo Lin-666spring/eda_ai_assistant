@@ -251,8 +251,34 @@ class WatcherConstants:
     )
 
 
+# ══════════════════ 闭环收敛常量 ══════════════════
+
+@dataclass(frozen=True)
+class ConvergenceConfig:
+    """迭代收敛引擎常量 — 控制 ConvergenceMonitor 的终止判定阈值。
+
+    所有阈值集中于此便于实验调参与论文消融，避免散落在策略类中。
+    """
+
+    # 迭代轮次上限（与历史 MAX_ROUNDS=3 保持一致）
+    DEFAULT_MAX_ROUNDS: int = 3
+
+    # 发散判定：本轮阻断违规数 > 首轮阻断数 × 该系数 → DIVERGED
+    DIVERGENCE_FACTOR: float = 1.5
+
+    # 发散判定：连续递增的阻断数轮数阈值（实际比较 streak+1 个数据点）
+    DIVERGENCE_STREAK: int = 2
+
+    # 震荡检测周期（A→B→A 模式，比较第 k 轮与第 k-period 轮指纹）
+    OSCILLATION_PERIOD: int = 2
+
+    # 文本指纹哈希长度（sha1 前缀，平衡碰撞率与可读性）
+    FINGERPRINT_HASH_LEN: int = 12
+
+
 # ══════════════════ 单例实例 ══════════════════
 
 PCB = PCBConstants()
 SUPPLY = SupplyConstants()
 WATCHER = WatcherConstants()
+CONVERGENCE = ConvergenceConfig()

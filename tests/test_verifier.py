@@ -237,3 +237,143 @@ class TestVerificationEngineDiff:
         assert not report.accepted
         assert any("NEW_ISSUE" == i.rule_name
                    for r in report.rounds for i in r.issues)
+
+
+# ═══════════════════════════════════════════════════════════════
+# Convergence integration (engine-level state machine)
+# ═══════════════════════════════════════════════════════════════
+
+from src.core.convergence import ConvergenceStatus  # noqa: E402
+
+
+class TestVerificationEngineConvergence:
+    """Engine-level coverage of converged / stagnated / oscillated / diverged paths."""
+
+    @staticmethod
+    def _constant_issue_engine(llm_response, rounds_supported=6):
+        """Engine with a persistent blocking violation and a constant LLM echo."""
+        call_count = [0]
+
+        def check():
+            call_count[0] += 1
+            return [FakeViolation("ALWAYS_FAIL", "persistent")]
+
+        def llm(_suggestion, _feedback):
+            return llm_response
+
+        return VerificationEngine(
+            check_callback=check, llm_callback=llm, max_rounds=rounds_supported
+        )
+
+    def test_stagnation_detected_before_max_rounds(self):
+        """LLM返回与上一轮相同建议 → STAGNATED，提前在 3 轮终止（max=5）。"""
+        engine = self._constant_issue_engine(llm_response="unchanged fix", rounds_supported=5)
+        report = engine.verify("Bad advice")
+        # round1=orig, round2="unchanged fix"(fp differs from orig), round3="unchanged fix"(=round2 fp)
+        assert report.final_status == VerificationStatus.FAILED
+        assert report.round_count == 3
+        assert report.convergence is not None
+        assert report.convergence.status == ConvergenceStatus.STAGNATED
+        # 第三轮因停滞中断，不再调用 LLM → 共 2 次修正调用
+        assert report.convergence.total_llm_calls == 2
+
+    def test_max_rounds_when_suggestions_all_differ(self):
+        """每轮建议指纹都不同且不收敛 → MAX_ROUNDS。"""
+        engine = self._constant_issue_engine(llm_response="cycle-0", rounds_supported=2)
+        # max=2, round1 orig → fix "cycle-0", round2 "cycle-0" (same as round1 fix)
+        # round2 fp==round1 fix fp → 停滞在 round2 → 但仍是 STAGNATED 而非 MAX_ROUNDS
+        # 为得到 MAX_ROUNDS 必须每轮建议都不同；用递增返回值构造
+        state = [0]
+
+        def check():
+            return [FakeViolation("ALWAYS_FAIL", "x")]
+
+        def llm(_s, _f):
+            state[0] += 1
+            return f"fix-v{state[0]}"
+
+        engine = VerificationEngine(check_callback=check, llm_callback=llm, max_rounds=3)
+        report = engine.verify("origin-suggestion")
+        assert report.convergence is not None
+        assert report.convergence.status == ConvergenceStatus.MAX_ROUNDS
+        assert report.round_count == 3
+
+    def test_oscillation_detected(self):
+        """LLM在两个建议间来回摆动 → OSCILLATING。"""
+        calls = [0]
+
+        def check():
+            return [FakeViolation("ALWAYS_FAIL", "x")]
+
+        def llm(_s, _f):
+            calls[0] += 1
+            return "A" if calls[0] % 2 == 1 else "B"
+
+        engine = VerificationEngine(check_callback=check, llm_callback=llm, max_rounds=6)
+        report = engine.verify("origin")
+        # founder A→B→A: round1 orig; round2 A; round3 B; round4 A (=round2) → 周期2 振荡
+        assert report.convergence is not None
+        assert report.convergence.status == ConvergenceStatus.OSCILLATING
+
+    def test_divergence_detected(self):
+        """阻断违规数严格递增 → DIVERGED。"""
+        checks = [0]
+
+        def check():
+            checks[0] += 1
+            return [FakeViolation(f"R{checks[0]}", f"v{checks[0]}") for _ in range(checks[0])]
+
+        engine = VerificationEngine(check_callback=check, llm_callback=lambda s, f: s + " v", max_rounds=5)
+        report = engine.verify("start")
+        assert report.convergence is not None
+        assert report.convergence.status == ConvergenceStatus.DIVERGED
+
+    def test_converged_result_has_metrics(self):
+        """收敛报告包含收敛轮次与缩减曲线。"""
+        engine = _make_engine(
+            issues_per_round=[[FakeViolation("A", "x", "error")], []],
+            llm_response="fixed",
+        )
+        report = engine.verify("Bad suggestion")
+        assert report.accepted
+        assert report.convergence is not None
+        assert report.convergence.status == ConvergenceStatus.CONVERGED
+        assert report.convergence.converged_round == 2
+        assert report.convergence.issue_reduction_curve == (1, 0)
+        assert report.convergence.correction_efficiency == 1.0
+
+    def test_degenerate_no_callback_has_no_convergence(self):
+        """无 check callback 的退化路径：convergence 保持 None（未启用监控）。"""
+        engine = VerificationEngine()
+        report = engine.verify("Some suggestion")
+        assert report.final_status == VerificationStatus.UNCERTAIN
+        assert report.convergence is None
+
+    def test_report_to_dict_includes_convergence_block(self):
+        engine = _make_engine(issues_per_round=[[]])
+        d = engine.verify("Safe suggestion").to_dict()
+        assert "convergence" in d
+        assert d["convergence"]["status"] == "converged"
+
+    def test_report_to_markdown_includes_convergence_section(self):
+        engine = _make_engine(
+            issues_per_round=[[FakeViolation("A", "x", "error")], []],
+            llm_response="fixed",
+        )
+        md = engine.verify("Bad suggestion").to_markdown()
+        assert "收敛分析" in md
+        assert "收敛轮次" in md
+        assert "阻断违规曲线" in md
+
+    def test_max_rounds_configurable(self):
+        """max_rounds 可在构造时配置，独立于类默认。"""
+        engine = self._constant_issue_engine(llm_response="zzz", rounds_supported=5)
+        assert engine._max_rounds == 5
+        assert VerificationEngine.MAX_ROUNDS == 3  # 类默认不变
+
+    def test_invalid_max_rounds_raises(self):
+        try:
+            VerificationEngine(max_rounds=0)
+            assert False
+        except ValueError:
+            pass

@@ -13,9 +13,19 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Optional
+
+from src.constants import CONVERGENCE
+from src.core.convergence import (
+    ConvergenceMonitor,
+    ConvergenceResult,
+    ConvergenceStatus,
+    diff_issue_sets,
+    issue_signature,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +80,8 @@ class VerificationReport:
     final_status: VerificationStatus = VerificationStatus.UNCERTAIN
     accepted: bool = False
     summary: str = ""
+    # 收敛分析结果：启用闭环迭代时填充，退化路径（无 check callback）保持 None
+    convergence: Optional[ConvergenceResult] = None
 
     @property
     def round_count(self) -> int:
@@ -110,6 +122,7 @@ class VerificationReport:
                 }
                 for r in self.rounds
             ],
+            "convergence": self.convergence.to_dict() if self.convergence is not None else None,
         }
 
     def to_markdown(self) -> str:
@@ -147,6 +160,20 @@ class VerificationReport:
                 lines.append(f"\n修正建议: {r.corrected_suggestion[:200]}")
             lines.append("")
         lines.append(f"### 总结\n{self.summary}")
+        # 收敛分析（仅当启用闭环迭代时呈现）
+        cv = self.convergence
+        if cv is not None:
+            lines.append("")
+            lines.append("### 收敛分析")
+            lines.append(f"**收敛状态**: {cv.status.value}")
+            if cv.converged_round is not None:
+                lines.append(f"**收敛轮次**: {cv.converged_round}/{cv.max_rounds}")
+            else:
+                lines.append(f"**未收敛**（迭代 {cv.snapshot_count}/{cv.max_rounds} 轮后终止）")
+            if cv.correction_efficiency is not None:
+                lines.append(f"**修正效率**: {cv.correction_efficiency:.0%}")
+            lines.append(f"**阻断违规曲线**: {' → '.join(map(str, cv.issue_reduction_curve))}")
+            lines.append(f"**LLM 修正调用**: {cv.total_llm_calls} 次")
         return "\n".join(lines)
 
 
@@ -165,7 +192,7 @@ class VerificationEngine:
     4. 迭代直到无新违规或达到上限
     """
 
-    MAX_ROUNDS = 3  # 最大迭代轮次
+    MAX_ROUNDS = CONVERGENCE.DEFAULT_MAX_ROUNDS  # 兼容旧引用；实际轮数由实例 _max_rounds 控制
 
     # 阻断性严重度：只有 error 和 warning 会导致验证失败
     # info 级别记录在报告中但不影响 accepted 决策
@@ -175,6 +202,7 @@ class VerificationEngine:
         self,
         check_callback: Callable[[], list] | None = None,
         llm_callback: Callable[[str, str], str] | None = None,
+        max_rounds: int = CONVERGENCE.DEFAULT_MAX_ROUNDS,
     ):
         """初始化验证引擎。
 
@@ -182,9 +210,13 @@ class VerificationEngine:
             check_callback: 无参函数，运行 DRC 检查并返回 RuleViolation 列表
             llm_callback: (original_suggestion, feedback) -> corrected_suggestion
                          若为 None，则跳过 LLM 修正环节
+            max_rounds: 闭环迭代轮次上限（默认 CONVERGENCE.DEFAULT_MAX_ROUNDS=3）
         """
+        if max_rounds < 1:
+            raise ValueError(f"max_rounds must be >= 1, got {max_rounds}")
         self._check_callback = check_callback
         self._llm_callback = llm_callback
+        self._max_rounds = max_rounds
 
     def verify(
         self,
@@ -200,7 +232,7 @@ class VerificationEngine:
             baseline_violations: 建议前的违规列表（可选），用于差分对比
 
         Returns:
-            VerificationReport
+            VerificationReport（含 convergence 收敛分析，启用迭代时填充）
         """
         report = VerificationReport(
             original_suggestion=suggestion,
@@ -209,61 +241,102 @@ class VerificationEngine:
 
         # 基准线：仅当调用方显式传入时使用（避免消耗 check_callback 计数）
         baseline = baseline_violations  # None 表示不做差分对比
-
         current_suggestion = suggestion
 
-        for round_num in range(1, self.MAX_ROUNDS + 1):
+        # 退化路径：无 check callback → 直接 UNCERTAIN，不启用收敛监控
+        if not self._check_callback:
+            vr = VerificationRound(round=1, suggestion=current_suggestion,
+                                    status=VerificationStatus.UNCERTAIN)
+            report.rounds.append(vr)
+            report.final_status = VerificationStatus.UNCERTAIN
+            report.summary = self._generate_summary(report)
+            return report
+
+        monitor = ConvergenceMonitor(max_rounds=self._max_rounds)
+        prev_blocking_sigs: frozenset[str] = frozenset()
+        # 上一轮 LLM 修正的耗时，计入「产生本轮建议」的快照（首轮为原始建议，取 0）
+        pending_llm_latency_ms: float = 0.0
+
+        for round_num in range(1, self._max_rounds + 1):
             vr = VerificationRound(round=round_num, suggestion=current_suggestion)
 
-            # 运行验证
-            if self._check_callback:
-                try:
-                    violations = self._check_callback()
-                except Exception as e:
-                    logger.error(f"Verification check failed round {round_num}: {e}")
-                    vr.status = VerificationStatus.UNCERTAIN
-                    report.rounds.append(vr)
-                    break
-            else:
+            # ── DRC 检查（带计时）──
+            try:
+                t0 = time.perf_counter()
+                violations = self._check_callback()
+                drc_latency_ms = (time.perf_counter() - t0) * 1000.0
+            except Exception as e:
+                logger.error(f"Verification check failed round {round_num}: {e}")
                 vr.status = VerificationStatus.UNCERTAIN
                 report.rounds.append(vr)
+                monitor.abort()
                 break
 
-            # 分析违规
+            # ── 分析违规 ──
             issues = self._analyze_violations(violations, baseline, current_suggestion)
             vr.issues = issues
-
-            # 分离阻断性违规 (error/warning) 和 info 提示
             blocking = self._get_blocking_issues(issues)
 
-            if not blocking:
-                # 无阻断性违规 → 通过（info 级别仅记录不阻断）
+            # ── 收敛快照（仅阻断违规进入签名集合；info 不影响收敛判定）──
+            cur_blocking_sigs = frozenset(
+                issue_signature(i.rule_name, i.severity, i.location) for i in blocking
+            )
+            new_count, resolved_count = diff_issue_sets(cur_blocking_sigs, prev_blocking_sigs)
+            snapshot = ConvergenceMonitor.build_snapshot(
+                round_num=round_num,
+                suggestion=current_suggestion,
+                blocking_count=len(blocking),
+                total_issue_count=len(issues),
+                issue_signatures=cur_blocking_sigs,
+                new_issues=new_count,
+                resolved_issues=resolved_count,
+                drc_latency_ms=drc_latency_ms,
+                llm_latency_ms=pending_llm_latency_ms,
+            )
+            status = monitor.record_round(snapshot)
+            prev_blocking_sigs = cur_blocking_sigs
+
+            # ── 收敛即通过 ──
+            if status == ConvergenceStatus.CONVERGED:
                 vr.status = VerificationStatus.PASSED
                 report.rounds.append(vr)
                 report.final_status = VerificationStatus.PASSED
                 report.accepted = True
                 break
-            else:
-                vr.status = VerificationStatus.FAILED
-                # 仅用阻断性违规反馈给 LLM 修正
-                if self._llm_callback and round_num < self.MAX_ROUNDS:
-                    feedback = self._format_feedback(blocking)
-                    try:
-                        corrected = self._llm_callback(current_suggestion, feedback)
-                        vr.corrected_suggestion = corrected
-                        vr.llm_response = corrected
-                        current_suggestion = corrected
-                    except Exception as e:
-                        logger.warning(f"LLM correction failed round {round_num}: {e}")
-                        report.rounds.append(vr)
-                        break
-                else:
+
+            # ── 非收敛终态（停滞/震荡/发散/达上限）→ 记录并终止 ──
+            vr.status = VerificationStatus.FAILED
+            if status is not None:
+                report.rounds.append(vr)
+                break
+
+            # ── 仍在迭代中 → 尝试 LLM 修正 ──
+            if self._llm_callback:
+                feedback = self._format_feedback(blocking)
+                try:
+                    t0 = time.perf_counter()
+                    corrected = self._llm_callback(current_suggestion, feedback)
+                    llm_latency_ms = (time.perf_counter() - t0) * 1000.0
+                except Exception as e:
+                    logger.warning(f"LLM correction failed round {round_num}: {e}")
                     report.rounds.append(vr)
+                    monitor.abort()
                     break
+                vr.corrected_suggestion = corrected
+                vr.llm_response = corrected
+                report.rounds.append(vr)
+                monitor.note_correction()
+                # 该次修正的耗时归入下一轮快照（它产生了下一轮的建议）
+                pending_llm_latency_ms = llm_latency_ms
+                current_suggestion = corrected
+                continue
 
+            # 无 LLM 修正器 → 无法继续迭代，安全终止
             report.rounds.append(vr)
+            monitor.abort()
+            break
 
-        # 确定最终状态
+        # 确定最终状态（CONVERGED 已在循环内置位 PASSED，其余保持原有语义）
         if not report.rounds:
             report.final_status = VerificationStatus.UNCERTAIN
         elif report.final_status != VerificationStatus.PASSED:
@@ -274,6 +347,7 @@ class VerificationEngine:
                 report.final_status = VerificationStatus.FAILED
                 report.accepted = False
 
+        report.convergence = monitor.finalize()
         report.summary = self._generate_summary(report)
         return report
 
