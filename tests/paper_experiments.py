@@ -42,6 +42,13 @@ from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# 加载 .env 文件（用于 LLM_API_KEY 等环境变量）
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:
+    pass
+
 from src.core.controller import AppController
 from src.core.verifier import (
     VerificationEngine,
@@ -126,8 +133,10 @@ class VerifyResult:
     error: Optional[str] = None
     # ── 闭环前后综合评分 Δ（2026-08-03 新增，论文核心指标）──
     baseline_score: Optional[float] = None   # 原始 BOM 综合评分
-    final_score: Optional[float] = None      # 最后一轮应用建议后的综合评分
-    delta_score: Optional[float] = None      # final - baseline（正=质量提升，负=变差）
+    proposed_score: Optional[float] = None   # 建议若被采用后的评分（最后修正轮）
+    final_score: Optional[float] = None      # 实际最终评分：accepted→proposed；rejected→baseline（设计被保护）
+    delta_score: Optional[float] = None      # final - baseline（正=质量提升，负=变差，被拒绝=0）
+    risk_prevented: Optional[float] = None   # 被拒绝时避免的质量损失 = max(0, baseline - proposed)
     timestamp: str = ""
     # Phase B BOM modification metrics (v0.7.4)
     suggested_changes_count: int = 0      # LLM 建议的 BOM 变更数
@@ -137,6 +146,10 @@ class VerifyResult:
     converged: bool = False               # 是否成功消除所有新违规
     # AI Verification Map: per-component change tracking
     applied_changes: list = field(default_factory=list)  # [{ref, field, old_value, new_value}, ...]
+    # ── 变更风险预检（2026-08-04 新增，第三个 ML 模型）──
+    preflight_risk: Optional[float] = None   # 建议的预检平均风险 0-1
+    preflight_risk_max: Optional[float] = None  # 单条变更最高风险
+    preflight_flagged: bool = False          # 是否触发预检拦截（风险>阈值）
 
 
 @dataclass
@@ -499,6 +512,12 @@ def _parse_resistance(value_str: str) -> float:
 #  Default Test Suggestions
 # ═══════════════════════════════════════════════════════════════
 
+# 收敛守门阈值：综合评分下降超过此值即判定未收敛（即使无新规则类型）。
+# 2026-08-03 修复：原收敛判断只看"新规则类型"，导致"移除全部去耦电容"等
+# 危险建议被接受（去耦规则基线已触发，不产生新规则），但评分实际下降 4.1 分。
+# 评分是比规则类型更细粒度的质量信号。
+SCORE_DROP_TOLERANCE = 2.0
+
 DEFAULT_SUGGESTIONS = [
     SuggestionCase(
         text="检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
@@ -711,6 +730,46 @@ class ExperimentRunner:
         except Exception:
             return None
 
+    def _preflight_check(
+        self, changes: list, baseline_score: Optional[float],
+        context,
+    ) -> tuple[float, float, bool]:
+        """变更风险预检 — 自研 ChangeRiskPredictor（第三个 ML 模型）。
+
+        在应用变更前预测每条变更的风险。风险 > 阈值时标记预检拦截。
+
+        Returns:
+            (avg_risk, max_risk, flagged)
+        """
+        PREFLIGHT_THRESHOLD = 0.85
+        try:
+            from src.ml.change_predictor import ChangeRiskPredictor
+
+            predictor = ChangeRiskPredictor()  # 加载训练模型或启发式基线
+            bom_items = list(getattr(context, "bom_items", []) or [])
+            risks = []
+            for c in changes:
+                change = {
+                    "reference": c.reference, "field": c.field,
+                    "old_value": c.old_value, "new_value": c.new_value,
+                    "action": c.action,
+                }
+                risk, _debug = predictor.predict(
+                    change,
+                    baseline_score=baseline_score or 0.0,
+                    bom_items=bom_items,
+                )
+                risks.append(risk)
+            if not risks:
+                return 0.0, 0.0, False
+            avg_risk = sum(risks) / len(risks)
+            max_risk = max(risks)
+            flagged = max_risk >= PREFLIGHT_THRESHOLD
+            return round(avg_risk, 3), round(max_risk, 3), flagged
+        except Exception as e:
+            self._log(f"    ⚠️ 预检失败: {e}")
+            return 0.0, 0.0, False
+
     def _run_closed_loop(
         self, design: DesignSpec, provider: ProviderConfig, suggestion: SuggestionCase
     ) -> VerifyResult:
@@ -774,6 +833,15 @@ class ExperimentRunner:
                     bom_items=original_bom,
                 )
 
+            # ── Step 2c: 变更风险预检（自研 ChangeRiskPredictor）──
+            # 在应用变更前预测每条变更的风险，高风险建议提前标记
+            preflight_risk, preflight_max, preflight_flagged = self._preflight_check(
+                valid_changes, baseline_score, ctrl.context
+            )
+            if preflight_flagged:
+                self._log(f"    🚨 预检拦截: 建议风险={preflight_risk:.2f} "
+                          f"(max={preflight_max:.2f}) [{design.name}/{suggestion.category}]")
+
             # ── Step 3: Iterative correction loop (max 3 rounds) ──
             MAX_ROUNDS = 3
             current_changes = valid_changes
@@ -805,6 +873,7 @@ class ExperimentRunner:
                     "total_violations": len(modified_violations),
                     "new_violations": len(new_violations),
                     "modified_score": modified_score,  # 应用后综合评分（Δ 计算用）
+                    "score_drop": round(baseline_score - modified_score, 1) if baseline_score is not None else None,
                     "new_violations_list": [
                         {"rule": v.rule_name, "severity": sev(v), "desc": v.description}
                         for v in new_violations
@@ -812,9 +881,18 @@ class ExperimentRunner:
                 }
                 all_rounds.append(round_data)
 
-                if not new_violations:
+                # ── 收敛判断：无新规则类型 且 评分未显著下降（评分守门）──
+                score_drop = baseline_score - modified_score if baseline_score is not None else 0.0
+                if not new_violations and score_drop <= SCORE_DROP_TOLERANCE:
                     converged = True
                     break
+
+                if round_num >= MAX_ROUNDS:
+                    break
+
+                # 评分下降但无新规则：把评分下降也作为修正反馈（2026-08-03 修复）
+                if score_drop > SCORE_DROP_TOLERANCE:
+                    self._log(f"    ⚠️ 评分下降 {score_drop:.1f} 分（无新规则类型但质量劣化）→ 进入修正")
 
                 if round_num >= MAX_ROUNDS:
                     break
@@ -830,9 +908,10 @@ class ExperimentRunner:
                     ensure_ascii=False, indent=2
                 )
                 correction_prompt = (
-                    f"你之前建议的BOM修改引入了{len(new_violations)}个新的DRC违规:\n\n"
+                    f"你之前建议的BOM修改引入了{len(new_violations)}个新的DRC违规"
+                    f"{'，且综合评分下降 %.1f 分' % (score_drop) if score_drop > SCORE_DROP_TOLERANCE else ''}:\n\n"
                     f"{violation_desc}\n\n"
-                    f"请修正BOM变更JSON，消除这些违规。保持无问题的变更不变。\n\n"
+                    f"请修正BOM变更JSON，消除这些违规并避免评分下降。保持无问题的变更不变。\n\n"
                     f"当前BOM变更:\n{current_json}\n\n"
                     f"只输出修正后的JSON，格式: {{\"changes\": [...]}}"
                 )
@@ -880,11 +959,22 @@ class ExperimentRunner:
 
             per_round = [r.get("new_violations", 0) for r in all_rounds]
 
-            # ── 闭环前后综合评分 Δ ──
-            final_score = last_round.get("modified_score", baseline_score)
+            # ── 闭环前后综合评分 Δ（2026-08-03 语义修正）──
+            # proposed_score: 建议若被采用后的评分（最后一轮修正后）
+            # final_score: 实际最终评分 —— accepted → 设计进入修正后状态；rejected → 设计被保护保持基线
+            # delta_score: final - baseline；被拒绝时 = 0（避免把"系统拦截了坏建议"误读成"系统把板子改差了"）
+            # risk_prevented: 被拒绝时避免的质量损失 = max(0, baseline - proposed)（DRC 守门价值）
+            proposed_score = last_round.get("modified_score", baseline_score)
+            if converged:
+                final_score = proposed_score
+            else:
+                final_score = baseline_score
             delta_score = None
             if baseline_score is not None and final_score is not None:
                 delta_score = round(final_score - baseline_score, 1)
+            risk_prevented = 0.0
+            if not converged and baseline_score is not None and proposed_score is not None:
+                risk_prevented = round(max(0.0, baseline_score - proposed_score), 1)
 
             return VerifyResult(
                 design=design.name,
@@ -904,8 +994,10 @@ class ExperimentRunner:
                 hallucination_elimination=hall_elim,
                 per_round_blocking=per_round,
                 baseline_score=baseline_score,
+                proposed_score=proposed_score,
                 final_score=final_score,
                 delta_score=delta_score,
+                risk_prevented=risk_prevented,
                 raw_report={"rounds": all_rounds},
                 elapsed_seconds=round(time.time() - t0, 2),
                 timestamp=datetime.now().isoformat(),
@@ -920,6 +1012,9 @@ class ExperimentRunner:
                      "action": c.action}
                     for c in current_changes
                 ],
+                preflight_risk=preflight_risk,
+                preflight_risk_max=preflight_max,
+                preflight_flagged=preflight_flagged,
             )
 
         except Exception as e:
@@ -975,8 +1070,10 @@ class ExperimentRunner:
             hallucination_elimination=None,
             per_round_blocking=[0],
             baseline_score=baseline_score,
+            proposed_score=baseline_score,  # 无 BOM 变更 → 建议前后评分一致
             final_score=baseline_score,  # 无 BOM 变更 → 评分不变
             delta_score=0.0,
+            risk_prevented=0.0,
             raw_report={
                 "no_bom_change": True,
                 "baseline_violations": baseline_count,
@@ -1598,8 +1695,14 @@ def main():
         for path_str in args.designs.split(","):
             p = Path(path_str.strip())
             if p.is_dir():
-                for bom_file in list(p.rglob("*.csv")) + list(p.rglob("*.xlsx")):
-                    name = bom_file.stem
+                # 只匹配 BOM 文件（文件名含 "BOM"），避免 PickAndPlace 等被误加载
+                bom_files = [f for f in p.rglob("*.xlsx") if "BOM" in f.name.upper()]
+                if not bom_files:
+                    bom_files = [f for f in p.rglob("*.csv") if "BOM" in f.name.upper()]
+                for bom_file in bom_files:
+                    # 用父目录名作为设计名，更干净
+                    parent_name = bom_file.parent.name
+                    name = parent_name if parent_name else bom_file.stem
                     runner.add_design(DesignSpec(
                         name=name, bom_path=bom_file,
                         description=f"外部设计: {name}",

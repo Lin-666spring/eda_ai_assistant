@@ -97,24 +97,29 @@ def analyze_experiments(dirpath: str):
     print("━" * 72)
     print(f"  闭环前后综合评分 Δ — {Path(dirpath).name}")
     print("━" * 72)
-    print(f"  {'设计':<20}{'建议类型':<10}{'结果':>3}{'轮次':>4}  {'基线分':>7}{'应用后':>7}{'Δ':>7}")
+    print(f"  {'设计':<20}{'建议类型':<10}{'结果':>3}{'轮次':>4}  {'基线分':>7}{'最终分':>7}{'Δ':>7}  {'避免损失':>7}")
     if not has_delta:
         print("  ⚠️ 旧格式数据（无 Δ 字段）——需重新跑 Phase B 实验。baseline 离线可算，final 需重跑。")
 
     deltas = []
+    prevented = []
     for v in verify:
         b = v.get("baseline_score")
         d = v.get("delta_score")
         f = v.get("final_score")
+        rp = v.get("risk_prevented")
         status = "✅" if v.get("accepted") else "❌"
         if b is None:
             continue
         d_str = f"{d:+.1f}" if d is not None else "  —"
         f_str = f"{f:.1f}" if f is not None else "  —"
+        rp_str = f"{rp:.1f}" if rp else "  —"
         print(f"  {v['design']:<20}{CATEGORY_LABELS.get(v.get('suggestion_category','?'),'?'):<10}"
-              f"{status:>3}{v.get('rounds', 0):>4}  {b:>7.1f}{f_str:>7}{d_str:>7}")
+              f"{status:>3}{v.get('rounds', 0):>4}  {b:>7.1f}{f_str:>7}{d_str:>7}  {rp_str:>7}")
         if d is not None:
             deltas.append(d)
+        if rp:
+            prevented.append(rp)
 
     if deltas:
         n_up = sum(1 for d in deltas if d > 0.5)
@@ -122,6 +127,9 @@ def analyze_experiments(dirpath: str):
         n_same = len(deltas) - n_up - n_down
         print(f"\n  平均 Δ: {sum(deltas)/len(deltas):+.1f}"
               f"  | 提升 {n_up} / 恶化 {n_down} / 无变化 {n_same}")
+        if prevented:
+            print(f"  🛡️ DRC 守门：{len(prevented)} 条危险建议被拦截，"
+                  f"避免综合评分损失 共 {sum(prevented):.1f} 分（平均 {sum(prevented)/len(prevented):.1f}/条）")
         by_cat: dict[str, list[float]] = {}
         for v in verify:
             if v.get("delta_score") is None:
@@ -130,10 +138,10 @@ def analyze_experiments(dirpath: str):
             by_cat.setdefault(cat, []).append(v["delta_score"])
         for cat, ds in by_cat.items():
             print(f"    {CATEGORY_LABELS.get(cat, cat):<8}: {sum(ds)/len(ds):+.1f} (n={len(ds)})")
-    return deltas
+    return {"deltas": deltas, "prevented": prevented}
 
 
-def to_markdown(baseline_rows: list[dict], deltas, out_path: str):
+def to_markdown(baseline_rows: list[dict], result, out_path: str):
     """生成论文用 markdown 表格。"""
     md = [
         "# 闭环验证评分 Δ 实验数据",
@@ -155,9 +163,11 @@ def to_markdown(baseline_rows: list[dict], deltas, out_path: str):
                 f"{r['emc']:.0f} | {r['dfm']:.0f} | {r['cost']:.0f} |"
             )
         md.append("")
+    deltas = (result or {}).get("deltas", [])
+    prevented = (result or {}).get("prevented", [])
     if deltas:
         md += [
-            "## 闭环前后 Δ（Phase B，需完整实验数据）",
+            "## 闭环前后 Δ（Phase B）",
             "",
             "| 指标 | 值 | 论文目标 |",
             "|------|-----|----------|",
@@ -166,6 +176,20 @@ def to_markdown(baseline_rows: list[dict], deltas, out_path: str):
             f"| 恶化建议数 | {sum(1 for d in deltas if d < -0.5)} | 少（被 DRC 拦截） |",
             "",
         ]
+        if prevented:
+            md += [
+                "## DRC 守门价值（risk_prevented）",
+                "",
+                "> 被拒绝的危险建议本会造成评分下降，DRC 拦截后设计保持基线（Δ=0）。",
+                "> risk_prevented = 被避免的质量损失。",
+                "",
+                "| 指标 | 值 |",
+                "|------|-----|",
+                f"| 拦截危险建议数 | {len(prevented)} |",
+                f"| 避免质量损失总计 | {sum(prevented):.1f} 分 |",
+                f"| 平均每次拦截避免 | {sum(prevented)/len(prevented):.1f} 分 |",
+                "",
+            ]
     else:
         md += ["## 闭环前后 Δ（Phase B）", "", "> 需重新运行 Phase B 实验后生成（含 baseline/final/delta_score 字段）。", ""]
     with open(out_path, "w", encoding="utf-8") as f:

@@ -1,0 +1,442 @@
+[
+  {
+    "text": "帮我评估一下PCB设计质量",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "查一下光耦的规格书",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "电源纹波一般要求多少？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "帮我看看这张原理图",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "概览",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "检查位号有没有冲突",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "生成一个检查间距的脚本",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "看看当前打开了什么文件",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "把成本高的元件都标出来",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "看看这个3D图",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "按照参数归类物料",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "常用的PCB板材有哪些？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "从截图分析一下PCB的问题",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "帮我检查BOM的健康状况",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "生成144脚芯片的去耦电容规则",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "查一下TO-220封装的功率能到多少",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "铜厚一般选多少？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "分析一下PCB的信号完整性",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "切换主题",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "这几个元件哪家有现货？",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "生成PCB设计报告",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "查看系统信息",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "看看有什么功能",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "列出所有可用的操作",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "PDN阻抗达标了吗？",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "查一下继电器的规格书",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "看看有什么功能",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "开发板有没有什么问题？",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "看看这个3D图",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "导出所有违规的汇总",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "信号完整性是个什么概念？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "列出所有可用的操作",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "这块板子的电源完整性怎么样？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "这个继电器的参数是什么？",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "什么是去耦电容？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "生成一份设计评审报告",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "这个原理图截图帮我看看",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "帮我看看这块板的3D渲染图",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "查一下这个料的工作温度范围",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "帮我跑一下所有DRC规则",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "每个IC都有去耦电容吗？",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "导出BOM到CSV",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "帮我生成一个检查脚本",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "帮我查一下这个BOM的元件数量",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "帮我找更便宜的替代料",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "BOM合并",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "生成一个检查过孔数量的脚本",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "这个原理图截图帮我看看",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "PDN阻抗达标了吗？",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "汇总元件类型",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "导出物料清单",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "写一段代码来验证信号线间距",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "做一个元件分类统计",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "找一下封装兼容的替代料",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "查询i.MX RT的规格参数",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "筛选出所有SOT-23封装的按键",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "这个布线方案合理吗？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "帮我生成一个检查脚本",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "这个电阻太贵了，有没有便宜的？",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "这块板的电源设计好不好？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "看看我的PCB过EMC有没有问题",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "看看这个频谱图",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "0603封装的电阻功率一般是多少？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "帮我生成DCR检查代码",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "这几个元件哪家有现货？",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "显示帮助",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "生成自动化BOM校验脚本",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "这个层叠方案可以吗？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "这块板的层叠结构有问题吗？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "写一段代码来验证热焊盘",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "分析一下走线的载流能力",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "查一下这个料的价格",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "看看有没有信号串扰的问题",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "看看这个3D图",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "这个电感的工作频率是多少？",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "帮我搜一下三极管的替代型号",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "这几个元件哪家有现货？",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "汇总信息",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "检查模拟区域的过孔数量",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "整理物料清单",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "生成PCB的检测报告",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "PCB设计中有哪些常见问题？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "看看有没有间距违规",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "筛选出所有DFN-10封装的排针",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "看看这个元件有没有RoHS认证",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "给我一个元件统计摘要",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "BOM中有没有采购风险的元件？",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "写一段代码计算走线载流量",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "帮我看看BOM有没有漏掉什么元件",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "帮我看看这张原理图",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "帮我分析BOM中的元件类型分布",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "把分析结果导出",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "PCB走线拐直角有什么不好？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "电路板有没有什么问题？",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "看看这个元件有没有RoHS认证",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "导出BOM到CSV",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "导出所有违规的汇总",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "STM32和GD32有什么区别？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "帮我写个自动化测试",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "分析这个PCB截图中的问题",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "PCB的电源网络能承载多大电流？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "这些料的生命周期如何？",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "这个布线方案合理吗？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "校验BOM中的封装型号是否匹配",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "帮我查一下这个BOM的元件数量",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "LQFP-48封装的尺寸是多少？",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "如何降低EMI干扰？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "检查去耦电容的晶振电路",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "这个设计有什么隐患？",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "什么是去耦电容？",
+    "intent": "TEXT_CHAT"
+  }
+]

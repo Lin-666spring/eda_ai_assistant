@@ -32,6 +32,20 @@ def mock_llm(monkeypatch):
     return mock_chat
 
 
+@pytest.fixture
+def mock_llm_removes_caps(monkeypatch):
+    """Mock LLM 提出危险建议：移除所有 100nF 去耦电容（评分下降，无新规则）。"""
+
+    def mock_chat(self, prompt, *args, **kwargs):
+        if "修正" in prompt or "引入" in prompt:
+            return '{"changes": []}'
+        # 移除去耦电容（通过把 value 设为空实现）
+        return '{"changes": [{"reference": "C1", "field": "value", "old_value": "100nF", "new_value": ""}, {"reference": "C2", "field": "value", "old_value": "100nF", "new_value": ""}]}'
+
+    monkeypatch.setattr(LLMClient, "chat", mock_chat)
+    return mock_chat
+
+
 def _runner(tmp_path) -> pe.ExperimentRunner:
     return pe.ExperimentRunner(output_dir=tmp_path / "run")
 
@@ -56,6 +70,8 @@ class TestClosedLoopDelta:
         assert r.baseline_score == pytest.approx(manual)
         assert r.final_score == pytest.approx(manual)
         assert r.delta_score == 0.0
+        assert r.proposed_score == pytest.approx(manual)
+        assert r.risk_prevented == 0.0
         assert r.applied_changes == []
 
     def test_closed_loop_delta_filled(self, tmp_path, mock_llm):
@@ -68,8 +84,28 @@ class TestClosedLoopDelta:
         assert r.baseline_score is not None
         assert r.final_score is not None
         assert r.delta_score is not None
+        assert r.proposed_score is not None
+        assert r.risk_prevented is not None
         assert r.applied_changes, "应记录应用的 BOM 变更"
         assert r.applied_changes[0]["reference"] == "C1"
+
+    def test_score_guard_rejects_degradation(self, tmp_path, mock_llm_removes_caps):
+        """评分守门：移除去耦电容导致评分下降 → 判定未收敛，final=baseline，risk_prevented>0。
+
+        2026-08-03 修复的回归测试：原收敛判断只看"新规则类型"，去耦规则基线已触发
+        故不产生新规则，危险建议被误判 accepted。修复后按评分下降拦截。
+        """
+        runner = _runner(tmp_path)
+        design = _power_supply()
+        provider = SimpleNamespace(name="deepseek", api_key="sk-test", base_url="", model="test")
+        suggestion = pe.SuggestionCase(category="dangerous", text="移除所有去耦电容降成本", description="t")
+        r = runner._run_closed_loop(design, provider, suggestion)
+        assert r.baseline_score is not None
+        assert r.accepted is False, "评分下降应被守门拦截（未收敛）"
+        assert r.final_score == pytest.approx(r.baseline_score), "被拒绝 → 设计保持基线"
+        assert r.delta_score == 0.0
+        assert r.risk_prevented is not None and r.risk_prevented > 0, "应记录被避免的质量损失"
+        assert r.proposed_score < r.baseline_score, "proposed 应低于 baseline（危险建议本会降低评分）"
 
     def test_analysis_script_baseline(self, capsys):
         """paper_delta_scores.py --designs 模式对 4 块真实板输出基线评分。"""

@@ -33,9 +33,57 @@ class RuleViolation:
 
 
 # ═══ 元件分类辅助 ═══
+# 两层策略：
+#   ① 自研 ML 模型 (ComponentPredictor, ~600K TextCNN, 12 细类 → 粗类映射)
+#   ② 规则回退（位号前缀 + 描述关键词），ML 不可用或低置信度时使用
+#
 # 真实立创 BOM 的描述常只是值/型号（如 "100nF"、"4kHz"），part_number 可能为空，
-# 因此元件分类必须以位号前缀为主要信号，描述关键词兜底。
-# 策略：默认"非 IC"，只有明确是 IC（U/IC/LDO 前缀或强 IC 描述词）才算，宁缺毋滥。
+# ML 模型通过多字段拼接（ref/pn/pkg/val/desc）综合判断，比纯规则更鲁棒。
+
+# ── 本地模型懒加载 ──
+
+_component_predictor = None
+_component_model_attempted = False
+_COMPONENT_MODEL_PATH = "data/component_model.pt"
+_COMPONENT_VOCAB_PATH = "data/vocab.json"
+_ML_CONFIDENCE_THRESHOLD = 0.45  # 低于此阈值回退规则
+
+
+def _init_component_model() -> bool:
+    """懒加载元件分类模型，成功返回 True。"""
+    global _component_predictor, _component_model_attempted
+    if _component_model_attempted:
+        return _component_predictor is not None
+    _component_model_attempted = True
+
+    import os
+    if not os.path.exists(_COMPONENT_MODEL_PATH):
+        logger.info("元件分类模型文件不存在，使用规则分类")
+        return False
+
+    try:
+        from src.ml.component_classifier import ComponentPredictor
+        _component_predictor = ComponentPredictor.from_path(
+            _COMPONENT_MODEL_PATH, _COMPONENT_VOCAB_PATH
+        )
+        if _component_predictor:
+            logger.info("本地元件分类模型加载成功 (~600K TextCNN)")
+            return True
+    except Exception as e:
+        logger.warning("元件分类模型加载失败: %s，回退规则", e)
+    return False
+
+
+def _classify_component_fine(item) -> tuple[str, float]:
+    """细粒度 ML 分类，返回 (12类名, 置信度)。ML 不可用时返回 ("", 0.0)。"""
+    if _init_component_model() and _component_predictor is not None:
+        try:
+            fine_type, confidence, _debug = _component_predictor.classify(item)
+            if confidence >= _ML_CONFIDENCE_THRESHOLD:
+                return fine_type, confidence
+        except Exception:
+            pass
+    return ("", 0.0)
 
 
 def _parse_capacitance(val_str: str) -> Optional[float]:
@@ -69,9 +117,42 @@ def _component_count(item) -> int:
 def _classify_component(item) -> str:
     """按位号前缀 + 描述关键词分类：'ic' | 'cap' | 'passive' | 'other'。
 
-    优先排除明确非 IC 的类别（电容/电阻/二极管/三极管/连接器/晶振/开关/机械件等），
-    避免把被动元件和连接器误判为需要去耦电容的 IC。
+    优先使用自研 ML 模型（12 细类 → 粗类映射），
+    不可用时回退到位号前缀 + 描述关键词规则。
     """
+    from src.ml.component_classifier import FINE_TO_COARSE
+
+    # ── ① ML 模型优先 ──
+    fine_type, confidence = _classify_component_fine(item)
+    if fine_type:
+        coarse = FINE_TO_COARSE.get(fine_type, "other")
+
+        # 安全网：明确非 IC 的前缀绝不接受 ML 的 ic 分类
+        # 防止 D-ESD器件、X-连接器 等被 ML 看到描述中的 "USB"/"IC" 字眼而误判
+        ref_list = item.reference_list
+        ref = ref_list[0] if ref_list else ""
+        prefix = "".join(ch for ch in ref if ch.isalpha()).upper()
+
+        _non_ic_prefixes = (
+            "C", "R", "RN", "RNC", "L", "FB",           # 电容/电阻/电感
+            "D", "LED", "Q", "T", "SCR", "TRIAC",       # 二极管/三极管/MOSFET
+            "X", "Y", "XTAL", "OSC",                     # 晶振
+            "J", "CN", "CON", "HDR", "P", "FPC", "TP",  # 连接器
+            "MP", "H", "USB", "SH", "SM",
+            "SW", "K", "S", "BUTTON", "BUZZ", "BZ",     # 开关/蜂鸣器
+            "BUZZER", "LS", "SPK", "F", "FU",            # 保险丝
+            "RL", "RELAY",                                # 继电器
+        )
+        if coarse == "ic" and prefix in _non_ic_prefixes:
+            # ML 误判，回退到规则
+            logger.debug(
+                "ML 将 %s(%s) 分类为 ic，但前缀 %s 明确非 IC，回退规则",
+                ref, getattr(item, "part_number", ""), prefix,
+            )
+        else:
+            return coarse
+
+    # ── ② 规则回退 ──
     ref_list = item.reference_list
     ref = ref_list[0] if ref_list else ""
     prefix = "".join(ch for ch in ref if ch.isalpha()).upper()

@@ -286,6 +286,10 @@ HIGH_CONFIDENCE = 0.70
 MEDIUM_CONFIDENCE = 0.40
 LOW_CONFIDENCE_FLOOR = 0.15
 
+# ── 本地模型路径（相对于项目根目录）──
+_LOCAL_MODEL_PATH = "data/intent_model.pt"
+_LOCAL_VOCAB_PATH = "data/vocab.json"
+
 
 # ══════════════════════════════════════════════════════
 #  NLUEngine
@@ -309,6 +313,10 @@ class NLUEngine:
         self._embedding_failed: bool = False
         self._api_key: Optional[str] = api_key
         self._intent_embeddings: dict[str, list[float]] = {}
+
+        # 本地模型 (TextCNN)
+        self._local_predictor = None
+        self._local_model_attempted: bool = False
 
         # 从 INTENT_DESCRIPTORS 构建内部描述符表（补充 ToolRegistry 关键词）
         self._descriptors: dict[str, IntentDescriptor] = {}
@@ -342,6 +350,47 @@ class NLUEngine:
         except ImportError:
             pass  # ToolRegistry 未就绪时使用默认关键词
 
+    # ── 本地模型 ──
+
+    def _init_local_model(self) -> bool:
+        """lazy init 本地 TextCNN 意图分类器
+
+        模型文件路径：data/intent_model.pt + data/vocab.json（相对项目根目录）
+
+        Returns:
+            True 如果本地模型加载成功
+        """
+        if self._local_predictor is not None:
+            return True
+        if self._local_model_attempted:
+            return False
+
+        self._local_model_attempted = True
+
+        try:
+            from ..ml.intent_classifier import IntentPredictor
+
+            # 确定文件路径（相对于项目根目录）
+            import os
+            project_root = os.path.join(os.path.dirname(__file__), "..", "..")
+            model_path = os.path.join(project_root, _LOCAL_MODEL_PATH)
+            vocab_path = os.path.join(project_root, _LOCAL_VOCAB_PATH)
+
+            predictor = IntentPredictor.from_path(model_path, vocab_path)
+            if predictor is not None:
+                self._local_predictor = predictor
+                logger.info("NLU local model loaded: TextCNN IntentClassifier")
+                return True
+            else:
+                logger.info("NLU local model not found, using embedding+keyword")
+                return False
+        except ImportError as e:
+            logger.info("NLU local model unavailable (torch not installed?): %s", e)
+            return False
+        except Exception as e:
+            logger.warning("NLU local model init failed: %s", e)
+            return False
+
     # ── 公开 API ──
 
     def classify(self, user_input: str) -> tuple:
@@ -362,6 +411,39 @@ class NLUEngine:
                 "scores": {}, "top_two": [],
                 "reason": "empty_input",
             })
+
+        # Step 0: 优先使用本地 TextCNN 模型（离线，< 1ms）
+        if self._init_local_model():
+            intent_name, confidence, debug = self._local_predictor.classify(user_input)
+            # 补充 keyword_score 以保持 debug 结构兼容
+            kw_scores = self._compute_keyword_score(user_input)
+            debug["keyword_score"] = kw_scores.get(intent_name, 0.0)
+            debug["embedding_score"] = confidence
+            debug["embedding_used"] = False
+            debug["model"] = "local_textcnn"
+
+            # 低置信度时回退到关键词评分（模型对未知输入可能不可靠）
+            if confidence < MEDIUM_CONFIDENCE:
+                logger.debug(
+                    "Local model low confidence (%.2f), falling back to keyword",
+                    confidence,
+                )
+                hybrid_scores = self._hybrid_score({}, kw_scores)
+                sorted_intents = sorted(hybrid_scores.items(), key=lambda x: -x[1])
+                best_name, best_score = sorted_intents[0]
+                # 关键词评分也低 → 强制 TEXT_CHAT（与原有 classify 逻辑一致）
+                if best_score < LOW_CONFIDENCE_FLOOR:
+                    debug["keyword_score"] = 0.0
+                    debug["top_two"] = [("TEXT_CHAT", LOW_CONFIDENCE_FLOOR)]
+                    debug["model"] = "local_textcnn+text_chat_default"
+                    return ("TEXT_CHAT", LOW_CONFIDENCE_FLOOR, debug)
+                if best_score > confidence:
+                    debug["keyword_score"] = best_score
+                    debug["top_two"] = sorted_intents[:2]
+                    debug["model"] = "local_textcnn+keyword_fallback"
+                    return (best_name, best_score, debug)
+
+            return (intent_name, confidence, debug)
 
         # Step 1: 计算向量相似度（如果可用）
         emb_scores = self._compute_embedding_similarity(user_input)

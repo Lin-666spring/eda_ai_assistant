@@ -1,0 +1,2834 @@
+[
+  {
+    "text": "ref:U pn:TLV1117-33 pkg:SOT-223 desc:线性稳压器 3.3V 1A",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:C pn: pkg:2917 desc:电解电容 220μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:ESP32-WROOM-32 pkg:QFN-48 desc:{mcu_pn} 主控芯片",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:R pn:RC0805JR-0710RL pkg:0805 desc:厚膜电阻 20kΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:TP4056 pkg:SOP-8 desc:锂电池充电管理",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:U pn:TMS320F28335 pkg:VQFN-24 desc:DSP 数字信号处理器",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:MAX3232 pkg:QFN-32 desc:USB HUB 控制器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:STM32F103RCT6 pkg:DFN-10 desc:低功耗 MCU 64KB Flash",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:L pn:NR6045-100M pkg:SMD-6×6 desc:功率电感 22μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:SW pn: pkg:DIP-6×6 desc:轻触开关 6×6mm",
+    "type": "connector"
+  },
+  {
+    "text": "ref:T pn:AO3400 pkg:SOT-523 desc:N沟道 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:R pn:CRCW060310K0FKEA pkg:2512 desc:贴片电阻 1.5kΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:Y pn:SIT8008BI-33-33E pkg:3225-4P desc:可编程振荡器 4MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:STM32F103C8T6 pkg:LQFP-100 desc:{mcu_pn} 主控芯片",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:CD4051 pkg:SOP-16 desc:8选1模拟开关",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:L pn: pkg:2512 desc:共模电感 47μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:TXS0108E pkg:QFN-32 desc:USB HUB 控制器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:OSC pn:OT322524MJBA4SL pkg:3225-4P desc:有源晶振 12MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:L pn: pkg:0805 desc:1kΩ@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:C pn: pkg:CASE-C desc:电解电容 22μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:i.MX RT1062 pkg:QFN-32 desc:ARM Cortex-M4 DSP FPU",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:EG2132 pkg:SOP-8 desc:MOSFET 栅极驱动",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:C pn:CL21B104KBCNNNC pkg:1210 desc:多层陶瓷电容 220nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:R pn: pkg:2010 desc:",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:D pn:P6KE6.8A pkg:SOD-323 desc:小信号二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:ADS1115 pkg:MSOP-10 desc:16位 ADC 模数转换器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:R pn: pkg:2512 desc:功率电阻 20kΩ 1W",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:IC pn:TLV1117-33 pkg:SOT-223 desc:低压差 LDO",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:D pn:ESD5Z5.0T1G pkg:SOD-323 desc:快恢复二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:Y pn: pkg:3225-2P desc:",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:D pn:APA102 pkg:0402 desc:发光二极管 红色",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:MAX30102 pkg:QFN-24 desc:6轴 IMU 惯性测量",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:D pn:APA102 pkg:0402 desc:LED 绿色 0603",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:Q pn:AO3400 pkg:SOT-23 desc:",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:BMP280 pkg:SOT-23 desc:温度传感器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:U pn:LM339 pkg:TSSOP-14 desc:四路差动比较器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:S pn: pkg:DIP-4 desc:自锁开关",
+    "type": "connector"
+  },
+  {
+    "text": "ref:Q pn:MMBT3906 pkg:TO-92 desc:通用 NPN 晶体管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:ESP32-S3 pkg:VQFN-24 desc:RISC-V 微控制器",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:LPC1768 pkg:TO-252 desc:ARM Cortex-M4 DSP FPU",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:TPS2553 pkg:SOT-23-6 desc:USB 电源开关",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:FB pn:MMZ1608S121AT pkg:0603 desc:铁氧体磁珠 1μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:J pn:USB-Micro 5P pkg:2.54mm desc:",
+    "type": "connector"
+  },
+  {
+    "text": "ref:D pn:ESD5Z5.0T1G pkg:SOD-523 desc:ESD 保护二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:74LVC1G125 pkg:SOT-23-5 desc:三态缓冲器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:LED pn:LED-Red pkg:2512 desc:",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:OSC pn:OT322524MJBA4SL pkg:3225-4P desc:有源晶振 48MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:EPM240T100C5N pkg:BGA-256 desc:FPGA 六千逻辑单元",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:MAX485 pkg:SOP-8 desc:RS485 收发器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:SW pn: pkg:DIP-6×6 desc:轻触开关 6×6mm",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:NCP1117ST33T3G pkg:SOT-223 desc:",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:J pn:USB-Micro-5P pkg:Micro-USB-5P desc:Micro USB 母座",
+    "type": "connector"
+  },
+  {
+    "text": "ref:OSC pn:OT322524MJBA4SL pkg:3225-4P desc:有源晶振 26MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:OSC pn:OT322524MJBA4SL pkg:3225-4P desc:有源晶振 26MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:D pn:1N5819 pkg:SOD-523 desc:稳压二极管 3.3V",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:C pn: pkg:1206 desc:贴片电容 47pF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:Y pn:XC2016B pkg:5032-4P desc:无源晶振 48MHz 20pF",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:D pn:P6KE6.8A pkg:SOD-323 desc:小信号二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:R pn: pkg:1206 desc:电阻 22Ω ±5%",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:TXS0108E pkg:QFN-28 desc:USB-UART 桥接器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:L pn:NR6045-100M pkg:SMD-6×6 desc:功率电感 220Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:PC817 pkg:DIP-4 desc:光电耦合器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:U pn:USB2514 pkg:QFN-32 desc:USB HUB 控制器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:AMS1117-3.3 pkg:SOT-223 desc:电源管理 稳压器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:R pn: pkg:0805 desc:贴片电阻 100Ω",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:R pn: pkg:0805 desc:贴片电阻 20kΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:74HC595 pkg:SOP-16 desc:8位移位寄存器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:C pn:EEEFK1A471SP pkg:DIP-Φ8 desc:铝电解电容 470μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:C pn:CC0805KKX7R7BB105 pkg:1206 desc:陶瓷电容 0.01μF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:LMR16030 pkg:TO-252 desc:DC-DC 大电流降压",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:C pn:TAJA106K010RNJ pkg:SMD-Φ8 desc:钽电容 220μF 10V",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:C pn:EEEFK1V101P pkg:DIP-Φ8 desc:贴片铝电解 470μF 35V",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:R pn: pkg:1206 desc:贴片电阻 220Ω",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:C pn: pkg:1206 desc:贴片电容 0.01μF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:SW pn:TS-1187A pkg:SMD-4×3 desc:轻触开关 4×3mm",
+    "type": "connector"
+  },
+  {
+    "text": "ref:L pn:MLZ1608M100WT pkg:2512 desc:贴片电感 4.7μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:FB pn:MMZ1608S121AT pkg:1206 desc:铁氧体磁珠 1kΩ@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:D pn:SMAJ5.0A pkg:DO-214AA desc:整流二极管 1A",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:D pn:SRV05-4 pkg:SOT-23-6 desc:TVS 二极管阵列",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:TMS320F28035 pkg:LQFP-100 desc:C2000 实时控制 MCU",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:PCF8563 pkg:LGA-8 desc:气压传感器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:RN pn:YC164-JR-0710KL pkg:1206 desc:排阻 22Ω 4合1",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:D pn:TPD4S012 pkg:DSON-6 desc:USB ESD 保护",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:MSP430G2553 pkg:TO-252 desc:WiFi BLE 双模 SoC",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:X pn: pkg:2520-4P desc:石英晶体 24MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:R pn:WR06X103JTL pkg:2010 desc:厚膜电阻 2.2kΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:CN pn:XH2.54-2P pkg:XH-2P desc:XH2.54 接插件 2P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:CH340G pkg:SOP-8 desc:RS485 收发器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:Q pn:BC547 pkg:TO-92 desc:通用 NPN 晶体管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:Y pn: pkg:3225-4P desc:晶振 12MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:GD32F103C8T6 pkg:DFN-10 desc:ARM Cortex-M 微控制器",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:FB pn:MPZ1608S121A pkg:1206 desc:磁珠 30Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:SW pn: pkg:DIP-6×6 desc:轻触开关 6×6mm",
+    "type": "connector"
+  },
+  {
+    "text": "ref:RN pn:EXB38V103JV pkg:2512 desc:贴片排阻 1MΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:GW1NR-9 pkg:BGA-256 desc:FPGA 六千逻辑单元",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:C pn:TAJA106K010RNJ pkg:CASE-D desc:钽电容 100μF 10V",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:C pn: pkg:1210 desc:1nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:TPS2553 pkg:SOT-23-6 desc:USB 电源开关",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:U pn:ME6211C33M5G pkg:SOT-23-5 desc:低压差线性稳压器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:L pn:CML1608U100MT pkg:1206 desc:贴片电感 22μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:SPX3819M5-L-3-3 pkg:SOT-223 desc:",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:D pn:ESD9X5.0ST5G pkg:SOD-923 desc:ESD 保护",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:EL357N pkg:SOP-4 desc:高速光耦",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:U pn:STM32F103C8T6 pkg:TSSOP-14 desc:低功耗 MCU 64KB Flash",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:ATmega328P pkg:QFN-32 desc:32位微控制器 72MHz",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:XL6009 pkg:TO-252 desc:DC-DC 大电流降压",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:U pn:MAX485 pkg:SOP-16 desc:",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:74HC14 pkg:TSSOP-14 desc:六路施密特反相器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:T pn:MMBT3904 pkg:TO-92 desc:NPN 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:NCP1117ST33T3G pkg:SOT-223 desc:电源管理 稳压器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:X pn: pkg:3225-4P desc:",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:L pn:SWPA6045S100MT pkg:SMD-6×6 desc:绕线功率电感 220Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:STM32F407VET6 pkg:BGA-256 desc:Cortex-M0+ 超低功耗",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:Q pn:2N3906 pkg:TO-92 desc:通用 NPN 晶体管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:ESP32-S3 pkg:SSOP-20 desc:Cortex-M0+ 超低功耗",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:C pn:CL05C220JB5NNNC pkg:1206 desc:贴片电容 1nF C0G",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:C pn:CL10B104KB8NNNC pkg:1206 desc:贴片电容 100pF X7R",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:L pn: pkg:2512 desc:电感 22μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:FB pn:MPZ1608S121A pkg:2512 desc:磁珠 2.2μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:TPS562201 pkg:SOP-8 desc:",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:U pn:74LVC1G125 pkg:SOT-23-5 desc:三态缓冲器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:L pn: pkg:2010 desc:22μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:FB pn:BLM18PG121SN1D pkg:0805 desc:贴片磁珠 600Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:D pn:WS2812B-V5 pkg:2010 desc:贴片LED 白色",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:C pn:GRM188R71H104KA93D pkg:1206 desc:陶瓷电容 47pF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:R pn: pkg:2010 desc:贴片电阻 2.2kΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:R pn: pkg:AXIAL-0.4 desc:直插电阻 20kΩ 1/4W",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:F pn:SMD1206P050TF pkg:1206 desc:自恢复保险丝 0.5A",
+    "type": "connector"
+  },
+  {
+    "text": "ref:Q pn:2N2222 pkg:SOT-323 desc:NPN 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:OSC pn:OT322524MJBA4SL pkg:3225-4P desc:有源晶振 24MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:ESP32-S3 pkg:QFN-48 desc:{mcu_pn}",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:C pn:TAJA106K010RNJ pkg:SMD-Φ5 desc:钽电容 470μF 10V",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:LM339 pkg:TSSOP-14 desc:四路差动比较器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:C pn:CC0603KRX7R9BB104 pkg:0805 desc:MLCC 33pF 50V",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:J pn:TF-翻盖 pkg:TF-SMD desc:TF卡座 翻盖式",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:LM339 pkg:TSSOP-14 desc:四路差动比较器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:C pn:CL10B104KB8NNNC pkg:0603 desc:贴片电容 4.7μF X7R",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:DHT11 pkg:SOP-8 desc:EEPROM 64Kbit",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:U pn:STM32G030F6P6 pkg:QFN-32 desc:32位微控制器 72MHz",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:SY8120B pkg:SOP-8 desc:开关电源控制器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:J pn:RJ45 pkg:RJ45-13P desc:RJ45 网口 带变压器",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:NCP1117ST33T3G pkg:SOT-23-5 desc:低压差线性稳压器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:C pn:CC0805KKX7R7BB105 pkg:1210 desc:陶瓷电容 22pF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:X pn: pkg:5032-2P desc:24MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:C pn: pkg:DIP-Φ8 desc:钽电容 330μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:Q pn:BC547 pkg:SOT-23 desc:",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:Q pn:IRG4BC30UD pkg:TO-220 desc:IGBT 600V",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:L pn: pkg:0603 desc:共模电感 1kΩ@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:PC817 pkg:DIP-4 desc:光电耦合器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:D pn:BAT54S pkg:SOD-323 desc:",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:TXB0104 pkg:QFN-32 desc:USB HUB 控制器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:C pn: pkg:SMD-Φ6.3 desc:10μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:P pn:XT30PW pkg:XT30 desc:XT30 电源接头",
+    "type": "connector"
+  },
+  {
+    "text": "ref:Q pn:SI2301 pkg:SOP-8 desc:双 N沟道 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:C pn: pkg:0402 desc:贴片电容 33pF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:C pn:EEEFK1V101P pkg:SMD-Φ10 desc:贴片铝电解 4.7μF 35V",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:TMS320F28335 pkg:QFN-32 desc:DSP 数字信号处理器",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:C pn:T491A106K010AT pkg:SMD-Φ5 desc:贴片钽电容 100μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:J pn:USB-Micro-5P pkg:Micro-USB-5P desc:Micro USB 母座",
+    "type": "connector"
+  },
+  {
+    "text": "ref:X pn:ABS25-32.768KHZ-6-T pkg:5032-4P desc:晶振 48MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:FB pn:MMZ1608S121AT pkg:0805 desc:铁氧体磁珠 120Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:D pn:SR360 pkg:SOD-123 desc:TVS 瞬态抑制",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:C pn:16SEPC270M pkg:SMD-Φ10 desc:固态电容 47μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:TM1637 pkg:SOP-8 desc:",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:D pn:SS14 pkg:DO-214AC desc:肖特基二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:LM324 pkg:TSSOP-14 desc:四运放",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:SY8120B pkg:TO-252 desc:DC-DC 大电流降压",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:U pn:USBLC6-2SC6 pkg:SOP-16 desc:USB转串口芯片",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:R pn:RC0603FR-0710KL pkg:2010 desc:贴片电阻 2.2kΩ ±1%",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:J pn:TF卡座 翻盖 pkg:2.54mm desc:",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:SPX3819M5-L-3-3 pkg:SOT-223 desc:电源管理 稳压器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:L pn:NR6045-100M pkg:SMD-6×6 desc:功率电感 470Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:AS5600 pkg:SOT-23 desc:温度传感器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:U pn:TPS5430 pkg:SOT-23-5 desc:升压 DC-DC 转换器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:T pn:CSD18534KCS pkg:SOT-523 desc:N沟道 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:VL53L0X pkg:SOP-16 desc:LED 数码管驱动",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:U pn:MCP6002 pkg:SOP-8 desc:音频运算放大器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:D pn:1N4007 pkg:SOD-523 desc:TVS 瞬态抑制",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:C pn: pkg:0402 desc:贴片电容 15pF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:MK66FX1M0 pkg:DFN-10 desc:Cortex-M0+ 超低功耗",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:AD8605 pkg:SOP-8 desc:音频运算放大器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:Q pn:AO4404 pkg:SOT-89 desc:N沟道 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:R pn: pkg:0805 desc:贴片电阻 5.1kΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:R pn: pkg:AXIAL-0.4 desc:直插电阻 22Ω 1/4W",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:D pn:1N5819 pkg:DO-214AA desc:",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:OPA2134 pkg:MSOP-8 desc:低噪声精密运放",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:OSC pn:OT322524MJBA4SL pkg:3225-4P desc:有源晶振 24MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:Y pn: pkg:3225-4P desc:",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:TMS320F28035 pkg:SOP-8 desc:C2000 实时控制 MCU",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:SHT30 pkg:SOP-8 desc:",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:Q pn:BSS138 pkg:SOT-23 desc:",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:RP2040 pkg:SOT-23-5 desc:低功耗 MCU 64KB Flash",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:J pn: pkg:2.54mm-6P desc:排针 6P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:R pn: pkg:AXIAL-0.4 desc:直插电阻 10kΩ 1/4W",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:IC pn:NCP1117ST33T3G pkg:SOT-223 desc:低压差 LDO",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:D pn:MMBD4148 pkg:SOD-523 desc:整流二极管 1A",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:Y pn:SIT8008BI-33-33E pkg:3225-4P desc:可编程振荡器 12MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:C pn:GRM155R71C104KA88D pkg:1206 desc:贴片电容 1nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:OSC pn:OT322524MJBA4SL pkg:3225-4P desc:有源晶振 32.768kHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:R pn:RC0603FR-0710KL pkg:2512 desc:贴片电阻 22Ω ±1%",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:EPM240T100C5N pkg:QFN-48 desc:FPGA 可编程逻辑器件",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:D pn:USBLC6-2SC6 pkg:SOT-23-6 desc:USB ESD 保护",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:R pn:RC0805JR-0710RL pkg:0805 desc:厚膜电阻 47kΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:Q pn:2N7002 pkg:DFN-5×6 desc:大电流 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:L pn:CDRH127-100MC pkg:SMD-12×12 desc:贴片功率电感 4.7μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:74HC595 pkg:SOP-16 desc:8位移位寄存器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:D pn:1N5819 pkg:SOD-323 desc:齐纳二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:C pn: pkg:SMD-Φ10 desc:钽电容 470μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:J pn:DC-005 pkg:DC-005 desc:DC 电源插座 5.5×2.1mm",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:ADM3202 pkg:SOP-8 desc:RS485 收发器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:T pn:FDN337N pkg:SOT-523 desc:N沟道 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:TL084 pkg:SOP-8 desc:仪表放大器 差分",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:CD4051 pkg:SOP-16 desc:8选1模拟开关",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:XTAL pn: pkg:5032-2P desc:晶振 8MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:X pn:ABS25-32.768KHZ-6-T pkg:圆柱2×6 desc:晶振 32.768kHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:Q pn:AO3400 pkg:SOT-23 desc:",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:C pn:CC0805KKX7R7BB105 pkg:1206 desc:陶瓷电容 0.01μF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:C pn:TAJA106K010RNJ pkg:SMD-Φ8 desc:钽电容 680μF 10V",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:IC pn:SK6812 pkg:SOP-16 desc:驱动",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:U pn:AT24C02 pkg:LGA-12 desc:温湿度传感器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:C pn: pkg:1206 desc:电容 15pF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:ME6211C33M5G pkg:SOT-223 desc:",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:CON pn:VH3.96-2P pkg:VH-2P desc:VH3.96 电源端子 2P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:CN pn: pkg:XH-4P desc:接插件 4P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:MSP430G2553 pkg:TSSOP-14 desc:RISC-V 微控制器",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:ADS1115 pkg:MSOP-10 desc:16位 ADC 模数转换器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:C pn:EEEFK1A471SP pkg:CASE-D desc:铝电解电容 1000μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:PC817 pkg:DIP-4 desc:光电耦合器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:Q pn:J201 pkg:TO-92 desc:JFET N沟道",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:L pn:SWPA6045S100MT pkg:SMD-6×6 desc:绕线功率电感 1kΩ@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:K pn:G5V-1-5VDC pkg:DIP-6 desc:信号继电器 5V",
+    "type": "connector"
+  },
+  {
+    "text": "ref:SW pn:TS-1187A pkg:SMD-4×3 desc:轻触开关 4×3mm",
+    "type": "connector"
+  },
+  {
+    "text": "ref:J pn:RJ45 pkg:RJ45-13P desc:RJ45 网口 带变压器",
+    "type": "connector"
+  },
+  {
+    "text": "ref:L pn:CML1608U100MT pkg:2010 desc:贴片电感 100μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:Q pn:IRFZ44N pkg:SOT-223 desc:P沟道 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:Q pn:BSS138 pkg:DFN-5×6 desc:大电流 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:TLV1117-33 pkg:SOT-23-5 desc:低压差线性稳压器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:C pn:EEEFK1E102SQ pkg:DIP-Φ10 desc:贴片电解电容 1500μF 25V",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:IC pn:SK6812 pkg:SOP-16 desc:驱动",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:D pn: pkg:SOT-23-6 desc:ESD 静电保护器件",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:C pn:CL21B104KBCNNNC pkg:1206 desc:多层陶瓷电容 100nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:C pn: pkg:SMD-Φ6.3 desc:铝电解 1500μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:SN74LVC1T45 pkg:SOT-23-6 desc:电平转换",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:T pn:BC557 pkg:TO-92 desc:NPN 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:X pn:X50328MSB2GI pkg:5032-4P desc:石英晶振 20MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:LM393 pkg:SOP-8 desc:双路电压比较器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:XTAL pn: pkg:2520-4P desc:晶振 26MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:CN pn: pkg:XH-4P desc:接插件 4P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:R pn: pkg:0805 desc:",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:LM339 pkg:TSSOP-14 desc:四路差动比较器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:C pn:CL05C220JB5NNNC pkg:0805 desc:贴片电容 1μF C0G",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:BMP280 pkg:LGA-12 desc:温湿度传感器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:L pn:NR6045-100M pkg:SMD-6×6 desc:功率电感 1kΩ@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:Q pn:BSS138 pkg:SOT-323 desc:P沟道 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:C pn:TAJA106K010RNJ pkg:SMD-Φ5 desc:钽电容 330μF 10V",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:C pn:GRM155R71C104KA88D pkg:0603 desc:贴片电容 33pF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:XC6206P332MR pkg:SOT-89 desc:LDO 稳压 5V输出",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:C pn: pkg:CASE-C desc:4.7μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:RN pn:EXB38V103JV pkg:0805 desc:贴片排阻 47kΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:D pn:ESD9X5.0ST5G pkg:SOD-923 desc:ESD 保护",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:Y pn: pkg:2012-2P desc:",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:EG2132 pkg:SOP-8 desc:",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:C pn:GRM155R71C104KA88D pkg:1210 desc:贴片电容 220nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:Q pn:2N2222 pkg:SOT-23 desc:PNP 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:AMS1117-5.0 pkg:SOT-223 desc:线性稳压器 3.3V 1A",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:K pn:SK12D07VG3 pkg:DIP-3 desc:拨动开关 SPDT",
+    "type": "connector"
+  },
+  {
+    "text": "ref:D pn:WS2812B-V5 pkg:2010 desc:贴片LED 白色",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:OSC pn:OT322524MJBA4SL pkg:3225-4P desc:有源晶振 32.768kHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:C pn:CC0603KRX7R9BB104 pkg:1206 desc:MLCC 0.01μF 50V",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:OSC pn:OT322524MJBA4SL pkg:3225-4P desc:有源晶振 12MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:X pn: pkg:2520-4P desc:48MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:J pn: pkg:2.54mm-6P desc:排针 6P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:R pn: pkg:1206 desc:电阻 470Ω ±5%",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:L pn: pkg:SMD-6×6 desc:功率电感 10μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:CH340G pkg:SOP-8 desc:RS485 收发器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:Q pn:IRLML2502 pkg:SOT-323 desc:N沟道 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:C pn: pkg:SMD-Φ4 desc:钽电容 4.7μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:C pn:UCD1E101MCL1GS pkg:SMD-Φ6.3 desc:铝电解 100μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:L pn:MLZ1608M100WT pkg:2010 desc:贴片电感 470Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:TL431 pkg:SOT-23 desc:可调精密电压基准",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:U pn:AD620 pkg:SOP-8 desc:",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:LED pn:LED-Green pkg:0603 desc:",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:OSC pn:OT322524MJBA4SL pkg:3225-4P desc:有源晶振 12MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:Q pn:AO4404 pkg:SOP-8 desc:双 N沟道 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:PC817 pkg:DIP-4 desc:光电耦合器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:Y pn: pkg:3225-2P desc:晶振 4MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:J pn:XT30PW pkg:2.54mm desc:",
+    "type": "connector"
+  },
+  {
+    "text": "ref:D pn:ESD9X5.0ST5G pkg:SOD-923 desc:ESD 保护",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:D pn:LED-Red pkg:0805 desc:发光二极管 红色",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:TL431 pkg:SOT-23 desc:可调精密电压基准",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:X pn:ABS25-32.768KHZ-6-T pkg:3225-2P desc:晶振 12MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:D pn:TPD4S012 pkg:DSON-6 desc:USB ESD 保护",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:TM1637 pkg:SOP-8 desc:",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:R pn:RC0402FR-0710KL pkg:0805 desc:贴片电阻 10kΩ ±1%",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:C pn: pkg:SMD-Φ5 desc:电解电容 10μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:X pn: pkg:圆柱2×6 desc:",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:SN74LVC1T45 pkg:SOT-23-6 desc:电平转换",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:RN pn:EXB38V103JV pkg:0402 desc:贴片排阻 22Ω",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:Q pn:IRLML2502 pkg:SOT-523 desc:",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:J pn:排母8P pkg:2.54mm-8P desc:排母 8P 2.54mm 直插",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:LFE5U-25F pkg:SOT-223 desc:FPGA 六千逻辑单元",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:ATmega328P pkg:VQFN-24 desc:ARM Cortex-M4 DSP FPU",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:C pn: pkg:0805 desc:贴片电容 100nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:Q pn:J201 pkg:TO-92 desc:JFET N沟道",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:C pn:CC0805KKX7R7BB105 pkg:1206 desc:陶瓷电容 2.2μF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:C pn:CL21B104KBCNNNC pkg:1210 desc:多层陶瓷电容 22pF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:MCP6002 pkg:SOP-8 desc:音频运算放大器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:Q pn:CSD18534KCS pkg:SOT-523 desc:P沟道 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:ATmega328P pkg:LQFP-64 desc:{mcu_pn} 主控芯片",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:SK6812 pkg:SOP-8 desc:",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:CN pn:XH2.54-2P pkg:XH-2P desc:XH2.54 接插件 2P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:IC pn:LM1117-3.3 pkg:SOT-223 desc:低压差 LDO",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:SW pn: pkg:DIP-6×6 desc:轻触开关 6×6mm",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:74HC595 pkg:SOP-16 desc:8位移位寄存器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:C pn:GRM188R71H104KA93D pkg:0805 desc:陶瓷电容 100nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:MPU6050 pkg:QFN-24 desc:6轴 IMU 惯性测量",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:U pn:GW1NR-9 pkg:LQFP-48 desc:FPGA 可编程逻辑器件",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:ICE40UP5K pkg:SOT-223 desc:CPLD 复杂可编程逻辑",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:R pn: pkg:2010 desc:电阻 4.7kΩ ±5%",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:Q pn:BC547 pkg:SOT-23 desc:",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:X pn: pkg:3225-4P desc:石英晶体 25MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:L pn: pkg:0402 desc:电感 1kΩ@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:S pn: pkg:DIP-4 desc:自锁开关",
+    "type": "connector"
+  },
+  {
+    "text": "ref:D pn:TPD4S012 pkg:DSON-6 desc:USB ESD 保护",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:C pn: pkg:DIP-Φ8 desc:铝电解 470μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:TPS2553 pkg:SOT-23-6 desc:USB 电源开关",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:X pn: pkg:3225-4P desc:48MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:R pn:RC0402FR-0710KL pkg:0805 desc:贴片电阻 0Ω ±1%",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:SP3232 pkg:SOP-16 desc:USB转串口芯片",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:Q pn:IRG4BC30UD pkg:TO-220 desc:IGBT 600V",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:X pn: pkg:圆柱2×6 desc:",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:IR2104 pkg:SOP-16 desc:电机驱动 全桥",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:C pn:EEEFK1V101P pkg:SMD-Φ10 desc:贴片铝电解 2200μF 35V",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:AS5600 pkg:QFN-24 desc:6轴 IMU 惯性测量",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:R pn: pkg:2512 desc:10kΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:GW1NR-9 pkg:TSSOP-14 desc:FPGA 可编程逻辑器件",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:STM32F103RCT6 pkg:LQFP-100 desc:IC",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:IP5306 pkg:SOP-8 desc:移动电源 SoC 充放电管理",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:U pn:LM358 pkg:SOP-8 desc:仪表放大器 差分",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:L pn:DLW21SN900SQ2L pkg:0805 desc:共模扼流圈 90Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:XTAL pn: pkg:3225-4P desc:晶振 48MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:D pn:MMSZ5231B pkg:SOD-123 desc:齐纳二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:Q pn:SS8050 pkg:SOT-523 desc:NPN 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:AD8605 pkg:TSSOP-14 desc:四运放",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:D pn:SS14 pkg:DO-214AA desc:齐纳二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:CH32V307 pkg:MSOP-8 desc:ARM Cortex-M4 DSP FPU",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:C pn: pkg:0603 desc:",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:C pn:CL21B104KBCNNNC pkg:1210 desc:多层陶瓷电容 100nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:VL53L0X pkg:SOP-8 desc:EEPROM 64Kbit",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:J pn:TF-翻盖 pkg:TF-SMD desc:TF卡座 翻盖式",
+    "type": "connector"
+  },
+  {
+    "text": "ref:D pn:RCLAMP0502B pkg:SC-75 desc:ESD 保护 2路",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:FB pn: pkg:2010 desc:磁珠 1kΩ@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:D pn:SS14 pkg:SOD-123 desc:开关二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:LM324 pkg:SOP-8 desc:运算放大器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:RT7272 pkg:SOP-8 desc:",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:C pn:T491A106K010AT pkg:2917 desc:贴片钽电容 22μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:USBLC6-2SC6 pkg:MSOP-10 desc:I2C 电平转换",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:AMS1117-5.0 pkg:SOT-223 desc:电源管理 稳压器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:C pn: pkg:0603 desc:",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:R pn:RC0805JR-0710RL pkg:2010 desc:厚膜电阻 10kΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:MPU6050 pkg:SOP-16 desc:LED 数码管驱动",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:U pn:CD4051 pkg:SOP-16 desc:8选1模拟开关",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:D pn:1N4007 pkg:DO-214AA desc:稳压二极管 3.3V",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:RP2040 pkg:DFN-10 desc:{mcu_pn}",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:C pn:T491A106K010AT pkg:DIP-Φ6.3 desc:贴片钽电容 1500μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:X pn: pkg:3225-2P desc:石英晶体 12MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:74HC595 pkg:SOP-16 desc:8位移位寄存器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:U pn:INA226 pkg:SOP-8 desc:运算放大器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:CH455 pkg:TO-92 desc:数字温度传感器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:C pn: pkg:DIP-Φ8 desc:钽电容 220μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:D pn:LED-Red pkg:0402 desc:发光二极管 红色",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:J pn:RJ45 pkg:RJ45-13P desc:RJ45 网口 带变压器",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:MAX3232 pkg:SOP-16 desc:RS232 收发器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:VR pn:3296W-103 pkg:DIP-3 desc:精密电位器 510Ω",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:D pn:MMSZ5231B pkg:SOD-523 desc:",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:OSC pn:OT322524MJBA4SL pkg:3225-4P desc:有源晶振 12MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:T pn:2N3906 pkg:TO-92 desc:NPN 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:C pn: pkg:1206 desc:电容 100nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:CH32V307 pkg:LQFP-100 desc:IC",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:L pn:SWPA6045S100MT pkg:SMD-6×6 desc:绕线功率电感 120Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:C pn:UCD1E101MCL1GS pkg:2917 desc:铝电解 680μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:ULN2003 pkg:SOP-8 desc:MOSFET 栅极驱动",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:Y pn:XC2016B pkg:5032-4P desc:无源晶振 26MHz 20pF",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:TP4056 pkg:SOP-8 desc:锂电池充电管理",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:C pn: pkg:SMD-Φ5 desc:钽电容 1500μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:NE5532 pkg:SOP-8 desc:仪表放大器 差分",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:J pn:FPC-24P pkg:FPC-0.5mm-24P desc:FPC 连接器 0.5mm 24P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:R pn: pkg:AXIAL-0.4 desc:直插电阻 4.7kΩ 1/4W",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:ATmega328P pkg:SOT-23-5 desc:Cortex-M0+ 超低功耗",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:MK66FX1M0 pkg:SOP-8 desc:Cortex-M0+ 超低功耗",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:nRF52840 pkg:SOT-223 desc:32位微控制器 72MHz",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:GD32F103C8T6 pkg:SSOP-20 desc:32位微控制器 72MHz",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:C pn:GRM155R71C104KA88D pkg:1210 desc:贴片电容 22pF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:AD620 pkg:TSSOP-14 desc:四运放",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:C pn: pkg:CASE-B desc:钽电容 2200μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:TP pn: pkg:SMD-1 desc:测试点",
+    "type": "connector"
+  },
+  {
+    "text": "ref:C pn: pkg:DIP-Φ8 desc:电解电容 1000μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:C pn: pkg:SMD-Φ6.3 desc:铝电解 22μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:SW pn:TS-1187A pkg:SMD-4×3 desc:轻触开关 4×3mm",
+    "type": "connector"
+  },
+  {
+    "text": "ref:P pn:XT30PW pkg:XT30 desc:XT30 电源接头",
+    "type": "connector"
+  },
+  {
+    "text": "ref:C pn:T491A106K010AT pkg:DIP-Φ6.3 desc:贴片钽电容 100μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:C pn: pkg:SMD-Φ10 desc:电解电容 220μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:MP1584 pkg:SOT-23-6 desc:同步整流降压",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:Q pn:AO3401 pkg:SOT-523 desc:N沟道 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:L pn:MLZ1608M100WT pkg:0402 desc:贴片电感 120Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:STM32H743IIT6 pkg:MSOP-8 desc:低功耗 MCU 64KB Flash",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:Q pn:2N3906 pkg:SOT-223 desc:PNP 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:C pn:UCD1E101MCL1GS pkg:SMD-Φ4 desc:铝电解 220μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:SW pn:TS-1187A pkg:SMD-4×3 desc:轻触开关 4×3mm",
+    "type": "connector"
+  },
+  {
+    "text": "ref:C pn:16SEPC270M pkg:SMD-Φ4 desc:固态电容 47μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:Y pn:SIT8008BI-33-33E pkg:3225-4P desc:可编程振荡器 26MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:Q pn:S8550 pkg:SOT-23 desc:PNP 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:L pn:DLW21SN900SQ2L pkg:0805 desc:共模扼流圈 90Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:C pn:UCD1E101MCL1GS pkg:SMD-Φ10 desc:铝电解 4.7μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:XL6009 pkg:SOP-8 desc:DC-DC 降压转换器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:U pn:USBLC6-2SC6 pkg:QFN-28 desc:USB-UART 桥接器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:MSP430G2553 pkg:LQFP-48 desc:WiFi BLE 双模 SoC",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:LMV358 pkg:TSSOP-14 desc:四运放",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:L pn:SWPA6045S100MT pkg:SMD-6×6 desc:绕线功率电感 100μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:D pn:ESD5Z5.0T1G pkg:SOD-523 desc:ESD 保护二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:LM1117-3.3 pkg:SOT-223 desc:电源管理 稳压器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:D pn:1N4148 pkg:SOD-123 desc:开关二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:SP3232 pkg:SOP-16 desc:",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:MP1584 pkg:SOP-8 desc:开关电源控制器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:Q pn:BC547 pkg:SOT-89 desc:PNP 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:ADS1115 pkg:MSOP-10 desc:16位 ADC 模数转换器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:MP pn: pkg:SMD-1 desc:测试环",
+    "type": "connector"
+  },
+  {
+    "text": "ref:C pn: pkg:0402 desc:0.1μF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:TPS5430 pkg:SOP-8 desc:开关电源控制器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:L pn:SWPA6045S100MT pkg:SMD-6×6 desc:绕线功率电感 100μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:J pn:USB-C-16P pkg:USB-C-16P desc:USB Type-C 母座 16P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:C pn:GRM188R71H104KA93D pkg:1206 desc:陶瓷电容 100pF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:EG2132 pkg:SOP-16 desc:电机驱动 全桥",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:L pn: pkg:0805 desc:1kΩ@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:D pn:LTST-C191KRKT pkg:0805 desc:高亮蓝色LED",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:NCP1117ST33T3G pkg:SOT-89 desc:LDO 稳压 5V输出",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:Q pn:IRG4BC30UD pkg:TO-220 desc:IGBT 600V",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:C pn: pkg:CASE-B desc:铝电解 470μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:Y pn:XC2016B pkg:5032-4P desc:无源晶振 20MHz 20pF",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:X pn: pkg:3225-4P desc:",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:L pn:MLZ1608M100WT pkg:1206 desc:贴片电感 22μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:IP5306 pkg:SOP-8 desc:移动电源 SoC 充放电管理",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:D pn:P6KE6.8A pkg:DO-214AA desc:快恢复二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:C pn:CL10B104KB8NNNC pkg:0603 desc:贴片电容 10nF X7R",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:C pn:UCD1E101MCL1GS pkg:SMD-Φ4 desc:铝电解 22μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:C pn: pkg:0603 desc:",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:TM1637 pkg:TO-92 desc:数字温度传感器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:L pn:CDRH127-100MC pkg:SMD-12×12 desc:贴片功率电感 1μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:Q pn:2N2222 pkg:SOT-323 desc:NPN 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:OP07 pkg:SOP-8 desc:",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:XTAL pn: pkg:HC-49S desc:晶振 20MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:OSC pn:OT322524MJBA4SL pkg:3225-4P desc:有源晶振 16MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:C pn:CL05C220JB5NNNC pkg:1206 desc:贴片电容 15pF C0G",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:L pn:NR6045-100M pkg:SMD-6×6 desc:功率电感 220Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:DS1302 pkg:SOT-23 desc:温度传感器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:R pn:WR06X103JTL pkg:2512 desc:厚膜电阻 750Ω",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:EL357N pkg:SOP-4 desc:高速光耦",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:C pn: pkg:1210 desc:0.1μF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:C pn:CL10B104KB8NNNC pkg:0805 desc:贴片电容 10nF X7R",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:R pn:CRCW060310K0FKEA pkg:2512 desc:贴片电阻 330Ω",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:RN pn:YC164-JR-0710KL pkg:0402 desc:排阻 5.1kΩ 4合1",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:ULN2003 pkg:SOP-16 desc:达林顿驱动阵列",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:U pn:SP3232 pkg:MSOP-10 desc:I2C 电平转换",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:D pn:LED-Blue pkg:0402 desc:LED 绿色 0603",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:Q pn:2N3904 pkg:SOT-89 desc:NPN 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:L pn:CDRH127-100MC pkg:SMD-12×12 desc:贴片功率电感 470Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:Q pn:SI2301 pkg:DFN-5×6 desc:大电流 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:XL6009 pkg:SOT-23-6 desc:同步整流降压",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:C pn: pkg:0402 desc:10nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:R pn: pkg:AXIAL-0.4 desc:直插电阻 750Ω 1/4W",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:C pn:CC0603KRX7R9BB104 pkg:1206 desc:MLCC 220nF 50V",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:AT24C02 pkg:SOP-8 desc:",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:J pn:USB-C-16P pkg:USB-C-16P desc:USB Type-C 母座 16P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:C pn: pkg:0805 desc:电容 0.01μF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:Q pn:IRF540N pkg:SOT-89 desc:P沟道 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:ESP32-WROOM-32 pkg:TO-252 desc:{mcu_pn}",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:C pn: pkg:0603 desc:",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:R pn: pkg:AXIAL-0.4 desc:直插电阻 5.1kΩ 1/4W",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:AD620 pkg:MSOP-8 desc:低噪声精密运放",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:LM2596 pkg:TO-252 desc:DC-DC 大电流降压",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:R pn:RC0805JR-0710RL pkg:1206 desc:厚膜电阻 510Ω",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:AMS1117-3.3 pkg:SOT-23-5 desc:低压差线性稳压器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:U pn:ME6211C33M5G pkg:SOT-223 desc:电源管理 稳压器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:IC pn:RT9193-33 pkg:SOT-223 desc:低压差 LDO",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:C pn:CL21B104KBCNNNC pkg:0805 desc:多层陶瓷电容 10nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:MPU6050 pkg:QFN-24 desc:6轴 IMU 惯性测量",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:R pn:RC0603FR-0710KL pkg:1206 desc:贴片电阻 22Ω ±1%",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:RT9193-33 pkg:SOT-23-5 desc:低压差线性稳压器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:P pn:XT30PW pkg:XT30 desc:XT30 电源接头",
+    "type": "connector"
+  },
+  {
+    "text": "ref:RN pn:YC164-JR-0710KL pkg:2512 desc:排阻 10Ω 4合1",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:D pn:CM1213A-04SO pkg:SOT-23-6 desc:ESD 保护阵列",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:D pn:SMAJ5.0A pkg:SOD-523 desc:开关二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:R pn: pkg:0603 desc:贴片电阻 1kΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:Q pn:SI2302 pkg:DFN-5×6 desc:大电流 MOSFET",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:L pn:DLW21SN900SQ2L pkg:0805 desc:共模扼流圈 90Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:J pn:KF128-2P pkg:P=5.0mm desc:接线端子 2P 5.0mm",
+    "type": "connector"
+  },
+  {
+    "text": "ref:D pn:LED-Green pkg:1206 desc:高亮蓝色LED",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:MAX3232 pkg:SOP-8 desc:CAN 总线收发器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:C pn:CC0603KRX7R9BB104 pkg:0603 desc:MLCC 4.7μF 50V",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:K pn:G5V-1-5VDC pkg:DIP-6 desc:信号继电器 5V",
+    "type": "connector"
+  },
+  {
+    "text": "ref:Q pn:SI2301 pkg:TO-252 desc:功率 MOSFET N沟道",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:RN pn:YC164-JR-0710KL pkg:1206 desc:排阻 750Ω 4合1",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:MAX30102 pkg:SOT-23 desc:温度传感器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:C pn:T491A106K010AT pkg:2917 desc:贴片钽电容 1500μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:Q pn:IRG4BC30UD pkg:TO-220 desc:IGBT 600V",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:L pn: pkg:2010 desc:共模电感 470Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:D pn:SMAJ5.0A pkg:SOD-523 desc:齐纳二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:C pn:UCD1E101MCL1GS pkg:CASE-B desc:铝电解 220μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:FB pn:MMZ1608S121AT pkg:1206 desc:铁氧体磁珠 120Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:K pn:SK12D07VG3 pkg:DIP-3 desc:拨动开关 SPDT",
+    "type": "connector"
+  },
+  {
+    "text": "ref:LED pn:WS2812B-V5 pkg:0805 desc:LED指示灯",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:L pn:MLZ1608M100WT pkg:1206 desc:贴片电感 470Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:LM393 pkg:SOP-8 desc:双路电压比较器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:FB pn: pkg:2010 desc:磁珠 100μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:LM1117-3.3 pkg:SOT-89 desc:LDO 稳压 5V输出",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:X pn: pkg:5032-2P desc:石英晶体 26MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:MCP6002 pkg:SOP-8 desc:仪表放大器 差分",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:Y pn: pkg:5032-4P desc:",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:D pn:CM1213A-04SO pkg:SOT-23-6 desc:ESD 保护阵列",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:X pn: pkg:3225-2P desc:12MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:WS2812B pkg:TSSOP-28 desc:步进电机驱动",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:Q pn:SI2302 pkg:TO-252 desc:功率 MOSFET N沟道",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:C pn:CL10B104KB8NNNC pkg:0603 desc:贴片电容 47pF X7R",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:C pn:CL05C220JB5NNNC pkg:1206 desc:贴片电容 22pF C0G",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:LM324 pkg:SOP-8 desc:运算放大器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:RL pn:SRD-05VDC-SL-C pkg:DIP-5 desc:继电器 5V 单刀双掷",
+    "type": "connector"
+  },
+  {
+    "text": "ref:J pn: pkg:2.54mm-6P desc:排针 6P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:74HC595 pkg:SOP-16 desc:8位移位寄存器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:U pn:CH32V307 pkg:SOT-23-5 desc:32位微控制器 72MHz",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:MP2307 pkg:SOT-23-5 desc:升压 DC-DC 转换器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:C pn: pkg:0402 desc:贴片电容 4.7μF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:C pn:CL21B104KBCNNNC pkg:1206 desc:多层陶瓷电容 0.1μF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:C pn:T491A106K010AT pkg:SMD-Φ5 desc:贴片钽电容 1000μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:Y pn: pkg:3225-4P desc:陶瓷谐振器 8MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:Q pn:J201 pkg:TO-92 desc:JFET N沟道",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:J pn:KF128-2P pkg:P=5.0mm desc:接线端子 2P 5.0mm",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:RT7272 pkg:SOT-23-5 desc:升压 DC-DC 转换器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:Q pn:IRLZ44N pkg:SOT-89 desc:",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:RN pn:EXB38V103JV pkg:1206 desc:贴片排阻 330Ω",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:R pn: pkg:2512 desc:电阻 1MΩ ±5%",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:L pn:DLW21SN900SQ2L pkg:0805 desc:共模扼流圈 90Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:TXB0104 pkg:QFN-28 desc:USB-UART 桥接器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:TMS320F28035 pkg:LQFP-100 desc:C2000 实时控制 MCU",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:R pn: pkg:0805 desc:20kΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:VR pn:3296W-103 pkg:DIP-3 desc:精密电位器 20kΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:R pn: pkg:0603 desc:贴片电阻 100Ω",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:C pn:GRM155R71C104KA88D pkg:0603 desc:贴片电容 100nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:LP2985-33 pkg:SOT-23-5 desc:低压差线性稳压器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:U pn:AD8605 pkg:TSSOP-14 desc:四运放",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:ATtiny85 pkg:LQFP-100 desc:WiFi BLE 双模 SoC",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:L pn: pkg:2010 desc:电感 2.2μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:LM339 pkg:TSSOP-14 desc:四路差动比较器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:STM32G030F6P6 pkg:SOT-223 desc:IC",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:ADS1115 pkg:MSOP-10 desc:16位 ADC 模数转换器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:D pn:IP4220CZ6 pkg:SOT-886 desc:USB ESD 保护",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:R pn: pkg:0603 desc:",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:FB pn:MPZ1608S121A pkg:0603 desc:磁珠 220Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:TL431 pkg:SOT-23 desc:可调精密电压基准",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:U pn:ATmega328P pkg:LQFP-100 desc:RISC-V 微控制器",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:C pn:CC0805KKX7R7BB105 pkg:1206 desc:陶瓷电容 2.2μF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:FB pn:MPZ1608S121A pkg:0402 desc:磁珠 22μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:MP pn: pkg:SMD-1 desc:测试环",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:CH32V307 pkg:QFN-48 desc:",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:L pn:DLW21SN900SQ2L pkg:0805 desc:共模扼流圈 90Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:R pn:RC0603FR-0710KL pkg:0402 desc:贴片电阻 5.1kΩ ±1%",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:FB pn:BLM18PG121SN1D pkg:0805 desc:贴片磁珠 2.2μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:FT232RL pkg:SOT-23-6 desc:ESD 保护",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:L pn:DLW21SN900SQ2L pkg:0805 desc:共模扼流圈 90Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:L pn:MLZ1608M100WT pkg:2010 desc:贴片电感 47μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:C pn:EEEFK1V101P pkg:DIP-Φ10 desc:贴片铝电解 1500μF 35V",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:C pn:16SEPC270M pkg:CASE-D desc:固态电容 330μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:C pn:T491A106K010AT pkg:SMD-Φ5 desc:贴片钽电容 680μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:CON pn:VH3.96-2P pkg:VH-2P desc:VH3.96 电源端子 2P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:TPS562201 pkg:SOP-8 desc:开关电源控制器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:C pn: pkg:SMD-Φ8 desc:钽电容 4.7μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:Y pn: pkg:2012-2P desc:",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:Q pn:J201 pkg:TO-92 desc:JFET N沟道",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:L298N pkg:SOP-16 desc:达林顿驱动阵列",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:L pn:SWPA6045S100MT pkg:SMD-6×6 desc:绕线功率电感 120Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:LM2596 pkg:SOP-8 desc:",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:FB pn: pkg:1206 desc:磁珠 22μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:U pn:AMS1117-3.3 pkg:SOT-89 desc:LDO 稳压 5V输出",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:C pn:GRM188R71H104KA93D pkg:0402 desc:陶瓷电容 1nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:Q pn:SI2301 pkg:TO-252 desc:功率 MOSFET N沟道",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:X pn:X50328MSB2GI pkg:3225-4P desc:石英晶振 24MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:D pn:SRV05-4 pkg:SOT-23-6 desc:TVS 二极管阵列",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:D pn:RCLAMP0502B pkg:SC-75 desc:ESD 保护 2路",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:J pn:排母8P pkg:2.54mm-8P desc:排母 8P 2.54mm 直插",
+    "type": "connector"
+  },
+  {
+    "text": "ref:C pn:UCD1E101MCL1GS pkg:2917 desc:铝电解 220μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:R pn: pkg:AXIAL-0.4 desc:直插电阻 100kΩ 1/4W",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:L pn: pkg:2010 desc:电感 100μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:R pn:WR06X103JTL pkg:2010 desc:厚膜电阻 1.5kΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:L pn: pkg:0402 desc:120Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:R pn: pkg:AXIAL-0.4 desc:直插电阻 4.7kΩ 1/4W",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:MCP4725 pkg:SOT-23-6 desc:12位 DAC 数模转换器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:C pn: pkg:0402 desc:4.7μF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:C pn: pkg:SMD-Φ10 desc:钽电容 1000μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:J pn:DB9 母座 pkg:2.54mm desc:",
+    "type": "connector"
+  },
+  {
+    "text": "ref:X pn: pkg:3225-2P desc:石英晶体 4MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:C pn:C1608X7R1H104K pkg:0603 desc:MLCC 10nF 50V X7R",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:DRV8825 pkg:SOP-8 desc:",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:Y pn: pkg:2012-2P desc:",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:X pn:X50328MSB2GI pkg:5032-4P desc:石英晶振 24MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:D pn:IP4220CZ6 pkg:SOT-886 desc:USB ESD 保护",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:Q pn:2N7002 pkg:TO-252 desc:功率 MOSFET N沟道",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:R pn: pkg:AXIAL-0.4 desc:直插电阻 22Ω 1/4W",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:J pn:RJ45 pkg:RJ45-13P desc:RJ45 网口 带变压器",
+    "type": "connector"
+  },
+  {
+    "text": "ref:C pn: pkg:2917 desc:电解电容 22μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:C pn:EEEFK1A471SP pkg:CASE-C desc:铝电解电容 4.7μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:ESP32-WROOM-32 pkg:MSOP-8 desc:",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:VL53L0X pkg:LGA-12 desc:温湿度传感器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:X pn: pkg:3225-4P desc:石英晶体 26MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:EG2132 pkg:QFN-36 desc:LED 恒流驱动",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:C pn: pkg:DIP-Φ5 desc:铝电解 2200μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:RP2040 pkg:LQFP-48 desc:",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:FU pn: pkg:AXIAL-0.3 desc:保险管 2A 250V",
+    "type": "connector"
+  },
+  {
+    "text": "ref:CON pn:VH3.96-2P pkg:VH-2P desc:VH3.96 电源端子 2P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:AD620 pkg:SOP-8 desc:",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:PCF8563 pkg:TO-92 desc:数字温度传感器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:D pn:SK6812-MINI pkg:2010 desc:发光二极管 红色",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:D pn:LED-Blue pkg:2010 desc:贴片LED 白色",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:AT24C02 pkg:SOP-16 desc:LED 数码管驱动",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:C pn: pkg:CASE-C desc:铝电解 100μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:Q pn:BSS138 pkg:SOT-223 desc:",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:R pn:WR06X103JTL pkg:0805 desc:厚膜电阻 330Ω",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:MK66FX1M0 pkg:LQFP-48 desc:{mcu_pn}",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:TL072 pkg:SOP-8 desc:",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:C pn:EEEFK1V101P pkg:SMD-Φ10 desc:贴片铝电解 100μF 35V",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:Y pn: pkg:3225-4P desc:陶瓷谐振器 8MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:LM2596 pkg:SOT-23-5 desc:升压 DC-DC 转换器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:SW pn:TS-1187A pkg:SMD-4×3 desc:轻触开关 4×3mm",
+    "type": "connector"
+  },
+  {
+    "text": "ref:C pn:T491A106K010AT pkg:DIP-Φ10 desc:贴片钽电容 2200μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:CN pn:XH2.54-2P pkg:XH-2P desc:XH2.54 接插件 2P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:R pn: pkg:2512 desc:470Ω",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:J pn:DC-005 pkg:DC-005 desc:DC 电源插座 5.5×2.1mm",
+    "type": "connector"
+  },
+  {
+    "text": "ref:C pn:GRM155R71C104KA88D pkg:0603 desc:贴片电容 10nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:R pn: pkg:1206 desc:电阻 220Ω ±5%",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:RN pn:EXB38V103JV pkg:2512 desc:贴片排阻 220Ω",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:ICE40UP5K pkg:SOP-8 desc:CPLD 复杂可编程逻辑",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:D pn:P6KE6.8A pkg:DO-214AC desc:稳压二极管 3.3V",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:R pn: pkg:1206 desc:电阻 10Ω ±5%",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:U pn:XC6SLX9-2TQG144C pkg:TSSOP-14 desc:CPLD 复杂可编程逻辑",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:Q pn:MMBT3906 pkg:SOT-323 desc:PNP 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:X pn: pkg:3225-2P desc:石英晶体 48MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:D pn:ESD9X5.0ST5G pkg:SOD-923 desc:ESD 保护",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:Q pn:IRG4BC30UD pkg:TO-220 desc:IGBT 600V",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:Q pn:IRG4BC30UD pkg:TO-220 desc:IGBT 600V",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:AMS1117-3.3 pkg:SOT-223 desc:电源管理 稳压器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:R pn:ERA6AEB103V pkg:1206 desc:精密薄膜电阻 1MΩ",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:Q pn:BC557 pkg:SOT-23 desc:PNP 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:LM1117-3.3 pkg:SOT-23-5 desc:低压差线性稳压器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:U pn:74HC595 pkg:SOP-16 desc:8位移位寄存器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:L pn: pkg:1206 desc:共模电感 4.7μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:T pn:2N3906 pkg:TO-92 desc:NPN 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:C pn:GRM155R71C104KA88D pkg:1206 desc:贴片电容 100pF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:R pn:RC0805JR-0710RL pkg:2512 desc:厚膜电阻 10Ω",
+    "type": "resistor"
+  },
+  {
+    "text": "ref:X pn: pkg:5032-2P desc:16MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:ATmega328P pkg:QFN-48 desc:RISC-V 微控制器",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:L pn: pkg:0603 desc:电感 1kΩ@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:C pn:TAJA106K010RNJ pkg:CASE-C desc:钽电容 220μF 10V",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:LM393 pkg:SOP-8 desc:双路电压比较器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:C pn: pkg:1210 desc:电容 33pF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:Q pn:IRG4BC30UD pkg:TO-220 desc:IGBT 600V",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:D pn: pkg:SOT-23-6 desc:ESD 静电保护器件",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:Y pn: pkg:3225-2P desc:",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:U pn:ATmega328P pkg:MSOP-8 desc:{mcu_pn} 主控芯片",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:Q pn:SS8050 pkg:SOT-223 desc:PNP 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:Y pn:XC2016B pkg:圆柱2×6 desc:无源晶振 20MHz 20pF",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:D pn:CM1213A-04SO pkg:SOT-23-6 desc:ESD 保护阵列",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:J pn: pkg:2.54mm-6P desc:排针 6P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:LM1117-3.3 pkg:SOT-223 desc:",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:FB pn: pkg:2010 desc:磁珠 22μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:X pn: pkg:HC-49S desc:4MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:FU pn: pkg:AXIAL-0.3 desc:保险管 2A 250V",
+    "type": "connector"
+  },
+  {
+    "text": "ref:L pn:MLZ1608M100WT pkg:2010 desc:贴片电感 22μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:C pn: pkg:1206 desc:贴片电容 220nF",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:STM32F407VET6 pkg:SSOP-20 desc:RISC-V 微控制器",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:MAX485 pkg:SOT-23-6 desc:ESD 保护",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:C pn: pkg:CASE-D desc:电解电容 220μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:C pn: pkg:0402 desc:",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:C pn: pkg:DIP-Φ8 desc:1500μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:RT9193-33 pkg:SOT-223 desc:线性稳压器 3.3V 1A",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:FB pn: pkg:0402 desc:磁珠 120Ω@100MHz",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:Q pn:SS8050 pkg:SOT-223 desc:NPN 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:XTAL pn: pkg:5032-2P desc:晶振 26MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:Q pn:2N2222 pkg:SOT-523 desc:NPN 三极管",
+    "type": "transistor"
+  },
+  {
+    "text": "ref:U pn:LM393 pkg:SOP-8 desc:双路电压比较器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:CH455 pkg:LGA-12 desc:温湿度传感器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:C pn:C1608X7R1H104K pkg:0402 desc:MLCC 100pF 50V X7R",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:XC6SLX9-2TQG144C pkg:SOT-223 desc:CPLD 复杂可编程逻辑",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:XL6009 pkg:SOP-8 desc:开关电源控制器",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:U pn:CH32V307 pkg:DFN-10 desc:ARM Cortex-M 微控制器",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:Y pn: pkg:圆柱2×6 desc:晶振 20MHz",
+    "type": "crystal"
+  },
+  {
+    "text": "ref:L pn:NR6045-100M pkg:SMD-6×6 desc:功率电感 2.2μH",
+    "type": "inductor"
+  },
+  {
+    "text": "ref:D pn:1N4148 pkg:SOD-123 desc:",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:U pn:ADS1115 pkg:MSOP-10 desc:16位 ADC 模数转换器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:D pn:MMBD4148 pkg:SOD-123 desc:快恢复二极管",
+    "type": "diode_led"
+  },
+  {
+    "text": "ref:C pn:CC0603KRX7R9BB104 pkg:1206 desc:MLCC 1nF 50V",
+    "type": "cap_mlcc"
+  },
+  {
+    "text": "ref:U pn:nRF52840 pkg:DFN-10 desc:低功耗 MCU 64KB Flash",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:USBLC6-2SC6 pkg:SOP-8 desc:RS485 收发器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:U pn:MCP4725 pkg:SOT-23-6 desc:12位 DAC 数模转换器",
+    "type": "ic_analog"
+  },
+  {
+    "text": "ref:C pn:TAJA106K010RNJ pkg:1411 desc:钽电容 220μF 10V",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:CN pn: pkg:XH-4P desc:接插件 4P",
+    "type": "connector"
+  },
+  {
+    "text": "ref:U pn:XC6206P332MR pkg:SOT-223 desc:",
+    "type": "ic_power"
+  },
+  {
+    "text": "ref:C pn:EEEFK1A471SP pkg:SMD-Φ5 desc:铝电解电容 100μF",
+    "type": "cap_elec"
+  },
+  {
+    "text": "ref:U pn:TMS320F28335 pkg:QFN-48 desc:DSP 数字信号处理器",
+    "type": "ic_mcu"
+  },
+  {
+    "text": "ref:U pn:74LVC1G125 pkg:SOT-23-5 desc:三态缓冲器",
+    "type": "ic_other"
+  },
+  {
+    "text": "ref:R pn: pkg:1206 desc:22Ω",
+    "type": "resistor"
+  }
+]
