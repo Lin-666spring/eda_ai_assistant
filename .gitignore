@@ -51,3 +51,4 @@ rag_data/*.sqlite3
 .claude/
 .zcode/
 test_data/_incoming_thing/
+.specs/
