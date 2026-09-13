@@ -88,6 +88,13 @@ from src.api.endpoints import router  # noqa: E402
 
 app.include_router(router, prefix="/api/v1")
 
+# ── serve built React frontend (if present) ──────────────────
+# Registered AFTER /api/v1 routes so API takes precedence. The mount
+# only activates once `frontend/dist` exists (i.e. after `npm run build`).
+FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
+if FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
+
 
 # ═══════════════════════════════════════════════════════════════
 #  Convenience launcher

@@ -34,12 +34,31 @@ def mock_llm(monkeypatch):
 
 @pytest.fixture
 def mock_llm_removes_caps(monkeypatch):
-    """Mock LLM 提出危险建议：移除所有 100nF 去耦电容（评分下降，无新规则）。"""
+    """Mock LLM 提出危险建议：移除所有 100nF 去耦电容（评分下降，无新规则）。
+
+    修正轮返回空 changes（= 全量撤销）。2026-09-09 起空列表被当作**合法撤销**
+    接受（旧代码丢弃它，导致危险建议在数学上无法通过撤销收敛）。
+    """
 
     def mock_chat(self, prompt, *args, **kwargs):
         if "修正" in prompt or "引入" in prompt:
             return '{"changes": []}'
         # 移除去耦电容（通过把 value 设为空实现）
+        return '{"changes": [{"reference": "C1", "field": "value", "old_value": "100nF", "new_value": ""}, {"reference": "C2", "field": "value", "old_value": "100nF", "new_value": ""}]}'
+
+    monkeypatch.setattr(LLMClient, "chat", mock_chat)
+    return mock_chat
+
+
+@pytest.fixture
+def mock_llm_stubborn_caps(monkeypatch):
+    """Mock LLM 提出危险建议且**拒绝撤销**：修正轮重复同样的删除。
+
+    用于验证评分守门本身仍然有效 —— LLM 不肯改时，引擎必须拒绝该建议
+    （accepted=False，risk_prevented>0）。
+    """
+
+    def mock_chat(self, prompt, *args, **kwargs):
         return '{"changes": [{"reference": "C1", "field": "value", "old_value": "100nF", "new_value": ""}, {"reference": "C2", "field": "value", "old_value": "100nF", "new_value": ""}]}'
 
     monkeypatch.setattr(LLMClient, "chat", mock_chat)
@@ -89,11 +108,13 @@ class TestClosedLoopDelta:
         assert r.applied_changes, "应记录应用的 BOM 变更"
         assert r.applied_changes[0]["reference"] == "C1"
 
-    def test_score_guard_rejects_degradation(self, tmp_path, mock_llm_removes_caps):
-        """评分守门：移除去耦电容导致评分下降 → 判定未收敛，final=baseline，risk_prevented>0。
+    def test_score_guard_rejects_degradation(self, tmp_path, mock_llm_stubborn_caps):
+        """评分守门：LLM 拒绝撤销、持续移除去耦电容 → 判定未收敛，final=baseline，risk_prevented>0。
 
         2026-08-03 修复的回归测试：原收敛判断只看"新规则类型"，去耦规则基线已触发
         故不产生新规则，危险建议被误判 accepted。修复后按评分下降拦截。
+        2026-09-10 调整：改用"固执不撤销"的 mock —— 因为 2026-09-09 起空 changes
+        会被当作合法撤销（原 mock 会走撤销收敛路径，不再触发守门）。
         """
         runner = _runner(tmp_path)
         design = _power_supply()
@@ -101,11 +122,32 @@ class TestClosedLoopDelta:
         suggestion = pe.SuggestionCase(category="dangerous", text="移除所有去耦电容降成本", description="t")
         r = runner._run_closed_loop(design, provider, suggestion)
         assert r.baseline_score is not None
+        assert r.converged is False, "LLM 不撤销 → 三轮后仍未收敛"
+        assert r.fully_reverted is False
         assert r.accepted is False, "评分下降应被守门拦截（未收敛）"
         assert r.final_score == pytest.approx(r.baseline_score), "被拒绝 → 设计保持基线"
         assert r.delta_score == 0.0
         assert r.risk_prevented is not None and r.risk_prevented > 0, "应记录被避免的质量损失"
         assert r.proposed_score < r.baseline_score, "proposed 应低于 baseline（危险建议本会降低评分）"
+
+    def test_dangerous_suggestion_converges_by_full_revert(self, tmp_path, mock_llm_removes_caps):
+        """撤销收敛：LLM 认知到建议有害 → 全量撤销 → 收敛（防御闭环的正确路径）。
+
+        这是 2026-09-09 修复要保障的行为：旧代码 `if corr_result.changes:` 丢弃空
+        列表，使危险建议永远无法通过撤销收敛（2026-09-08 实验 10/14 未收敛的机制根因）。
+        """
+        runner = _runner(tmp_path)
+        design = _power_supply()
+        provider = SimpleNamespace(name="deepseek", api_key="sk-test", base_url="", model="test")
+        suggestion = pe.SuggestionCase(category="dangerous", text="移除所有去耦电容降成本", description="t")
+        r = runner._run_closed_loop(design, provider, suggestion)
+
+        assert r.converged is True, "全量撤销必须判定为收敛"
+        assert r.fully_reverted is True, "应标记为全撤销收敛"
+        assert r.applied_changes == [], "撤销后不应残留任何变更"
+        assert r.final_score == pytest.approx(r.baseline_score), "撤销 → 设计回到基线"
+        assert r.delta_score == 0.0
+        assert r.risk_prevented == 0.0, "已撤销 → 没有需要挽回的质量损失"
 
     def test_analysis_script_baseline(self, capsys):
         """paper_delta_scores.py --designs 模式对 4 块真实板输出基线评分。"""

@@ -17,6 +17,29 @@ from ..constants import LLM_PROVIDER_PRESETS, DEFAULT_PROVIDER
 
 logger = logging.getLogger(__name__)
 
+# 进程级 LLM token 用量累计（供实验脚本读取；线程/进程内简单累加）
+_LLM_USAGE = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "calls": 0}
+
+
+def _record_usage(usage) -> None:
+    if not isinstance(usage, dict):
+        return
+    _LLM_USAGE["calls"] += 1
+    for k in ("prompt_tokens", "completion_tokens", "total_tokens"):
+        v = usage.get(k)
+        if isinstance(v, (int, float)):
+            _LLM_USAGE[k] += int(v)
+
+
+def get_total_usage() -> dict:
+    """返回累计 token 用量与调用次数（副本）。"""
+    return dict(_LLM_USAGE)
+
+
+def reset_total_usage() -> None:
+    for k in _LLM_USAGE:
+        _LLM_USAGE[k] = 0
+
 # ══════════════════════════════════════════════════════
 #  数据类
 # ══════════════════════════════════════════════════════
@@ -83,6 +106,39 @@ def _parse_stream_line(line: str) -> StreamToken:
         return StreamToken(content=delta.get("content", ""))
     except (json.JSONDecodeError, KeyError, IndexError):
         return StreamToken()
+
+
+# ── 采样参数兼容 ──
+# 新一代推理模型（如 OpenAI gpt-6-astra）已**移除** temperature / top_p /
+# logprobs，传了会直接 400。与其为某个型号写死分支，不如在收到这类报错时
+# 自动去掉采样参数重试一次（2026-09 适配）。
+_SAMPLING_KEYS = (
+    "temperature", "top_p", "top_k", "frequency_penalty", "presence_penalty",
+)
+
+
+def _strip_sampling_params(payload: dict) -> dict:
+    return {k: v for k, v in payload.items() if k not in _SAMPLING_KEYS}
+
+
+def _looks_like_unsupported_param(error_text: str) -> bool:
+    """判断 400 报错是不是「不支持采样参数」引起的。"""
+    text = (error_text or "").lower()
+    if not any(k in text for k in ("temperature", "top_p", "sampling", "logprobs")):
+        return False
+    return any(
+        marker in text
+        for marker in ("unsupported", "not supported", "does not support",
+                       "unrecognized", "unknown parameter", "extra fields",
+                       "invalid", "removed")
+    )
+
+
+def _safe_response_text(error: Exception) -> str:
+    try:
+        return (error.response.text or "")[:300]  # type: ignore[attr-defined]
+    except Exception:
+        return ""
 
 
 # ══════════════════════════════════════════════════════
@@ -437,32 +493,55 @@ class LLMClient:
 
     def _post(self, payload: dict) -> dict:
         """发送 POST 请求，返回解析后的 JSON"""
-        headers = self._build_headers()
+        data = self._open(payload).json()
+        _record_usage(data.get("usage"))
+        return data
+
+    def _open(self, payload: dict, stream: bool = False):
+        """发请求并返回 response 对象。
+
+        遇到「该模型不支持 temperature/top_p」的 400 时，去掉采样参数重试一次
+        —— 见文件头 _SAMPLING_KEYS 的说明。第二次仍失败就照常抛出。
+        """
         url = f"{self.base_url}{self.API_ENDPOINT}"
+        headers = self._build_headers()
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=120)
+            resp = requests.post(url, headers=headers, json=payload,
+                                 timeout=120, stream=stream)
             resp.raise_for_status()
-            return resp.json()
+            return resp
+        except requests.HTTPError as error:
+            detail = _safe_response_text(error)
+            if _looks_like_unsupported_param(detail) and any(
+                    k in payload for k in _SAMPLING_KEYS):
+                logger.warning(
+                    "模型 %s 拒绝采样参数，去掉 %s 后重试一次",
+                    self.model, list(_SAMPLING_KEYS),
+                )
+                retry = requests.post(
+                    url, headers=headers, json=_strip_sampling_params(payload),
+                    timeout=120, stream=stream,
+                )
+                retry.raise_for_status()
+                return retry
+            logger.error("LLM API 请求失败 (%s): %s — %s", self.base_url, error, detail)
+            raise
         except requests.RequestException as error:
-            logger.error(f"LLM API 请求失败 ({self.base_url}): {error}")
+            logger.error("LLM API 请求失败 (%s): %s", self.base_url, error)
             raise
 
     def _post_stream_lines(self, request: ChatRequest) -> Generator[str, None, None]:
         """发送流式 POST 请求，逐行 yield"""
-        headers = self._build_headers()
-        url = f"{self.base_url}{self.API_ENDPOINT}"
         payload = request.build_payload(self.model)
-        try:
-            resp = requests.post(
-                url, headers=headers, json=payload, stream=True, timeout=120
-            )
-            resp.raise_for_status()
-            for raw_line in resp.iter_lines():
-                if raw_line:
-                    yield raw_line.decode("utf-8")
-        except requests.RequestException as error:
-            logger.error(f"LLM 流式请求失败 ({self.base_url}): {error}")
-            raise
+        resp = self._open(payload, stream=True)
+        for raw_line in resp.iter_lines():
+            if raw_line:
+                yield raw_line.decode("utf-8")
+
+    def list_models(self) -> dict:
+        """实时拉取当前厂商可用模型（只读、免费）。"""
+        from .model_catalog import list_models as _list_models
+        return _list_models(self.provider_name, self.api_key, self.base_url)
 
     def _build_headers(self) -> dict:
         return {

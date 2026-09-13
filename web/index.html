@@ -3,78 +3,91 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EDA AI v0.7.0</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%235b8def'/><text x='16' y='22' text-anchor='middle' font-family='sans-serif' font-size='14' font-weight='bold' fill='white'>EDA</text></svg>">
+<title>EDA AI 智能助手 v0.8.0</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%232565fe'/><text x='16' y='22' text-anchor='middle' font-family='sans-serif' font-size='14' font-weight='bold' fill='white'>EDA</text></svg>">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/inter@5.1.0/index.css">
 <link rel="stylesheet" href="css/style.css">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
 <script src="/eel.js"></script>
 </head>
-<body>
+<body data-theme="light">
 
-<!-- ═══════════ Sidebar ═══════════ -->
-<aside id="sidebar">
-  <div class="sidebar-brand" onclick="switchAssistant(currentAssistantInstance)">
-    <span class="sidebar-logo">EDA</span>
-    <span class="sidebar-title">AI 智能助手</span>
+<!-- ═══════════ TopBar ═══════════ -->
+<header id="topBar">
+  <div class="topbar-brand">
+    <span class="topbar-logo">EDA</span>
+    <span class="topbar-title">EDA AI 智能助手</span>
   </div>
-
-  <!-- 标签栏：助手 | 话题 -->
-  <div class="sidebar-tabs">
-    <button class="sidebar-tab active" data-tab="assistants" onclick="switchSidebarTab('assistants')">助手</button>
-    <button class="sidebar-tab" data-tab="topics" onclick="switchSidebarTab('topics')">话题</button>
-    <button class="sidebar-tab-add" onclick="showNewAssistantDialog()" title="新建助手">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
+  <nav class="topbar-nav">
+    <button class="nav-item active" data-view="bom" onclick="switchView('bom')">BOM 分析</button>
+    <button class="nav-item" data-view="review" onclick="switchView('review')">设计审查</button>
+    <button class="nav-item" data-view="tools" onclick="switchView('tools')">工具箱</button>
+    <button class="nav-item" data-view="report" onclick="switchView('report')">报告中心</button>
+    <button class="nav-item" data-view="config" onclick="switchView('config')">配置管理</button>
+  </nav>
+  <div class="topbar-right">
+    <!-- 会话切换（conversations 的唯一入口） -->
+    <div class="session-wrap" id="sessionWrap">
+      <button class="session-chip" id="sessionChip" onclick="toggleSessionMenu(event)" title="切换 / 新建会话">
+        <span class="session-dot"></span>
+        <span class="session-name" id="sessionChipName">新对话</span>
+        <svg class="session-caret" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4,6 8,10 12,6"/></svg>
+      </button>
+      <div class="session-menu" id="sessionMenu">
+        <div class="session-menu-head">
+          <span class="session-menu-assistant" id="sessionMenuAssistant">EDA 通用助手</span>
+          <button class="session-new-btn" onclick="newConversation(); closeSessionMenu();">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+            新对话
+          </button>
+        </div>
+        <div class="session-menu-list" id="conversationList"></div>
+        <button class="session-menu-foot" onclick="showNewAssistantDialog(); closeSessionMenu();">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V5M9 5h6"/></svg>
+          管理助手实例
+        </button>
+      </div>
+    </div>
+    <button class="header-icon-btn" id="modeToggleBtn" onclick="toggleWindowMode()" title="切换伴生模式">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+    </button>
+    <button id="agentToggle" class="agent-toggle" onclick="toggleAgentMode()" title="Agent 模式 — LLM 自主规划调用工具">
+      <span class="agent-toggle-dot"></span>
+      <span class="agent-toggle-label">Agent</span>
+    </button>
+    <button class="header-icon-btn" onclick="toggleSettings()" title="设置">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
+    <button class="header-icon-btn" id="panelToggleTop" onclick="toggleRightPanel()" title="展开/折叠任务面板">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="15" y1="4" x2="15" y2="20"/></svg>
     </button>
   </div>
+</header>
 
-  <!-- 助手列表 -->
-  <div id="sidebarAssistants" class="sidebar-section tab-content active">
-    <div id="assistantList"></div>
-  </div>
-
-  <!-- 话题列表 -->
-  <div id="sidebarTopics" class="sidebar-section tab-content">
-    <div class="sidebar-label-row">
-      <span class="sidebar-label">对话</span>
-      <button class="sidebar-action" onclick="newConversation()" title="新建对话">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
-      </button>
-    </div>
-    <div id="conversationList"></div>
-  </div>
-
-  <div class="sidebar-spacer"></div>
-</aside>
-
-<!-- ═══════════ Main Chat Area ═══════════ -->
+<!-- ═══════════ Main Area ═══════════ -->
+<!-- ═══════════ Body Row: Main + Right Panel ═══════════ -->
+<div id="bodyRow">
 <main id="chatArea">
-  <!-- 模型选择栏 -->
-  <div id="chatHeader">
-    <div id="currentAssistantTitle">
-      <span id="assistantIcon"></span>
-      <span id="assistantName">EDA 通用助手</span>
-    </div>
-    <div class="header-right">
-      <button class="header-icon-btn" id="modeToggleBtn" onclick="toggleWindowMode()" title="切换伴生模式">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
-      </button>
-      <button id="agentToggle" class="agent-toggle" onclick="toggleAgentMode()" title="Agent 模式 — LLM 自主规划调用工具">
-        <span class="agent-toggle-dot"></span>
-        <span class="agent-toggle-label">Agent</span>
-      </button>
-      <button class="header-icon-btn" onclick="toggleSettings()" title="设置">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-      </button>
+  <!-- 视图内容容器（当前一级项的标题 + 二级入口卡片） -->
+  <div id="viewContainer"></div>
+
+  <!-- 消息/结果流（默认隐藏，有内容时显示） -->
+  <div id="chatMessages" class="hidden">
+    <div id="chatEmpty">
+      <div class="chat-empty-icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 20h8M12 18v2"/></svg>
+      </div>
+      <div class="chat-empty-title">开始你的 <span class="accent-text">EDA</span> 审查</div>
+      <div class="chat-empty-desc">输入指令，或从功能卡片选择一项开始</div>
+      <div class="chat-empty-chips">
+        <button class="qa-btn" onclick="startDemo()">一键演示</button>
+        <button class="qa-btn" onclick="document.getElementById('bomFileInput').click()">导入 BOM</button>
+      </div>
     </div>
   </div>
 
-  <!-- 消息区域 -->
-  <div id="chatMessages">
-    <!-- 空状态 -->
-    <div id="emptyState"></div>
-  </div>
-
-  <!-- 输入区域 -->
+  <!-- 输入区域 · 命令栏 -->
   <div id="chatFooter">
     <!-- 图片预览 -->
     <div id="imagePreviewBar" style="display:none">
@@ -91,16 +104,15 @@
       <button class="img-btn" onclick="document.getElementById('imageFileInput').click()" title="添加图片 (可 Ctrl+V 粘贴)">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
       </button>
-      <textarea id="chatInput" placeholder="输入指令... (Enter 发送, Shift+Enter 换行)" rows="1" autofocus></textarea>
+      <textarea id="chatInput" placeholder="输入审查指令或问题... (Enter 发送, Shift+Enter 换行)" rows="1" autofocus></textarea>
       <button id="sendBtn" onclick="sendChat()" title="发送">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
     </div>
   </div>
 </main>
-
-<!-- ═══════════ Right Panel ═══════════ -->
-<aside id="rightPanel">
+<!-- ═══════════ Right Panel (折叠) ═══════════ -->
+<aside id="rightPanel" class="collapsed">
   <div class="panel-tabs">
     <button class="tab-btn active" data-tab="bom">BOM 表格</button>
     <button class="tab-btn" data-tab="report">报告</button>
@@ -119,7 +131,9 @@
     <div id="tab-review" class="tab-panel">
       <div id="reviewContent">
         <button class="review-start-btn" onclick="runMultiAgentReview()">
-          <span class="review-start-icon"></span>
+          <span class="review-start-icon">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="9" cy="8" r="3.2"/><path d="M3 19a6 6 0 0 1 12 0M16.5 5.5a3 3 0 0 1 0 6M15 13.5a5.5 5.5 0 0 1 6 5.5"/></svg>
+          </span>
           <span>启动多智能体协同审查</span>
           <span class="review-start-hint">5 个专业 AI Agent 并行审查</span>
         </button>
@@ -128,8 +142,16 @@
             <div class="review-score-main">
               <canvas id="radarChart" width="200" height="200"></canvas>
               <div class="review-overall">
-                <span id="reviewGrade" class="review-grade">A+</span>
-                <span id="reviewScore" class="review-score-num">96.5</span>
+                <div class="score-ring-wrap">
+                  <svg class="score-ring" viewBox="0 0 120 120">
+                    <circle class="score-ring-track" cx="60" cy="60" r="52"/>
+                    <circle class="score-ring-fill" id="scoreRing" cx="60" cy="60" r="52"/>
+                  </svg>
+                  <div class="score-ring-inner">
+                    <span id="reviewGrade" class="review-grade">A+</span>
+                    <span id="reviewScore" class="review-score-num">96.5</span>
+                  </div>
+                </div>
                 <span class="review-score-label">综合评分</span>
               </div>
             </div>
@@ -156,10 +178,7 @@
     </div>
   </div>
 </aside>
-
-<button class="panel-toggle" id="panelToggleBtn" onclick="toggleRightPanel()" title="折叠/展开面板">
-  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,3 11,8 6,13"/></svg>
-</button>
+</div><!-- /#bodyRow -->
 
 <!-- ═══════════ Hidden file inputs ═══════════ -->
 <input type="file" id="bomFileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="onFileSelected('bom', this)">
@@ -192,7 +211,7 @@
 
     <!-- Content area -->
     <div class="settings-content">
-      <button class="settings-close-btn" onclick="closeSettings(event)">✕</button>
+      <button class="settings-close-btn" onclick="closeSettings()">✕</button>
 
       <!-- ═══ Tab: AI Model ═══ -->
       <div id="s-ai" class="settings-tab active">
@@ -205,11 +224,19 @@
 
         <!-- Model -->
         <div style="margin-top:18px">
-          <label class="settings-field-label">模型</label>
+          <div class="settings-label-row">
+            <label class="settings-field-label">模型</label>
+            <span id="modelSourceBadge" class="model-source-badge">离线兜底</span>
+          </div>
           <div class="settings-combo-row">
             <select id="setModelSelect" class="settings-combo-select" onchange="onModelSelectChange()"></select>
             <input type="text" id="setModelCustom" class="settings-input" placeholder="自定义模型..." style="display:none">
           </div>
+          <div class="settings-model-actions">
+            <button class="btn-sm" id="fetchModelsBtn" onclick="fetchModelsForProvider()">拉取最新模型</button>
+            <a class="settings-key-link" id="providerKeyLink" href="#" target="_blank" rel="noopener">获取 API Key →</a>
+          </div>
+          <div id="providerNote" class="settings-note" style="display:none"></div>
         </div>
 
         <!-- API Key + Base URL -->
@@ -256,21 +283,21 @@
 
         <label class="settings-field-label">主题模式</label>
         <div class="theme-previews">
-          <label class="theme-card" onclick="applyTheme('dark')">
-            <input type="radio" name="theme" value="dark" checked>
-            <div class="theme-preview dark-preview"></div>
-            <span>深色</span>
-          </label>
           <label class="theme-card" onclick="applyTheme('light')">
-            <input type="radio" name="theme" value="light">
+            <input type="radio" name="theme" value="light" checked>
             <div class="theme-preview light-preview"></div>
             <span>浅色</span>
+          </label>
+          <label class="theme-card" onclick="applyTheme('dark')">
+            <input type="radio" name="theme" value="dark">
+            <div class="theme-preview dark-preview"></div>
+            <span>深色</span>
           </label>
         </div>
 
         <label class="settings-field-label" style="margin-top:18px">强调色</label>
         <div class="accent-colors">
-          <button class="accent-dot active" data-accent="#5b8def" style="background:#5b8def" onclick="setAccentColor('#5b8def', this)"></button>
+          <button class="accent-dot active" data-accent="#2565fe" style="background:#2565fe" onclick="setAccentColor('#2565fe', this)"></button>
           <button class="accent-dot" data-accent="#e74c3c" style="background:#e74c3c" onclick="setAccentColor('#e74c3c', this)"></button>
           <button class="accent-dot" data-accent="#e67e22" style="background:#e67e22" onclick="setAccentColor('#e67e22', this)"></button>
           <button class="accent-dot" data-accent="#2ecc71" style="background:#2ecc71" onclick="setAccentColor('#2ecc71', this)"></button>
@@ -345,10 +372,10 @@
         <div class="about-content">
           <div class="about-logo">EDA</div>
           <h4>EDA AI 智能助手</h4>
-          <div class="about-version">v0.7.0-dev</div>
+          <div class="about-version">v0.8.0-dev</div>
           <p class="about-desc">
             基于多智能体协同的 PCB 设计辅助工具<br>
-            51条设计规则 · 22项工具 · 5个专业审查Agent
+            71条设计规则 · 3个自研ML模型 · 5个专业审查Agent
           </p>
           <div class="about-links">
             <a href="https://github.com/Lin-666spring/eda_ai_assistant" target="_blank" class="about-link">
@@ -362,7 +389,8 @@
           <div class="about-meta">
             <div class="about-meta-row"><span>技术栈</span><span>Python + Eel + SQLite + ChromaDB</span></div>
             <div class="about-meta-row"><span>LLM 支持</span><span>DeepSeek / OpenAI / 通义千问 / 智谱 / Kimi</span></div>
-            <div class="about-meta-row"><span>设计规则</span><span>51 条 PCB 设计规则 (BOM+PCB+布局)</span></div>
+            <div class="about-meta-row"><span>设计规则</span><span>71 条 PCB 设计规则 (BOM+PCB+布局)</span></div>
+            <div class="about-meta-row"><span>本地 ML</span><span>意图分类 · 元件识别 · 风险预测 (&lt;1M 参数)</span></div>
             <div class="about-meta-row"><span>许可证</span><span>MIT</span></div>
           </div>
         </div>
@@ -372,7 +400,7 @@
       <div class="settings-bottom-bar">
         <span class="settings-status" id="settingsStatus"></span>
         <div class="settings-bottom-actions">
-          <button class="btn-secondary" onclick="closeSettings(event)">取消</button>
+          <button class="btn-secondary" onclick="closeSettings()">取消</button>
           <button class="btn-primary" onclick="saveAllSettings()">保存设置</button>
         </div>
       </div>

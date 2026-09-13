@@ -807,6 +807,7 @@ class AppController:
         user_input: str,
         on_token: Optional[Callable[[str], None]] = None,
         max_iterations: int = 5,
+        on_tool_call: Optional[Callable[[str, dict], None]] = None,
     ) -> str:
         """Function Calling Agent Loop — LLM 自主选择工具，多步推理
 
@@ -823,6 +824,8 @@ class AppController:
             user_input: 用户输入
             on_token: 流式输出回调（最终文本回复时逐 token 回调）
             max_iterations: 最大工具调用轮数
+            on_tool_call: 工具调用回调（每次执行工具前回调工具名和参数，
+                          用于前端展示 Agent 推理过程）
 
         Returns:
             LLM 的最终文本回复
@@ -838,7 +841,16 @@ class AppController:
             system = PromptTemplates.get_system_prompt("agent")
 
             # 注入 tool_executor（确保热重载后仍有效）
-            if self.agent.tool_executor is None:
+            # 有 on_tool_call 时包一层，让前端能实时看到每次工具调用
+            if on_tool_call is not None:
+                def _executor(name: str, args: dict) -> str:
+                    try:
+                        on_tool_call(name, args)
+                    except Exception:
+                        pass
+                    return self._dispatch_operation(name, args)
+                self.agent.tool_executor = _executor
+            else:
                 self.agent.tool_executor = self._dispatch_operation
 
             result = self.agent.chat_with_tools(

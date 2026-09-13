@@ -272,6 +272,15 @@ class AnthropicClient:
     def clear_history(self):
         self._history = []
 
+    def list_models(self) -> dict:
+        """实时拉取 Anthropic 可用模型（GET /v1/models，只读免费）。
+
+        注意 self.base_url 指向 `.../v1/messages`，列表端点是同级 `/v1/models`，
+        由 model_catalog.models_endpoint() 负责推导。
+        """
+        from .model_catalog import list_models as _list_models
+        return _list_models(self.provider_name, self.api_key, self.base_url)
+
     # ══════════════════════════════════════════
     #  内部方法
     # ══════════════════════════════════════════

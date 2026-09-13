@@ -1,0 +1,86 @@
+$PACKAGES
+1/4W插件电阻（400mil） ! 1/4W插件电阻（400mil） ! '10kΩ' ; R7 R12 
+1/4W插件电阻（400mil） ! 1/4W插件电阻（400mil） ! '10Ω' ; R14 
+1/4W插件电阻（400mil） ! 1/4W插件电阻（400mil） ! '1kΩ' ; R9 R13 
+1/4W插件电阻（400mil） ! 1/4W插件电阻（400mil） ! '220kΩ' ; R8 
+1/4W插件电阻（400mil） ! 1/4W插件电阻（400mil） ! '300Ω' ; R1 R2 R3 R4 R5 R6 
+2mm香蕉头插座 ! 2mm香蕉头插座 ! '{Value}' ; T_V TA TGND TI+ 
+插件电阻 1W ! 插件电阻 1W ! '100mΩ' ; R0 
+插件陶瓷电容 ! 插件陶瓷电容 ! 100nF ; C1 C2 C5 
+插件陶瓷电容 ! 插件陶瓷电容 ! 100pF ; C4 
+插件陶瓷电容 ! 插件陶瓷电容 ! 10nF ; C3 
+CAP-TH_BD6.3-P2.50-D1.0-FD ! CAP-TH_BD6.3-P2.50-D1.0-FD ! 100uF ; EC3 
+CAP-TH_BD6.3-P2.50-D1.0-FD ! CAP-TH_BD6.3-P2.50-D1.0-FD ! 47uF ; EC1 EC2 
+CONN-TH_2P-P3.96_B4P-VH-B-LF-SN ! CONN-TH_2P-P3.96_B4P-VH-B-LF-SN ! '{Value}' ,
+        ; CN1 CN2 
+CONN-TH_DC-005-2.5A-2.0 ! CONN-TH_DC-005-2.5A-2.0 ! '{Value}' ; DC1 
+DO-35 ! DO-35 ! '{Value}' ; D1 D3 
+DO-41 ! DO-41 ! '{Value}' ; D2 
+HDR_20P ! HDR_20P ! '{Value}' ; H1 H2 
+HDR-TH_2P-P2.54-V-M-1 ! HDR-TH_2P-P2.54-V-M-1 ! '{Value}' ; JP1 JP2 
+HDR-TH_4P-P2.54-V-M ! HDR-TH_4P-P2.54-V-M ! '{Value}' ; H3 
+KEY_6*6 ! KEY_6*6 ! '{Value}' ; K1 K2 K3 
+LED_TH ! LED_TH ! '{Value}' ; PWR 
+LED-SEG-TH_FJ2381AH ! LED-SEG-TH_FJ2381AH ! '{Value}' ; LD1 LD2 
+LED-TH_BD5.9-P2.54-RD_WHITE ! LED-TH_BD5.9-P2.54-RD_WHITE ! '{Value}' ; LED1 
+M3螺丝 ! M3螺丝 ! '{Value}' ; TP1 TP2 TP3 TP4 
+RES-ADJ-TH_3296W ! RES-ADJ-TH_3296W ! '10kΩ' ; RP1 RP2 
+RES-TH_BD2.2-L6.5-P10.50-D0.6 ! RES-TH_BD2.2-L6.5-P10.50-D0.6 ! '2.4kΩ' ; R10 ,
+        R15 
+RES-TH_BD2.2-L6.5-P10.50-D0.6 ! RES-TH_BD2.2-L6.5-P10.50-D0.6 ! '2.7kΩ' ; R16 
+RES-TH_BD2.3-L6.5-P10.50-D0.5 ! RES-TH_BD2.3-L6.5-P10.50-D0.5 ! '200kΩ' ; R11 
+,
+        SOT-89-3_L4.5-W2.5-P1.50-LS4.2-BR ! SOT-89-3_L4.5-W2.5-P1.50-LS4.2-BR ! '{Value}' ,
+        ; U1 
+TO-92-3_L4.9-W3.7-P1.27-L ! TO-92-3_L4.9-W3.7-P1.27-L ! '{Value}' ; U2 
+XH2.54_3P ! XH2.54_3P ! '{Value}' ; CH1 
+$A_PROPERTIES
+$NETS
+'+5V' ; C2.1 EC3.1 H1.18 R11.2 R12.2 R13.2 R15.2 U1.3 
+'+V' ; CH1.3 JP1.2 R8.2 T_V.1 
+'$1N17807' ; D2.2 DC1.1 
+'$1N2535' ; LED1.2 R10.1 
+'$1N4367' ; LD2.9 R5.1 
+'$1N4368' ; LD2.8 R6.1 
+'$1N4375' ; LD1.9 R2.1 
+'$1N4376' ; LD1.8 R3.1 
+'$1N4379' ; LD2.12 R4.1 
+'$1N4380' ; LD1.12 R1.1 
+'$1N6065' ; CN2.1 TA.1 
+'$1N6422' ; JP1.1 RP1.2 
+'$1N7101' ; JP2.1 RP2.2 
+'$1N7137' ; R11.1 RP2.1 
+'$1N7812' ; C1.1 EC2.1 R14.2 U1.2 
+'$1N7944' ; PWR.1 R12.1 
+'3.3V' ; H1.20 R10.2 
+'ADC_IN0' ; C4.1 D3.2 H1.17 R9.1 
+'ADC_IN2' ; C3.1 D1.2 H1.15 R7.2 R8.1 
+'ADC_IN7' ; C5.1 H1.14 R13.1 U2.1 U2.3 
+'I+' ; CN1.1 CN2.2 JP2.2 R0.2 R9.2 TI+.1 
+'MCU_RX' ; H1.9 H3.1 
+'MCU_TX' ; H1.8 H3.2 
+A ; H2.6 LD1.11 LD2.11 
+B ; H2.9 LD1.7 LD2.7 
+C ; H1.7 LD1.4 LD2.4 
+COM1 ; H1.1 R1.2 
+COM2 ; H1.2 R2.2 
+COM3 ; H1.3 R3.2 
+COM4 ; H2.13 R4.2 
+COM5 ; H2.14 R5.2 
+COM6 ; H2.17 R6.2 
+D ; H1.5 LD1.2 LD2.2 
+DP ; H1.6 LD1.3 LD2.3 
+E ; H2.5 LD1.1 LD2.1 
+F ; H2.8 LD1.10 LD2.10 
+G ; H1.4 LD1.5 LD2.5 
+GND ; C1.2 C2.2 C3.2 C4.2 C5.2 CH1.1 CN1.2 DC1.2 DC1.3 EC1.2 EC2.2 EC3.2 H1.19 ,
+        H3.4 K1.3 K1.4 K2.3 K2.4 K3.3 K3.4 PWR.2 R0.1 R7.1 R16.1 RP1.3 RP2.3 ,
+        TGND.1 U1.1 U2.2 
+K1 ; H1.11 K1.1 K1.2 
+K2 ; H1.12 K2.1 K2.2 
+K3 ; H1.13 K3.1 K3.2 
+LED1 ; H2.18 LED1.1 
+REF ; D1.1 D3.1 R15.1 R16.2 
+VP ; CH1.2 D2.1 EC1.1 R14.1 RP1.1 
+$SCHEDULE
+$END

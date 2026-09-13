@@ -209,3 +209,52 @@ class KnowledgeQueryResponse(BaseModel):
     ok: bool = True
     result: str = ""
     sources: list[dict[str, Any]] = []
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Persistence (SQLite session store)
+# ═══════════════════════════════════════════════════════════════
+
+
+class AssistantSaveRequest(BaseModel):
+    instance_id: str
+    type_id: str
+    name: str
+    sort_order: int = 0
+
+
+class ConversationSaveRequest(BaseModel):
+    conv_id: str
+    instance_id: str
+    title: str = "新对话"
+
+
+class MessageSaveRequest(BaseModel):
+    conv_id: str
+    role: str
+    content: str = ""
+    image: str = ""
+    seq: int = 0
+
+
+class ActiveStateRequest(BaseModel):
+    active_assistant: str = ""
+    active_conv: str = ""
+
+
+class DemoLoadResponse(BaseModel):
+    ok: bool = True
+    count: int = 0
+    pos_count: int = 0
+    msg: str = ""
+    items: list[dict[str, Any]] = []
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Chat streaming (POST body variant)
+# ═══════════════════════════════════════════════════════════════
+
+
+class ChatStreamRequest(BaseModel):
+    text: str = ""
+    agent_mode: bool = False

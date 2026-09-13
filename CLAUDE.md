@@ -17,7 +17,7 @@ pip install -r requirements.txt
 # Run the app (Eel Web UI, opens Chrome/Edge)
 python main.py
 
-# Run all 323 tests
+# Run all 843 tests
 python -m pytest tests/ -q
 
 # Run a single test module
@@ -51,7 +51,7 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 
 1. **Two-stage NLU pipeline** (`process_input`): intent classification → entity extraction → dispatch.
 
-2. **Agent Loop** (`agent_loop`): Function Calling based multi-step reasoning. LLM receives all 12 tool definitions, autonomously decides which tools to call, executes them via `_dispatch_operation`, feeds results back, loops until final text response. Max 5 iterations. Accessible via `send_message_agent` endpoint.
+2. **Agent Loop** (`agent_loop`): Function Calling based multi-step reasoning. LLM receives all 24 tool definitions, autonomously decides which tools to call, executes them via `_dispatch_operation`, feeds results back, loops until final text response. Max 5 iterations. Accessible via `send_message_agent` endpoint.
 
 3. **Natural language chat** (`chat_message_stream`): Freeform Markdown chat via streaming. No BOM preload required.
 
@@ -65,7 +65,7 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 - NLU keywords per intent ← `get_keywords_by_intent()`
 - LLM prompt operation list ← `get_operation_descriptions()`
 - Help text ← `get_help_text()`
-- Function Calling schemas ← `get_function_definitions()` [PLANNED]
+- Function Calling schemas ← `get_function_definitions()`
 
 **To add a new capability, add one `ToolDef` to the `TOOLS` list** — ordering matters for priority (ai_merge_bom before merge_bom → "AI合并" matches the AI variant first).
 
@@ -93,7 +93,18 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 
 ### Frontend
 
-`web/` — Eel-served static files. Cherry Studio-style three-column layout with sidebar tabs (助手/话题) + multi-instance assistant model + Agent Mode toggle + Window Mode toggle. All functional icons use SVG (chevrons, X buttons, + icons). Confirm dialog replaces browser `confirm()`. `css/style.css` uses rounded corners throughout, no rigid border lines between panels, dark theme default.
+`web/` — Eel-served static files. **Two-level navigation** (top nav 视图 → 卡片入口), not the old three-column layout:
+`index.html` 顶栏 = 品牌 + 一级导航（BOM 分析 / 设计审查 / 工具箱 / 报告中心 / 配置管理）+ 会话下拉 + 模式/Agent/设置/面板按钮；
+`#viewContainer` 渲染当前视图（KPI + 主操作 + 统一工具卡片），`#chatMessages` 渲染消息流，`#rightPanel` 是可折叠任务面板。
+
+- **工具箱是工具的统一管理界面**：目录由后端 `get_tools_catalog()` 派生（即 `src/agent/tools.py` 的 ToolRegistry），前端只声明每个视图「展示哪些工具」。卡片组件 `.tool-card` 在工具箱和所有视图里复用，直接运行走 `run_tool()` → `controller._dispatch_operation()`，与聊天路径共用同一张派发表。**不要在前端另写一份工具名称/描述**。
+- 会话（conversations）的唯一入口是顶栏的会话下拉（`#conversationList`）。`SessionStore.load_all()` 返回的会话记录字段是 `{conv_id, title, sort_order}`，**没有 `id`/`messages`**，`loadPersistedState()` 必须归一化。
+- 所有气泡（含流式 AI）都必须包在 `.msg-row` 里，否则 `clearChatMessages()` 清不掉，切换会话会重复显示回答。
+- 深浅色主题都走 `:root` / `body[data-theme="dark"]` 的 token，不要在规则里硬编码颜色。
+- 图标统一用 `ICONS` 里的内联 SVG（`app.js`），不用 emoji 字体图标；`confirm()` 已由自定义对话框替代。
+
+回归手段：`python tests/ui_smoke.py`（Playwright 真机驱动 + stub LLM，零 API 花费，42 项检查 + 截图到 `output/ui_smoke/`）。
+文件名不以 `test_` 开头，因此不会被 pytest 收集；配套的 pytest 用例是 `tests/test_tool_catalog.py`（锁前后端工具目录一致性）。
 
 ### Module map
 
@@ -101,7 +112,7 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 |-----------|---------|
 | `src/bom/` | CSV/Excel parsing, rule-based merge, package validation, duplicate reference detection |
 | `src/pcb/` | PCB JSON parsing, data models |
-| `src/rules/` | 21 design rules: decoupling caps, signal traces, power current, acute angles, via density, analog-digital separation, etc. |
+| `src/rules/` | 71 design rules (`DesignRuleChecker`): decoupling caps, signal traces, power current, acute angles, via density, analog-digital separation, etc. |
 | `src/supply/` | LCSC API client + BOM health checker (stock, lifecycle, alternatives, cost) |
 | `src/rag/` | ChromaDB indexer + retriever for Chinese PCB knowledge |
 | `src/html_bom/` | Interactive HTML BOM generator (Jinja2 templates) |

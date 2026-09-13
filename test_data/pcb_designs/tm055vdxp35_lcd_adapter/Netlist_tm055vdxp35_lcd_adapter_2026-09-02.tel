@@ -1,0 +1,55 @@
+$PACKAGES
+C0603 ! C0603 ! 10uF ; C8 C9 C10 C11 
+,
+        CONN-SMD_40P-P0.40_WP7B-S040VA1-R8000 ! CONN-SMD_40P-P0.40_WP7B-S040VA1-R8000 ! '{Value}' ,
+        ; UrmoukyLCD 
+FPC-SMD_P0.30-31P_FGS-XJ-H1.0 ! FPC-SMD_P0.30-31P_FGS-XJ-H1.0 ! '{Value}' ; ,
+        TaishanPi_MIPI 
+,
+        IND-SMD_L2.5-W2.0-VLS252012CX-150M ! IND-SMD_L2.5-W2.0-VLS252012CX-150M ! '4.7uH' ,
+        ; L1 L2 
+R0402 ! R0402 ! 100nF ; C1 C2 C3 C5 C7 C12 
+R0402 ! R0402 ! 10K ; R1 R2 R3 
+,
+        SOT-23-5_L3.0-W1.7-P0.95-LS2.8-TL ! SOT-23-5_L3.0-W1.7-P0.95-LS2.8-TL ! '{Value}' ,
+        ; U2 
+Test-Point-0.5mm ! Test-Point-0.5mm ! '{Value}' ; TP1 TP2 TP3 TP4 
+WSON-12_L3.0-W3.0-P0.45-BL-EP ! WSON-12_L3.0-W3.0-P0.45-BL-EP ! '{Value}' ; U1 
+$A_PROPERTIES
+$NETS
+'$1N23' ; R2.2 UrmoukyLCD.2 
+'$1N25' ; R3.2 UrmoukyLCD.1 
+'$1N71' ; L1.2 U1.1 
+'$1N73' ; L2.1 U1.10 
+'BL_LEDN1' ; C2.1 C3.1 TaishanPi_MIPI.24 TaishanPi_MIPI.25 TaishanPi_MIPI.26 ,
+        TaishanPi_MIPI.27 UrmoukyLCD.29 UrmoukyLCD.30 
+'BL_LEDP' ; C1.1 TaishanPi_MIPI.29 TaishanPi_MIPI.30 TaishanPi_MIPI.31 ,
+        UrmoukyLCD.26 UrmoukyLCD.27 
+'DSI_CLK_N' ; TaishanPi_MIPI.14 UrmoukyLCD.13 
+'DSI_CLK_P' ; TaishanPi_MIPI.15 UrmoukyLCD.12 
+'DSI_DATA0_N' ; TaishanPi_MIPI.11 UrmoukyLCD.16 
+'DSI_DATA0_P' ; TaishanPi_MIPI.12 UrmoukyLCD.15 
+'DSI_DATA1_N' ; TaishanPi_MIPI.17 UrmoukyLCD.10 
+'DSI_DATA1_P' ; TaishanPi_MIPI.18 UrmoukyLCD.9 
+'DSI_DATA2_N' ; TaishanPi_MIPI.20 UrmoukyLCD.7 
+'DSI_DATA2_P' ; TaishanPi_MIPI.21 UrmoukyLCD.6 
+'DSI_DATA3_N' ; TaishanPi_MIPI.8 UrmoukyLCD.19 
+'DSI_DATA3_P' ; TaishanPi_MIPI.9 UrmoukyLCD.18 
+'LCD_CABC' ; R3.1 TP3.1 
+'LCD_ID' ; R1.2 TP1.1 UrmoukyLCD.3 
+'LCD_RST' ; TaishanPi_MIPI.5 TP4.1 UrmoukyLCD.39 
+'LCD_TE' ; R2.1 TP2.1 
+'VDD_-5V' ; C5.2 C8.2 U1.9 UrmoukyLCD.34 
+'VDD_+5V' ; C7.2 C10.1 U1.3 UrmoukyLCD.36 
+'VDD_1V8' ; C11.2 R1.1 U2.5 UrmoukyLCD.38 
+'VDD_3V3' ; C9.1 C12.1 L1.1 TaishanPi_MIPI.1 TaishanPi_MIPI.2 TaishanPi_MIPI.3 ,
+        U1.7 U1.11 U1.12 U2.1 U2.3 
+GND ; C1.2 C2.2 C3.2 C5.1 C7.1 C8.1 C9.2 C10.2 C11.1 C12.2 L2.2 ,
+        TaishanPi_MIPI.7 TaishanPi_MIPI.10 TaishanPi_MIPI.13 TaishanPi_MIPI.16 ,
+        TaishanPi_MIPI.19 TaishanPi_MIPI.22 TaishanPi_MIPI.23 ,
+        TaishanPi_MIPI.32 TaishanPi_MIPI.33 U1.2 U1.4 U1.5 U1.6 U1.8 U1.13 ,
+        U2.2 UrmoukyLCD.5 UrmoukyLCD.8 UrmoukyLCD.11 UrmoukyLCD.14 ,
+        UrmoukyLCD.17 UrmoukyLCD.20 UrmoukyLCD.33 UrmoukyLCD.37 UrmoukyLCD.41 ,
+        UrmoukyLCD.42 UrmoukyLCD.43 UrmoukyLCD.44 
+$SCHEDULE
+$END

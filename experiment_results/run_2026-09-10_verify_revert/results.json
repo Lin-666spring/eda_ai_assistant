@@ -1,0 +1,2191 @@
+{
+  "timestamp": "2026-09-10_153029",
+  "output_dir": "experiment_results\\run_2026-09-10_verify_revert",
+  "designs": [
+    "cw32l010_usb_dev",
+    "dcdc_power_v62",
+    "esp32_audio_moji2"
+  ],
+  "providers": [
+    "glm"
+  ],
+  "suggestion_categories": [
+    "safe",
+    "dangerous",
+    "optimization"
+  ],
+  "drc_count": 3,
+  "verify_count": 15,
+  "ma_count": 3,
+  "defect_count": 13,
+  "drc_results": [
+    {
+      "design": "cw32l010_usb_dev",
+      "total_violations": 9,
+      "errors": 0,
+      "warnings": 3,
+      "infos": 6,
+      "violations_by_rule": {
+        "参数范围检查": 2,
+        "板边间距检查": 1,
+        "调试接口检查": 1,
+        "去耦电容检查": 1,
+        "光学定位点检查": 1,
+        "PDN 目标阻抗分析": 1,
+        "位号连续性检查": 1,
+        "开关电源布局检查": 1
+      },
+      "violations_by_component": {
+        "C1": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C1 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C7": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C7 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "__board__": [
+          {
+            "rule": "板边间距检查",
+            "severity": "warning",
+            "desc": "9 个元件距板边 <3.0mm: D4, LED1, LED2, SW1, U1",
+            "suggestion": "元件距板边 ≥3mm，高元件需更大间距",
+            "theory": "PCB 板边在拼板分离、波峰焊夹持、机壳装配中承受最大机械应力。IPC-2222 §8.2 建议元件体距板边 ≥2.5mm，高元件≥5mm。传送边禁布区≥3mm。"
+          },
+          {
+            "rule": "调试接口检查",
+            "severity": "warning",
+            "desc": "检测到调试接口器件但缺少调试排针",
+            "suggestion": "SWD 接口: 3.3V/GND/SWDIO/SWCLK 四针排针(2.54mm间距)，置于 PCB 边沿。加丝印标注引脚功能。UART 串口: TX/RX/GND 三针。",
+            "theory": "调试接口在研发阶段使用频率极高——难连接的调试口严重降低开发效率。量产可保留测试点但不焊接排针以节省成本。"
+          },
+          {
+            "rule": "光学定位点检查",
+            "severity": "info",
+            "desc": "PCB 含较多元件但未确认是否有光学定位(Mark)点",
+            "suggestion": "PCB 对角放置≥2个全局 Mark 点(Φ1.0mm 铜箔+Φ3.0mm 阻焊开窗)。细间距IC(QFP/BGA)局部加Mark点。",
+            "theory": "SMT 贴片机通过识别 Mark 点校正 PCB 位置偏差。全局 Mark 用于整板定位，局部 Mark 用于精细间距元件定位。无 Mark 点→贴片精度不足→立碑/偏移。"
+          },
+          {
+            "rule": "PDN 目标阻抗分析",
+            "severity": "info",
+            "desc": "3.3V/0.50A 电源: 目标阻抗 Z_target=660mΩ，平面电容 1.00nF，建议 ≥1 个去耦电容，IR压降≈0.5mV",
+            "suggestion": "推荐电容组合: 100µF, 10µF, 100nF, 10nF。各频段去耦: 100µF(≤10kHz) + 10µF(≤1MHz) + 100nF(1-100MHz) + 10nF(≥100MHz)。",
+            "theory": "PDN 目标阻抗 Z_target = (Vdd × ripple%) / I_transient。全频段内 Z_PDN < Z_target 才能保证电源纹波在允许范围内。多层陶瓷电容(MLCC)并联降低等效 ESL，扩展有效去耦频率范围。"
+          },
+          {
+            "rule": "位号连续性检查",
+            "severity": "info",
+            "desc": "C 类位号不连续: C2→C7(跳4号)",
+            "suggestion": "位号不连续通常因删除元件后未重排。确认是否为预留空位。",
+            "theory": "规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"
+          }
+        ],
+        "U1": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：3 个 10µF 需覆盖 5 个 IC，缺口 2 个",
+            "suggestion": "在电源入口处为缺口中的 2 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "U2": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：3 个 10µF 需覆盖 5 个 IC，缺口 2 个",
+            "suggestion": "在电源入口处为缺口中的 2 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "U3": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：3 个 10µF 需覆盖 5 个 IC，缺口 2 个",
+            "suggestion": "在电源入口处为缺口中的 2 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "U4": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：3 个 10µF 需覆盖 5 个 IC，缺口 2 个",
+            "suggestion": "在电源入口处为缺口中的 2 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "U5": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：3 个 10µF 需覆盖 5 个 IC，缺口 2 个",
+            "suggestion": "在电源入口处为缺口中的 2 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "LED2": [
+          {
+            "rule": "开关电源布局检查",
+            "severity": "info",
+            "desc": "DC-DC LED2 建议优化输入回路布局以降低 EMI",
+            "suggestion": "Buck: Cin→SW→L→Cout 的 di/dt 回路面积最小化。输入电容紧靠 IC VIN/GND 引脚。SW 节点铜皮面积最小,避免成为天线。",
+            "theory": "Buck 的开关回路(VIN→HS MOSFET→SW→L→Cout→GND→VIN)承载高频脉冲电流,其环路面积与 EMI 强度成正比。SW 节点电压在 0 和 VIN 间高速切换(dv/dt≈数 V/ns),是 PCB 最强 dV/dt 源。"
+          }
+        ]
+      },
+      "elapsed_seconds": 1.32,
+      "error": null,
+      "timestamp": "2026-09-10T15:30:31.031070"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "total_violations": 41,
+      "errors": 0,
+      "warnings": 6,
+      "infos": 35,
+      "violations_by_rule": {
+        "参数范围检查": 25,
+        "位号连续性检查": 5,
+        "去耦电容检查": 2,
+        "板边间距检查": 1,
+        "晶振频率匹配": 1,
+        "调试接口检查": 1,
+        "多电源引脚去耦检查": 1,
+        "光学定位点检查": 1,
+        "悬空引脚检查": 1,
+        "电感饱和电流检查": 1,
+        "MOSFET 栅极电阻检查": 1,
+        "PDN 目标阻抗分析": 1
+      },
+      "violations_by_component": {
+        "C23": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C23 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C181": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C181 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C184": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C184 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C234": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C234 参数 [20pF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C261": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C261 参数 [470uF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C267": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C267 参数 [470nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C269": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C269 参数 [100pF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C270": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C270 参数 [47uF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C271": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C271 参数 [12pF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C278": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C278 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C282": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C282 参数 [47uF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C285": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C285 参数 [100uF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C325": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C325 参数 [22nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R51": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R51 参数 [100kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R188": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R188 参数 [200kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R205": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R205 参数 [270kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R224": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R224 参数 [100kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R266": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R266 参数 [16.9kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R274": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R274 参数 [100kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R280": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R280 参数 [470Ω] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R287": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R287 参数 [15kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R315": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R315 参数 [200Ω] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R340": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R340 参数 [100Ω] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R341": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R341 参数 [68kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R345": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R345 参数 [24kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "__board__": [
+          {
+            "rule": "板边间距检查",
+            "severity": "warning",
+            "desc": "50 个元件距板边 <3.0mm: BUZZER4, C144, C260, C261, C284",
+            "suggestion": "元件距板边 ≥3mm，高元件需更大间距",
+            "theory": "PCB 板边在拼板分离、波峰焊夹持、机壳装配中承受最大机械应力。IPC-2222 §8.2 建议元件体距板边 ≥2.5mm，高元件≥5mm。传送边禁布区≥3mm。"
+          },
+          {
+            "rule": "调试接口检查",
+            "severity": "warning",
+            "desc": "检测到调试接口器件但缺少调试排针",
+            "suggestion": "SWD 接口: 3.3V/GND/SWDIO/SWCLK 四针排针(2.54mm间距)，置于 PCB 边沿。加丝印标注引脚功能。UART 串口: TX/RX/GND 三针。",
+            "theory": "调试接口在研发阶段使用频率极高——难连接的调试口严重降低开发效率。量产可保留测试点但不焊接排针以节省成本。"
+          },
+          {
+            "rule": "光学定位点检查",
+            "severity": "info",
+            "desc": "PCB 含较多元件但未确认是否有光学定位(Mark)点",
+            "suggestion": "PCB 对角放置≥2个全局 Mark 点(Φ1.0mm 铜箔+Φ3.0mm 阻焊开窗)。细间距IC(QFP/BGA)局部加Mark点。",
+            "theory": "SMT 贴片机通过识别 Mark 点校正 PCB 位置偏差。全局 Mark 用于整板定位，局部 Mark 用于精细间距元件定位。无 Mark 点→贴片精度不足→立碑/偏移。"
+          },
+          {
+            "rule": "PDN 目标阻抗分析",
+            "severity": "info",
+            "desc": "3.3V/0.80A 电源: 目标阻抗 Z_target=412mΩ，平面电容 1.00nF，建议 ≥1 个去耦电容，IR压降≈0.8mV",
+            "suggestion": "推荐电容组合: 100µF, 10µF, 100nF, 10nF。各频段去耦: 100µF(≤10kHz) + 10µF(≤1MHz) + 100nF(1-100MHz) + 10nF(≥100MHz)。",
+            "theory": "PDN 目标阻抗 Z_target = (Vdd × ripple%) / I_transient。全频段内 Z_PDN < Z_target 才能保证电源纹波在允许范围内。多层陶瓷电容(MLCC)并联降低等效 ESL，扩展有效去耦频率范围。"
+          },
+          {
+            "rule": "位号连续性检查",
+            "severity": "info",
+            "desc": "C 类位号不连续: C23→C144(跳120号) ...",
+            "suggestion": "位号不连续通常因删除元件后未重排。确认是否为预留空位。",
+            "theory": "规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"
+          },
+          {
+            "rule": "位号连续性检查",
+            "severity": "info",
+            "desc": "D 类位号不连续: D35→D47(跳11号) ...",
+            "suggestion": "位号不连续通常因删除元件后未重排。确认是否为预留空位。",
+            "theory": "规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"
+          },
+          {
+            "rule": "位号连续性检查",
+            "severity": "info",
+            "desc": "Q 类位号不连续: Q14→Q52(跳37号)",
+            "suggestion": "位号不连续通常因删除元件后未重排。确认是否为预留空位。",
+            "theory": "规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"
+          },
+          {
+            "rule": "位号连续性检查",
+            "severity": "info",
+            "desc": "R 类位号不连续: R9→R51(跳41号) ...",
+            "suggestion": "位号不连续通常因删除元件后未重排。确认是否为预留空位。",
+            "theory": "规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"
+          },
+          {
+            "rule": "位号连续性检查",
+            "severity": "info",
+            "desc": "U 类位号不连续: U17→U69(跳51号) ...",
+            "suggestion": "位号不连续通常因删除元件后未重排。确认是否为预留空位。",
+            "theory": "规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"
+          }
+        ],
+        "X1": [
+          {
+            "rule": "晶振频率匹配",
+            "severity": "info",
+            "desc": "晶振 X1 (8MHz) 建议 CL=18pF~22pF",
+            "suggestion": "匹配负载电容 = 18pF~22pF，配合 Cstray≈5pF",
+            "theory": "石英晶振的频率稳定性依赖正确 CL。32.768kHz 晶振 CL 偏差 2pF 可引起 ≥10ppm 误差。"
+          }
+        ],
+        "U146": [
+          {
+            "rule": "多电源引脚去耦检查",
+            "severity": "warning",
+            "desc": "主控 U146(LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL,48引脚) 电容数量(0)可能不足",
+            "suggestion": "每个 VDD/VCC 引脚就近放置 0.1μF(100nF)去耦电容。大封装 IC(48引脚)建议≥4个。",
+            "theory": "现代 IC 内部多电源域(核心/IO/模拟/PLL),每个 VDD 引脚的 di/dt 不尽相同。独立的去耦电容针对各域供电→降低接地反弹。"
+          },
+          {
+            "rule": "悬空引脚检查",
+            "severity": "warning",
+            "desc": "主控 U146 的 RST/BOOT/EN 等控制引脚可能悬空",
+            "suggestion": "RST 上拉(10kΩ)，BOOT 明确上下拉。悬空=不可预知行为。",
+            "theory": "CMOS 输入阻抗>10MΩ，悬空时引脚电压由漏电流和 EMI 决定，处于亚稳态——可能引起振荡、功耗增大、闩锁效应(latch-up)。"
+          }
+        ],
+        "U17": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "高频去耦电容不足：26 个 100nF 需覆盖 29 个 IC，缺口 3 个",
+            "suggestion": "为缺口中的 3 个 IC 各补充 1 个 100nF MLCC（≤10mm 靠近电源引脚）",
+            "theory": "每颗 IC 的电源引脚都应有就近的高频去耦电容(100nF)，覆盖不足会导致 IC 供电瞬态跌落，影响信号完整性与 EMC。"
+          },
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：25 个 10µF 需覆盖 29 个 IC，缺口 4 个",
+            "suggestion": "在电源入口处为缺口中的 4 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "U69": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "高频去耦电容不足：26 个 100nF 需覆盖 29 个 IC，缺口 3 个",
+            "suggestion": "为缺口中的 3 个 IC 各补充 1 个 100nF MLCC（≤10mm 靠近电源引脚）",
+            "theory": "每颗 IC 的电源引脚都应有就近的高频去耦电容(100nF)，覆盖不足会导致 IC 供电瞬态跌落，影响信号完整性与 EMC。"
+          },
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：25 个 10µF 需覆盖 29 个 IC，缺口 4 个",
+            "suggestion": "在电源入口处为缺口中的 4 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "U82": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "高频去耦电容不足：26 个 100nF 需覆盖 29 个 IC，缺口 3 个",
+            "suggestion": "为缺口中的 3 个 IC 各补充 1 个 100nF MLCC（≤10mm 靠近电源引脚）",
+            "theory": "每颗 IC 的电源引脚都应有就近的高频去耦电容(100nF)，覆盖不足会导致 IC 供电瞬态跌落，影响信号完整性与 EMC。"
+          },
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：25 个 10µF 需覆盖 29 个 IC，缺口 4 个",
+            "suggestion": "在电源入口处为缺口中的 4 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "U97": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "高频去耦电容不足：26 个 100nF 需覆盖 29 个 IC，缺口 3 个",
+            "suggestion": "为缺口中的 3 个 IC 各补充 1 个 100nF MLCC（≤10mm 靠近电源引脚）",
+            "theory": "每颗 IC 的电源引脚都应有就近的高频去耦电容(100nF)，覆盖不足会导致 IC 供电瞬态跌落，影响信号完整性与 EMC。"
+          },
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：25 个 10µF 需覆盖 29 个 IC，缺口 4 个",
+            "suggestion": "在电源入口处为缺口中的 4 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "U98": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "高频去耦电容不足：26 个 100nF 需覆盖 29 个 IC，缺口 3 个",
+            "suggestion": "为缺口中的 3 个 IC 各补充 1 个 100nF MLCC（≤10mm 靠近电源引脚）",
+            "theory": "每颗 IC 的电源引脚都应有就近的高频去耦电容(100nF)，覆盖不足会导致 IC 供电瞬态跌落，影响信号完整性与 EMC。"
+          },
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：25 个 10µF 需覆盖 29 个 IC，缺口 4 个",
+            "suggestion": "在电源入口处为缺口中的 4 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "U99": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "高频去耦电容不足：26 个 100nF 需覆盖 29 个 IC，缺口 3 个",
+            "suggestion": "为缺口中的 3 个 IC 各补充 1 个 100nF MLCC（≤10mm 靠近电源引脚）",
+            "theory": "每颗 IC 的电源引脚都应有就近的高频去耦电容(100nF)，覆盖不足会导致 IC 供电瞬态跌落，影响信号完整性与 EMC。"
+          },
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：25 个 10µF 需覆盖 29 个 IC，缺口 4 个",
+            "suggestion": "在电源入口处为缺口中的 4 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "U100": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "高频去耦电容不足：26 个 100nF 需覆盖 29 个 IC，缺口 3 个",
+            "suggestion": "为缺口中的 3 个 IC 各补充 1 个 100nF MLCC（≤10mm 靠近电源引脚）",
+            "theory": "每颗 IC 的电源引脚都应有就近的高频去耦电容(100nF)，覆盖不足会导致 IC 供电瞬态跌落，影响信号完整性与 EMC。"
+          },
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：25 个 10µF 需覆盖 29 个 IC，缺口 4 个",
+            "suggestion": "在电源入口处为缺口中的 4 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "U101": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "高频去耦电容不足：26 个 100nF 需覆盖 29 个 IC，缺口 3 个",
+            "suggestion": "为缺口中的 3 个 IC 各补充 1 个 100nF MLCC（≤10mm 靠近电源引脚）",
+            "theory": "每颗 IC 的电源引脚都应有就近的高频去耦电容(100nF)，覆盖不足会导致 IC 供电瞬态跌落，影响信号完整性与 EMC。"
+          },
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：25 个 10µF 需覆盖 29 个 IC，缺口 4 个",
+            "suggestion": "在电源入口处为缺口中的 4 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "U137": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "高频去耦电容不足：26 个 100nF 需覆盖 29 个 IC，缺口 3 个",
+            "suggestion": "为缺口中的 3 个 IC 各补充 1 个 100nF MLCC（≤10mm 靠近电源引脚）",
+            "theory": "每颗 IC 的电源引脚都应有就近的高频去耦电容(100nF)，覆盖不足会导致 IC 供电瞬态跌落，影响信号完整性与 EMC。"
+          },
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：25 个 10µF 需覆盖 29 个 IC，缺口 4 个",
+            "suggestion": "在电源入口处为缺口中的 4 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "U138": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "高频去耦电容不足：26 个 100nF 需覆盖 29 个 IC，缺口 3 个",
+            "suggestion": "为缺口中的 3 个 IC 各补充 1 个 100nF MLCC（≤10mm 靠近电源引脚）",
+            "theory": "每颗 IC 的电源引脚都应有就近的高频去耦电容(100nF)，覆盖不足会导致 IC 供电瞬态跌落，影响信号完整性与 EMC。"
+          },
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：25 个 10µF 需覆盖 29 个 IC，缺口 4 个",
+            "suggestion": "在电源入口处为缺口中的 4 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "U139": [
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "高频去耦电容不足：26 个 100nF 需覆盖 29 个 IC，缺口 3 个",
+            "suggestion": "为缺口中的 3 个 IC 各补充 1 个 100nF MLCC（≤10mm 靠近电源引脚）",
+            "theory": "每颗 IC 的电源引脚都应有就近的高频去耦电容(100nF)，覆盖不足会导致 IC 供电瞬态跌落，影响信号完整性与 EMC。"
+          },
+          {
+            "rule": "去耦电容检查",
+            "severity": "warning",
+            "desc": "体电容不足：25 个 10µF 需覆盖 29 个 IC，缺口 4 个",
+            "suggestion": "在电源入口处为缺口中的 4 个 IC 补充 10µF 体电容",
+            "theory": "体电容(10µF 级)承担低频能量储备，高频去耦电容(100nF)处理高频瞬态，两者缺一不可。"
+          }
+        ],
+        "L8": [
+          {
+            "rule": "电感饱和电流检查",
+            "severity": "info",
+            "desc": "功率电感 L8 建议验证额定电流 ≥1.3× Ipeak",
+            "suggestion": "Buck 电感 Ipeak = Iout + ΔIL/2。Isat 需 ≥1.3× Ipeak 防饱和。饱和后 L↓→ΔIL↑→磁芯损耗↑→温升↑。",
+            "theory": "铁氧体电感在电流超过 Isat 时磁导率骤降，感值可降至标称的 10~30%→纹波电流剧增→输出纹波↑、EMI↑。屏蔽电感 EMI 优于非屏蔽。"
+          }
+        ],
+        "Q52": [
+          {
+            "rule": "MOSFET 栅极电阻检查",
+            "severity": "info",
+            "desc": "功率 MOSFET Q52 建议串联栅极电阻",
+            "suggestion": "栅极串联 10~100Ω 抑制寄生振荡。PWM 高频开关取低值(10Ω),低频开关取高值(100Ω)。",
+            "theory": "MOSFET 栅极-源极间 Cgs≈数百~数千pF,与 PCB 走线寄生电感形成 LC 谐振回路。Q 值高时产生 MHz 级振荡→开关损耗↑、EMI↑。栅极电阻 Rg 降低 Q 值,阻尼振荡。Rg 还与开关速度 trade-off。"
+          }
+        ]
+      },
+      "elapsed_seconds": 0.17,
+      "error": null,
+      "timestamp": "2026-09-10T15:30:31.196111"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "total_violations": 15,
+      "errors": 0,
+      "warnings": 3,
+      "infos": 12,
+      "violations_by_rule": {
+        "参数范围检查": 5,
+        "位号连续性检查": 2,
+        "天线净空区检查": 1,
+        "板边间距检查": 1,
+        "元件间距检查": 1,
+        "光学定位点检查": 1,
+        "悬空引脚检查": 1,
+        "电感饱和电流检查": 1,
+        "PDN 目标阻抗分析": 1,
+        "开关电源布局检查": 1
+      },
+      "violations_by_component": {
+        "M1": [
+          {
+            "rule": "天线净空区检查",
+            "severity": "warning",
+            "desc": "无线模块 M1 天线周围需净空区",
+            "suggestion": "天线周围 ≥5mm 净空(无铜皮、无元件、无走线)。板载天线置于 PCB 边沿,远离金属外壳。天线下方所有层挖空。",
+            "theory": "PCB 铜皮在天线近场区改变天线阻抗和辐射方向图→S11↑、效率↓、通信距离大幅缩短。I-PEX/IPEX 连接器到天线的微带线需 50Ω 阻抗控制,净空保证阻抗连续性。"
+          },
+          {
+            "rule": "悬空引脚检查",
+            "severity": "warning",
+            "desc": "主控 M1 的 RST/BOOT/EN 等控制引脚可能悬空",
+            "suggestion": "RST 上拉(10kΩ)，BOOT 明确上下拉。悬空=不可预知行为。",
+            "theory": "CMOS 输入阻抗>10MΩ，悬空时引脚电压由漏电流和 EMI 决定，处于亚稳态——可能引起振荡、功耗增大、闩锁效应(latch-up)。"
+          }
+        ],
+        "C1": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C1 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C28": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C28 参数 [100uF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C34": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C34 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R3": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R3 参数 [100kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R18": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R18 参数 [45.3kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "__board__": [
+          {
+            "rule": "板边间距检查",
+            "severity": "warning",
+            "desc": "21 个元件距板边 <3.0mm: C28, C34, D2, FPC1, FPC2",
+            "suggestion": "元件距板边 ≥3mm，高元件需更大间距",
+            "theory": "PCB 板边在拼板分离、波峰焊夹持、机壳装配中承受最大机械应力。IPC-2222 §8.2 建议元件体距板边 ≥2.5mm，高元件≥5mm。传送边禁布区≥3mm。"
+          },
+          {
+            "rule": "元件间距检查",
+            "severity": "info",
+            "desc": "约 12 对元件间距 <1.0mm，可能影响 SMT 贴片和返修",
+            "suggestion": "SMT 元件间≥0.5mm(0603), ≥0.8mm(0805)。高元件间≥1.5mm。连接器周围预留插拔空间。",
+            "theory": "元件间距过小→SMT 钢网印刷桥连、回流焊阴影效应、烙铁无法伸入返修。IPC-7351 为每种封装定义了标准焊盘和间距。"
+          },
+          {
+            "rule": "光学定位点检查",
+            "severity": "info",
+            "desc": "PCB 含较多元件但未确认是否有光学定位(Mark)点",
+            "suggestion": "PCB 对角放置≥2个全局 Mark 点(Φ1.0mm 铜箔+Φ3.0mm 阻焊开窗)。细间距IC(QFP/BGA)局部加Mark点。",
+            "theory": "SMT 贴片机通过识别 Mark 点校正 PCB 位置偏差。全局 Mark 用于整板定位，局部 Mark 用于精细间距元件定位。无 Mark 点→贴片精度不足→立碑/偏移。"
+          },
+          {
+            "rule": "PDN 目标阻抗分析",
+            "severity": "info",
+            "desc": "3.3V/1.00A 电源: 目标阻抗 Z_target=330mΩ，平面电容 1.00nF，建议 ≥1 个去耦电容，IR压降≈1.0mV",
+            "suggestion": "推荐电容组合: 100µF, 10µF, 100nF, 10nF。各频段去耦: 100µF(≤10kHz) + 10µF(≤1MHz) + 100nF(1-100MHz) + 10nF(≥100MHz)。",
+            "theory": "PDN 目标阻抗 Z_target = (Vdd × ripple%) / I_transient。全频段内 Z_PDN < Z_target 才能保证电源纹波在允许范围内。多层陶瓷电容(MLCC)并联降低等效 ESL，扩展有效去耦频率范围。"
+          },
+          {
+            "rule": "位号连续性检查",
+            "severity": "info",
+            "desc": "C 类位号不连续: C1→C3(跳1号) ...",
+            "suggestion": "位号不连续通常因删除元件后未重排。确认是否为预留空位。",
+            "theory": "规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"
+          },
+          {
+            "rule": "位号连续性检查",
+            "severity": "info",
+            "desc": "R 类位号不连续: R1→R3(跳1号) ...",
+            "suggestion": "位号不连续通常因删除元件后未重排。确认是否为预留空位。",
+            "theory": "规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"
+          }
+        ],
+        "U5": [
+          {
+            "rule": "电感饱和电流检查",
+            "severity": "info",
+            "desc": "功率电感 U5 建议验证额定电流 ≥1.3× Ipeak",
+            "suggestion": "Buck 电感 Ipeak = Iout + ΔIL/2。Isat 需 ≥1.3× Ipeak 防饱和。饱和后 L↓→ΔIL↑→磁芯损耗↑→温升↑。",
+            "theory": "铁氧体电感在电流超过 Isat 时磁导率骤降，感值可降至标称的 10~30%→纹波电流剧增→输出纹波↑、EMI↑。屏蔽电感 EMI 优于非屏蔽。"
+          }
+        ],
+        "U4": [
+          {
+            "rule": "开关电源布局检查",
+            "severity": "info",
+            "desc": "DC-DC U4 建议优化输入回路布局以降低 EMI",
+            "suggestion": "Buck: Cin→SW→L→Cout 的 di/dt 回路面积最小化。输入电容紧靠 IC VIN/GND 引脚。SW 节点铜皮面积最小,避免成为天线。",
+            "theory": "Buck 的开关回路(VIN→HS MOSFET→SW→L→Cout→GND→VIN)承载高频脉冲电流,其环路面积与 EMI 强度成正比。SW 节点电压在 0 和 VIN 间高速切换(dv/dt≈数 V/ns),是 PCB 最强 dV/dt 源。"
+          }
+        ]
+      },
+      "elapsed_seconds": 0.05,
+      "error": null,
+      "timestamp": "2026-09-10T15:30:31.245911"
+    }
+  ],
+  "verify_results": [
+    {
+      "design": "cw32l010_usb_dev",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 9,
+        "parse_error": "无法从LLM响应中提取有效JSON。响应前200字: ",
+        "dropped_changes": 0,
+        "invalid_no_change": true
+      },
+      "elapsed_seconds": 104.04,
+      "error": null,
+      "baseline_score": 96.7,
+      "proposed_score": 96.7,
+      "final_score": 96.7,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:32:15.282859",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "cw32l010_usb_dev",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 21,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 6,
+            "total_violations": 12,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 93.1,
+            "score_drop": 3.6,
+            "new_violations_list": []
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 9,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 96.7,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 55.44,
+      "error": null,
+      "baseline_score": 96.7,
+      "proposed_score": 96.7,
+      "final_score": 96.7,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:33:10.727075",
+      "suggested_changes_count": 6,
+      "new_violations_introduced": 0,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.95,
+      "preflight_risk_max": 0.95,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "cw32l010_usb_dev",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在每个 IC VDD 引脚旁增加 100nF+10μF 去耦电容组合",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 11,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 12,
+            "total_violations": 11,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.4,
+            "score_drop": -0.7,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 102.77,
+      "error": null,
+      "baseline_score": 96.7,
+      "proposed_score": 97.4,
+      "final_score": 97.4,
+      "delta_score": 0.7,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:34:53.498615",
+      "suggested_changes_count": 12,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C10",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C10",
+          "field": "package",
+          "old_value": "",
+          "new_value": "C0603",
+          "action": "add"
+        },
+        {
+          "reference": "C11",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10μF",
+          "action": "add"
+        },
+        {
+          "reference": "C11",
+          "field": "package",
+          "old_value": "",
+          "new_value": "C0805",
+          "action": "add"
+        },
+        {
+          "reference": "C12",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C12",
+          "field": "package",
+          "old_value": "",
+          "new_value": "C0603",
+          "action": "add"
+        },
+        {
+          "reference": "C13",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10μF",
+          "action": "add"
+        },
+        {
+          "reference": "C13",
+          "field": "package",
+          "old_value": "",
+          "new_value": "C0805",
+          "action": "add"
+        },
+        {
+          "reference": "C14",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C14",
+          "field": "package",
+          "old_value": "",
+          "new_value": "C0603",
+          "action": "add"
+        },
+        {
+          "reference": "C15",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10μF",
+          "action": "add"
+        },
+        {
+          "reference": "C15",
+          "field": "package",
+          "old_value": "",
+          "new_value": "C0805",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.955,
+      "preflight_risk_max": 0.959,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "cw32l010_usb_dev",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "optimization",
+      "suggestion_text": "检查所有电源轨的去耦电容配置，确保每个电源引脚 100nF+10μF 组合",
+      "suggestion_desc": "优化建议 — 电源完整性检查",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 9,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 26.14,
+      "error": null,
+      "baseline_score": 96.7,
+      "proposed_score": 96.7,
+      "final_score": 96.7,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:35:19.634951",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "cw32l010_usb_dev",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "将所有 3.3V 元件改为 5V 供电，删除电平转换电路",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 9,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 67.27,
+      "error": null,
+      "baseline_score": 96.7,
+      "proposed_score": 96.7,
+      "final_score": 96.7,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:36:26.908167",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "dcdc_power_v62",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 41,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 13.98,
+      "error": null,
+      "baseline_score": 92.4,
+      "proposed_score": 92.4,
+      "final_score": 92.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:36:40.887962",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "dcdc_power_v62",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 79,
+      "blocking_issues": 1,
+      "info_issues": 0,
+      "max_severity": "warning",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        1,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 22,
+            "total_violations": 38,
+            "new_violations": 1,
+            "blocking_new": 1,
+            "modified_score": 92.0,
+            "score_drop": 0.4,
+            "new_violations_list": [
+              {
+                "rule": "复位电路检查",
+                "severity": "warning",
+                "desc": "MCU U146 复位电路缺少: 对地电容(0.1μF)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 41,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 92.4,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 97.42,
+      "error": null,
+      "baseline_score": 92.4,
+      "proposed_score": 92.4,
+      "final_score": 92.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:38:18.305611",
+      "suggested_changes_count": 22,
+      "new_violations_introduced": 1,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.947,
+      "preflight_risk_max": 0.947,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "dcdc_power_v62",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在每个 IC VDD 引脚旁增加 100nF+10μF 去耦电容组合",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 41,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 51.01,
+      "error": null,
+      "baseline_score": 92.4,
+      "proposed_score": 92.4,
+      "final_score": 92.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:39:09.311737",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "dcdc_power_v62",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "optimization",
+      "suggestion_text": "检查所有电源轨的去耦电容配置，确保每个电源引脚 100nF+10μF 组合",
+      "suggestion_desc": "优化建议 — 电源完整性检查",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 41,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 15.52,
+      "error": null,
+      "baseline_score": 92.4,
+      "proposed_score": 92.4,
+      "final_score": 92.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:39:24.835308",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "dcdc_power_v62",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "将所有 3.3V 元件改为 5V 供电，删除电平转换电路",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 41,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 42.49,
+      "error": null,
+      "baseline_score": 92.4,
+      "proposed_score": 92.4,
+      "final_score": 92.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:40:07.326095",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 15,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 16.15,
+      "error": null,
+      "baseline_score": 95.2,
+      "proposed_score": 95.2,
+      "final_score": 95.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:40:23.477565",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 35,
+      "blocking_issues": 7,
+      "info_issues": 0,
+      "max_severity": "error",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        7,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 12,
+            "total_violations": 20,
+            "new_violations": 7,
+            "blocking_new": 7,
+            "modified_score": 89.4,
+            "score_drop": 5.8,
+            "new_violations_list": [
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC M1 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U1 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U2 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U3 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U4 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U5 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "复位电路检查",
+                "severity": "warning",
+                "desc": "MCU M1 复位电路缺少: 对地电容(0.1μF)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 15,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 95.2,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 90.18,
+      "error": null,
+      "baseline_score": 95.2,
+      "proposed_score": 95.2,
+      "final_score": 95.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:41:53.654910",
+      "suggested_changes_count": 12,
+      "new_violations_introduced": 7,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.949,
+      "preflight_risk_max": 0.949,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在每个 IC VDD 引脚旁增加 100nF+10μF 去耦电容组合",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 15,
+        "parse_error": "无法从LLM响应中提取有效JSON。响应前200字: ",
+        "dropped_changes": 0,
+        "invalid_no_change": true
+      },
+      "elapsed_seconds": 108.65,
+      "error": null,
+      "baseline_score": 95.2,
+      "proposed_score": 95.2,
+      "final_score": 95.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:43:42.306266",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "optimization",
+      "suggestion_text": "检查所有电源轨的去耦电容配置，确保每个电源引脚 100nF+10μF 组合",
+      "suggestion_desc": "优化建议 — 电源完整性检查",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 15,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 19.02,
+      "error": null,
+      "baseline_score": 95.2,
+      "proposed_score": 95.2,
+      "final_score": 95.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:44:01.322812",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "将所有 3.3V 元件改为 5V 供电，删除电平转换电路",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 15,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 59.07,
+      "error": null,
+      "baseline_score": 95.2,
+      "proposed_score": 95.2,
+      "final_score": 95.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-09-10T15:45:00.396632",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    }
+  ],
+  "ma_results": [
+    {
+      "design": "cw32l010_usb_dev",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "overall_score": 96.7,
+      "overall_grade": "A+",
+      "radar_scores": {
+        "power": 91.5,
+        "signal": 100.0,
+        "thermal": 100.0,
+        "emc": 100.0,
+        "dfm": 92.1,
+        "cost": 95.6
+      },
+      "agent_scores": {
+        "thermal": 100.0,
+        "emc": 100.0,
+        "signal": 100.0,
+        "power": 91.5,
+        "dfm": 92.1
+      },
+      "critical_count": 1,
+      "total_findings": 5,
+      "consensus_preview": "## 多智能体协同审查共识\n\n 设计总体质量良好，经 5 个专业 Agent 审查后达成共识。\n\n\n### 需重点改进的维度\n",
+      "elapsed_seconds": 85.6,
+      "error": null,
+      "timestamp": "2026-09-10T15:46:25.993676"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "overall_score": 92.4,
+      "overall_grade": "A",
+      "radar_scores": {
+        "power": 86.8,
+        "signal": 92.7,
+        "thermal": 100.0,
+        "emc": 96.9,
+        "dfm": 90.9,
+        "cost": 84.4
+      },
+      "agent_scores": {
+        "thermal": 100.0,
+        "emc": 96.9,
+        "power": 86.8,
+        "signal": 92.7,
+        "dfm": 90.9
+      },
+      "critical_count": 1,
+      "total_findings": 10,
+      "consensus_preview": "## 多智能体协同审查共识\n\n 设计总体质量良好，经 5 个专业 Agent 审查后达成共识。\n\n### 优先修复项（2 项）\n\n- [Power] [电源完整性审查师] **主控U146电源引脚去耦缺失**: 为U146每个电源引脚就近放置100nF高频去耦电容，并补充10µF体电容。\n- [Signal] [信号完整性审查师] **关键控制引脚悬空噪声耦合风险**: 必须为RST/BOOT/E",
+      "elapsed_seconds": 88.26,
+      "error": null,
+      "timestamp": "2026-09-10T15:47:54.256110"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "provider": "glm",
+      "model": "glm-5.1",
+      "overall_score": 95.2,
+      "overall_grade": "A+",
+      "radar_scores": {
+        "power": 96.2,
+        "signal": 93.8,
+        "thermal": 100.0,
+        "emc": 93.8,
+        "dfm": 93.0,
+        "cost": 93.0
+      },
+      "agent_scores": {
+        "thermal": 100.0,
+        "power": 96.2,
+        "signal": 93.8,
+        "emc": 93.8,
+        "dfm": 93.0
+      },
+      "critical_count": 1,
+      "total_findings": 6,
+      "consensus_preview": "## 多智能体协同审查共识\n\n 设计总体质量良好，经 5 个专业 Agent 审查后达成共识。\n\n### 优先修复项（1 项）\n\n- [Signal] [信号完整性审查师] **控制引脚悬空引入噪声耦合风险**: 对RST/EN引脚添加10kΩ上拉或下拉电阻，BOOT引脚依逻辑状态做固定电平偏置，确保电平确定。\n\n### 需重点改进的维度\n",
+      "elapsed_seconds": 74.69,
+      "error": null,
+      "timestamp": "2026-09-10T15:49:08.949609"
+    }
+  ],
+  "defect_results": [
+    {
+      "design": "cw32l010_usb_dev",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 2 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查"
+      ],
+      "missed_rules": [
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "板边间距检查",
+        "开关电源布局检查",
+        "调试接口检查",
+        "光学定位点检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 11,
+      "error": null,
+      "timestamp": "2026-09-10T15:49:08.969333"
+    },
+    {
+      "design": "cw32l010_usb_dev",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "板边间距检查",
+        "开关电源布局检查",
+        "调试接口检查",
+        "位号连续性检查",
+        "光学定位点检查",
+        "去耦电容检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 11,
+      "error": null,
+      "timestamp": "2026-09-10T15:49:08.980293"
+    },
+    {
+      "design": "cw32l010_usb_dev",
+      "defect_id": "no_esd_diodes",
+      "defect_name": "删除 TVS/ESD 保护二极管",
+      "defect_description": "删除 1 个保护二极管",
+      "expected_rules": [
+        "ESD 保护检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "ESD 保护检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "参数范围检查",
+        "板边间距检查",
+        "开关电源布局检查",
+        "天线净空区检查",
+        "调试接口检查",
+        "位号连续性检查",
+        "光学定位点检查",
+        "去耦电容检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 11,
+      "error": null,
+      "timestamp": "2026-09-10T15:49:08.990509"
+    },
+    {
+      "design": "cw32l010_usb_dev",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容耐压降额检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "电容耐压降额检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "参数范围检查",
+        "板边间距检查",
+        "开关电源布局检查",
+        "调试接口检查",
+        "位号连续性检查",
+        "光学定位点检查",
+        "去耦电容检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 21,
+      "error": null,
+      "timestamp": "2026-09-10T15:49:09.001174"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 4 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查"
+      ],
+      "missed_rules": [
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "参数范围检查",
+        "板边间距检查",
+        "MOSFET 栅极电阻检查",
+        "复位电路检查",
+        "调试接口检查",
+        "位号连续性检查",
+        "晶振频率匹配",
+        "多电源引脚去耦检查",
+        "悬空引脚检查",
+        "光学定位点检查",
+        "电感饱和电流检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 38,
+      "error": null,
+      "timestamp": "2026-09-10T15:49:09.154984"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "板边间距检查",
+        "MOSFET 栅极电阻检查",
+        "复位电路检查",
+        "调试接口检查",
+        "位号连续性检查",
+        "晶振频率匹配",
+        "多电源引脚去耦检查",
+        "悬空引脚检查",
+        "光学定位点检查",
+        "去耦电容检查",
+        "电感饱和电流检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 62,
+      "error": null,
+      "timestamp": "2026-09-10T15:49:09.303953"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "no_crystal_load_caps",
+      "defect_name": "删除晶振负载电容",
+      "defect_description": "删除晶振旁边的负载电容",
+      "expected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "晶振频率匹配"
+      ],
+      "missed_rules": [
+        "晶振负载电容检查"
+      ],
+      "extra_violations": [
+        "参数范围检查",
+        "板边间距检查",
+        "MOSFET 栅极电阻检查",
+        "调试接口检查",
+        "位号连续性检查",
+        "多电源引脚去耦检查",
+        "悬空引脚检查",
+        "光学定位点检查",
+        "去耦电容检查",
+        "电感饱和电流检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 41,
+      "error": null,
+      "timestamp": "2026-09-10T15:49:09.447157"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "no_esd_diodes",
+      "defect_name": "删除 TVS/ESD 保护二极管",
+      "defect_description": "删除 4 个保护二极管",
+      "expected_rules": [
+        "ESD 保护检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "ESD 保护检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "参数范围检查",
+        "板边间距检查",
+        "MOSFET 栅极电阻检查",
+        "调试接口检查",
+        "位号连续性检查",
+        "晶振频率匹配",
+        "多电源引脚去耦检查",
+        "悬空引脚检查",
+        "光学定位点检查",
+        "去耦电容检查",
+        "电感饱和电流检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 41,
+      "error": null,
+      "timestamp": "2026-09-10T15:49:09.596316"
+    },
+    {
+      "design": "dcdc_power_v62",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容耐压降额检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "电容耐压降额检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "参数范围检查",
+        "板边间距检查",
+        "MOSFET 栅极电阻检查",
+        "调试接口检查",
+        "位号连续性检查",
+        "晶振频率匹配",
+        "多电源引脚去耦检查",
+        "悬空引脚检查",
+        "光学定位点检查",
+        "去耦电容检查",
+        "电感饱和电流检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 44,
+      "error": null,
+      "timestamp": "2026-09-10T15:49:09.750561"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 2 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查"
+      ],
+      "missed_rules": [
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "参数范围检查",
+        "板边间距检查",
+        "开关电源布局检查",
+        "复位电路检查",
+        "天线净空区检查",
+        "位号连续性检查",
+        "悬空引脚检查",
+        "光学定位点检查",
+        "元件间距检查",
+        "电感饱和电流检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 20,
+      "error": null,
+      "timestamp": "2026-09-10T15:49:09.794997"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "板边间距检查",
+        "开关电源布局检查",
+        "复位电路检查",
+        "天线净空区检查",
+        "位号连续性检查",
+        "悬空引脚检查",
+        "光学定位点检查",
+        "元件间距检查",
+        "电感饱和电流检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 22,
+      "error": null,
+      "timestamp": "2026-09-10T15:49:09.830123"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "defect_id": "no_esd_diodes",
+      "defect_name": "删除 TVS/ESD 保护二极管",
+      "defect_description": "删除 2 个保护二极管",
+      "expected_rules": [
+        "ESD 保护检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "ESD 保护检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "参数范围检查",
+        "板边间距检查",
+        "开关电源布局检查",
+        "天线净空区检查",
+        "位号连续性检查",
+        "悬空引脚检查",
+        "光学定位点检查",
+        "元件间距检查",
+        "电感饱和电流检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 16,
+      "error": null,
+      "timestamp": "2026-09-10T15:49:09.863610"
+    },
+    {
+      "design": "esp32_audio_moji2",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容耐压降额检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "电容耐压降额检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "参数范围检查",
+        "板边间距检查",
+        "开关电源布局检查",
+        "天线净空区检查",
+        "位号连续性检查",
+        "悬空引脚检查",
+        "元件间距检查",
+        "去耦电容检查",
+        "光学定位点检查",
+        "电感饱和电流检查",
+        "PDN 目标阻抗分析"
+      ],
+      "total_violations": 20,
+      "error": null,
+      "timestamp": "2026-09-10T15:49:09.898875"
+    }
+  ],
+  "defect_detection_rate": 100.0,
+  "defect_total_detected": 13,
+  "defect_total_missed": 0
+}

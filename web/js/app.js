@@ -73,13 +73,24 @@ if (typeof marked !== 'undefined') {
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadPersistedState();
-  renderAssistants();
+
+  // 统一工具目录（后端 ToolRegistry 派生）— 视图与工具箱共用
+  await loadToolCatalog();
+  updateSessionBar();
   renderConversations();
 
-  // Theme
+  // Default to BOM analysis view (two-level navigation)
+  if (!activeConvId || (getActiveConversation() && (getActiveConversation().messages||[]).length === 0)) {
+    switchView('bom');
+  }
+
+  // Theme — 以 settings 为准，未知值一律回落浅色
   try {
     const sett = await eel.get_settings()();
     if (sett && sett.theme) applyTheme(sett.theme);
+    if (sett && sett.font_size) {
+      document.documentElement.style.setProperty('--font-size', sett.font_size + 'px');
+    }
   } catch(e) {}
 
   // LLM config
@@ -88,7 +99,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateLLMStatus(cfg);
   } catch(e) {}
 
-  // Tab switching
+  // Right-panel tab switching
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
@@ -125,8 +136,20 @@ async function loadPersistedState() {
 
   const { assistants: saved, conversations: savedConvs, active_assistant, active_conv } = resp.data;
 
-  // 无持久化数据 → 保持空白状态
-  if (!saved || saved.length === 0) return;
+  // 无持久化数据 → 自动创建默认助手实例（首跑引导）
+  if (!saved || saved.length === 0) {
+    // ⚠️ typeId 必须是 ASSISTANT_TYPES 里真实存在的键。
+    //    过去写的是 'general'（不存在）→ createAssistantInstance 返回 null
+    //    → 紧接着读 inst.instanceId 直接抛异常，首跑白屏（2026-09-10 修正）。
+    const inst = createAssistantInstance('eda-general');
+    if (inst) currentAssistantInstance = inst.instanceId;
+    conversations[currentAssistantInstance] = conversations[currentAssistantInstance] || [];
+    updateSessionBar();
+    _persistState();
+    // First run → show BOM analysis view as the landing screen
+    switchView('bom');
+    return;
+  }
 
   // 恢复助手实例
   assistantInstances = saved.map(a => ({
@@ -134,9 +157,17 @@ async function loadPersistedState() {
     typeId: a.type_id,
     name: a.name,
   }));
+  // ⚠️ 归一化：SessionStore.load_all() 返回的会话记录字段是
+  //    {conv_id, title, sort_order}（没有 id / messages），直接用会导致
+  //    switchConversation() 里 `conv.messages.length` 抛 undefined
+  //    （2026-09-10 实测：切换助手即崩，历史会话根本打不开）。
   conversations = {};
   saved.forEach(a => {
-    conversations[a.instance_id] = savedConvs[a.instance_id] || [];
+    conversations[a.instance_id] = (savedConvs[a.instance_id] || []).map(c => ({
+      id: c.id || c.conv_id,
+      title: c.title || '新对话',
+      messages: c.messages || [],
+    }));
   });
 
   // 恢复活跃状态
@@ -157,15 +188,33 @@ async function loadPersistedState() {
   } else if (convs.length > 0) {
     activeConvId = convs[0].id;
     await restoreConversationMessages(convs[0].id);
+  } else {
+    // No conversations → land on BOM analysis view
+    switchView('bom');
   }
 }
 
 async function restoreConversationMessages(convId) {
-  showEmptyState(false);
   let resp;
   try { resp = await eel.db_load_messages(convId)(); } catch(e) { return; }
   if (!resp || !resp.ok) return;
   const msgs = resp.messages || [];
+  // 回填到会话对象，否则切走再切回来消息就没了（messages 一直是空的）
+  const conv = findConversation(convId);
+  if (conv) {
+    conv.messages = msgs.map(m => ({
+      role: m.role,
+      content: m.content,
+      image: m.image || undefined,
+    }));
+  }
+  if (msgs.length === 0) { switchView(_currentView || 'bom'); return; }
+  // Has messages → show chat stream, hide view
+  const vc = document.getElementById('viewContainer');
+  const cm = document.getElementById('chatMessages');
+  if (vc) vc.classList.add('hidden');
+  if (cm) cm.classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   msgs.forEach(m => {
     if (m.image) {
       appendBubbleWithImage(m.role, m.content, m.image);
@@ -173,6 +222,7 @@ async function restoreConversationMessages(convId) {
       appendBubble(m.role, m.content);
     }
   });
+  renderConversations();
 }
 
 // ── Fire-and-forget persistence helpers ──
@@ -209,11 +259,9 @@ function _persistState() {
 // ═══════════ Sidebar Tabs ═══════════
 
 function switchSidebarTab(tab) {
+  // Legacy: sidebar tabs removed in the two-level nav redesign. Kept as no-op
+  // so existing callers (e.g. newConversation) don't throw.
   sidebarTab = tab;
-  document.querySelectorAll('.sidebar-tab').forEach(b => b.classList.remove('active'));
-  document.querySelector(`.sidebar-tab[data-tab="${tab}"]`).classList.add('active');
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  document.getElementById(tab === 'assistants' ? 'sidebarAssistants' : 'sidebarTopics').classList.add('active');
 }
 
 // ═══════════ Assistant Management ═══════════
@@ -226,9 +274,12 @@ function getActiveAssistant() {
 }
 
 function renderAssistants() {
-  const container = document.getElementById('assistantList');
+  const container = document.getElementById('configAssistantList');
+  const countEl = document.getElementById('configAssistantCount');
+  if (countEl) countEl.textContent = `${assistantInstances.length} 个`;
+  if (!container) return;  // only render when config view is active
   if (assistantInstances.length === 0) {
-    container.innerHTML = '<div class="sidebar-empty">点击 + 新建助手</div>';
+    container.innerHTML = '<div class="session-empty">暂无助手，点击下方按钮新建</div>';
     return;
   }
   container.innerHTML = assistantInstances.map(inst => {
@@ -236,11 +287,15 @@ function renderAssistants() {
     if (!type) return '';
     const active = inst.instanceId === currentAssistantInstance ? 'active' : '';
     return `
-      <div class="sb-item ${active}"
+      <div class="assistant-row ${active}"
            onclick="selectAssistant('${inst.instanceId}')" title="${type.description}">
-        <span class="sb-item-icon">${type.icon}</span>
-        <span class="sb-item-name">${inst.name}</span>
-        <button class="sb-item-del" onclick="deleteAssistant('${inst.instanceId}', event)" title="删除助手">
+        <span class="assistant-row-icon">${type.icon}</span>
+        <span class="assistant-row-body">
+          <span class="assistant-row-name">${escapeHtml(inst.name)}</span>
+          <span class="assistant-row-desc">${escapeHtml(type.description)}</span>
+        </span>
+        <span class="assistant-row-badge">${type.quickActions.length} 个快捷操作</span>
+        <button class="assistant-row-del" onclick="deleteAssistant('${inst.instanceId}', event)" title="删除助手">
           <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
         </button>
       </div>
@@ -264,9 +319,10 @@ function selectAssistant(instanceId) {
     switchConversation(convs[0].id);
   } else {
     activeConvId = null;
+    clearChatMessages();
     showEmptyState(true);
-    document.getElementById('chatMessages').querySelectorAll('.msg-row').forEach(el => el.remove());
   }
+  updateSessionBar();
   renderQuickActions();
 }
 
@@ -301,16 +357,39 @@ function deleteAssistant(instanceId, event) {
   });
 }
 
-function updateChatHeader() {
+function updateSessionBar() {
+  // 顶栏只有一个「会话」入口，助手身份显示在下拉头部。
   const a = getActiveAssistant();
-  if (!a) {
-    document.getElementById('assistantIcon').textContent = '';
-    document.getElementById('assistantName').textContent = '新建助手以开始';
-    return;
-  }
-  document.getElementById('assistantIcon').textContent = a.icon;
-  document.getElementById('assistantName').textContent = a.name;
+  const owner = document.getElementById('sessionMenuAssistant');
+  if (owner) owner.textContent = a ? a.name : '未创建助手';
+  const chip = document.getElementById('sessionChipName');
+  const conv = activeConvId ? findConversation(activeConvId) : null;
+  if (chip) chip.textContent = conv ? conv.title : (a ? '新对话' : '未创建助手');
 }
+
+// 兼容旧调用点
+function updateChatHeader() { updateSessionBar(); }
+
+// ── 会话下拉（conversations 的唯一 UI 入口） ──
+
+function toggleSessionMenu(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const menu = document.getElementById('sessionMenu');
+  if (!menu) return;
+  const willOpen = !menu.classList.contains('show');
+  menu.classList.toggle('show', willOpen);
+  if (willOpen) renderConversations();
+}
+
+function closeSessionMenu() {
+  const menu = document.getElementById('sessionMenu');
+  if (menu) menu.classList.remove('show');
+}
+
+document.addEventListener('click', (e) => {
+  const wrap = document.getElementById('sessionWrap');
+  if (wrap && !wrap.contains(e.target)) closeSessionMenu();
+});
 
 function switchAssistant(instanceId) {
   if (instanceId) selectAssistant(instanceId);
@@ -341,14 +420,18 @@ async function toggleWindowMode() {
 
 function applyWindowMode() {
   const btn = document.getElementById('modeToggleBtn');
+  const input = document.getElementById('chatInput');
   if (companionMode) {
     document.body.classList.add('companion-mode');
     btn.classList.add('active');
+    // 380px 宽的伴生窗里长 placeholder 会被裁掉，用短文案
+    if (input && !agentMode) input.placeholder = '输入指令…';
     window.resizeTo(380, 540);
     window.moveTo(screen.width - 400, 40);
   } else {
     document.body.classList.remove('companion-mode');
     btn.classList.remove('active');
+    if (input && !agentMode) input.placeholder = '输入审查指令或问题... (Enter 发送, Shift+Enter 换行)';
     window.resizeTo(1300, 840);
     window.moveTo(40, 40);
   }
@@ -437,9 +520,10 @@ function switchConversation(convId) {
   showEmptyState(false);
 
   const conv = findConversation(convId);
-  if (conv && conv.messages.length > 0) {
-    conv.messages.forEach(m => appendBubble(m.role, m.content, m.image));
-  } else if (!conv || conv.messages.length === 0) {
+  const msgs = (conv && conv.messages) || [];
+  if (msgs.length > 0) {
+    msgs.forEach(m => appendBubble(m.role, m.content, m.image));
+  } else {
     showEmptyState(true);
   }
   document.getElementById('chatInput').focus();
@@ -455,7 +539,7 @@ function deleteConversation(convId, event) {
     okText: '删除',
     onOk: () => {
       _persistDeleteConversation(convId);
-      const convs = conversations[currentAssistantInstance];
+      const convs = conversations[currentAssistantInstance] || [];
       const idx = convs.findIndex(c => c.id === convId);
       if (idx < 0) return;
       convs.splice(idx, 1);
@@ -491,28 +575,31 @@ function getActiveConversation() {
 }
 
 function renderConversations() {
+  updateSessionBar();
   const container = document.getElementById('conversationList');
+  if (!container) return;
   if (!currentAssistantInstance) {
-    container.innerHTML = '<div class="sidebar-empty">请先新建助手</div>';
+    container.innerHTML = '<div class="session-empty">请先新建助手</div>';
     return;
   }
   const convs = conversations[currentAssistantInstance] || [];
   if (convs.length === 0) {
-    container.innerHTML = '<div class="sidebar-empty">暂无对话</div>';
+    container.innerHTML = '<div class="session-empty">暂无历史会话</div>';
     return;
   }
-  container.innerHTML = convs.map(c => `
-    <div class="sb-item ${c.id === activeConvId ? 'active' : ''}"
-         onclick="switchConversation('${c.id}')" title="${escapeAttr(c.title)}">
-      <span class="sb-item-icon">
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,3 11,8 6,13"/></svg>
-      </span>
-      <span class="sb-item-name">${escapeHtml(c.title)}</span>
-      <button class="sb-item-del" onclick="deleteConversation('${c.id}', event)" title="删除">
+  container.innerHTML = convs.map(c => {
+    const n = (c.messages || []).length;
+    return `
+    <div class="session-item ${c.id === activeConvId ? 'active' : ''}"
+         onclick="switchConversation('${c.id}'); closeSessionMenu();" title="${escapeAttr(c.title)}">
+      <svg class="session-item-icon" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h9A1.5 1.5 0 0 1 14 4.5v5A1.5 1.5 0 0 1 12.5 11H6l-3 2.5V11h-.5A1.5 1.5 0 0 1 2 9.5z"/></svg>
+      <span class="session-item-name">${escapeHtml(c.title)}</span>
+      <span class="session-item-count">${n}</span>
+      <button class="session-item-del" onclick="deleteConversation('${c.id}', event)" title="删除会话">
         <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
       </button>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 // ═══════════ Chat ═══════════
@@ -521,14 +608,629 @@ function clearChatMessages() {
   // Abort any in-progress stream
   _activeStreamBubble = null;
   _streamTokenCount = 0;
+  _activeToolCards.forEach(c => c.remove());
+  _activeToolCards = [];
   const container = document.getElementById('chatMessages');
-  container.querySelectorAll('.msg-row,.config-tip').forEach(el => el.remove());
+  if (!container) return;
+  // ⚠️ 只能保留空态占位节点，其余一律清掉。
+  // 过去只删 `.msg-row,.config-tip`，而流式 AI 气泡（裸 .bubble）和
+  // `.tool-call-card` 都不带 .msg-row，切换助手/会话后它们会留在 DOM 里，
+  // 造成「同一个回答显示两遍」（2026-09-10 实测：bareBubbles 存活 1 个）。
+  Array.from(container.children).forEach(el => {
+    if (el.id !== 'chatEmpty') el.remove();
+  });
+  _syncChatEmpty();
+}
+
+// ═══════════ Chat empty-state sync ═══════════
+function _syncChatEmpty() {
+  const cm = document.getElementById('chatMessages');
+  const ce = document.getElementById('chatEmpty');
+  if (!cm || !ce) return;
+  ce.style.display = cm.querySelectorAll('.msg-row').length ? 'none' : '';
+}
+(function() {
+  const cm = document.getElementById('chatMessages');
+  if (cm) new MutationObserver(_syncChatEmpty).observe(cm, { childList: true, subtree: true });
+})();
+
+// ═══════════ 统一工具目录 (ToolRegistry 是唯一事实来源) ═══════════
+//
+// 前端不再复制工具的名称/描述/关键词：全部来自 eel.get_tools_catalog()，
+// 也就是 src/agent/tools.py 的 ToolRegistry。视图只声明「展示哪些工具」，
+// 卡片样式、状态徽标、运行入口全部统一。
+
+const TOOL_CATEGORIES = {
+  bom:    { label: 'BOM 物料', short: 'BOM',   tone: 'blue' },
+  pcb:    { label: 'PCB 设计', short: 'PCB',   tone: 'violet' },
+  health: { label: '供应链健康', short: '供应链', tone: 'green' },
+  report: { label: '报告导出', short: '报告',   tone: 'amber' },
+  vision: { label: '视觉分析', short: '视觉',   tone: 'pink' },
+};
+
+// tool name → ICONS 中的 emoji 键（统一走同一套线性 SVG 图标）
+const TOOL_ICONS = {
+  ai_merge_bom: '🤖', merge_bom: '🔗', validate_package: '📐',
+  check_duplicates: '🔍', filter_components: '🧲',
+  generate_html_bom: '🌐', export_bom_csv: '📤', summary_report: '📊',
+  bom_cost_summary: '💰', bom_health: '🩺', find_alternatives: '🔁', supply_risk: '🚚',
+  check_rule: '📐', pcb_status: '🖥️', pcb_analysis: '🧩', calc_trace_width: '📏',
+  explain_design_rule: '📖', generate_drc_rule: '🧾', review_multi_agent: '👥',
+  verify_suggestion: '✅', component_lookup: '🔎', search_component: '🔍',
+  analyze_image: '🖼️', rag_query: '📚',
+};
+
+// 少数能力的启动方式不是「直接执行」
+const TOOL_LAUNCH = {
+  review_multi_agent: { kind: 'run', run: () => featureCmd('__review') },
+  generate_html_bom:  { kind: 'run', run: () => generateHTMLBOM() },
+  analyze_image:      { kind: 'image' },
+  rag_query:          { kind: 'prompt', prefix: '查询知识库: ' },
+};
+
+let TOOL_CATALOG = [];
+let _toolQuery = '';
+let _toolCategory = 'all';
+let _toolOnlyReady = false;
+
+async function loadToolCatalog(force) {
+  if (TOOL_CATALOG.length && !force) return TOOL_CATALOG;
+  try {
+    const resp = await eel.get_tools_catalog()();
+    TOOL_CATALOG = (resp && resp.ok && resp.tools) ? resp.tools : [];
+  } catch (e) {
+    console.warn('工具目录加载失败', e);
+    TOOL_CATALOG = [];
+  }
+  return TOOL_CATALOG;
+}
+
+function getTool(name) {
+  return TOOL_CATALOG.find(t => t.name === name) || null;
+}
+
+/** 数据可用性变了（导入 BOM / PCB / 坐标、一键演示）后刷新工具目录。
+ *  可用性是后端按「当前有没有 BOM」实时算的，不刷新的话工具箱里的
+ *  「需先导入 BOM」徽标会一直停在旧状态。 */
+async function refreshToolCatalog() {
+  await loadToolCatalog(true);
+  const vc = document.getElementById('viewContainer');
+  const view = VIEWS[_currentView];
+  // 只在视图可见时就地重绘；聊天流模式下不要把用户拽回视图
+  if (vc && view && !vc.classList.contains('hidden')) {
+    const keepScroll = vc.scrollTop;
+    vc.innerHTML = renderViewHTML(view);
+    if (view.hub) renderToolGrid();
+    if (view.assistantSection) renderAssistants();
+    vc.scrollTop = keepScroll;
+  }
+  return TOOL_CATALOG;
+}
+
+function _toolState(t) {
+  // 顺序很重要：先把「没数据跑不了」判掉，否则像 generate_html_bom /
+  // review_multi_agent 这种走面板的能力会显示「面板直达」，掩盖了它还缺 BOM。
+  if (!t.ready) return { key: 'blocked', text: t.blocked_reason || '不可用' };
+  const spec = TOOL_LAUNCH[t.name];
+  if (spec && spec.kind === 'run') return { key: 'panel', text: '面板直达' };
+  if (spec && spec.kind === 'image') return { key: 'input', text: '需上传图片' };
+  if (t.needs_input) return { key: 'input', text: '需补参数' };
+  return { key: 'ready', text: '可直接运行' };
+}
+
+/** 统一工具卡片 — 工具箱与各视图共用同一个组件 */
+function renderToolCard(t, index) {
+  const cat = TOOL_CATEGORIES[t.category] || { short: t.category, tone: 'blue' };
+  const st = _toolState(t);
+  const icon = ICONS[TOOL_ICONS[t.name]] || ICONS['⚙️'] || '';
+  return `<article class="tool-card" data-tool="${t.name}" data-cat="${t.category}" data-state="${st.key}"
+      style="--i:${index || 0}" onclick="launchTool('${t.name}')" title="${escapeAttr(t.description)}">
+    <div class="tool-card-top">
+      <span class="tool-card-icon">${icon}</span>
+      <span class="tool-card-cat tone-${cat.tone}">${cat.short}</span>
+    </div>
+    <div class="tool-card-label">${escapeHtml(t.label)}</div>
+    <p class="tool-card-desc">${escapeHtml(t.description)}</p>
+    <div class="tool-card-foot">
+      <span class="tool-card-state ${st.key}"><i class="state-dot"></i>${escapeHtml(st.text)}</span>
+      <span class="tool-card-go">运行<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,3 11,8 6,13"/></svg></span>
+    </div>
+  </article>`;
+}
+
+/** 非工具类快捷入口也用同一种卡片外观，保持视觉统一 */
+function renderActionCard(item, index) {
+  const icon = ICONS[item.icon] || item.icon || ICONS['⚙️'];
+  return `<article class="tool-card tool-card--action" style="--i:${index || 0}"
+      onclick="${item.onClick}" title="${escapeAttr(item.desc || item.title)}">
+    <div class="tool-card-top">
+      <span class="tool-card-icon">${icon}</span>
+      <span class="tool-card-cat tone-slate">快捷</span>
+    </div>
+    <div class="tool-card-label">${escapeHtml(item.title)}</div>
+    <p class="tool-card-desc">${escapeHtml(item.desc || '')}</p>
+    <div class="tool-card-foot">
+      <span class="tool-card-state action"><i class="state-dot"></i>${escapeHtml(item.hint || '打开')}</span>
+      <span class="tool-card-go">前往<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,3 11,8 6,13"/></svg></span>
+    </div>
+  </article>`;
+}
+
+function renderToolCards(names) {
+  return (names || [])
+    .map((n, i) => { const t = getTool(n); return t ? renderToolCard(t, i) : ''; })
+    .filter(Boolean)
+    .join('');
+}
+
+// ═══════════ Two-level Views (阶梯式导航) ═══════════
+
+const VIEWS = {
+  bom: {
+    title: 'BOM 分析',
+    subtitle: '物料清单的导入、校验、合并与供应链健康检查 — 确保每一颗元件可用、对、省。',
+    metrics: [
+      { num: '24', label: '系统能力', icon: '🧩' },
+      { num: '71', label: '设计规则' },
+      { num: '3', label: '自研 ML 模型' },
+      { num: '98%', label: '缺陷检出率' },
+    ],
+    actions: [
+      { label: '一键演示', sub: '加载示例缺陷 MCU 板', primary: true, onClick: 'startDemo()' },
+      { label: '导入 BOM 文件', sub: 'CSV / Excel', primary: false, onClick: "document.getElementById('bomFileInput').click()" },
+    ],
+    tools: ['merge_bom', 'ai_merge_bom', 'validate_package', 'check_duplicates', 'filter_components', 'bom_health'],
+  },
+  review: {
+    title: '设计审查',
+    subtitle: '71 条 PCB 设计规则全量扫描 · 多智能体协同评审 · 违规密度可视化定位。',
+    metrics: [
+      { num: '71', label: 'DRC 规则', icon: '📐' },
+      { num: '5', label: '审查 Agent', icon: '👥' },
+      { num: '18s', label: '平均耗时', icon: '👁️' },
+      { num: 'V2.8', label: '模型版本', icon: '⚙️' },
+    ],
+    actions: [
+      { label: '启动多智能体审查', sub: '5 个专业 Agent 并行评审', primary: true, onClick: "featureCmd('__review')" },
+      { label: '加载 DRC 热力图', sub: '违规密度可视化', primary: false, onClick: "featureCmd('__heatmap')" },
+    ],
+    tools: ['check_rule', 'pcb_analysis', 'review_multi_agent', 'verify_suggestion', 'pcb_status', 'explain_design_rule'],
+    extras: [
+      { icon: '🔥', title: 'DRC 热力图', desc: '违规密度的空间分布定位', onClick: "featureCmd('__heatmap')", hint: '右侧面板' },
+      { icon: '📥', title: '导入 PCB', desc: '.json / .epro 电路板文件', onClick: "document.getElementById('pcbFileInput').click()", hint: '选择文件' },
+    ],
+  },
+  tools: {
+    hub: true,
+    title: '工具箱',
+    subtitle: '全部系统能力集中于此 — 搜索、按类别筛选、一键运行。目录由后端 ToolRegistry 派生，与实际可执行能力永远一致。',
+  },
+  report: {
+    title: '报告中心',
+    subtitle: '生成交互式 HTML BOM · 查看历史报告栈 · 导出审查结果。',
+    metrics: [
+      { num: 'HTML', label: '报告格式', icon: '📑' },
+      { num: 'CSV', label: '数据导出', icon: '📤' },
+      { num: '历史', label: '报告栈', icon: '📚' },
+      { num: '一键', label: '生成', icon: '✅' },
+    ],
+    actions: [
+      { label: '生成 HTML BOM', sub: '交互式物料表', primary: true, onClick: "generateHTMLBOM()" },
+      { label: '打开任务面板', sub: '查看报告与审查结果', primary: false, onClick: "toggleRightPanel()" },
+    ],
+    tools: ['generate_html_bom', 'export_bom_csv', 'summary_report', 'bom_cost_summary'],
+    extras: [
+      { icon: '📑', title: '报告栈', desc: '操作历史报告归档', onClick: "switchTab('report'); toggleRightPanel()", hint: '右侧面板' },
+      { icon: '📊', title: '审查结果', desc: '多智能体评审卡片', onClick: "switchTab('review'); toggleRightPanel()", hint: '右侧面板' },
+      { icon: '🧾', title: 'BOM 表格', desc: '当前物料明细', onClick: "switchTab('bom'); toggleRightPanel()", hint: '右侧面板' },
+      { icon: '👁️', title: 'HTML 预览', desc: '生成的 BOM 预览', onClick: "switchTab('html'); toggleRightPanel()", hint: '右侧面板' },
+    ],
+  },
+  config: {
+    title: '配置管理',
+    subtitle: 'AI 模型 · 外观主题 · 通用设置 · 助手实例管理 — 一切可调项集中于此。',
+    metrics: [
+      { num: '5+', label: 'LLM 服务商', icon: '🤖' },
+      { num: '4', label: '助手类型', icon: '🧠' },
+      { num: '本地', label: 'ML 离线', icon: '📦' },
+      { num: 'SQLite', label: '持久化', icon: '💾' },
+    ],
+    actions: [
+      { label: 'AI 模型配置', sub: 'API Key · 模型 · 温度', primary: true, onClick: "openSettingsAt('s-ai')" },
+      { label: '新建助手', sub: '多实例助手模型', primary: false, onClick: "showNewAssistantDialog()" },
+    ],
+    extras: [
+      { icon: '🤖', title: 'AI 模型', desc: '服务商 · API Key · 模型 · 温度', onClick: "openSettingsAt('s-ai')", hint: '设置' },
+      { icon: '🎨', title: '外观主题', desc: '深浅色 · 强调色 · 字号', onClick: "openSettingsAt('s-appearance')", hint: '设置' },
+      { icon: '⚙️', title: '通用设置', desc: '自动保存 · 文件监听 · 操作确认', onClick: "openSettingsAt('s-general')", hint: '设置' },
+      { icon: '💾', title: '数据存储', desc: '数据目录与清除本地数据', onClick: "openSettingsAt('s-general')", hint: '设置' },
+      { icon: '📁', title: '导入 PCB', desc: '.json / .epro 电路板文件', onClick: "document.getElementById('pcbFileInput').click()", hint: '选择文件' },
+      { icon: '📍', title: '导入坐标', desc: '.csv 元件坐标文件', onClick: "document.getElementById('posFileInput').click()", hint: '选择文件' },
+    ],
+    assistantSection: true,
+  },
+};
+
+// ═══════════ SVG 图标映射（Lucide 风格线性图标，替换 emoji） ═══════════
+const ICONS = {
+  '🩺':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12h3l3-8 4 16 3-8h6"/></svg>',
+  '📐':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h12L4 16z"/></svg>',
+  '🔍':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>',
+  '🔗':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 15l6-6M10 6l1.5-1.5a3.5 3.5 0 0 1 5 5L15 11M14 18l-1.5 1.5a3.5 3.5 0 0 1-5-5L9 13"/></svg>',
+  '🤖':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V5M9 5h6"/><path d="M9 13v1M15 13v1"/></svg>',
+  '📋':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a3 3 0 0 1 6 0"/><path d="M9 11h6M9 15h6"/></svg>',
+  '🛤️':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19a2 2 0 1 0 0-8h8a2 2 0 1 1 0 8M4 11V7a2 2 0 0 1 2-2h2"/></svg>',
+  '🖥️':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+  '🔥':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2c2 4-1 5 0 8a2.5 2.5 0 0 0 5 0c0-3-2-4-2-4 3 2 5 6 4 9a6 6 0 1 1-12 0c0-5 3-7 5-13"/></svg>',
+  '👥':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="8" r="3.5"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3.5 3.5 0 0 1 0 6M14 13a5.5 5.5 0 0 1 6 6"/></svg>',
+  '✅':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
+  '🌐':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a13 13 0 0 1 0 18M12 3a13 13 0 0 0 0 18"/></svg>',
+  '📑':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
+  '📊':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 20h16M7 20V11M12 20V6M17 20v-5"/></svg>',
+  '🗺️':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6l8-3 5 3-6 3-7-3zM8 6v12m8-12v12M8 18l-5 3V9l5-3m8 12l5-3"/></svg>',
+  '🧾':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3h14v18l-2.3-1.6L14.4 21l-2.4-1.6L9.6 21l-2.3-1.7L5 21z"/><path d="M9 8h6M9 12h6"/></svg>',
+  '👁️':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>',
+  '🎨':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22a10 10 0 1 1 10-10c0 2.5-1.8 3-4 3.5a2.5 2.5 0 0 0-2.5 2.5c0 2 1.2 2.5 1.2 4"/><path d="M7 10.5h.01M11 7h.01M15 8.5h.01"/></svg>',
+  '⚙️':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>',
+  '💾':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>',
+  '🧠':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 5V2M12 5V2M15 5V2M9 22v-3M12 22v-3M15 22v-3M5 9H2M5 12H2M5 15H2M22 9h-3M22 12h-3M22 15h-3"/></svg>',
+  '📁':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  // ── 工具目录补充图标 ──
+  '📦':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>',
+  '🧩':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3h4v4a2 2 0 1 0 4 0h3v4h-3a2 2 0 1 0 0 4h3v4h-4a2 2 0 1 0-4 0H9v-4a2 2 0 1 0-4 0H2v-4h3a2 2 0 1 0 0-4H2V5h4a2 2 0 0 1 4-2z"/></svg>',
+  '🧲':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3v8a6 6 0 0 0 12 0V3"/><path d="M6 8h4M14 8h4"/></svg>',
+  '📤':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/><path d="M12 15V3M8 7l4-4 4 4"/></svg>',
+  '💰':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4h12M6 9h12M12 4v16M8 13c4 0 8 1 8 4"/></svg>',
+  '🔁':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 10a6 6 0 0 1 10-4l3 3M20 14a6 6 0 0 1-10 4l-3-3"/><path d="M17 3v6h-6M7 21v-6h6"/></svg>',
+  '🚚':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="12" height="10" rx="1"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="6" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>',
+  '📏':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 15L15 3l6 6L9 21z"/><path d="M7 11l2 2M10 8l2 2M13 5l2 2"/></svg>',
+  '📖':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h6a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H4z"/><path d="M20 4h-6a3 3 0 0 0-3 3v13a2.5 2.5 0 0 1 2.5-2.5H20z"/></svg>',
+  '🔎':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21M8 11h6"/></svg>',
+  '🖼️':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M4 18l5-5 3 3 3-4 5 6"/></svg>',
+  '📚':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5a2 2 0 0 1 2-2h5v18H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-5v18h5a2 2 0 0 1 2 2z"/></svg>',
+  '📥':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/><path d="M12 3v12M8 11l4 4 4-4"/></svg>',
+  '📍':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s7-7 7-12a7 7 0 1 0-14 0c0 5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  '🔧':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a4 4 0 0 1 5 5L11 20H4v-7z"/><path d="M12 9l3 3"/></svg>',
+};
+// KPI 指标图标（按 label 关键词匹配）
+function _metricIcon(label) {
+  if (/规则/.test(label)) return '📐';
+  if (/ML/.test(label)) return '🧠';
+  if (/检出/.test(label)) return '✅';
+  if (/Agent/.test(label)) return '👥';
+  if (/耗时/.test(label)) return '👁️';
+  if (/版本/.test(label)) return '⚙️';
+  if (/格式/.test(label)) return '📑';
+  return '📊';
+}
+
+let _currentView = 'bom';
+
+async function switchView(viewId) {
+  _currentView = viewId;
+  const view = VIEWS[viewId];
+  if (!view) return;
+  // 视图里要用工具目录渲染统一卡片 → 首次进入前先拉目录
+  if (!TOOL_CATALOG.length) await loadToolCatalog();
+  if (_currentView !== viewId) return;   // 期间用户又切了视图
+  // Top nav active state
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.view === viewId);
+  });
+  // Hide chat messages, show view
+  document.getElementById('chatMessages').classList.add('hidden');
+  const vc = document.getElementById('viewContainer');
+  vc.classList.remove('hidden');
+  vc.innerHTML = renderViewHTML(view);
+  vc.scrollTop = 0;
+  if (view.hub) renderToolGrid();
+  // Re-render assistants list if entering config view
+  if (viewId === 'config') {
+    setTimeout(() => { renderAssistants(); }, 0);
+  }
+}
+
+function renderMetrics(metrics) {
+  return (metrics || []).map(m =>
+    `<div class="kpi-card">
+       <div class="kpi-icon">${ICONS[m.icon || _metricIcon(m.label)] || ''}</div>
+       <div class="kpi-body">
+         <div class="kpi-num">${m.num}</div>
+         <div class="kpi-label">${m.label}</div>
+       </div>
+     </div>`
+  ).join('');
+}
+
+function renderViewHTML(view) {
+  const actions = (view.actions || []).map(a =>
+    `<button class="${a.primary ? 'btn-primary' : 'btn-secondary'}" onclick="${a.onClick}">
+       <span class="view-action-label">${a.label}</span>
+       <span class="view-action-sub">${a.sub || ''}</span>
+     </button>`
+  ).join('');
+
+  const grid = view.hub
+    ? renderToolHub()
+    : `<div class="tool-grid">${renderToolCards(view.tools)}${(view.extras || []).map(renderActionCard).join('')}</div>`;
+
+  // Config view gets an extra inline assistants section
+  const assistantSection = view.assistantSection ? `
+    <div class="config-section">
+      <div class="config-section-head">
+        <span class="config-section-icon">${ICONS['🧠']}</span>
+        <span class="config-section-title">助手实例</span>
+        <span class="config-section-count" id="configAssistantCount"></span>
+      </div>
+      <div id="configAssistantList" class="assistant-list-inline"></div>
+      <div class="config-section-foot"><button class="btn-secondary" onclick="showNewAssistantDialog()">+ 新建助手</button></div>
+    </div>` : '';
+
+  return `
+    <div class="view-header">
+      <h1 class="view-title">${view.title}</h1>
+      <p class="view-subtitle">${view.subtitle}</p>
+    </div>
+    ${view.metrics ? `<div class="kpi-row">${renderMetrics(view.metrics)}</div>` : ''}
+    ${actions ? `<div class="view-actions">${actions}</div>` : ''}
+    ${grid}
+    ${assistantSection}
+  `;
+}
+
+// ── 工具箱（统一管理界面） ──
+
+function renderToolHub() {
+  const total = TOOL_CATALOG.length;
+  const ready = TOOL_CATALOG.filter(t => t.ready).length;
+  const catIds = Object.keys(TOOL_CATEGORIES).filter(c => TOOL_CATALOG.some(t => t.category === c));
+  const metrics = [
+    { num: String(total), label: '系统能力', icon: '🧩' },
+    { num: String(catIds.length), label: '能力分类', icon: '📦' },
+    { num: String(ready), label: '当前可直接运行', icon: '✅' },
+    { num: String(total - ready), label: '需先导入数据', icon: '📥' },
+  ];
+  const chips = ['all'].concat(catIds).map(c => {
+    const n = c === 'all' ? total : TOOL_CATALOG.filter(t => t.category === c).length;
+    const label = c === 'all' ? '全部' : (TOOL_CATEGORIES[c] || {}).label || c;
+    const icon = c === 'all' ? ICONS['🧩'] : (ICONS[TOOL_ICONS[(TOOL_CATALOG.find(t => t.category === c) || {}).name]] || '');
+    return `<button class="hub-chip ${c === _toolCategory ? 'active' : ''}" data-cat="${c}" onclick="setToolCategory('${c}')">
+      <span class="hub-chip-icon">${icon}</span>${label}<span class="hub-chip-num">${n}</span>
+    </button>`;
+  }).join('');
+
+  return `
+    <div class="kpi-row">${renderMetrics(metrics)}</div>
+    <div class="tool-hub-bar">
+      <div class="tool-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>
+        <input id="toolSearchInput" type="text" placeholder="搜索能力名称或说明，如 合并 / DRC / 知识库 / 替代料" value="${escapeAttr(_toolQuery)}" oninput="setToolQuery(this.value)">
+        <button class="tool-search-clear" onclick="clearToolQuery()" title="清空">✕</button>
+      </div>
+      <label class="tool-ready-toggle">
+        <input type="checkbox" ${_toolOnlyReady ? 'checked' : ''} onchange="setToolOnlyReady(this.checked)">
+        <span class="tool-ready-track"></span>
+        <span class="tool-ready-text">仅显示可运行</span>
+      </label>
+    </div>
+    <div class="hub-chips">${chips}</div>
+    <div class="tool-grid" id="toolGrid"></div>
+    <div class="tool-empty" id="toolEmpty" style="display:none">
+      <div class="tool-empty-icon">${ICONS['🔎']}</div>
+      <div class="tool-empty-title">没有匹配的能力</div>
+      <div class="tool-empty-desc">换个关键词，或切换到「全部」分类</div>
+    </div>
+  `;
+}
+
+function setToolQuery(q) {
+  _toolQuery = q || '';
+  renderToolGrid();
+}
+
+function clearToolQuery() {
+  _toolQuery = '';
+  const input = document.getElementById('toolSearchInput');
+  if (input) { input.value = ''; input.focus(); }
+  renderToolGrid();
+}
+
+function setToolCategory(cat) {
+  _toolCategory = cat;
+  document.querySelectorAll('.hub-chip').forEach(c => c.classList.toggle('active', c.dataset.cat === cat));
+  renderToolGrid();
+}
+
+function setToolOnlyReady(on) {
+  _toolOnlyReady = !!on;
+  renderToolGrid();
+}
+
+function renderToolGrid() {
+  const grid = document.getElementById('toolGrid');
+  if (!grid) return;
+  const q = _toolQuery.trim().toLowerCase();
+  const list = TOOL_CATALOG.filter(t => {
+    if (_toolCategory !== 'all' && t.category !== _toolCategory) return false;
+    if (_toolOnlyReady && !t.ready) return false;
+    if (!q) return true;
+    const hay = [t.label, t.description, t.name].concat(t.keywords || []).join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+  grid.innerHTML = list.map(renderToolCard).join('');
+  const empty = document.getElementById('toolEmpty');
+  if (empty) empty.style.display = list.length ? 'none' : '';
+}
+
+// ── 工具启动 ──
+
+/** 切到聊天流：隐藏视图容器，显示消息流 */
+function _enterChatStream() {
+  const vc = document.getElementById('viewContainer');
+  const cm = document.getElementById('chatMessages');
+  if (vc) vc.classList.add('hidden');
+  if (cm) cm.classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+}
+
+async function launchTool(toolName) {
+  const t = getTool(toolName);
+  if (!t) {
+    // 目录未加载（例如离线打开）→ 退回自然语言指令
+    quickCmd(toolName);
+    return;
+  }
+  const spec = TOOL_LAUNCH[t.name];
+  if (spec && spec.kind === 'run') { spec.run(); return; }
+  if (!t.ready) {
+    showToast(`「${t.label}」${t.blocked_reason || '暂不可用'}`, 'warning');
+    return;
+  }
+  if (spec && spec.kind === 'image') { triggerImagePick(); return; }
+  if (t.needs_input) { prefillToolInput(t); return; }
+  await runToolInline(t);
+}
+
+function prefillToolInput(t) {
+  const spec = TOOL_LAUNCH[t.name];
+  const prefix = (spec && spec.prefix) || t.prompt_prefix || (t.label + ' ');
+  _enterChatStream();
+  const input = document.getElementById('chatInput');
+  input.value = prefix;
+  input.focus();
+  input.setSelectionRange(prefix.length, prefix.length);
+  const hint = (t.params || []).map(p => p.hint || p.name).filter(Boolean).join(' / ');
+  showToast(`「${t.label}」需要参数：${hint || '请补充输入'}`, 'info');
+}
+
+async function runToolInline(t) {
+  _enterChatStream();
+  const conv = getActiveConversation();
+  const prompt = `▶ 运行工具：${t.label}`;
+  appendBubble('user', prompt);
+  if (conv) {
+    conv.messages.push({ role: 'user', content: prompt });
+    _persistMessage(activeConvId, 'user', prompt);
+  }
+  disableInput(true);
+  const stream = createStreamingBubble();
+  document.getElementById('chatMessages').appendChild(stream.element);
+  stream.setStatus(`正在执行 ${t.label} …`);
+  scrollChat();
+
+  let resp;
+  try { resp = await eel.run_tool(t.name)(); }
+  catch (e) { resp = { ok: false, error: String(e) }; }
+  disableInput(false);
+
+  const ok = resp && resp.ok;
+  const text = ok ? (resp.result || '（该能力没有返回文本输出）') : `❌ ${(resp && resp.error) || '执行失败'}`;
+  stream.finalize(text);
+  if (conv) {
+    conv.messages.push({ role: 'ai', content: text });
+    _persistMessage(activeConvId, 'ai', text);
+  }
+  if (ok && resp.result) showReport(resp.result);
+  renderConversations();
+  refreshToolCatalog();
+}
+
+/** 打开设置弹窗并直达指定分页 */
+function openSettingsAt(tabId) {
+  const overlay = document.getElementById('settingsOverlay');
+  if (!overlay) return;
+  if (!SETTINGS_LOADED) { SETTINGS_LOADED = true; loadSettingsIntoUI(); }
+  if (tabId) switchSettingsTab(tabId);
+  overlay.classList.add('show');
+}
+
+function switchConfigAssistants() {
+  switchView('config').then(() => {
+    const el = document.getElementById('configAssistantList');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
 }
 
 function showEmptyState(show) {
-  const el = document.getElementById('emptyState');
-  if (show) { el.classList.remove('hidden'); }
-  else { el.classList.add('hidden'); }
+  const el = document.getElementById('chatEmpty');
+  if (!el) return;
+  el.style.display = show ? '' : 'none';
+}
+
+/** One-click demo: load sample defective MCU board, then run rule check */
+async function startDemo() {
+  // Switch to chat-stream mode: hide view container, show chat messages
+  _enterChatStream();
+
+  // ⚠️ 先把会话准备好：否则首条消息发送时 getActiveConversation() →
+  //    newConversation() → clearChatMessages() 会把刚展示的演示结果清空
+  //    （2026-09-10 实测：用户视角就是「刚看到的结论消失了」）。
+  const conv = getActiveConversation();
+  const _record = (role, content) => {
+    if (!conv) return;
+    conv.messages.push({ role, content });
+    _persistMessage(activeConvId, role, content);
+  };
+  if (conv && conv.messages.length === 0) {
+    conv.title = '示例 MCU 板审查';
+    _persistConversation(conv);
+  }
+
+  appendSystem(' 加载示例数据: 有缺陷的 MCU 板 BOM + 坐标');
+  setStatus('加载演示数据...');
+  disableInput(true);
+  let resp;
+  try { resp = await eel.load_demo_data()(); } catch(e) {
+    appendTip(' 加载失败: ' + e, 'error'); setStatus('就绪'); disableInput(false); return;
+  }
+  if (resp && resp.ok) {
+    const okText = ` 已加载示例 BOM: **${resp.count}** 个元件${resp.pos_count ? ` · ${resp.pos_count} 个坐标` : ''}\n\n点击顶栏面板按钮查看 BOM 表格。可继续:\n- 输入「设计规则」运行 71 条 DRC 扫描\n- 进入「设计审查」启动多智能体评审\n- 输入「BOM健康」检查库存与替代料`;
+    appendBubble('ai', okText);
+    _record('ai', okText);
+    if (resp.items && resp.items.length) renderBOMTable(resp.items);
+    // 自动跑一次规则检查，让面板有内容
+    try {
+      const r = await eel.check_rules()();
+      if (r && r.ok) showReport(r.report);
+    } catch(e) {}
+  } else {
+    appendTip(' 加载失败: ' + (resp ? resp.msg : '未知错误'), 'error');
+  }
+  setStatus('就绪');
+  disableInput(false);
+  renderConversations();
+  // 演示数据也是一次「BOM 到位」，工具可用性跟着变
+  if (resp && resp.ok) await refreshToolCatalog();
+}
+
+/** Feature card click dispatcher */
+function featureCmd(key) {
+  if (key === '__review') {
+    openRightPanel();
+    switchTab('review');
+    runMultiAgentReview();
+    return;
+  }
+  if (key === '__heatmap') {
+    openRightPanel();
+    switchTab('review');
+    loadDrcHeatmap();
+    return;
+  }
+  quickCmd(key);
+}
+
+function triggerImagePick() {
+  document.getElementById('imageFileInput').click();
+}
+
+function askKnowledge() {
+  const input = document.getElementById('chatInput');
+  input.value = '查询知识库: ';
+  input.focus();
+  // place cursor after prefix
+  const len = input.value.length;
+  input.setSelectionRange(len, len);
 }
 
 function quickCmd(text) {
@@ -538,7 +1240,13 @@ function quickCmd(text) {
     document.getElementById('chatInput').focus();
     return;
   }
-  document.getElementById('chatInput').value = text;
+  // View-level shortcuts → map to natural-language commands
+  const alias = {
+    '__summary': 'BOM摘要',
+    '__verify': '验证建议',
+  };
+  const cmd = alias[text] || text;
+  document.getElementById('chatInput').value = cmd;
   sendChat();
 }
 
@@ -547,6 +1255,9 @@ async function sendChat() {
   const text = input.value.trim();
   if (!text && !currentImage) return;
   if (text === '生成 HTML' || text === '生成HTML') { removeImage(); input.value = ''; generateHTMLBOM(); return; }
+
+  // Switch to chat-stream mode (hide view container, show messages)
+  _enterChatStream();
 
   const hasImage = !!currentImage;
   const userText = text || '帮我分析这张图片';
@@ -680,6 +1391,8 @@ async function sendChat() {
       // on_stream_done callback handles finalization
     } catch (e) {
       // Network error: eel call itself failed
+      _activeToolCards.forEach(c => c.remove());
+      _activeToolCards = [];
       if (_activeStreamBubble) {
         _activeStreamBubble.finalize(' 连接错误: ' + e);
         const conv2 = getActiveConversation();
@@ -771,10 +1484,17 @@ function appendBubbleWithImage(type, text, imageDataUrl) {
  *  Returns { updateToken(token), finalize(fullText), element } */
 function createStreamingBubble() {
   showEmptyState(false);
+  // Clear leftover tool-call cards from a previous turn
+  _activeToolCards.forEach(c => c.remove());
+  _activeToolCards = [];
+  // ⚠️ element 必须是 .msg-row 外壳（不是裸 .bubble）：
+  //    否则 AI 气泡既不被 clearChatMessages() 清理，也不被 _syncChatEmpty()
+  //    计入，切换会话后会出现重复回答 + 空态不消失（2026-09-10 修正）。
   const row = document.createElement('div');
   row.className = 'msg-row ai';
   const bubble = document.createElement('div');
   bubble.className = 'bubble bubble-ai streaming';
+  row.appendChild(bubble);
   const timeLabel = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
   let buffer = '';
@@ -789,13 +1509,18 @@ function createStreamingBubble() {
   }
 
   return {
-    element: bubble,
+    element: row,
+    bubble: bubble,
     updateToken(token) {
       buffer += token;
       tokenCount++;
       if (tokenCount % RERENDER_EVERY === 0) {
         rerender();
       }
+    },
+    /** 运行中的状态文案（不走 Markdown，立即渲染） */
+    setStatus(text) {
+      bubble.innerHTML = `<span class="stream-status">${escapeHtml(text)}</span>`;
     },
     finalize(fullText) {
       buffer = fullText || buffer;
@@ -935,6 +1660,8 @@ function onFileSelected(type, input) {
         else { appendTip(resp.msg, 'error'); setStatus('加载失败'); }
       }
     } catch(err) { appendTip('导入失败: ' + err, 'error'); setStatus('导入失败'); }
+    // 数据到位 → 工具箱里「需先导入 BOM」的徽标要立刻变成可用
+    await refreshToolCatalog();
     input.value = '';
   };
   reader.readAsArrayBuffer(file);
@@ -971,29 +1698,41 @@ function switchTab(name) {
 
 function toggleRightPanel() {
   const panel = document.getElementById('rightPanel');
-  const btn = document.getElementById('panelToggleBtn');
+  if (!panel) return;
   const collapsed = panel.classList.toggle('collapsed');
-  const chevronRight = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,3 11,8 6,13"/></svg>';
-  const chevronLeft  = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="10,3 5,8 10,13"/></svg>';
-  if (collapsed) {
-    btn.innerHTML = chevronLeft;
-    btn.classList.add('collapsed');
-  } else {
-    btn.innerHTML = chevronRight;
-    btn.classList.remove('collapsed');
+  _syncPanelToggle(collapsed);
+}
+
+/** 确保右面板展开（工具/快捷入口跳转时用） */
+function openRightPanel() {
+  const panel = document.getElementById('rightPanel');
+  if (!panel || !panel.classList.contains('collapsed')) return;
+  panel.classList.remove('collapsed');
+  _syncPanelToggle(false);
+}
+
+function _syncPanelToggle(collapsed) {
+  // 折叠按钮只剩顶栏一个（旧的悬浮圆钮会压住入口卡片，已移除）
+  const btn = document.getElementById('panelToggleTop');
+  if (btn) {
+    btn.classList.toggle('active', !collapsed);
+    btn.title = collapsed ? '展开任务面板' : '折叠任务面板';
   }
+  const panel = document.getElementById('rightPanel');
+  if (panel) panel.setAttribute('aria-expanded', String(!collapsed));
 }
 
 // ═══════════ Theme & Accent ═══════════
 
-var _currentAccent = '#5b8def';
+var _currentAccent = '#2565fe';
 
 function applyTheme(name) {
-  document.body.setAttribute('data-theme', name);
-  try { eel.save_theme(name)(); } catch(e) {}
+  var theme = (name === 'dark') ? 'dark' : 'light';
+  document.body.setAttribute('data-theme', theme);
+  try { eel.save_theme(theme)(); } catch(e) {}
   // update theme radio buttons
   document.querySelectorAll('.theme-card input').forEach(function(r) {
-    r.checked = r.value === name;
+    r.checked = r.value === theme;
   });
 }
 
@@ -1015,18 +1754,37 @@ function setFontSize(size, btn) {
 
 // ═══════════ Premium Settings ═══════════
 
-var PROVIDERS = {
-  deepseek:  { icon: 'DS', name: 'DeepSeek', url: 'https://api.deepseek.com/v1', models: ['deepseek-v4-pro', 'deepseek-v4.5-flash', 'deepseek-v4-flash'], defaultModel: 'deepseek-v4-pro', desc: 'DeepSeek V4-Pro / 1.6T MoE / 100万上下文' },
-  openai:    { icon: 'OA', name: 'OpenAI', url: 'https://api.openai.com/v1', models: ['gpt-5.5', 'gpt-5.4', 'gpt-5.3', 'gpt-4o', 'gpt-4o-mini', 'o4-mini'], defaultModel: 'gpt-5.5', desc: 'GPT-5.5 / 最新旗舰 / 多模态' },
-  gemini:    { icon: 'GM', name: 'Gemini', url: 'https://generativelanguage.googleapis.com/v1beta/openai', models: ['gemini-3.5-flash', 'gemini-3.1-pro-preview', 'gemini-3.1-flash-lite', 'gemini-3.0-flash-preview', 'gemini-2.5-pro', 'gemini-2.5-flash'], defaultModel: 'gemini-3.5-flash', desc: 'Gemini 3.5 Flash / 最新稳定 GA / Agent & Coding' },
-  claude:    { icon: 'CL', name: 'Claude', url: 'https://api.anthropic.com/v1/messages', models: ['claude-opus-4-8', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'], defaultModel: 'claude-opus-4-8', desc: 'Claude Opus 4.8 / 原生 Messages API / 200K上下文' },
-  qwen:      { icon: 'QW', name: '通义千问', url: 'https://dashscope.aliyuncs.com/compatible-mode/v1', models: ['qwen3.7-max', 'qwen3.6-plus', 'qwen3.6-flash', 'qwen3-coder-plus'], defaultModel: 'qwen3.7-max', desc: '通义千问 3.7-Max / 最新旗舰 (2026.05)' },
-  glm:       { icon: 'GL', name: '智谱', url: 'https://open.bigmodel.cn/api/paas/v4', models: ['glm-5.1', 'glm-5.1-flash', 'glm-5.1-coder'], defaultModel: 'glm-5.1', desc: 'GLM-5.1 / 全自治旗舰' },
-  moonshot:  { icon: 'KM', name: 'Kimi', url: 'https://api.moonshot.cn/v1', models: ['kimi-k2.6', 'kimi-k2-flash'], defaultModel: 'kimi-k2.6', desc: 'Kimi K2.6 / 1T MoE / Agent集群' },
-  doubao:    { icon: 'DB', name: '豆包', url: 'https://ark.cn-beijing.volces.com/api/v3', models: ['doubao-1.5-pro-256k', 'doubao-1.5-lite-32k'], defaultModel: 'doubao-1.5-pro-256k', desc: '豆包 1.5 Pro / 字节跳动 / 256K上下文' },
-  minimax:   { icon: 'MM', name: 'MiniMax', url: 'https://api.minimax.io/v1', models: ['MiniMax-M3', 'MiniMax-M2.7', 'MiniMax-M2.5'], defaultModel: 'MiniMax-M3', desc: 'MiniMax M3 / 最新旗舰 / 1M上下文' },
-  siliconflow: { icon: 'SF', name: '硅基流动', url: 'https://api.siliconflow.cn/v1', models: ['deepseek-ai/DeepSeek-V4-Flash', 'Qwen/Qwen3.6-Plus', 'Pro/Claude-Opus-4.8'], defaultModel: 'deepseek-ai/DeepSeek-V4-Flash', desc: '聚合 API / 多模型路由 / 高性价比' },
-};
+// 厂商 + 模型目录 — 来自后端 LLM_PROVIDER_PRESETS（SSOT），前端不再手写。
+// 过去这里有一份 10 家的硬编码副本，2026-09 核对时发现已经积了一堆
+// 不存在 / 官方已退役 / 已被换代的型号（测试里用
+// test_no_hardcoded_retired_model_ids 钉住了这些名字，别再抄回来）。
+// 现在：后端下发兜底清单 + 「拉取最新模型」直接问厂商 GET /models。
+var PROVIDERS = {};          // key → {key, brand, icon, base_url, default_model, models, ...}
+var _providersLoaded = false;
+var _liveModels = {};        // providerKey → ['实时拉到的模型']
+
+async function loadProviders(force) {
+  if (_providersLoaded && !force) return PROVIDERS;
+  try {
+    var resp = await eel.get_providers()();
+    if (resp && resp.ok && resp.providers) {
+      PROVIDERS = {};
+      resp.providers.forEach(function(p) { PROVIDERS[p.key] = p; });
+      if (!_selectedProvider) _selectedProvider = resp.default_provider || 'deepseek';
+    }
+  } catch (e) {
+    console.warn('厂商目录加载失败', e);
+  }
+  _providersLoaded = true;
+  return PROVIDERS;
+}
+
+/** 当前厂商可选项：优先实时拉取结果，其次后端兜底清单 */
+function providerModels(key) {
+  if (_liveModels[key] && _liveModels[key].length) return _liveModels[key];
+  var p = PROVIDERS[key];
+  return (p && p.models) ? p.models.slice() : [];
+}
 
 var _selectedProvider = 'deepseek';
 var SETTINGS_LOADED = false;
@@ -1039,7 +1797,7 @@ document.addEventListener('DOMContentLoaded', function() {
       switchSettingsTab(tab);
     });
   });
-  renderProviderCards();
+  loadProviders().then(renderProviderCards);
 });
 
 function switchSettingsTab(tabId) {
@@ -1058,9 +1816,10 @@ function renderProviderCards() {
     var p = PROVIDERS[key];
     var card = document.createElement('div');
     card.className = 'provider-card' + (key === _selectedProvider ? ' selected' : '');
-    card.innerHTML = '<div class="provider-card-icon provider-icon-text">' + p.icon + '</div>' +
-      '<div class="provider-card-name">' + p.name + '</div>' +
-      '<div class="provider-card-model">' + p.desc + '</div>';
+    card.innerHTML = '<div class="provider-card-icon provider-icon-text">' + escapeHtml(p.icon) + '</div>' +
+      '<div class="provider-card-name">' + escapeHtml(p.brand || p.name) + '</div>' +
+      '<div class="provider-card-model" title="' + escapeAttr(p.description || '') + '">' +
+        escapeHtml(p.description || '') + '</div>';
     card.setAttribute('data-provider', key);
     card.addEventListener('click', function() { selectProvider(key, card); });
     container.appendChild(card);
@@ -1071,27 +1830,106 @@ function selectProvider(key, card) {
   _selectedProvider = key;
   document.querySelectorAll('.provider-card').forEach(function(c) { c.classList.remove('selected'); });
   if (card) card.classList.add('selected');
-  // update URL placeholder
   var p = PROVIDERS[key] || {};
-  document.getElementById('setBaseUrl').placeholder = p.url || '';
-  // update model selector
+  document.getElementById('setBaseUrl').placeholder = p.base_url || '';
+  var link = document.getElementById('providerKeyLink');
+  if (link) {
+    if (p.key_url) { link.href = p.key_url; link.style.display = ''; }
+    else { link.style.display = 'none'; }
+  }
+  var note = document.getElementById('providerNote');
+  if (note) {
+    note.textContent = p.notes || '';
+    note.style.display = p.notes ? '' : 'none';
+  }
+  fillModelOptions(key, p.default_model);
+}
+
+/** 填充模型下拉：优先用实时拉取结果，否则后端兜底清单 */
+function fillModelOptions(key, preferred) {
   var sel = document.getElementById('setModelSelect');
+  if (!sel) return;
+  var models = providerModels(key);
   sel.innerHTML = '';
-  (p.models || []).forEach(function(m) {
+  models.forEach(function(m) {
     var opt = document.createElement('option');
     opt.value = m; opt.textContent = m;
-    if (m === p.defaultModel) opt.selected = true;
+    if (m === preferred) opt.selected = true;
     sel.appendChild(opt);
   });
   var custom = document.createElement('option');
   custom.value = '__custom__'; custom.textContent = '自定义模型...';
   sel.appendChild(custom);
   document.getElementById('setModelCustom').style.display = 'none';
+  _syncModelSourceBadge(key);
+}
+
+function _syncModelSourceBadge(key) {
+  var badge = document.getElementById('modelSourceBadge');
+  if (!badge) return;
+  var live = _liveModels[key];
+  if (live && live.length) {
+    badge.textContent = '实时 · ' + live.length + ' 个';
+    badge.className = 'model-source-badge live';
+    badge.title = '模型列表来自厂商 GET /models 接口';
+  } else {
+    badge.textContent = '离线兜底';
+    badge.className = 'model-source-badge';
+    badge.title = '未实时拉取，显示的是内置兜底清单；点右侧按钮可获取厂商最新列表';
+  }
+}
+
+/** 向厂商实时拉取模型列表（GET /models，只读免费） */
+async function fetchModelsForProvider() {
+  var btn = document.getElementById('fetchModelsBtn');
+  var badge = document.getElementById('modelSourceBadge');
+  var key = _selectedProvider;
+  var apiKey = document.getElementById('setApiKey').value;
+  var baseUrl = document.getElementById('setBaseUrl').value;
+  if (btn) { btn.disabled = true; btn.textContent = '拉取中…'; }
+  if (badge) { badge.textContent = '拉取中…'; badge.className = 'model-source-badge loading'; }
+  try {
+    var resp = await eel.fetch_provider_models(key, apiKey, baseUrl)();
+    if (resp && resp.ok && resp.models && resp.models.length) {
+      var live = resp.models;
+      _liveModels[key] = live;
+      var sel = document.getElementById('setModelSelect');
+      var keep = sel ? sel.value : '';
+      var prevCustom = (keep === '__custom__')
+        ? document.getElementById('setModelCustom').value : '';
+      var preferred = (keep && keep !== '__custom__' && live.indexOf(keep) >= 0)
+        ? keep : (PROVIDERS[key] || {}).default_model;
+      fillModelOptions(key, preferred);
+      if (prevCustom) {
+        // 用户自己填的模型名不能因为点了一下「拉取」就丢
+        _useCustomModel(prevCustom);
+      } else if (keep && keep !== '__custom__' && live.indexOf(keep) < 0) {
+        // 原型号已从厂商列表消失 → 降级为自定义，不静默改掉用户配置
+        _useCustomModel(keep);
+      }
+      showToast('已获取 ' + live.length + ' 个可用模型', 'success');
+    } else {
+      if (badge) { badge.textContent = '离线兜底'; badge.className = 'model-source-badge'; }
+      showToast('拉取失败：' + ((resp && resp.error) || '未知错误'), 'error');
+    }
+  } catch (e) {
+    if (badge) { badge.textContent = '离线兜底'; badge.className = 'model-source-badge'; }
+    showToast('拉取失败：' + (e.message || e), 'error');
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '拉取最新模型'; }
 }
 
 function onModelSelectChange() {
   var sel = document.getElementById('setModelSelect');
   document.getElementById('setModelCustom').style.display = sel.value === '__custom__' ? 'block' : 'none';
+}
+
+/** 切到「自定义模型」并填入指定型号 */
+function _useCustomModel(name) {
+  var sel = document.getElementById('setModelSelect');
+  var custom = document.getElementById('setModelCustom');
+  if (sel) sel.value = '__custom__';
+  if (custom) { custom.value = name; custom.style.display = 'block'; }
 }
 
 // ── Connection test ──
@@ -1106,17 +1944,18 @@ async function testConnection() {
 
   var provider = _selectedProvider;
   var apiKey = document.getElementById('setApiKey').value;
-  var baseUrl = document.getElementById('setBaseUrl').value || (PROVIDERS[provider] || {}).url || '';
+  var baseUrl = document.getElementById('setBaseUrl').value || (PROVIDERS[provider] || {}).base_url || '';
   var modelSel = document.getElementById('setModelSelect');
   var model = modelSel.value === '__custom__' ? document.getElementById('setModelCustom').value : modelSel.value;
-  if (!model) model = (PROVIDERS[provider] || {}).defaultModel || '';
+  if (!model) model = (PROVIDERS[provider] || {}).default_model || '';
 
   try {
     var resp = await eel.test_llm_connection(provider, apiKey, baseUrl, model)();
     if (resp.ok) {
       icon.textContent = ''; icon.className = '';
       text.textContent = '连接成功';
-      result.textContent = resp.latency ? '延迟 ' + resp.latency + 'ms' : '';
+      result.textContent = (resp.latency ? '延迟 ' + resp.latency + 'ms' : '')
+        + (resp.protocol === 'anthropic' ? ' · 原生 Messages API' : '');
       result.style.color = '#2ecc71';
     } else {
       icon.textContent = ''; icon.className = '';
@@ -1145,6 +1984,7 @@ function toggleSettings() {
 
 async function loadSettingsIntoUI() {
   try {
+    await loadProviders();           // 厂商目录来自后端，必须先拿到
     var sett = await eel.get_settings()();
     if (!sett) return;
     _selectedProvider = sett.provider || 'deepseek';
@@ -1197,9 +2037,17 @@ async function loadSettingsIntoUI() {
 }
 
 function closeSettings(e) {
-  if (!e || e.target === document.getElementById('settingsOverlay')) {
-    document.getElementById('settingsOverlay').classList.remove('show');
+  // 关闭条件：无参数调用（✕/取消/Esc 直接调 closeSettings()），
+  // 或点击遮罩空白处，或点击关闭/取消控件本身。
+  // ⚠️ 不要写成 `e.target === overlay`：按钮传进来的 target 是按钮自己，
+  //    会导致 ✕ 和「取消」永远关不掉弹窗（2026-09-10 实测确认的 bug）。
+  var overlay = document.getElementById('settingsOverlay');
+  if (e && e.target && e.target !== overlay) {
+    var inCloseControl = e.target.closest &&
+      e.target.closest('.settings-close-btn, .settings-bottom-actions');
+    if (!inCloseControl) return;
   }
+  if (overlay) overlay.classList.remove('show');
 }
 
 // ── Save all settings ──
@@ -1214,9 +2062,9 @@ async function saveAllSettings() {
   var model = modelSel.value === '__custom__'
     ? document.getElementById('setModelCustom').value
     : modelSel.value;
-  if (!model) model = (PROVIDERS[provider] || {}).defaultModel || '';
+  if (!model) model = (PROVIDERS[provider] || {}).default_model || '';
   var temperature = parseFloat(document.getElementById('setTemperature').value) || 0.7;
-  var theme = document.body.getAttribute('data-theme') || 'dark';
+  var theme = document.body.getAttribute('data-theme') || 'light';
   var accent = _currentAccent;
 
   try {
@@ -1317,6 +2165,49 @@ function onPCBChanged(filepath) {
 
 // ── Streaming callbacks (called by Python) ──
 
+// Tool-call map: function name (from LLM Function Calling) → 中文标签
+const TOOL_LABELS = {
+  import_bom: '导入 BOM', merge_bom: '合并 BOM', ai_merge_bom: 'AI 合并 BOM',
+  validate_packages: '校验封装', check_duplicates: '查重',
+  check_rules: '设计规则检查', check_health: 'BOM 健康检查',
+  generate_html_bom: '生成 HTML BOM', analyze_pcb: '分析 PCB',
+  check_traces: '走线检查', query_knowledge_base: '查询知识库',
+  review_design: '设计审查', verify_suggestion: '验证建议',
+  get_bom_summary: 'BOM 摘要',
+};
+
+let _activeToolCards = [];
+
+eel.expose(onToolCall, 'on_tool_call');
+function onToolCall(toolName) {
+  if (!_activeStreamBubble) return;
+  const label = TOOL_LABELS[toolName] || toolName;
+  // Create a card with spinner, inserted before the streaming bubble
+  const card = document.createElement('div');
+  card.className = 'tool-call-card';
+  card.innerHTML = `<span class="tool-call-spinner"></span>
+    <span class="tool-call-icon">🔧</span>
+    <span class="tool-call-name">${label}</span>
+    <span class="tool-call-status">执行中…</span>`;
+  _activeStreamBubble.element.parentNode.insertBefore(card, _activeStreamBubble.element);
+  _activeToolCards.push(card);
+  // Mark previous card as done
+  if (_activeToolCards.length > 1) {
+    const prev = _activeToolCards[_activeToolCards.length - 2];
+    prev.classList.add('done');
+    prev.querySelector('.tool-call-spinner').replaceWith(makeDoneIcon());
+    prev.querySelector('.tool-call-status').textContent = '已完成';
+  }
+  scrollChat();
+}
+function makeDoneIcon() {
+  const s = document.createElement('span');
+  s.className = 'tool-call-icon';
+  s.textContent = '✓';
+  s.style.color = 'var(--success)';
+  return s;
+}
+
 eel.expose(onStreamToken, 'on_stream_token');
 function onStreamToken(token) {
   if (_activeStreamBubble) {
@@ -1327,6 +2218,17 @@ function onStreamToken(token) {
 
 eel.expose(onStreamDone, 'on_stream_done');
 function onStreamDone(fullText) {
+  // Finalize any pending tool-call cards
+  _activeToolCards.forEach(c => {
+    if (!c.classList.contains('done')) {
+      c.classList.add('done');
+      const sp = c.querySelector('.tool-call-spinner');
+      if (sp) sp.replaceWith(makeDoneIcon());
+      const st = c.querySelector('.tool-call-status');
+      if (st) st.textContent = '已完成';
+    }
+  });
+  _activeToolCards = [];
   if (_activeStreamBubble) {
     _activeStreamBubble.finalize(fullText);
     const conv = getActiveConversation();
@@ -1339,10 +2241,14 @@ function onStreamDone(fullText) {
   disableInput(false);
   setStatus('就绪');
   renderConversations();
+  // Agent 循环里可能调用了导入类工具（BOM/PCB 到位）→ 后台刷新可用性
+  refreshToolCatalog();
 }
 
 eel.expose(onStreamError, 'on_stream_error');
 function onStreamError(errorMsg) {
+  _activeToolCards.forEach(c => c.remove());
+  _activeToolCards = [];
   if (_activeStreamBubble) {
     _activeStreamBubble.finalize(' 流式输出中断: ' + errorMsg);
     const conv = getActiveConversation();
@@ -1383,8 +2289,16 @@ function renderReviewResult(data) {
   const se = document.getElementById('reviewScore');
   if (ge) { ge.textContent = data.overall_grade || '?'; ge.style.color = _gradeColor(data.overall_score); }
   if (se) se.textContent = data.overall_score != null ? data.overall_score : '?';
+  const ring = document.getElementById('scoreRing');
+  if (ring && data.overall_score != null) {
+    const c = 2 * Math.PI * 52;
+    const s = Math.max(0, Math.min(data.overall_score, 100));
+    ring.style.strokeDasharray = c;
+    ring.style.strokeDashoffset = c * (1 - s / 100);
+    ring.style.stroke = _gradeColor(data.overall_score);
+  }
   const ce = document.getElementById('reviewConsensus');
-  if (ce) ce.innerHTML = data.consensus || '';
+  if (ce) ce.innerHTML = renderMarkdown(data.consensus);
   _renderAgentCards(data.agents);
   _renderRoadmap(data.improvement_roadmap);
 }
@@ -1394,7 +2308,12 @@ function drawRadarChart(data) {
   if (!c || !data || data.length < 3) return;
   var ctx = c.getContext('2d'), w = c.width, h = c.height, cx = w / 2, cy = h / 2;
   var n = data.length, maxR = Math.min(cx, cy) - 20;
+  var rs = getComputedStyle(document.body);
+  var accent = (rs.getPropertyValue('--accent') || '#2565fe').trim();
+  var muted = (rs.getPropertyValue('--text-muted') || '#8b919c').trim();
+  var grid = (rs.getPropertyValue('--border') || '#e4e7ec').trim();
   ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = grid; ctx.lineWidth = 0.5;
   // grid
   for (var lv = 1; lv <= 4; lv++) {
     var r = (maxR / 4) * lv; ctx.beginPath();
@@ -1403,14 +2322,14 @@ function drawRadarChart(data) {
       var x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
-    ctx.closePath(); ctx.strokeStyle = '#e0e4ea'; ctx.lineWidth = 0.5; ctx.stroke();
+    ctx.closePath(); ctx.stroke();
   }
   // axes
   for (var i = 0; i < n; i++) {
     var a = (Math.PI * 2 / n) * i - Math.PI / 2;
     ctx.beginPath(); ctx.moveTo(cx, cy);
     ctx.lineTo(cx + maxR * Math.cos(a), cy + maxR * Math.sin(a));
-    ctx.strokeStyle = '#e0e4ea'; ctx.lineWidth = 0.5; ctx.stroke();
+    ctx.stroke();
   }
   // polygon
   ctx.beginPath();
@@ -1420,15 +2339,15 @@ function drawRadarChart(data) {
     var x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   }
-  ctx.closePath(); ctx.fillStyle = 'rgba(91,141,239,0.15)'; ctx.fill();
-  ctx.strokeStyle = '#5b8def'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.closePath(); ctx.fillStyle = 'rgba(91,141,239,0.12)'; ctx.fill();
+  ctx.strokeStyle = accent; ctx.lineWidth = 1.5; ctx.stroke();
   // dots + labels
-  ctx.font = '9px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#555';
+  ctx.font = '9px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = muted;
   for (var i = 0; i < n; i++) {
     var d = data[i], r = (d.score / 100) * maxR;
     var a = (Math.PI * 2 / n) * i - Math.PI / 2;
     ctx.beginPath(); ctx.arc(cx + r * Math.cos(a), cy + r * Math.sin(a), 3, 0, Math.PI * 2);
-    ctx.fillStyle = d.color || '#5b8def'; ctx.fill();
+    ctx.fillStyle = accent; ctx.fill();
     ctx.fillText(d.label, cx + (maxR + 14) * Math.cos(a), cy + (maxR + 14) * Math.sin(a) + 3);
   }
 }
@@ -1465,7 +2384,7 @@ function _renderRoadmap(items) {
 function _gradeColor(score) {
   if (score == null) return '#888';
   if (score >= 88) return '#2ecc71';
-  if (score >= 70) return '#5b8def';
+  if (score >= 70) return '#2565fe';
   if (score >= 55) return '#e67e22';
   return '#e74c3c';
 }

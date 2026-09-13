@@ -26,7 +26,12 @@ from src.core.controller import AppController
 from src.core.file_watcher import FileWatcher
 from src.bom.parser import BOMItem
 from src.config import config, load_settings, save_settings, SETTINGS_DIR
-from src.constants import LLM_PROVIDER_PRESETS, ProviderPreset
+from src.constants import (
+    LLM_PROVIDER_PRESETS,
+    DEFAULT_PROVIDER,
+    ProviderPreset,
+    get_provider_preset,
+)
 
 # ── Init ──
 
@@ -105,6 +110,24 @@ def import_pcb_file(name: str, b64: str) -> dict:
         return {"ok": True, "count": count, "msg": msg, "pcb": info}
     except Exception as e:
         return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def load_demo_data() -> dict:
+    """一键演示：加载内置示例数据（有缺陷的 MCU 板 BOM + 坐标）"""
+    try:
+        bom_path = PROJECT_ROOT / "tests" / "sample_bom_bad.csv"
+        pos_path = PROJECT_ROOT / "tests" / "sample_positions.csv"
+        count, msg = controller.load_bom(str(bom_path))
+        pos_count = 0
+        if pos_path.exists():
+            pos_count, _ = controller.load_positions(str(pos_path))
+        return {
+            "ok": True, "count": count, "pos_count": pos_count,
+            "msg": msg, "items": _bom_items(),
+        }
+    except Exception as e:
+        return {"ok": False, "msg": str(e), "items": []}
 
 
 @eel.expose
@@ -288,7 +311,9 @@ def get_settings() -> dict:
         "base_url": saved.get("llm_base_url", ""),
         "model": saved.get("llm_model", ""),
         "temperature": saved.get("llm_temperature", 0.7),
-        "theme": saved.get("selected_theme", "dark"),
+        # 默认浅色：过去默认 "dark" 但前端只有浅色一套 CSS，会造成
+        # data-theme="dark" 与真实渲染不一致（2026-09-10 修正）。
+        "theme": saved.get("selected_theme", "light"),
         "accent": saved.get("selected_accent", "#5b8def"),
         "font_size": saved.get("font_size", 13),
         "data_dir": str(SETTINGS_DIR),
@@ -342,31 +367,94 @@ def save_all_settings(provider: str, api_key: str, base_url: str, model: str,
 
 @eel.expose
 def test_llm_connection(provider: str, api_key: str, base_url: str, model: str) -> dict:
-    """Test LLM API connection with a minimal request."""
+    """测试连通性 — 用项目自己的客户端，按厂商协议发一次最小请求。
+
+    ⚠️ 过去这里 `from openai import OpenAI` 直接建客户端，有两个坑：
+      1. `openai` 根本不在 requirements.txt 里（干净环境必 ImportError）；
+      2. Claude 的 base_url 是 `.../v1/messages`（原生 Messages API，非
+         OpenAI 兼容），套给 OpenAI SDK 会 POST 到
+         `.../v1/messages/chat/completions` → 必然 404。
+    现在统一走 AppController._create_llm_client()，协议分支只有一处。
+    """
     import time
     try:
-        # Use the OpenAI-compatible client directly
-        from openai import OpenAI
-        url = base_url or LLM_PROVIDER_PRESETS.get(provider, ProviderPreset(
-            name=provider, base_url="", default_model="", description="")).base_url
+        preset = get_provider_preset(provider)
+        url = base_url or preset.base_url
         if not url:
             return {"ok": False, "error": "未配置 API 地址"}
+        if not api_key:
+            return {"ok": False, "error": "未配置 API Key"}
 
-        client = OpenAI(api_key=api_key, base_url=url)
-        start = time.time()
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": "Hi"}],
-            max_tokens=5,
-            temperature=0,
+        client = AppController._create_llm_client(
+            api_key, url, model or preset.default_model, preset.name,
         )
+        if client is None:
+            return {"ok": False, "error": "无法创建客户端"}
+
+        start = time.time()
+        reply = client.chat("Hi", max_tokens=5, temperature=0)
         latency = round((time.time() - start) * 1000)
-        return {"ok": True, "latency": latency, "model_used": resp.model}
+        return {
+            "ok": True,
+            "latency": latency,
+            "model_used": getattr(client, "model", model),
+            "protocol": preset.protocol,
+            "reply_preview": (reply or "")[:40],
+        }
     except Exception as e:
         msg = str(e)
         if len(msg) > 200:
             msg = msg[:200] + "..."
         return {"ok": False, "error": msg}
+
+
+@eel.expose
+def get_providers() -> dict:
+    """厂商 + 模型目录 — 设置面板的唯一事实来源（SSOT）。
+
+    前端不再手写 PROVIDERS：名称、地址、模型清单、协议、图标全部来自
+    src/constants.py 的 LLM_PROVIDER_PRESETS。
+    """
+    from src.agent.model_catalog import fallback_models
+    providers = []
+    for key, preset in LLM_PROVIDER_PRESETS.items():
+        providers.append({
+            "key": key,
+            "name": preset.name,
+            "brand": preset.brand or preset.name,
+            "label": preset.brand or preset.name,
+            "icon": preset.icon or preset.name[:2].upper(),
+            "base_url": preset.base_url,
+            "default_model": preset.default_model,
+            "models": fallback_models(key),
+            "models_source": "fallback",      # /models 端点可用时前端会覆盖
+            "protocol": preset.protocol,
+            "description": preset.description,
+            "key_url": preset.key_url,
+            "notes": preset.notes,
+        })
+    return {
+        "ok": True,
+        "count": len(providers),
+        "default_provider": DEFAULT_PROVIDER,
+        "providers": providers,
+    }
+
+
+@eel.expose
+def fetch_provider_models(provider: str, api_key: str = "", base_url: str = "") -> dict:
+    """实时拉取某厂商的模型列表（GET /models，只读免费）。
+
+    api_key 留空时回落到当前已保存的配置，方便「就按现在的 Key 拉一下」。
+    """
+    from src.agent.model_catalog import list_models
+    if not api_key:
+        saved = load_settings()
+        api_key = saved.get("llm_api_key", "") or config.llm.api_key
+    result = list_models(provider, api_key, base_url)
+    if result.get("ok"):
+        result["models_source"] = "live"
+    return result
 
 
 @eel.expose
@@ -396,6 +484,108 @@ def has_bom() -> bool:
 @eel.expose
 def has_pcb() -> bool:
     return controller.context.pcb_data is not None
+
+
+# ══════════════════════════════════════════
+#  统一工具目录 — 前端「工具箱」的唯一事实来源
+# ══════════════════════════════════════════
+
+def _tool_prompt_prefix(t) -> str:
+    """为「需要参数」的工具生成输入预填前缀。
+
+    优先取能作为标签子串出现的关键词（保证 NLU 子串匹配命中），
+    否则退回第一个关键词。例：calc_trace_width → "走线宽度 "。
+    """
+    label = t.label.lower()
+    for kw in t.keywords:
+        if kw and kw.lower() in label:
+            return f"{kw} "
+    return f"{t.keywords[0]} " if t.keywords else f"{t.label} "
+
+
+def _tool_to_dict(t) -> dict:
+    required = list((t.params_schema or {}).get("required", []))
+    properties = (t.params_schema or {}).get("properties", {})
+    ready = True
+    blocked_reason = ""
+    if t.requires_data and not controller.context.has_data:
+        ready = False
+        blocked_reason = "需先导入 BOM"
+    return {
+        "name": t.name,
+        "label": t.label,
+        "description": t.description,
+        "category": t.category,
+        "requires_data": bool(t.requires_data),
+        "ready": ready,
+        "blocked_reason": blocked_reason,
+        "needs_input": bool(required),
+        "params": [
+            {"name": p, "hint": properties.get(p, {}).get("description", "")}
+            for p in required
+        ],
+        "prompt_prefix": _tool_prompt_prefix(t),
+        "keywords": list(t.keywords)[:4],
+    }
+
+
+@eel.expose
+def get_tools_catalog() -> dict:
+    """返回全部系统能力的目录（从 ToolRegistry 派生，前端不再重复维护）。"""
+    try:
+        from src.agent.tools import ToolRegistry
+        tools = [_tool_to_dict(t) for t in ToolRegistry.get_all()]
+    except ImportError as e:  # pragma: no cover — 打包缺失时降级
+        logger.exception("ToolRegistry unavailable")
+        return {"ok": False, "error": str(e), "tools": []}
+
+    categories = []
+    for t in tools:
+        cid = t["category"]
+        hit = next((c for c in categories if c["id"] == cid), None)
+        if hit is None:
+            categories.append({"id": cid, "count": 1})
+        else:
+            hit["count"] += 1
+
+    return {
+        "ok": True,
+        "count": len(tools),
+        "ready_count": sum(1 for t in tools if t["ready"]),
+        "has_bom": controller.context.has_data,
+        "has_pcb": controller.context.pcb_data is not None,
+        "categories": categories,
+        "tools": tools,
+    }
+
+
+@eel.expose
+def run_tool(tool_name: str) -> dict:
+    """直接从工具箱运行一个无需参数的能力。
+
+    复用 controller._dispatch_operation，因此与聊天路径走的是同一张
+    派发表（ToolRegistry.get_dispatch_map），不存在第二套逻辑。
+    """
+    try:
+        from src.agent.tools import ToolRegistry
+    except ImportError as e:  # pragma: no cover
+        return {"ok": False, "error": str(e)}
+
+    tool = ToolRegistry.get_by_name(tool_name)
+    if tool is None:
+        return {"ok": False, "error": f"未知工具: {tool_name}"}
+    if tool.requires_data and not controller.context.has_data:
+        return {"ok": False, "error": f"「{tool.label}」需要先导入 BOM"}
+    if tool.name == "analyze_image":
+        return {"ok": False, "error": "请在输入框添加图片后发送"}
+
+    try:
+        result = controller._dispatch_operation(tool_name, {})
+    except Exception as e:
+        logger.exception("run_tool failed: %s", tool_name)
+        return {"ok": False, "error": str(e)}
+
+    return {"ok": True, "tool": tool.name, "label": tool.label, "result": str(result or "")}
 
 
 @eel.expose
@@ -440,7 +630,8 @@ def send_message_agent(text: str):
     try:
         result = controller.agent_loop(
             text,
-            on_token=lambda token: eel.on_stream_token(token)()
+            on_token=lambda token: eel.on_stream_token(token)(),
+            on_tool_call=lambda name, args: eel.on_tool_call(name)(),
         )
         eel.on_stream_done(result)()
     except Exception as e:

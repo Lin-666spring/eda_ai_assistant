@@ -51,58 +51,120 @@ class BOMConstants:
 
 @dataclass(frozen=True)
 class ProviderPreset:
-    """单个 LLM 厂商预设"""
+    """单个 LLM 厂商预设 — 厂商/模型的单一事实来源 (SSOT)
+
+    `models` 是**离线兜底**清单（新→旧）。真正权威的是运行时调
+    `GET {base_url}/models` 拉到的实时列表（见 src/agent/model_catalog.py），
+    所以这里不需要追着厂商发版跑 —— 只要保证没网时也能选到能用的型号。
+    """
+
     name: str
     base_url: str
     default_model: str
     description: str
+    icon: str = ""                              # 卡片角标，如 "DS"
+    models: tuple[str, ...] = ()                # 离线兜底模型清单（新→旧）
+    protocol: str = "openai"                    # "openai" | "anthropic"
+    key_url: str = ""                           # 申请 API Key 的地址
+    notes: str = ""                             # 使用提示（如参数限制）
+    brand: str = ""                             # 展示用品牌名（卡片标题）
 
 
-# 主流 OpenAI 兼容厂商预设
+# 主流厂商预设 — 2026-09 核对
+# 说明：模型名核对于 2026-09-10，来源为各厂商官方文档/发布记录。
+#       过时与否不再靠这份表兜着：设置面板的「拉取最新模型」会直接问厂商。
 LLM_PROVIDER_PRESETS: dict[str, ProviderPreset] = {
     "deepseek": ProviderPreset(
-        "deepseek", "https://api.deepseek.com/v1", "deepseek-v4-pro",
-        "DeepSeek V4-Pro — 1.6T MoE, 100万上下文 (2026.04)",
+        "deepseek", "https://api.deepseek.com/v1", "deepseek-flash",
+        "DeepSeek V4.1-Flash — 1M 上下文 / 384K 输出，V4-Pro 已并入 Flash 计费",
+        icon="DS", brand="DeepSeek",
+        # deepseek-v4-pro 自 2026-09-14 起全部路由到 V4.1-Flash（官方公告），
+        # deepseek-v4-flash / deepseek-v4-flash-vision-exp 已退役但仍被接受。
+        models=("deepseek-flash", "deepseek-v4-pro"),
+        key_url="https://platform.deepseek.com/api_keys",
     ),
     "openai": ProviderPreset(
-        "openai", "https://api.openai.com/v1", "gpt-5.5",
-        "OpenAI GPT-5.5 — 最新旗舰, 多模态 (2026.05)",
+        "openai", "https://api.openai.com/v1", "gpt-5.6-sol",
+        "OpenAI GPT-5.6 Sol — 通用旗舰；GPT-6 Astra 更强但工具调用需 Responses API",
+        icon="OA", brand="OpenAI",
+        # 默认给 Sol 而不是 Astra：Astra 走 Chat Completions 时**已移除
+        # temperature/top_p/logprobs**，且 function calling 只在 Responses API 上。
+        models=("gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"),
+        key_url="https://platform.openai.com/api-keys",
+        notes="gpt-6-astra 不接受 temperature，且工具调用需 Responses API",
     ),
     "qwen": ProviderPreset(
         "qwen", "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen3.7-max",
-        "通义千问 3.7-Max — 最新旗舰, Coding Agent (2026.05)",
+        "通义千问 3.7-Max — 1M 上下文，Coding Agent",
+        icon="QW", brand="通义千问",
+        models=("qwen3.7-max", "qwen3.7-plus"),
+        key_url="https://bailian.console.aliyun.com/?apiKey=1",
     ),
     "glm": ProviderPreset(
-        "glm", "https://open.bigmodel.cn/api/paas/v4", "glm-5.1",
-        "智谱 GLM-5.1 — 全自治旗舰, 对标 Opus 4.6 (2026.04)",
+        "glm", "https://open.bigmodel.cn/api/paas/v4", "glm-5.3",
+        "智谱 GLM-5.3 — 编程旗舰；Flash 为多模态轻量版",
+        icon="GL", brand="智谱 GLM",
+        models=("glm-5.3", "glm-5.3-flash", "glm-5.2", "glm-5.1"),
+        key_url="https://open.bigmodel.cn/usercenter/apikeys",
     ),
     "moonshot": ProviderPreset(
-        "moonshot", "https://api.moonshot.cn/v1", "kimi-k2.6",
-        "月之暗面 Kimi K2.6 — 1T MoE, Agent 集群 (2026.04)",
+        "moonshot", "https://api.moonshot.cn/v1", "kimi-k3",
+        "月之暗面 Kimi K3 — 1M 上下文 / 131K 输出",
+        icon="KM", brand="Kimi",
+        models=("kimi-k3", "kimi-k2.6"),
+        key_url="https://platform.moonshot.cn/console/api-keys",
     ),
     "siliconflow": ProviderPreset(
         "siliconflow", "https://api.siliconflow.cn/v1", "deepseek-ai/DeepSeek-V4-Flash",
-        "硅基流动 — 第三方聚合 API (DeepSeek V4-Flash, 高性价比)",
+        "硅基流动 — 第三方聚合，一个 Key 路由多家模型",
+        icon="SF", brand="硅基流动",
+        models=("deepseek-ai/DeepSeek-V4-Flash",
+                "Qwen/Qwen3.7-Plus",
+                "Pro/Claude-Opus-4.8"),
+        key_url="https://cloud.siliconflow.cn/account/ak",
     ),
     "gemini": ProviderPreset(
-        "gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.5-flash",
-        "Google Gemini 3.5 Flash — 最新稳定版, Agent/Coding (2026.05)",
+        "gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.8-flash",
+        "Google Gemini 3.8 Flash — 2026-09 最新，走 OpenAI 兼容端点",
+        icon="GM", brand="Gemini",
+        models=("gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"),
+        key_url="https://aistudio.google.com/app/apikey",
     ),
     "claude": ProviderPreset(
-        "claude", "https://api.anthropic.com/v1/messages", "claude-opus-4-8",
-        "Anthropic Claude Opus 4.8 — 深度推理, 原生协议 (2026.05)",
+        "claude", "https://api.anthropic.com/v1/messages", "claude-opus-5",
+        "Anthropic Claude Opus 5 — 原生 Messages API（非 OpenAI 兼容）",
+        icon="CL", brand="Claude", protocol="anthropic",
+        # 4.x 仍可调用但已归入 Legacy；Opus 4.8 只是兜底保留。
+        models=("claude-opus-5", "claude-sonnet-5", "claude-fable-5-1",
+                "claude-haiku-4-5", "claude-opus-4-8"),
+        key_url="https://console.anthropic.com/settings/keys",
     ),
     "doubao": ProviderPreset(
         "doubao", "https://ark.cn-beijing.volces.com/api/v3", "doubao-1.5-pro-256k",
-        "豆包 1.5 Pro — 字节跳动, 256K上下文, 高性价比 (2026.05)",
+        "豆包 1.5 Pro — 字节跳动，256K 上下文",
+        icon="DB", brand="豆包",
+        models=("doubao-1.5-pro-256k", "doubao-1.5-lite-32k"),
+        key_url="https://console.volcengine.com/ark",
+        notes="方舟要求用「接入点 ID (ep-xxx)」或开通后的模型名",
     ),
     "minimax": ProviderPreset(
         "minimax", "https://api.minimax.io/v1", "MiniMax-M3",
-        "MiniMax M3 — 最新旗舰, 1M上下文, 128K输出 (2026.06)",
+        "MiniMax M3 — 1M 上下文 / 128K 输出",
+        icon="MM", brand="MiniMax",
+        models=("MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.5"),
+        key_url="https://platform.minimaxi.com/user-center/basic-information/interface-key",
     ),
 }
 
 DEFAULT_PROVIDER = "deepseek"
+
+
+def get_provider_preset(provider: str | None) -> ProviderPreset:
+    """按 key 取厂商预设，未知/空值回落默认厂商（大小写不敏感）。"""
+    return LLM_PROVIDER_PRESETS.get(
+        (provider or DEFAULT_PROVIDER).lower(),
+        LLM_PROVIDER_PRESETS[DEFAULT_PROVIDER],
+    )
 
 
 # ══════════════════ Agent 常量 ══════════════════

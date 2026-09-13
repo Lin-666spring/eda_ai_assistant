@@ -1,0 +1,619 @@
+{
+  "timestamp": "2026-09-02_130401",
+  "output_dir": "experiment_results\\run_2026-09-02_board_schematic",
+  "designs": [
+    "board_schematic"
+  ],
+  "providers": [],
+  "suggestion_categories": [
+    "safe",
+    "optimization",
+    "dangerous"
+  ],
+  "drc_count": 1,
+  "verify_count": 0,
+  "ma_count": 0,
+  "defect_count": 5,
+  "drc_results": [
+    {
+      "design": "board_schematic",
+      "total_violations": 47,
+      "errors": 0,
+      "warnings": 3,
+      "infos": 44,
+      "violations_by_rule": {
+        "参数范围检查": 29,
+        "位号连续性检查": 6,
+        "连接器边沿布局检查": 2,
+        "电池电压分压器检查": 1,
+        "BGA 扇出检查": 1,
+        "板边间距检查": 1,
+        "元件高度分区检查": 1,
+        "元件间距检查": 1,
+        "晶振频率匹配": 1,
+        "光学定位点检查": 1,
+        "电感饱和电流检查": 1,
+        "PDN 目标阻抗分析": 1,
+        "开关电源布局检查": 1
+      },
+      "violations_by_component": {
+        "__board__": [
+          {
+            "rule": "电池电压分压器检查",
+            "severity": "warning",
+            "desc": "电池供电系统缺少电压监测分压电阻网络",
+            "suggestion": "电池正极→R1(100k~1MΩ)→ADC 输入端→R2(10k~100kΩ)→GND。Vbat=Vadc×(R1+R2)/R2。分压比使 Vmax_bat 对应 ADC Vref。",
+            "theory": "锂电满电 4.2V,低电 2.8~3.0V,MCU ADC 通常 Vref=3.3V 或内部 bandgap。需分压至 ADC 量程内。R1+R2 为大阻值以减少静态电流(μA 级),避免加速电池自放电。"
+          },
+          {
+            "rule": "板边间距检查",
+            "severity": "warning",
+            "desc": "6 个元件距板边 <3.0mm: H1, L12, L14, R69, U4",
+            "suggestion": "元件距板边 ≥3mm，高元件需更大间距",
+            "theory": "PCB 板边在拼板分离、波峰焊夹持、机壳装配中承受最大机械应力。IPC-2222 §8.2 建议元件体距板边 ≥2.5mm，高元件≥5mm。传送边禁布区≥3mm。"
+          },
+          {
+            "rule": "元件高度分区检查",
+            "severity": "info",
+            "desc": "高元件(3个)与矮元件(132个)混合布局",
+            "suggestion": "高元件(>10mm)置于PCB无遮挡区域或背面。同面布局时矮元件靠近PCB边沿,高元件在中心。",
+            "theory": "波峰焊时高元件会产生阴影效应→后方焊点虚焊。同时装配后矮元件难以目检和维护。IPC-A-610 要求人工检查视线无遮挡。"
+          },
+          {
+            "rule": "元件间距检查",
+            "severity": "info",
+            "desc": "约 19 对元件间距 <1.0mm，可能影响 SMT 贴片和返修",
+            "suggestion": "SMT 元件间≥0.5mm(0603), ≥0.8mm(0805)。高元件间≥1.5mm。连接器周围预留插拔空间。",
+            "theory": "元件间距过小→SMT 钢网印刷桥连、回流焊阴影效应、烙铁无法伸入返修。IPC-7351 为每种封装定义了标准焊盘和间距。"
+          },
+          {
+            "rule": "光学定位点检查",
+            "severity": "info",
+            "desc": "PCB 含较多元件但未确认是否有光学定位(Mark)点",
+            "suggestion": "PCB 对角放置≥2个全局 Mark 点(Φ1.0mm 铜箔+Φ3.0mm 阻焊开窗)。细间距IC(QFP/BGA)局部加Mark点。",
+            "theory": "SMT 贴片机通过识别 Mark 点校正 PCB 位置偏差。全局 Mark 用于整板定位，局部 Mark 用于精细间距元件定位。无 Mark 点→贴片精度不足→立碑/偏移。"
+          },
+          {
+            "rule": "PDN 目标阻抗分析",
+            "severity": "info",
+            "desc": "3.3V/0.50A 电源: 目标阻抗 Z_target=660mΩ，平面电容 1.00nF，建议 ≥1 个去耦电容，IR压降≈0.5mV",
+            "suggestion": "推荐电容组合: 100µF, 10µF, 100nF, 10nF。各频段去耦: 100µF(≤10kHz) + 10µF(≤1MHz) + 100nF(1-100MHz) + 10nF(≥100MHz)。",
+            "theory": "PDN 目标阻抗 Z_target = (Vdd × ripple%) / I_transient。全频段内 Z_PDN < Z_target 才能保证电源纹波在允许范围内。多层陶瓷电容(MLCC)并联降低等效 ESL，扩展有效去耦频率范围。"
+          },
+          {
+            "rule": "位号连续性检查",
+            "severity": "info",
+            "desc": "C 类位号不连续: C1→C3(跳1号) ...",
+            "suggestion": "位号不连续通常因删除元件后未重排。确认是否为预留空位。",
+            "theory": "规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"
+          },
+          {
+            "rule": "位号连续性检查",
+            "severity": "info",
+            "desc": "D 类位号不连续: D1→D7(跳5号) ...",
+            "suggestion": "位号不连续通常因删除元件后未重排。确认是否为预留空位。",
+            "theory": "规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"
+          },
+          {
+            "rule": "位号连续性检查",
+            "severity": "info",
+            "desc": "L 类位号不连续: L3→L8(跳4号) ...",
+            "suggestion": "位号不连续通常因删除元件后未重排。确认是否为预留空位。",
+            "theory": "规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"
+          },
+          {
+            "rule": "位号连续性检查",
+            "severity": "info",
+            "desc": "Q 类位号不连续: Q2→Q4(跳1号)",
+            "suggestion": "位号不连续通常因删除元件后未重排。确认是否为预留空位。",
+            "theory": "规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"
+          },
+          {
+            "rule": "位号连续性检查",
+            "severity": "info",
+            "desc": "R 类位号不连续: R6→R16(跳9号) ...",
+            "suggestion": "位号不连续通常因删除元件后未重排。确认是否为预留空位。",
+            "theory": "规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"
+          },
+          {
+            "rule": "位号连续性检查",
+            "severity": "info",
+            "desc": "U 类位号不连续: U1→U3(跳1号) ...",
+            "suggestion": "位号不连续通常因删除元件后未重排。确认是否为预留空位。",
+            "theory": "规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"
+          }
+        ],
+        "U6": [
+          {
+            "rule": "BGA 扇出检查",
+            "severity": "warning",
+            "desc": "BGA 封装 U6 需要扇出设计——确认过孔尺寸/间距满足工艺能力",
+            "suggestion": "BGA 扇出: 焊盘→微孔(Φ0.2mm)→内层走线。0.8mm pitch BGA 用 0.25/0.5mm 过孔。1.0mm pitch 可用 0.3/0.6mm。",
+            "theory": "BGA 焊球位于元件底部无法直接走线→必须用过孔扇出到其他层。过孔必须塞孔或覆盖以防止焊接时吸锡。IPC-7095 规定了 BGA 设计标准。"
+          }
+        ],
+        "C3": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C3 参数 [22uF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C6": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C6 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C35": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C35 参数 [12pF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C49": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C49 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C51": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C51 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C90": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C90 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C92": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C92 参数 [100nF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C93": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C93 参数 [22pF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C142": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C142 参数 [100pF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C148": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C148 参数 [680pF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C152": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C152 参数 [27pF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C264": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C264 参数 [12pF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "C273": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "C273 参数 [220pF] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "L3": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "L3 参数 [470nH] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "L11": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "L11 参数 [240nH] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R1": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R1 参数 [120Ω] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R2": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R2 参数 [22Ω] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R32": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R32 参数 [47kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R33": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R33 参数 [232kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R34": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R34 参数 [15kΩ(NC)] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R35": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R35 参数 [30kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R40": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R40 参数 [51kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R45": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R45 参数 [120kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R48": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R48 参数 [180kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R51": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R51 参数 [56kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R69": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R69 参数 [15kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R82": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R82 参数 [240Ω] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R92": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R92 参数 [150kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "R97": [
+          {
+            "rule": "参数范围检查",
+            "severity": "info",
+            "desc": "R97 参数 [100kΩ] 不在 E24 标准系列",
+            "suggestion": "非标值可能需要定制或从 E48/E96 系列选择",
+            "theory": "标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"
+          }
+        ],
+        "FPC1": [
+          {
+            "rule": "连接器边沿布局检查",
+            "severity": "info",
+            "desc": "连接器 FPC1 距板边较远(41,32)，可能影响插拔操作",
+            "suggestion": "连接器/接口紧贴 PCB 边沿，开口朝外。机壳开孔位置与连接器对准，预留插头空间(如 USB 插头长度 ≈15mm)。",
+            "theory": "连接器置于板中心→机壳内部需延长开孔通道,增加机械设计难度且插拔力会使 PCB 弯曲。板边布局插拔力直接由机壳/固定柱承受。"
+          }
+        ],
+        "U1": [
+          {
+            "rule": "连接器边沿布局检查",
+            "severity": "info",
+            "desc": "连接器 U1 距板边较远(13,59)，可能影响插拔操作",
+            "suggestion": "连接器/接口紧贴 PCB 边沿，开口朝外。机壳开孔位置与连接器对准，预留插头空间(如 USB 插头长度 ≈15mm)。",
+            "theory": "连接器置于板中心→机壳内部需延长开孔通道,增加机械设计难度且插拔力会使 PCB 弯曲。板边布局插拔力直接由机壳/固定柱承受。"
+          }
+        ],
+        "X2": [
+          {
+            "rule": "晶振频率匹配",
+            "severity": "info",
+            "desc": "晶振 X2 (32.768Hz) 建议 CL=12.5pF~15pF",
+            "suggestion": "匹配负载电容 = 12.5pF~15pF，配合 Cstray≈5pF",
+            "theory": "石英晶振的频率稳定性依赖正确 CL。32.768kHz 晶振 CL 偏差 2pF 可引起 ≥10ppm 误差。"
+          }
+        ],
+        "L1": [
+          {
+            "rule": "电感饱和电流检查",
+            "severity": "info",
+            "desc": "功率电感 L1 建议验证额定电流 ≥1.3× Ipeak",
+            "suggestion": "Buck 电感 Ipeak = Iout + ΔIL/2。Isat 需 ≥1.3× Ipeak 防饱和。饱和后 L↓→ΔIL↑→磁芯损耗↑→温升↑。",
+            "theory": "铁氧体电感在电流超过 Isat 时磁导率骤降，感值可降至标称的 10~30%→纹波电流剧增→输出纹波↑、EMI↑。屏蔽电感 EMI 优于非屏蔽。"
+          }
+        ],
+        "SW1": [
+          {
+            "rule": "开关电源布局检查",
+            "severity": "info",
+            "desc": "DC-DC SW1 建议优化输入回路布局以降低 EMI",
+            "suggestion": "Buck: Cin→SW→L→Cout 的 di/dt 回路面积最小化。输入电容紧靠 IC VIN/GND 引脚。SW 节点铜皮面积最小,避免成为天线。",
+            "theory": "Buck 的开关回路(VIN→HS MOSFET→SW→L→Cout→GND→VIN)承载高频脉冲电流,其环路面积与 EMI 强度成正比。SW 节点电压在 0 和 VIN 间高速切换(dv/dt≈数 V/ns),是 PCB 最强 dV/dt 源。"
+          }
+        ]
+      },
+      "elapsed_seconds": 3.06,
+      "error": null,
+      "timestamp": "2026-09-02T13:04:04.475938"
+    }
+  ],
+  "verify_results": [],
+  "ma_results": [],
+  "defect_results": [
+    {
+      "design": "board_schematic",
+      "defect_id": "no_decoupling",
+      "defect_name": "移除去耦电容",
+      "defect_description": "删除 5 个 100nF 去耦电容",
+      "expected_rules": [
+        "去耦电容检查",
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "去耦电容检查"
+      ],
+      "missed_rules": [
+        "去耦电容距离检查",
+        "电源轨去耦检查"
+      ],
+      "extra_violations": [
+        "电池电压分压器检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "电感饱和电流检查",
+        "BGA 扇出检查",
+        "连接器边沿布局检查",
+        "元件间距检查",
+        "元件高度分区检查",
+        "开关电源布局检查",
+        "板边间距检查",
+        "光学定位点检查",
+        "晶振频率匹配",
+        "位号连续性检查"
+      ],
+      "total_violations": 57,
+      "error": null,
+      "timestamp": "2026-09-02T13:04:04.692554"
+    },
+    {
+      "design": "board_schematic",
+      "defect_id": "bad_resistor_values",
+      "defect_name": "非标准电阻值",
+      "defect_description": "将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+      "expected_rules": [
+        "参数范围检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "参数范围检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "电池电压分压器检查",
+        "PDN 目标阻抗分析",
+        "电感饱和电流检查",
+        "BGA 扇出检查",
+        "连接器边沿布局检查",
+        "元件间距检查",
+        "元件高度分区检查",
+        "开关电源布局检查",
+        "板边间距检查",
+        "光学定位点检查",
+        "晶振频率匹配",
+        "位号连续性检查"
+      ],
+      "total_violations": 78,
+      "error": null,
+      "timestamp": "2026-09-02T13:04:04.877893"
+    },
+    {
+      "design": "board_schematic",
+      "defect_id": "no_crystal_load_caps",
+      "defect_name": "删除晶振负载电容",
+      "defect_description": "删除晶振旁边的负载电容",
+      "expected_rules": [
+        "晶振负载电容检查",
+        "晶振频率匹配"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "晶振频率匹配"
+      ],
+      "missed_rules": [
+        "晶振负载电容检查"
+      ],
+      "extra_violations": [
+        "电池电压分压器检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "电感饱和电流检查",
+        "BGA 扇出检查",
+        "连接器边沿布局检查",
+        "元件间距检查",
+        "元件高度分区检查",
+        "开关电源布局检查",
+        "板边间距检查",
+        "光学定位点检查",
+        "位号连续性检查"
+      ],
+      "total_violations": 47,
+      "error": null,
+      "timestamp": "2026-09-02T13:04:05.069709"
+    },
+    {
+      "design": "board_schematic",
+      "defect_id": "no_esd_diodes",
+      "defect_name": "删除 TVS/ESD 保护二极管",
+      "defect_description": "删除 6 个保护二极管",
+      "expected_rules": [
+        "ESD 保护检查"
+      ],
+      "detected": false,
+      "detected_rules": [],
+      "missed_rules": [
+        "ESD 保护检查"
+      ],
+      "extra_violations": [
+        "PDN 目标阻抗分析",
+        "参数范围检查",
+        "电感饱和电流检查",
+        "BGA 扇出检查",
+        "连接器边沿布局检查",
+        "元件间距检查",
+        "元件高度分区检查",
+        "开关电源布局检查",
+        "板边间距检查",
+        "光学定位点检查",
+        "晶振频率匹配",
+        "位号连续性检查"
+      ],
+      "total_violations": 45,
+      "error": null,
+      "timestamp": "2026-09-02T13:04:05.251586"
+    },
+    {
+      "design": "board_schematic",
+      "defect_id": "cap_voltage_derating",
+      "defect_name": "电容耐压不足",
+      "defect_description": "将电容耐压从 50V 改为 6.3V (降额不足)",
+      "expected_rules": [
+        "电容耐压降额检查"
+      ],
+      "detected": true,
+      "detected_rules": [
+        "电容耐压降额检查"
+      ],
+      "missed_rules": [],
+      "extra_violations": [
+        "电池电压分压器检查",
+        "参数范围检查",
+        "PDN 目标阻抗分析",
+        "电感饱和电流检查",
+        "BGA 扇出检查",
+        "连接器边沿布局检查",
+        "元件间距检查",
+        "元件高度分区检查",
+        "开关电源布局检查",
+        "板边间距检查",
+        "光学定位点检查",
+        "晶振频率匹配",
+        "位号连续性检查"
+      ],
+      "total_violations": 50,
+      "error": null,
+      "timestamp": "2026-09-02T13:04:05.448737"
+    }
+  ],
+  "defect_detection_rate": 80.0,
+  "defect_total_detected": 4,
+  "defect_total_missed": 1
+}

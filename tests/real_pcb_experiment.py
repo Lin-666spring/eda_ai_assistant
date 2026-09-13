@@ -193,10 +193,17 @@ def main():
                         help="输出目录")
     parser.add_argument("--designs", type=str, default=None,
                         help="逗号分隔的设计目录名筛选（如 esp32,dcdc）")
+    parser.add_argument("--base-dir", type=str, default=None,
+                        help="设计根目录（默认 test_data/pcb_designs）")
     args = parser.parse_args()
 
     # Base directory
-    base_dir = Path(__file__).parent.parent / "test_data" / "pcb_designs"
+    if args.base_dir:
+        base_dir = Path(args.base_dir)
+        if not base_dir.is_absolute():
+            base_dir = Path(__file__).parent.parent / base_dir
+    else:
+        base_dir = Path(__file__).parent.parent / "test_data" / "pcb_designs"
     output_dir = Path(args.output) if args.output else None
 
     print("=" * 70)

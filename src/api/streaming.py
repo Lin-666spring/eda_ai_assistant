@@ -12,6 +12,7 @@ without modifying any controller code.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from typing import Callable, Optional
 
@@ -45,11 +46,21 @@ async def _stream_chat_sse(text: str, agent_mode: bool = False):
         except asyncio.QueueFull:
             pass  # Should not happen with unlimited queue
 
+    def _on_tool_call(name: str, args: dict) -> None:
+        """Called by agent_loop before each tool execution."""
+        try:
+            queue.put_nowait({
+                "event": "tool_call",
+                "data": json.dumps({"name": name, "args": args}, ensure_ascii=False),
+            })
+        except asyncio.QueueFull:
+            pass
+
     loop = asyncio.get_running_loop()
 
     if agent_mode:
         task = loop.run_in_executor(
-            None, controller.agent_loop, text, _on_token, 5
+            None, controller.agent_loop, text, _on_token, 5, _on_tool_call
         )
     else:
         task = loop.run_in_executor(

@@ -49,3 +49,5 @@ rag_data/*.sqlite3
 
 # Claude Code
 .claude/
+.zcode/
+test_data/_incoming_thing/

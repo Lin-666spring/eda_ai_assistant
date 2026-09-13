@@ -40,8 +40,15 @@ from src.api.models import (
     SettingsRequest,
     StatusResponse,
     SummaryResponse,
+    AssistantSaveRequest,
+    ConversationSaveRequest,
+    MessageSaveRequest,
+    ActiveStateRequest,
+    DemoLoadResponse,
+    ChatStreamRequest,
 )
 from src.api.server import get_controller
+from src.core.persistence import SessionStore
 from src.bom.parser import BOMItem
 from src.config import SETTINGS_DIR, load_settings, save_settings
 from src.constants import LLM_PROVIDER_PRESETS, ProviderPreset
@@ -599,3 +606,128 @@ def knowledge_query(req: KnowledgeQueryRequest):
         return KnowledgeQueryResponse(ok=True, result=result, sources=sources)
     except Exception as e:
         return KnowledgeQueryResponse(ok=False, result=str(e), sources=[])
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Persistence (SQLite session store) — thin wrappers over SessionStore
+# ═══════════════════════════════════════════════════════════════
+
+_store = SessionStore()
+
+
+@router.get("/persist/load-all")
+def persist_load_all():
+    """Startup snapshot: assistants, conversations, active state."""
+    try:
+        return {"ok": True, "data": _store.load_all()}
+    except Exception as e:
+        logger.exception("persist_load_all failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@router.post("/persist/assistant")
+def persist_save_assistant(req: AssistantSaveRequest):
+    try:
+        _store.save_assistant(req.instance_id, req.type_id, req.name, req.sort_order)
+        _store.save_state("active_assistant", req.instance_id)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@router.delete("/persist/assistant/{instance_id}")
+def persist_delete_assistant(instance_id: str):
+    try:
+        _store.delete_assistant(instance_id)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@router.post("/persist/conversation")
+def persist_save_conversation(req: ConversationSaveRequest):
+    try:
+        _store.save_conversation(req.conv_id, req.instance_id, req.title)
+        _store.save_state("active_conv", req.conv_id)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@router.delete("/persist/conversation/{conv_id}")
+def persist_delete_conversation(conv_id: str):
+    try:
+        _store.delete_conversation(conv_id)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@router.post("/persist/message")
+def persist_save_message(req: MessageSaveRequest):
+    try:
+        _store.save_message(req.conv_id, req.role, req.content, req.image or None, req.seq)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@router.get("/persist/messages/{conv_id}")
+def persist_load_messages(conv_id: str):
+    try:
+        messages = _store.load_messages(conv_id)
+        return {
+            "ok": True,
+            "messages": [
+                {"role": m.role, "content": m.content, "image": m.image or ""}
+                for m in messages
+            ],
+        }
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@router.post("/persist/active-state")
+def persist_save_active_state(req: ActiveStateRequest):
+    try:
+        if req.active_assistant:
+            _store.save_state("active_assistant", req.active_assistant)
+        if req.active_conv:
+            _store.save_state("active_conv", req.active_conv)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Demo data
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.post("/demo/load", response_model=DemoLoadResponse)
+def load_demo():
+    """一键演示：加载内置示例数据（有缺陷的 MCU 板 BOM + 坐标）。"""
+    ctrl = get_controller()
+    project_root = Path(__file__).parent.parent.parent
+    bom_path = project_root / "tests" / "sample_bom_bad.csv"
+    pos_path = project_root / "tests" / "sample_positions.csv"
+    try:
+        count, msg = ctrl.load_bom(str(bom_path))
+        pos_count = 0
+        if pos_path.exists():
+            pos_count, _ = ctrl.load_positions(str(pos_path))
+        return DemoLoadResponse(
+            ok=True, count=count, pos_count=pos_count, msg=msg, items=_bom_items(),
+        )
+    except Exception as e:
+        return DemoLoadResponse(ok=False, msg=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Chat streaming (POST body variant — cleaner for long Chinese prompts)
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.post("/chat/stream")
+def chat_stream_post(req: ChatStreamRequest):
+    return stream_chat_handler(text=req.text, agent_mode=req.agent_mode)

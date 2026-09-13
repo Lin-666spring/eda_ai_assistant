@@ -59,7 +59,7 @@ from src.core.verifier import (
     create_verifier_from_controller,
 )
 from src.rules.checker import DesignRuleChecker, RuleViolation, RuleSeverity, group_violations_by_component
-from src.agent.llm_client import LLMClient
+from src.agent.llm_client import LLMClient, get_total_usage
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -150,6 +150,10 @@ class VerifyResult:
     preflight_risk: Optional[float] = None   # 建议的预检平均风险 0-1
     preflight_risk_max: Optional[float] = None  # 单条变更最高风险
     preflight_flagged: bool = False          # 是否触发预检拦截（风险>阈值）
+    # ── 全撤销收敛（2026-09-09 新增）──
+    # LLM 在修正轮撤销全部变更后收敛 —— 危险建议的正确收敛路径（防御闭环）。
+    # 2026-09-08 17 板实验 10/14 未收敛用例的机制性根因之一：旧代码忽略空修正列表。
+    fully_reverted: bool = False
 
 
 @dataclass
@@ -518,6 +522,17 @@ def _parse_resistance(value_str: str) -> float:
 # 评分是比规则类型更细粒度的质量信号。
 SCORE_DROP_TOLERANCE = 2.0
 
+
+def _invalid_no_change(r) -> bool:
+    """零变更用例是否其实是"解析失败 / 条目被全部丢弃"（而非真正的分析类建议）。
+
+    2026-09-10 新增：2026-09-08 的 17 板实验里有 71 个零变更用例，其中 12 个
+    是 JSON 截断或超时的解析失败，却按"纯分析建议直接通过"计入 accepted，
+    污染了建议类别分布与通过率。这里把它们单独识别出来。
+    """
+    rr = getattr(r, "raw_report", None) or {}
+    return bool(rr.get("parse_error") or rr.get("dropped_changes"))
+
 DEFAULT_SUGGESTIONS = [
     SuggestionCase(
         text="检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
@@ -619,6 +634,7 @@ class ExperimentRunner:
             result = self._run_drc_baseline(design)
             self.drc_results.append(result)
             self._print_drc_result(result)
+            self._checkpoint()
 
         # Phase B: Closed-loop verification
         if self.providers:
@@ -635,6 +651,7 @@ class ExperimentRunner:
                         result = self._run_closed_loop(design, provider, suggestion)
                         self.verify_results.append(result)
                         self._print_verify_result(result)
+                        self._checkpoint()
 
         # Phase C: Multi-agent review
         if self.providers:
@@ -649,6 +666,7 @@ class ExperimentRunner:
                     result = self._run_multi_agent(design, provider)
                     self.ma_results.append(result)
                     self._print_ma_result(result)
+                    self._checkpoint()
 
         # Phase D: Programmatic defect injection (no LLM needed)
         self._log("")
@@ -663,6 +681,7 @@ class ExperimentRunner:
                 result = self._run_defect_injection(design, defect, ctrl)
                 self.defect_results.append(result)
                 self._print_defect_result(result)
+                self._checkpoint()
 
         # Save results
         self._save_results()
@@ -801,6 +820,7 @@ class ExperimentRunner:
             # ── Step 2: Ask LLM to parse suggestion into structured BOM changes ──
             from tests.bom_suggestion import (
                 build_bom_change_prompt,
+                build_correction_prompt,
                 parse_llm_bom_changes,
                 validate_bom_changes,
                 apply_bom_changes,
@@ -822,8 +842,12 @@ class ExperimentRunner:
                           f"{parse_result.parse_error[:120]}")
 
             valid_changes, warnings = validate_bom_changes(parse_result.changes, original_bom)
+            dropped_changes = len(parse_result.changes) - len(valid_changes)
             for w in warnings:
                 self._log(f"    ⚠️  {w}")
+            if parse_result.normalized_removals:
+                self._log(f"    ℹ️  归一化 {parse_result.normalized_removals} 条删除语义"
+                          f"（模型未按 action:remove 约定输出）")
 
             # ── Step 2b: No structural change → fallback ──
             if not valid_changes:
@@ -831,6 +855,7 @@ class ExperimentRunner:
                     design, provider, suggestion, baseline_violations, t0,
                     parse_error=parse_result.parse_error,
                     bom_items=original_bom,
+                    dropped_changes=dropped_changes,
                 )
 
             # ── Step 2c: 变更风险预检（自研 ChangeRiskPredictor）──
@@ -846,7 +871,15 @@ class ExperimentRunner:
             MAX_ROUNDS = 3
             current_changes = valid_changes
             all_rounds: list[dict] = []
+            round_history: list[dict] = []   # 喂给修正 prompt 的前几轮摘要
             converged = False
+            fully_reverted = False           # LLM 主动撤销全部变更后收敛
+
+            # 同规则违规计数（用于向 LLM 揭示"基线已有规则的恶化"——
+            # 如删去耦电容后该规则暴增，但不算"新规则"故旧 prompt 不可见）
+            baseline_counts_by_rule: dict[str, int] = {}
+            for v in baseline_violations:
+                baseline_counts_by_rule[v.rule_name] = baseline_counts_by_rule.get(v.rule_name, 0) + 1
 
             for round_num in range(1, MAX_ROUNDS + 1):
                 # Apply changes to BOM copy
@@ -867,11 +900,14 @@ class ExperimentRunner:
 
                 sev = lambda v: v.severity.value if hasattr(v.severity, 'value') else str(v.severity)
                 modified_score = self._score_design(modified_violations, modified_bom)
+                # blocking（error/warning）级别的新违规数 —— 幻觉消除率的度量口径
+                blocking_new = sum(1 for v in new_violations if sev(v) in ("error", "warning"))
                 round_data = {
                     "round": round_num,
                     "changes_applied": len(current_changes),
                     "total_violations": len(modified_violations),
                     "new_violations": len(new_violations),
+                    "blocking_new": blocking_new,
                     "modified_score": modified_score,  # 应用后综合评分（Δ 计算用）
                     "score_drop": round(baseline_score - modified_score, 1) if baseline_score is not None else None,
                     "new_violations_list": [
@@ -894,36 +930,54 @@ class ExperimentRunner:
                 if score_drop > SCORE_DROP_TOLERANCE:
                     self._log(f"    ⚠️ 评分下降 {score_drop:.1f} 分（无新规则类型但质量劣化）→ 进入修正")
 
-                if round_num >= MAX_ROUNDS:
-                    break
-
                 # ── Ask LLM to correct its changes ──
-                violation_desc = "\n".join(
-                    f"- [{sev(v)}] {v.rule_name}: {v.description}"
-                    for v in new_violations[:15]
+                # 2026-09-09 重写：结构化修正反馈（build_correction_prompt）。
+                # 旧 prompt 只拼规则名+描述，丢掉了 checker 的修法指引（suggestion）、
+                # 同规则恶化对比、撤销语义与 action:add，导致 17 板实验 10/14
+                # 未收敛用例中违规数逐轮不动（LLM 无从知道怎么修）。
+                modified_counts_by_rule: dict[str, int] = {}
+                for v in modified_violations:
+                    modified_counts_by_rule[v.rule_name] = modified_counts_by_rule.get(v.rule_name, 0) + 1
+
+                # 本轮尝试摘要（供下一轮历史，避免重复无效策略）
+                correction_prompt = build_correction_prompt(
+                    suggestion=suggestion.text,
+                    current_changes=current_changes,
+                    new_violations=new_violations,
+                    original_bom=original_bom,
+                    baseline_rules=baseline_rules,
+                    baseline_violation_count=len(baseline_violations),
+                    modified_violation_count=len(modified_violations),
+                    baseline_counts_by_rule=baseline_counts_by_rule,
+                    modified_counts_by_rule=modified_counts_by_rule,
+                    baseline_score=baseline_score,
+                    modified_score=modified_score,
+                    round_num=round_num + 1,
+                    max_rounds=MAX_ROUNDS,
+                    history=round_history,
                 )
-                current_json = json.dumps(
-                    [{"reference": c.reference, "field": c.field,
-                      "new_value": c.new_value} for c in current_changes],
-                    ensure_ascii=False, indent=2
-                )
-                correction_prompt = (
-                    f"你之前建议的BOM修改引入了{len(new_violations)}个新的DRC违规"
-                    f"{'，且综合评分下降 %.1f 分' % (score_drop) if score_drop > SCORE_DROP_TOLERANCE else ''}:\n\n"
-                    f"{violation_desc}\n\n"
-                    f"请修正BOM变更JSON，消除这些违规并避免评分下降。保持无问题的变更不变。\n\n"
-                    f"当前BOM变更:\n{current_json}\n\n"
-                    f"只输出修正后的JSON，格式: {{\"changes\": [...]}}"
-                )
+                round_history.append({
+                    "round": round_num,
+                    "changes": len(current_changes),
+                    "new_violations": len(new_violations),
+                    "attempt": "初始建议" if round_num == 1 else f"修正后仍保留 {len(current_changes)} 条变更",
+                })
                 try:
                     correction_json = ctrl.agent.chat(correction_prompt)
                     corr_result = parse_llm_bom_changes(correction_json)
-                    if corr_result.changes:
+                    # 2026-09-09 修复：空 changes 是合法修正结果（全部撤销），
+                    # 旧代码 `if corr_result.changes:` 会忽略它 → 危险建议永远
+                    # 无法通过撤销收敛（17 板实验 10 个未收敛用例的机制性根因之一）。
+                    if not corr_result.parse_error:
                         valid_corr, corr_warnings = validate_bom_changes(
                             corr_result.changes, original_bom
                         )
-                        if valid_corr:
-                            current_changes = valid_corr
+                        for w in corr_warnings:
+                            self._log(f"    ⚠️  {w}")
+                        if len(valid_corr) < len(current_changes):
+                            self._log(f"    ↩️  LLM 撤销部分变更: "
+                                      f"{len(current_changes)} → {len(valid_corr)} 条")
+                        current_changes = valid_corr
                 except Exception:
                     pass  # keep current_changes if correction call fails
 
@@ -933,11 +987,22 @@ class ExperimentRunner:
             first_new = first_round.get("new_violations", 0)
             last_new = last_round.get("new_violations", 0)
 
+            # ── 幻觉消除率 ──
+            # 2026-09-10 修正：原实现用"新规则类型数"做分子分母，而新违规是按
+            # 规则名过滤的集合 → 首轮/末轮取值恒为 0 或同一个数，指标退化成
+            # 只有 0% / 100% 两种取值（17 板实验 14 个用例恰好如此，均值 35.7%
+            # 无区分度）。改为按 blocking（error/warning）新违规条数计算，
+            # 与字段注释 (first_blocking - final_blocking) / first_blocking 一致。
+            first_blocking_new = first_round.get("blocking_new", 0)
+            last_blocking_new = last_round.get("blocking_new", 0)
+
             hall_elim = None
-            if first_new > 0:
-                hall_elim = round((first_new - last_new) / first_new * 100, 1)
-            elif first_new == 0 and all_rounds:
-                hall_elim = 100.0  # No new violations from the start
+            if first_blocking_new > 0:
+                hall_elim = round(
+                    (first_blocking_new - last_blocking_new) / first_blocking_new * 100, 1
+                )
+            elif all_rounds:
+                hall_elim = 100.0  # 首轮就没有 blocking 级新违规
 
             # Compute severity counts across rounds
             all_sevs: set[str] = set()
@@ -958,6 +1023,9 @@ class ExperimentRunner:
             )
 
             per_round = [r.get("new_violations", 0) for r in all_rounds]
+
+            # 全撤销收敛：LLM 认知到建议有害并撤销全部变更（防御闭环的另一条正确路径）
+            fully_reverted = converged and len(current_changes) == 0
 
             # ── 闭环前后综合评分 Δ（2026-08-03 语义修正）──
             # proposed_score: 建议若被采用后的评分（最后一轮修正后）
@@ -998,7 +1066,10 @@ class ExperimentRunner:
                 final_score=final_score,
                 delta_score=delta_score,
                 risk_prevented=risk_prevented,
-                raw_report={"rounds": all_rounds},
+                raw_report={
+                    "rounds": all_rounds,
+                    "normalized_removals": parse_result.normalized_removals,
+                },
                 elapsed_seconds=round(time.time() - t0, 2),
                 timestamp=datetime.now().isoformat(),
                 suggested_changes_count=len(valid_changes),
@@ -1015,6 +1086,7 @@ class ExperimentRunner:
                 preflight_risk=preflight_risk,
                 preflight_risk_max=preflight_max,
                 preflight_flagged=preflight_flagged,
+                fully_reverted=fully_reverted,
             )
 
         except Exception as e:
@@ -1048,8 +1120,15 @@ class ExperimentRunner:
         suggestion: SuggestionCase, baseline_violations: list,
         t0: float, parse_error: Optional[str] = None,
         bom_items: list = None,
+        dropped_changes: int = 0,
     ) -> VerifyResult:
-        """Fallback for suggestions with no structural BOM change (pure analysis)."""
+        """Fallback for suggestions with no structural BOM change.
+
+        注意：零变更 ≠ 分析类建议。解析失败（JSON 截断/超时）或解析出的条目
+        被 validate_bom_changes 全部丢弃（如"新增元件"漏写 action:add）同样会
+        走到这里。2026-09-08 实验 71 个零变更用例中有 12 个实为解析失败，
+        却按"纯分析建议通过"计入指标 —— 故把原因写进 raw_report 供统计区分。
+        """
         baseline_count = len(baseline_violations)
         baseline_score = self._score_design(baseline_violations, bom_items or [])
         return VerifyResult(
@@ -1078,6 +1157,8 @@ class ExperimentRunner:
                 "no_bom_change": True,
                 "baseline_violations": baseline_count,
                 "parse_error": parse_error,
+                "dropped_changes": dropped_changes,
+                "invalid_no_change": bool(parse_error or dropped_changes),
             },
             elapsed_seconds=round(time.time() - t0, 2),
             timestamp=datetime.now().isoformat(),
@@ -1202,11 +1283,12 @@ class ExperimentRunner:
             return
         if r.suggested_changes_count > 0:
             icon = "✅" if r.converged else "🔄"
+            revert_mark = " (全撤销)" if r.converged and r.fully_reverted else ""
             self._log(f"  {icon} [{r.provider}] {r.design}/{r.suggestion_category} "
                       f"({r.suggestion_desc}): "
                       f"变更={r.suggested_changes_count} "
                       f"新违规={r.new_violations_introduced}→{r.final_violation_delta} "
-                      f"轮次={r.correction_rounds} 收敛={r.converged} "
+                      f"轮次={r.correction_rounds} 收敛={r.converged}{revert_mark} "
                       f"[{r.elapsed_seconds:.1f}s]")
         else:
             icon = "✅" if r.accepted else "🔄"
@@ -1356,12 +1438,19 @@ class ExperimentRunner:
         if verify_ok:
             # Separate BOM-modification from pure-analysis results
             bom_change_results = [r for r in verify_ok if r.suggested_changes_count > 0]
-            analysis_results = [r for r in verify_ok if r.suggested_changes_count == 0]
+            analysis_results = [r for r in verify_ok
+                                if r.suggested_changes_count == 0 and not _invalid_no_change(r)]
+            invalid_results = [r for r in verify_ok
+                               if r.suggested_changes_count == 0 and _invalid_no_change(r)]
 
             if bom_change_results:
                 converged_count = sum(1 for r in bom_change_results if r.converged)
+                reverted_count = sum(1 for r in bom_change_results
+                                     if r.converged and r.fully_reverted)
                 self._log(f"  BOM变更收敛率: {converged_count}/{len(bom_change_results)} "
                           f"({converged_count/len(bom_change_results)*100:.0f}%) (目标 > 70%)")
+                self._log(f"    其中全撤销收敛: {reverted_count} 个 "
+                          f"(LLM 识别建议有害 → 撤销全部变更)")
 
                 avg_new_violations = sum(r.new_violations_introduced for r in bom_change_results) / len(bom_change_results)
                 self._log(f"  平均新违规引入: {avg_new_violations:.1f} 个/建议")
@@ -1378,6 +1467,9 @@ class ExperimentRunner:
 
             if analysis_results:
                 self._log(f"  纯分析建议: {len(analysis_results)} 个 (无BOM变更, 直接通过)")
+            if invalid_results:
+                self._log(f"  ⚠️  解析失败/条目全丢弃: {len(invalid_results)} 个 "
+                          f"(零变更但非分析类, 不计入通过)")
 
             # Avg time
             avg_time = sum(r.elapsed_seconds for r in verify_ok) / len(verify_ok)
@@ -1415,6 +1507,7 @@ class ExperimentRunner:
             "verify_count": len(self.verify_results),
             "ma_count": len(self.ma_results),
             "defect_count": len(self.defect_results),
+            "llm_usage": get_total_usage(),
             "drc_results": [asdict(r) for r in self.drc_results],
             "verify_results": [asdict(r) for r in self.verify_results],
             "ma_results": [asdict(r) for r in self.ma_results],
@@ -1427,6 +1520,16 @@ class ExperimentRunner:
             "defect_total_detected": sum(1 for r in self.defect_results if r.detected),
             "defect_total_missed": sum(1 for r in self.defect_results if not r.detected),
         }
+
+    def _checkpoint(self) -> None:
+        """Persist results.json after every result so a long run is crash-safe."""
+        try:
+            (self.output_dir / "results.json").write_text(
+                json.dumps(self._build_summary(), ensure_ascii=False, indent=2, default=str),
+                encoding="utf-8",
+            )
+        except Exception as exc:  # never let checkpointing kill the run
+            self._log(f"  ⚠️ checkpoint 失败: {exc}")
 
     def _save_results(self) -> None:
         """Save all results to JSON and Markdown."""
@@ -1513,12 +1616,19 @@ class ExperimentRunner:
 
         if verify_ok:
             bom_change = [r for r in verify_ok if r.suggested_changes_count > 0]
-            analysis_only = [r for r in verify_ok if r.suggested_changes_count == 0]
+            analysis_only = [r for r in verify_ok
+                             if r.suggested_changes_count == 0 and not _invalid_no_change(r)]
+            invalid_only = [r for r in verify_ok
+                            if r.suggested_changes_count == 0 and _invalid_no_change(r)]
 
             if bom_change:
                 converged_count = sum(1 for r in bom_change if r.converged)
+                reverted_count = sum(1 for r in bom_change
+                                     if r.converged and r.fully_reverted)
                 lines.append(f"- **BOM变更收敛率**: {converged_count}/{len(bom_change)} "
                              f"({converged_count/len(bom_change)*100:.0f}%) (目标 > 70%)")
+                lines.append(f"- **全撤销收敛**: {reverted_count} 个 — LLM 识别建议有害后撤销全部变更"
+                             "（防御闭环的正确收敛路径）")
                 avg_new = sum(r.new_violations_introduced for r in bom_change) / len(bom_change)
                 lines.append(f"- **平均新违规引入**: {avg_new:.1f} 个/建议")
                 avg_corr = sum(r.correction_rounds for r in bom_change) / len(bom_change)
@@ -1532,6 +1642,9 @@ class ExperimentRunner:
 
             if analysis_only:
                 lines.append(f"- **纯分析建议**: {len(analysis_only)} 个 (无BOM变更)")
+            if invalid_only:
+                lines.append(f"- **⚠️ 解析失败/条目全丢弃**: {len(invalid_only)} 个 "
+                             "(零变更但非分析类, 不计入通过)")
 
         if ma_ok:
             lines.append(f"- **多智能体均分**: "

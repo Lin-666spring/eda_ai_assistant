@@ -1,0 +1,86 @@
+$PACKAGES
+1.69寸屏幕（240x280） ! 1.69寸屏幕（240x280） ! '{Value}' ; U5 
+5V充放一体电池模块 带长按关机 ! 5V充放一体电池模块 带长按关机 ! '{Value}' ; U4 
+梁山派排针SDRAM同面封装 ! 梁山派排针SDRAM同面封装 ! '{Value}' ; U10 
+实芯马达 ! 实芯马达 ! '{Value}' ; U6 
+摇杆 平推 17.5x17.5mm ! 摇杆 平推 17.5x17.5mm ! '{Value}' ; U2 
+摇杆帽 ! 摇杆帽 ! '{Value}' ; U8 
+audio-smd_pj-393 ! audio-smd_pj-393 ! '{Value}' ; HEADSET1 
+c0603 ! c0603 ! 100nF ; C1 C5 
+c0603 ! c0603 ! 10uF ; C3 C6 
+c0603 ! c0603 ! 1uF ; C2 
+c0603 ! c0603 ! 220nF ; C4 
+CAP-SMD_L3.5-W2.8 ! CAP-SMD_L3.5-W2.8 ! 100uF ; C7 
+,
+        conn-smd_2p-p1.25_hdgc_1.25k-bh-2pwb ! conn-smd_2p-p1.25_hdgc_1.25k-bh-2pwb ! '{Value}' ,
+        ; SPEAKER1 
+,
+        CONN-SMD_2P-P1.50_HDGC_1.5K-BH-2PWB ! CONN-SMD_2P-P1.50_HDGC_1.5K-BH-2PWB ! '{Value}' ,
+        ; BAT1 
+,
+        HDR-SMD_40P-P2.54-V-F-R2-C20-S6.6-EH ! HDR-SMD_40P-P2.54-V-F-R2-C20-S6.6-EH ! '{Value}' ,
+        ; H1 H2 
+KEY-SMD_2P-L6.0-W6.0-P6.00 ! KEY-SMD_2P-L6.0-W6.0-P6.00 ! '{Value}' ; KEY_L1 ,
+        KEY_R1 RESET1 
+m3 125x300 ! m3 125x300 ! '{Value}' ; 1 2 3 4 
+r0603 ! r0603 ! '0Ω' ; R3 
+r0603 ! r0603 ! '100kΩ' ; R16 R19 
+r0603 ! r0603 ! '20Ω' ; R17 
+r0603 ! r0603 ! 22k ; R8 
+r0603 ! r0603 ! 68k ; R10 
+r0603_1 ! r0603_1 ! '10kΩ' ; R1 R2 R4 R7 R18 R22 
+r0603_1 ! r0603_1 ! '1kΩ' ; R14 R21 
+sod-123_l2.7-w1.6-ls3.7-rd ! sod-123_l2.7-w1.6-ls3.7-rd ! '{Value}' ; D3 
+SOD-123F_L2.7-W1.6-LS3.8-RD ! SOD-123F_L2.7-W1.6-LS3.8-RD ! '{Value}' ; D2 
+soic-8_l4.9-w3.9-p1.27-ls6.0-bl ! soic-8_l4.9-w3.9-p1.27-ls6.0-bl ! '{Value}' ,
+        ; U7 
+sop-8_l4.9-w3.9-p1.27-ls6.0-bl ! sop-8_l4.9-w3.9-p1.27-ls6.0-bl ! '{Value}' ; ,
+        U3 
+,
+        sot-23-3_l2.9-w1.3-p1.90-ls2.4-br ! sot-23-3_l2.9-w1.3-p1.90-ls2.4-br ! '{Value}' ,
+        ; Q2 Q3 
+SW-SMD_L6.6-W6.3-LS8.6 ! SW-SMD_L6.6-W6.3-LS8.6 ! '{Value}' ; KEY_A1 KEY_B1 
+$A_PROPERTIES
+$NETS
+'$1N118824' ; Q3.1 R21.2 R22.2 
+'$1N120821' ; D3.2 Q3.3 U6.2 
+'$1N16206' ; R17.1 U5.3 
+'$1N16259' ; Q2.3 U5.2 
+'$1N16351' ; Q2.1 R14.2 R18.1 
+'$1N22220' ; C2.1 U3.2 U3.3 
+'$1N22223' ; R10.2 SPEAKER1.1 U3.5 
+'$1N22224' ; SPEAKER1.2 U3.8 
+'$1N22225' ; R8.2 R10.1 U3.4 
+'$1N22226' ; C4.1 R8.1 
+'$1N22410' ; HEADSET1.5 R7.1 U3.1 
+'ADC01_IN9' ; H2.16 R16.1 R19.2 
+'ADC012_IN1' ; H2.29 U2.2 
+'ADC012_IN11' ; H2.27 U2.5 
+'BAT_CTRL' ; D2.1 RESET1.2 U4.2 
+'BAT_EN' ; H1.30 U4.5 
+'DAC_AUDIO' ; H2.22 R3.1 
+'IIC_SCL' ; H1.25 R1.2 U7.6 
+'IIC_SDA' ; H1.28 R2.1 U7.5 
+'KEY_A' ; H1.18 KEY_A1.1 
+'KEY_B' ; H2.9 KEY_B1.1 
+'KEY_L' ; H2.30 KEY_L1.1 
+'LCD_BLK' ; H2.20 R14.1 
+'LCD_CS' ; H2.23 U5.8 
+'LCD_DC' ; H2.21 U5.7 
+'LCD_RESET' ; H2.25 U5.11 
+3V3 ; C3.1 C5.2 C6.2 D3.1 H2.38 KEY_A1.2 KEY_B1.2 KEY_L1.2 KEY_R1.2 R1.1 R2.2 ,
+        R4.2 R7.2 R17.2 U2.3 U2.4 U3.6 U5.4 U6.1 U7.8 
+5V ; C7.1 H1.40 H2.40 U4.1 
+AUDIO ; C4.2 HEADSET1.3 HEADSET1.4 HEADSET1.6 HEADSET1.7 R3.2 
+BAT ; BAT1.2 R16.2 U4.3 
+BOOT1 ; H2.15 KEY_R1.1 
+GND ; BAT1.1 BAT1.3 BAT1.4 C1.1 C2.2 C3.2 C5.1 C6.1 C7.2 H1.39 H2.37 H2.39 ,
+        HEADSET1.1 HEADSET1.2 Q2.2 Q3.2 R18.2 R19.1 R22.1 RESET1.1 SPEAKER1.3 ,
+        SPEAKER1.4 U2.1 U2.6 U3.7 U4.4 U4.6 U4.7 U4.8 U5.1 U5.5 U5.6 U5.12 ,
+        U6.3 U7.1 U7.2 U7.3 U7.4 U7.7 
+PA2 ; H2.28 R21.1 
+PF7 ; H2.35 U5.9 
+PF9 ; H2.36 U5.10 
+RESET ; C1.2 D2.2 H2.33 R4.1 
+$SCHEDULE
+$END

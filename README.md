@@ -1,6 +1,6 @@
-# EDA AI 智能助手 v0.7.0
+# EDA AI 智能助手 v0.7.5-dev
 
-> 基于多智能体协同的 PCB 设计辅助工具 — 69条设计规则 · 22项工具 · 10家AI厂商 · 5个专业审查Agent
+> 基于多智能体协同的 PCB 设计辅助工具 — 71条设计规则 · 24项工具 · 10家AI厂商 · 5个专业审查Agent
 
 面向立创EDA用户的 AI 辅助设计软件。支持自然语言交互、多智能体协同审查、BOM智能管理、设计规则检查、供应链健康评估、VLM 视觉分析。
 
@@ -33,7 +33,7 @@ python main.py
 | BOM 管理 | 智能合并 / AI合并 / 封装校验 / 位号查重 / 筛选 | 完成 |
 | BOM 管理 | CSV 导出 (UTF-8-BOM, Excel 兼容中文) | 完成 |
 | BOM 管理 | HTML 交互式 BOM 生成 | 完成 |
-| 设计规则 | 69 条 PCB 设计规则 (BOM 27 + PCB布线 22 + 布局 20) | 完成 |
+| 设计规则 | 71 条 PCB 设计规则（`DesignRuleChecker` 的 `_check_*` 方法数） | 完成 |
 | 多智能体 | 5 Agent 并行审查 + 6维度雷达图 + 共识合成 | 完成 |
 | 设计意图 | 12 电路模板自动识别 + 缺失元件主动建议 | 完成 |
 | 供应链 | 立创商城库存/生命周期/替代料/成本估算 | 完成 |
@@ -57,7 +57,7 @@ src/
 │   ├── llm_client.py         # OpenAI 兼容 LLM 客户端
 │   ├── anthropic_client.py   # Claude 原生 Messages API 客户端
 │   ├── prompt_templates.py   # 提示模板库
-│   ├── tools.py              # 22 工具统一注册表 (SSOT)
+│   ├── tools.py              # 24 工具统一注册表 (SSOT)
 │   ├── review_agents.py      # 5 Agent 多智能体协同审查
 │   └── design_templates.py   # 12 电路模板 + 设计意图识别
 ├── core/
@@ -68,13 +68,13 @@ src/
 │   └── file_watcher.py       # 立创EDA 文件监听
 ├── bom/                      # BOM 解析/合并/校验/查重
 ├── pcb/                      # PCB JSON 解析
-├── rules/                    # 69 条设计规则
+├── rules/                    # 71 条设计规则
 ├── supply/                   # 立创商城 API + BOM 健康
 ├── rag/                      # ChromaDB 知识库
 ├── html_bom/                 # HTML BOM 生成
 └── interfaces/               # EDA 适配器
 
-tests/                        # 367 条测试
+tests/                        # 843 条测试（pytest 收集）
 ```
 
 ## 配置
@@ -97,7 +97,7 @@ tests/                        # 367 条测试
 ## 测试
 
 ```bash
-python -m pytest tests/ -q     # 367 条测试
+python -m pytest tests/ -q     # 843 条测试
 python -m pytest tests/ -v     # 详细输出
 ```
 
