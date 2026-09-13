@@ -8,6 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **软件著作权**: EDA AI 智能助手 V1.0，目标 2026年8月提交
 - **详细路线图**: 见 [PAPER_ROADMAP.md](PAPER_ROADMAP.md)
 
+## 📝 会话记忆 (memories/)
+
+跨会话记忆在 [`memories/`](memories/README.md)：`.epro2` 格式要点、真实 PCB 数据集实验状态、项目审计结论。**新会话先读 `memories/README.md`**。
+
 ## Commands
 
 ```bash
