@@ -393,6 +393,11 @@ def create_parser(file_path: str) -> PCBParseStrategy:
         return LCEDAJsonParser()
     if suffix == ".epro":
         return LCEDAProParser()
+    if suffix == ".epro2":
+        # 延迟导入：避免 .epro2 解析器在 import src.pcb 时被无条件加载
+        from .epro2_parser import Epro2Parser
+
+        return Epro2Parser()
     supported = PCB.SUPPORTED_PCB_FORMATS
     raise PCBParseError(
         f"不支持的 PCB 文件格式 '{suffix}'，支持的格式: {supported}"

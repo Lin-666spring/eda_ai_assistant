@@ -1,0 +1,2863 @@
+{
+ "DOCHEAD": [
+  {
+   "docType": "FOOTPRINT",
+   "client": "740749a94089e873",
+   "uuid": "82bb954bb248441989d53a7987c1264e",
+   "updateTime": 1736596878000,
+   "version": "1736594516",
+   "editVersion": "3.2.186",
+   "user": {
+    "uuid": "b04ed32c7cc34a0391acf25f7675fa15",
+    "nickname": "TGW Sakiko",
+    "username": "tgwaki",
+    "avatar": "//image.lceda.cn/avatars/2025/9/O36jLUnxD8vRzv5OiihZGtDV9fblN78CZZxt8HpH.webp"
+   }
+  },
+  {
+   "docType": "FOOTPRINT",
+   "client": "740749a94089e873",
+   "uuid": "f323230fd1a241558c1b7fd95ddbd629",
+   "updateTime": 1736253015000,
+   "version": "54483f5b6cbf1342931a99407678ecd6",
+   "editVersion": "3.2.186",
+   "user": {
+    "uuid": "b04ed32c7cc34a0391acf25f7675fa15",
+    "nickname": "TGW Sakiko",
+    "username": "tgwaki",
+    "avatar": "//image.lceda.cn/avatars/2025/9/O36jLUnxD8vRzv5OiihZGtDV9fblN78CZZxt8HpH.webp"
+   }
+  },
+  {
+   "docType": "FOOTPRINT",
+   "client": "740749a94089e873",
+   "uuid": "4d34427db7454b3ba207b7e7b278cbd1",
+   "updateTime": 1736305695000,
+   "version": "54483f5b6cbf1342931a99407678ecd6",
+   "editVersion": "3.2.186",
+   "user": {
+    "uuid": "b04ed32c7cc34a0391acf25f7675fa15",
+    "nickname": "TGW Sakiko",
+    "username": "tgwaki",
+    "avatar": "//image.lceda.cn/avatars/2025/9/O36jLUnxD8vRzv5OiihZGtDV9fblN78CZZxt8HpH.webp"
+   }
+  },
+  {
+   "docType": "FOOTPRINT",
+   "client": "cd6a8e5bdda292a9",
+   "uuid": "6e2afa7e38fc4999be978ce85ee262e2",
+   "updateTime": 1679803978000,
+   "version": "1679786634",
+   "editVersion": "3.2.186",
+   "user": {}
+  },
+  {
+   "docType": "FOOTPRINT",
+   "client": "cd6a8e5bdda292a9",
+   "uuid": "9c0656e3f07447dead8580f82d4429b9",
+   "updateTime": 1679803978000,
+   "version": "1679791239",
+   "editVersion": "3.2.186",
+   "user": {}
+  },
+  {
+   "docType": "FOOTPRINT",
+   "client": "cd6a8e5bdda292a9",
+   "uuid": "2ff04f75a8214be7978ff021422064f9",
+   "updateTime": 1679803978000,
+   "version": "1679791400",
+   "editVersion": "3.2.186",
+   "user": {}
+  },
+  {
+   "docType": "FOOTPRINT",
+   "client": "02469cf63eae95e1",
+   "uuid": "d617c00c1838445d8f3ca4e1cef18013",
+   "updateTime": 1755507093000,
+   "version": "1755506775",
+   "editVersion": "3.2.186",
+   "user": {}
+  },
+  {
+   "docType": "FOOTPRINT",
+   "client": "02469cf63eae95e1",
+   "uuid": "6d1171a30d1d43dfb26e0540781de6d8",
+   "updateTime": 1757305262000,
+   "version": "1704182286",
+   "editVersion": "3.2.186",
+   "user": {}
+  },
+  {
+   "docType": "FOOTPRINT",
+   "client": "02469cf63eae95e1",
+   "uuid": "83678f19335b4a03aff1cb2e67285120",
+   "updateTime": 1755176548000,
+   "version": "1734501471",
+   "editVersion": "3.2.186",
+   "user": {}
+  }
+ ],
+ "LAYER": [
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "layerType": "TOP",
+    "layerName": "Top Layer",
+    "use": true,
+    "show": true,
+    "locked": false,
+    "activeColor": "#ff0000",
+    "activateTransparency": 1,
+    "inactiveColor": "#7f0000",
+    "inactiveTransparency": 1
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "layerType": "BOTTOM",
+    "layerName": "Bottom Layer",
+    "use": true,
+    "show": true,
+    "locked": false,
+    "activeColor": "#0000ff",
+    "activateTransparency": 1,
+    "inactiveColor": "#00007f",
+    "inactiveTransparency": 1
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "layerType": "TOP_SILK",
+    "layerName": "Top Silkscreen Layer",
+    "use": true,
+    "show": true,
+    "locked": false,
+    "activeColor": "#ffcc00",
+    "activateTransparency": 1,
+    "inactiveColor": "#7f6600",
+    "inactiveTransparency": 1
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "layerType": "TOP",
+    "layerName": "Top Layer",
+    "use": true,
+    "show": true,
+    "locked": false,
+    "activeColor": "#ff0000",
+    "activateTransparency": 1,
+    "inactiveColor": "#ff0000",
+    "inactiveTransparency": 1
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "layerType": "BOTTOM",
+    "layerName": "Bottom Layer",
+    "use": true,
+    "show": true,
+    "locked": false,
+    "activeColor": "#0000ff",
+    "activateTransparency": 1,
+    "inactiveColor": "#0000ff",
+    "inactiveTransparency": 1
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "layerType": "TOP_SILK",
+    "layerName": "Top Silkscreen Layer",
+    "use": true,
+    "show": true,
+    "locked": false,
+    "activeColor": "#ffcc00",
+    "activateTransparency": 1,
+    "inactiveColor": "#ffcc00",
+    "inactiveTransparency": 1
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "layerType": "TOP",
+    "layerName": "Top Layer",
+    "use": true,
+    "show": true,
+    "locked": false,
+    "activeColor": "#ff0000",
+    "activateTransparency": 1,
+    "inactiveColor": "#7f0000",
+    "inactiveTransparency": 0.5
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "layerType": "BOTTOM",
+    "layerName": "Bottom Layer",
+    "use": true,
+    "show": true,
+    "locked": false,
+    "activeColor": "#0000ff",
+    "activateTransparency": 1,
+    "inactiveColor": "#00007f",
+    "inactiveTransparency": 0.5
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "layerType": "TOP_SILK",
+    "layerName": "Top Silkscreen Layer",
+    "use": true,
+    "show": true,
+    "locked": false,
+    "activeColor": "#ffcc00",
+    "activateTransparency": 1,
+    "inactiveColor": "#7f6600",
+    "inactiveTransparency": 0.5
+   }
+  }
+ ],
+ "NET": [
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "netType": null,
+    "specialColor": null,
+    "retLine": true,
+    "differentialName": null,
+    "isPositiveNet": false,
+    "equalLengthGroupName": null
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "netType": null,
+    "specialColor": null,
+    "retLine": true,
+    "differentialName": null,
+    "isPositiveNet": false,
+    "equalLengthGroupName": null
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "netType": null,
+    "specialColor": null,
+    "retLine": true,
+    "differentialName": null,
+    "isPositiveNet": false,
+    "equalLengthGroupName": null
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "netType": null,
+    "specialColor": null,
+    "retLine": true,
+    "differentialName": null,
+    "isPositiveNet": false,
+    "equalLengthGroupName": null
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "netType": null,
+    "specialColor": null,
+    "retLine": true,
+    "differentialName": null,
+    "isPositiveNet": false,
+    "equalLengthGroupName": null
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "netType": null,
+    "specialColor": null,
+    "retLine": true,
+    "differentialName": null,
+    "isPositiveNet": false,
+    "equalLengthGroupName": null
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "netType": null,
+    "specialColor": null,
+    "retLine": true,
+    "differentialName": null,
+    "isPositiveNet": false,
+    "equalLengthGroupName": null
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "netType": null,
+    "specialColor": null,
+    "retLine": true,
+    "differentialName": null,
+    "isPositiveNet": false,
+    "equalLengthGroupName": null
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "netType": null,
+    "specialColor": null,
+    "retLine": true,
+    "differentialName": null,
+    "isPositiveNet": false,
+    "equalLengthGroupName": null
+   }
+  }
+ ],
+ "RULE": [
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "ruleState": "DEFAULT",
+    "ruleContext": {
+     "unit": "mm",
+     "isForAll": "ALL",
+     "safeSpacing": [
+      {
+       "layerId": 1,
+       "isOpen": true,
+       "content": [
+        [
+         6
+        ],
+        [
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         6
+        ],
+        [
+         10,
+         10,
+         10,
+         10,
+         10,
+         10,
+         10,
+         10
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         10,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         10,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         10,
+         6,
+         6,
+         6
+        ],
+        [
+         11.8,
+         11.8,
+         11.8,
+         11.8,
+         11.8,
+         11.8,
+         11.8,
+         10,
+         11.8,
+         11.8,
+         11.8
+        ],
+        [
+         6.9,
+         6.9,
+         6.9,
+         6.9,
+         6.9,
+         6.9,
+         6.9,
+         10,
+         6.9,
+         6.9,
+         6.9,
+         6.9
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "ruleState": "DEFAULT",
+    "ruleContext": {
+     "unit": "mm",
+     "deviceClearance": 0,
+     "thru2SmdClearance": 0,
+     "holeClearance": 11.811
+    }
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "ruleState": "DEFAULT",
+    "ruleContext": {
+     "unit": "mm",
+     "track": {
+      "isOpen": true,
+      "content": [
+       {
+        "layerId": 1,
+        "stroMin": 5,
+        "stroDef": 10,
+        "stroMax": 100
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "ruleState": "DEFAULT",
+    "ruleContext": {
+     "unit": "mm",
+     "isForAll": "ALL",
+     "safeSpacing": [
+      {
+       "layerId": 1,
+       "isOpen": true,
+       "content": [
+        [
+         6
+        ],
+        [
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         6
+        ],
+        [
+         10,
+         10,
+         10,
+         10,
+         10,
+         10,
+         10,
+         10
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         10,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         10,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         10,
+         6,
+         6,
+         6
+        ],
+        [
+         11.8,
+         11.8,
+         11.8,
+         11.8,
+         11.8,
+         11.8,
+         11.8,
+         10,
+         11.8,
+         11.8,
+         11.8
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         10,
+         6,
+         6,
+         6,
+         11.8
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "ruleState": "DEFAULT",
+    "ruleContext": {
+     "unit": "mm",
+     "deviceClearance": 0,
+     "thru2SmdClearance": 0,
+     "holeClearance": 11.8
+    }
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "ruleState": "DEFAULT",
+    "ruleContext": {
+     "unit": "mm",
+     "track": {
+      "isOpen": true,
+      "content": [
+       {
+        "layerId": 1,
+        "stroMin": 5,
+        "stroDef": 10,
+        "stroMax": 100
+       }
+      ]
+     }
+    }
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "ruleState": "DEFAULT",
+    "ruleContext": {
+     "unit": "mm",
+     "isForAll": "ALL",
+     "safeSpacing": [
+      {
+       "layerId": 1,
+       "isOpen": true,
+       "content": [
+        [
+         6
+        ],
+        [
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         6
+        ],
+        [
+         10,
+         10,
+         10,
+         10,
+         10,
+         10,
+         10,
+         10
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         10,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         10,
+         6,
+         6
+        ],
+        [
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         6,
+         10,
+         6,
+         6,
+         6
+        ],
+        [
+         11.8,
+         11.8,
+         11.8,
+         11.8,
+         11.8,
+         11.8,
+         11.8,
+         10,
+         11.8,
+         11.8,
+         11.8
+        ],
+        [
+         6.9,
+         6.9,
+         6.9,
+         6.9,
+         6.9,
+         6.9,
+         6.9,
+         10,
+         6.9,
+         6.9,
+         6.9,
+         6.9
+        ]
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "ruleState": "DEFAULT",
+    "ruleContext": {
+     "unit": "mm",
+     "deviceClearance": 0,
+     "thru2SmdClearance": 0,
+     "holeClearance": 11.811
+    }
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "ruleState": "DEFAULT",
+    "ruleContext": {
+     "unit": "mm",
+     "track": {
+      "isOpen": true,
+      "content": [
+       {
+        "layerId": 1,
+        "stroMin": 5,
+        "stroDef": 10,
+        "stroMax": 100
+       }
+      ]
+     }
+    }
+   }
+  }
+ ],
+ "PAD": [
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 1,
+    "num": "30",
+    "centerX": -227.3538,
+    "centerY": -215.4721,
+    "padAngle": -90,
+    "hole": null,
+    "defaultPad": {
+     "padType": "RECT",
+     "width": 118.11,
+     "height": 15.748,
+     "radius": 0
+    },
+    "specialPad": [],
+    "padOffsetX": 0,
+    "padOffsetY": 0,
+    "relativeAngle": null,
+    "plated": true,
+    "padType": "NORMAL",
+    "topSolderExpansion": 4,
+    "bottomSolderExpansion": 4,
+    "topPasteExpansion": 0,
+    "bottomPasteExpansion": 0,
+    "locked": false,
+    "zIndex": null,
+    "connectMode": null,
+    "spokeSpace": null,
+    "spokeWidth": null,
+    "spokeAngle": null,
+    "unusedInnerLayers": [],
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 1,
+    "num": "29",
+    "centerX": -199.7938,
+    "centerY": -215.4721,
+    "padAngle": -90,
+    "hole": null,
+    "defaultPad": {
+     "padType": "RECT",
+     "width": 118.11,
+     "height": 15.748,
+     "radius": 0
+    },
+    "specialPad": [],
+    "padOffsetX": 0,
+    "padOffsetY": 0,
+    "relativeAngle": null,
+    "plated": true,
+    "padType": "NORMAL",
+    "topSolderExpansion": 4,
+    "bottomSolderExpansion": 4,
+    "topPasteExpansion": 0,
+    "bottomPasteExpansion": 0,
+    "locked": false,
+    "zIndex": null,
+    "connectMode": null,
+    "spokeSpace": null,
+    "spokeWidth": null,
+    "spokeAngle": null,
+    "unusedInnerLayers": [],
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 1,
+    "num": "28",
+    "centerX": -172.2338,
+    "centerY": -215.4721,
+    "padAngle": -90,
+    "hole": null,
+    "defaultPad": {
+     "padType": "RECT",
+     "width": 118.11,
+     "height": 15.748,
+     "radius": 0
+    },
+    "specialPad": [],
+    "padOffsetX": 0,
+    "padOffsetY": 0,
+    "relativeAngle": null,
+    "plated": true,
+    "padType": "NORMAL",
+    "topSolderExpansion": 4,
+    "bottomSolderExpansion": 4,
+    "topPasteExpansion": 0,
+    "bottomPasteExpansion": 0,
+    "locked": false,
+    "zIndex": null,
+    "connectMode": null,
+    "spokeSpace": null,
+    "spokeWidth": null,
+    "spokeAngle": null,
+    "unusedInnerLayers": [],
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 1,
+    "num": "2",
+    "centerX": 30.3517,
+    "centerY": -1.4567,
+    "padAngle": 0,
+    "hole": null,
+    "defaultPad": {
+     "padType": "RECT",
+     "width": 31.751,
+     "height": 34.016,
+     "radius": 0
+    },
+    "specialPad": [],
+    "padOffsetX": 0,
+    "padOffsetY": 0,
+    "relativeAngle": 0,
+    "plated": true,
+    "padType": "NORMAL",
+    "topSolderExpansion": 2,
+    "bottomSolderExpansion": 2,
+    "topPasteExpansion": -3937.008,
+    "bottomPasteExpansion": -3937.008,
+    "locked": false,
+    "zIndex": null,
+    "connectMode": null,
+    "spokeSpace": null,
+    "spokeWidth": null,
+    "spokeAngle": null,
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 1,
+    "num": "1",
+    "centerX": -28.9683,
+    "centerY": -1.4567,
+    "padAngle": 0,
+    "hole": null,
+    "defaultPad": {
+     "padType": "RECT",
+     "width": 31.751,
+     "height": 34.016,
+     "radius": 0
+    },
+    "specialPad": [],
+    "padOffsetX": 0,
+    "padOffsetY": 0,
+    "relativeAngle": 0,
+    "plated": true,
+    "padType": "NORMAL",
+    "topSolderExpansion": 2,
+    "bottomSolderExpansion": 2,
+    "topPasteExpansion": -3937.008,
+    "bottomPasteExpansion": -3937.008,
+    "locked": false,
+    "zIndex": null,
+    "connectMode": null,
+    "spokeSpace": null,
+    "spokeWidth": null,
+    "spokeAngle": null,
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 1,
+    "num": "2",
+    "centerX": 5.9423,
+    "centerY": 13.1102,
+    "padAngle": 0,
+    "hole": null,
+    "defaultPad": {
+     "padType": "RECT",
+     "width": 31.751,
+     "height": 34.016,
+     "radius": 0
+    },
+    "specialPad": [],
+    "padOffsetX": 0,
+    "padOffsetY": 0,
+    "relativeAngle": 0,
+    "plated": true,
+    "padType": "NORMAL",
+    "topSolderExpansion": 2,
+    "bottomSolderExpansion": 2,
+    "topPasteExpansion": -3937.008,
+    "bottomPasteExpansion": -3937.008,
+    "locked": false,
+    "zIndex": null,
+    "connectMode": null,
+    "spokeSpace": null,
+    "spokeWidth": null,
+    "spokeAngle": null,
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 1,
+    "num": "2",
+    "centerX": 334.645,
+    "centerY": 0,
+    "padAngle": 0,
+    "hole": null,
+    "defaultPad": {
+     "padType": "RECT",
+     "width": 196.85,
+     "height": 216.535,
+     "radius": 0
+    },
+    "specialPad": [],
+    "padOffsetX": -0.005,
+    "padOffsetY": 0,
+    "relativeAngle": 90,
+    "plated": true,
+    "padType": "NORMAL",
+    "topSolderExpansion": 1.9685,
+    "bottomSolderExpansion": 1.9685,
+    "topPasteExpansion": 0,
+    "bottomPasteExpansion": 0,
+    "locked": false,
+    "zIndex": 8,
+    "connectMode": null,
+    "spokeSpace": null,
+    "spokeWidth": null,
+    "spokeAngle": null,
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 1,
+    "num": "1",
+    "centerX": -334.645,
+    "centerY": 0,
+    "padAngle": 0,
+    "hole": null,
+    "defaultPad": {
+     "padType": "RECT",
+     "width": 196.85,
+     "height": 137.795,
+     "radius": 0
+    },
+    "specialPad": [],
+    "padOffsetX": -0.005,
+    "padOffsetY": 0,
+    "relativeAngle": 0,
+    "plated": true,
+    "padType": "NORMAL",
+    "topSolderExpansion": 1.9685,
+    "bottomSolderExpansion": 1.9685,
+    "topPasteExpansion": 0,
+    "bottomPasteExpansion": 0,
+    "locked": false,
+    "zIndex": 9,
+    "connectMode": null,
+    "spokeSpace": null,
+    "spokeWidth": null,
+    "spokeAngle": null,
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 1,
+    "num": "2",
+    "centerX": 27.56,
+    "centerY": 0,
+    "padAngle": 0,
+    "hole": null,
+    "defaultPad": {
+     "padType": "RECT",
+     "width": 31.496,
+     "height": 35.433,
+     "radius": 0
+    },
+    "specialPad": [],
+    "padOffsetX": -0.005,
+    "padOffsetY": 0,
+    "relativeAngle": 90,
+    "plated": true,
+    "padType": "NORMAL",
+    "topSolderExpansion": null,
+    "bottomSolderExpansion": null,
+    "topPasteExpansion": null,
+    "bottomPasteExpansion": null,
+    "locked": false,
+    "zIndex": 14,
+    "connectMode": null,
+    "spokeSpace": null,
+    "spokeWidth": null,
+    "spokeAngle": null,
+    "padLen": 0
+   }
+  }
+ ],
+ "ATTR": [
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "parentId": "",
+    "layerId": 3,
+    "x": null,
+    "y": null,
+    "key": "Footprint",
+    "value": "0.96OLED",
+    "keyVisible": false,
+    "valueVisible": false,
+    "fontFamily": "default",
+    "fontSize": 50,
+    "strokeWidth": 8,
+    "bold": false,
+    "italic": false,
+    "origin": "LEFT_BOTTOM",
+    "angle": 0,
+    "reverse": false,
+    "expansion": 0,
+    "mirror": false,
+    "locked": false,
+    "zIndex": 0
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "parentId": "",
+    "layerId": 3,
+    "x": null,
+    "y": null,
+    "key": "Footprint",
+    "value": "0603_C_JX",
+    "keyVisible": false,
+    "valueVisible": false,
+    "fontFamily": "default",
+    "fontSize": 67.5,
+    "strokeWidth": 6,
+    "bold": false,
+    "italic": false,
+    "origin": "LEFT_BOTTOM",
+    "angle": 0,
+    "reverse": false,
+    "expansion": 0,
+    "mirror": false,
+    "locked": false,
+    "zIndex": 15
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "parentId": "",
+    "layerId": 3,
+    "x": null,
+    "y": null,
+    "key": "Designator",
+    "value": "C?",
+    "keyVisible": false,
+    "valueVisible": false,
+    "fontFamily": "default",
+    "fontSize": 67.5,
+    "strokeWidth": 6,
+    "bold": false,
+    "italic": false,
+    "origin": "LEFT_BOTTOM",
+    "angle": 0,
+    "reverse": false,
+    "expansion": 0,
+    "mirror": false,
+    "locked": false,
+    "zIndex": 16
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "parentId": "",
+    "layerId": 3,
+    "x": null,
+    "y": null,
+    "key": "Footprint",
+    "value": "0603",
+    "keyVisible": false,
+    "valueVisible": false,
+    "fontFamily": "default",
+    "fontSize": 45,
+    "strokeWidth": 6,
+    "bold": false,
+    "italic": false,
+    "origin": "LEFT_BOTTOM",
+    "angle": 0,
+    "reverse": false,
+    "expansion": 0,
+    "mirror": false,
+    "locked": false,
+    "zIndex": 0,
+    "specialColor": "#000000"
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "parentId": "",
+    "layerId": 3,
+    "x": null,
+    "y": null,
+    "key": "Footprint",
+    "value": "0603",
+    "keyVisible": false,
+    "valueVisible": false,
+    "fontFamily": "default",
+    "fontSize": 45,
+    "strokeWidth": 6,
+    "bold": false,
+    "italic": false,
+    "origin": "LEFT_BOTTOM",
+    "angle": 0,
+    "reverse": false,
+    "expansion": 0,
+    "mirror": false,
+    "locked": false,
+    "zIndex": 0,
+    "specialColor": "#000000"
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "parentId": "",
+    "layerId": 3,
+    "x": null,
+    "y": null,
+    "key": "Footprint",
+    "value": "0603",
+    "keyVisible": false,
+    "valueVisible": false,
+    "fontFamily": "default",
+    "fontSize": 45,
+    "strokeWidth": 6,
+    "bold": false,
+    "italic": false,
+    "origin": "LEFT_BOTTOM",
+    "angle": 0,
+    "reverse": false,
+    "expansion": 0,
+    "mirror": false,
+    "locked": false,
+    "zIndex": 0,
+    "specialColor": "#000000"
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "parentId": "",
+    "layerId": 3,
+    "x": null,
+    "y": null,
+    "key": "Footprint",
+    "value": "AI视觉模块（后置直插排针）",
+    "keyVisible": false,
+    "valueVisible": false,
+    "fontFamily": "default",
+    "fontSize": 50,
+    "strokeWidth": 8,
+    "bold": false,
+    "italic": false,
+    "origin": "LEFT_BOTTOM",
+    "angle": 0,
+    "reverse": false,
+    "expansion": 0,
+    "mirror": false,
+    "locked": false,
+    "zIndex": 0
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "parentId": "",
+    "layerId": 3,
+    "x": null,
+    "y": null,
+    "key": "Footprint",
+    "value": "BAT-SMD_MY-18650-02",
+    "keyVisible": false,
+    "valueVisible": false,
+    "fontFamily": "default",
+    "fontSize": 67.5,
+    "strokeWidth": 6,
+    "bold": false,
+    "italic": false,
+    "origin": "LEFT_BOTTOM",
+    "angle": 0,
+    "reverse": false,
+    "expansion": 0,
+    "mirror": false,
+    "locked": false,
+    "zIndex": 27
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "parentId": "",
+    "layerId": 3,
+    "x": null,
+    "y": null,
+    "key": "Designator",
+    "value": "U?",
+    "keyVisible": false,
+    "valueVisible": false,
+    "fontFamily": "default",
+    "fontSize": 67.5,
+    "strokeWidth": 6,
+    "bold": false,
+    "italic": false,
+    "origin": "LEFT_BOTTOM",
+    "angle": 0,
+    "reverse": false,
+    "expansion": 0,
+    "mirror": false,
+    "locked": false,
+    "zIndex": 28
+   }
+  }
+ ],
+ "FILL": [
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 49,
+    "width": 0.2,
+    "fillStyle": "SOLID",
+    "path": [
+     [
+      "CIRCLE",
+      -407.88,
+      -427.439,
+      2.361
+     ]
+    ],
+    "locked": false,
+    "zIndex": 1,
+    "isBridgingCopper": false,
+    "networkList": [],
+    "refs": []
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 50,
+    "width": 0.2,
+    "fillStyle": "SOLID",
+    "path": [
+     [
+      -362.598,
+      25.316,
+      "L",
+      -337.402,
+      25.316,
+      -337.402,
+      -33.739,
+      -362.598,
+      -33.739,
+      -362.598,
+      25.316
+     ]
+    ],
+    "locked": false,
+    "zIndex": 2,
+    "isBridgingCopper": false,
+    "networkList": [],
+    "refs": []
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 50,
+    "width": 0.2,
+    "fillStyle": "SOLID",
+    "path": [
+     [
+      -262.598,
+      25.316,
+      "L",
+      -237.402,
+      25.316,
+      -237.402,
+      -33.739,
+      -262.598,
+      -33.739,
+      -262.598,
+      25.316
+     ]
+    ],
+    "locked": false,
+    "zIndex": 3,
+    "isBridgingCopper": false,
+    "networkList": [],
+    "refs": []
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 49,
+    "width": 0.2,
+    "fillStyle": "SOLID",
+    "path": [
+     [
+      "CIRCLE",
+      -31.195,
+      -20.8565,
+      2.361
+     ]
+    ],
+    "locked": false,
+    "zIndex": null,
+    "isBridgingCopper": false,
+    "networkList": [],
+    "refs": []
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 49,
+    "width": 0.2,
+    "fillStyle": "SOLID",
+    "path": [
+     [
+      "CIRCLE",
+      -27.265,
+      -94.3719,
+      2.361
+     ]
+    ],
+    "locked": false,
+    "zIndex": null,
+    "isBridgingCopper": false,
+    "networkList": [],
+    "refs": []
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 50,
+    "width": 0.2,
+    "fillStyle": "SOLID",
+    "path": [
+     [
+      -31.191,
+      -20.8545,
+      "L",
+      -31.191,
+      10.6415,
+      -19.38,
+      10.6415,
+      -19.38,
+      -20.8545,
+      -31.191,
+      -20.8545
+     ]
+    ],
+    "locked": false,
+    "zIndex": null,
+    "isBridgingCopper": false,
+    "networkList": [],
+    "refs": []
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 49,
+    "width": 0.2,
+    "fillStyle": "SOLID",
+    "path": [
+     [
+      "CIRCLE",
+      -498.0405,
+      93.6658,
+      2.361
+     ]
+    ],
+    "locked": false,
+    "zIndex": 32,
+    "isBridgingCopper": false,
+    "networkList": [],
+    "refs": []
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 50,
+    "width": 0.2,
+    "fillStyle": "SOLID",
+    "path": [
+     [
+      -460.6385,
+      32.6378,
+      "L",
+      -435.4425,
+      32.6378,
+      -435.4425,
+      57.8338,
+      -460.6385,
+      57.8338,
+      -460.6385,
+      32.6378
+     ]
+    ],
+    "locked": false,
+    "zIndex": 33,
+    "isBridgingCopper": false,
+    "networkList": [],
+    "refs": []
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "layerId": 50,
+    "width": 0.2,
+    "fillStyle": "SOLID",
+    "path": [
+     [
+      -460.6385,
+      -67.3622,
+      "L",
+      -435.4425,
+      -67.3622,
+      -435.4425,
+      -42.1662,
+      -460.6385,
+      -42.1662,
+      -460.6385,
+      -67.3622
+     ]
+    ],
+    "locked": false,
+    "zIndex": 34,
+    "isBridgingCopper": false,
+    "networkList": [],
+    "refs": []
+   }
+  }
+ ],
+ "VIA": [
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "ruleName": "",
+    "centerX": -19.68,
+    "centerY": 19.68,
+    "holeDiameter": 12,
+    "viaDiameter": 24,
+    "viaType": "NORMAL",
+    "topSolderExpansion": null,
+    "bottomSolderExpansion": null,
+    "locked": false,
+    "zIndex": 14
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "ruleName": "",
+    "centerX": -19.68,
+    "centerY": -19.69,
+    "holeDiameter": 12,
+    "viaDiameter": 24,
+    "viaType": "NORMAL",
+    "topSolderExpansion": null,
+    "bottomSolderExpansion": null,
+    "locked": false,
+    "zIndex": 15
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "ruleName": "",
+    "centerX": 19.69,
+    "centerY": -19.69,
+    "holeDiameter": 12,
+    "viaDiameter": 24,
+    "viaType": "NORMAL",
+    "topSolderExpansion": null,
+    "bottomSolderExpansion": null,
+    "locked": false,
+    "zIndex": 16
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "ruleName": "",
+    "centerX": 19.69,
+    "centerY": 19.68,
+    "holeDiameter": 12,
+    "viaDiameter": 24,
+    "viaType": "NORMAL",
+    "topSolderExpansion": null,
+    "bottomSolderExpansion": null,
+    "locked": false,
+    "zIndex": 10
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "ruleName": "",
+    "centerX": -19.68,
+    "centerY": 19.68,
+    "holeDiameter": 12,
+    "viaDiameter": 24,
+    "viaType": "NORMAL",
+    "topSolderExpansion": null,
+    "bottomSolderExpansion": null,
+    "locked": false,
+    "zIndex": 11
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "ruleName": "",
+    "centerX": -19.68,
+    "centerY": -19.69,
+    "holeDiameter": 12,
+    "viaDiameter": 24,
+    "viaType": "NORMAL",
+    "topSolderExpansion": null,
+    "bottomSolderExpansion": null,
+    "locked": false,
+    "zIndex": 12
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "ruleName": "",
+    "centerX": -314.965,
+    "centerY": 0,
+    "holeDiameter": 72.834,
+    "viaDiameter": 72.834,
+    "viaType": "NORMAL",
+    "topSolderExpansion": null,
+    "bottomSolderExpansion": null,
+    "locked": false,
+    "zIndex": 25
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "ruleName": "",
+    "centerX": 314.955,
+    "centerY": 0,
+    "holeDiameter": 72.834,
+    "viaDiameter": 72.834,
+    "viaType": "NORMAL",
+    "topSolderExpansion": null,
+    "bottomSolderExpansion": null,
+    "locked": false,
+    "zIndex": 26
+   }
+  },
+  {
+   "doc": "FOOTPRINT",
+   "atom": {
+    "groupId": 0,
+    "netName": "",
+    "ruleName": "",
+    "centerX": -314.965,
+    "centerY": 0,
+    "holeDiameter": 72.834,
+    "viaDiameter": 72.834,
+    "viaType": "NORMAL",
+    "topSolderExpansion": null,
+    "bottomSolderExpansion": null,
+    "locked": false,
+    "zIndex": 25,
+    "unusedInnerLayers": []
+   }
+  }
+ ],
+ "PART": [
+  {
+   "doc": "SYMBOL",
+   "atom": {
+    "BBOX": [
+     -5.5,
+     -0.5,
+     5.5,
+     10.5
+    ],
+    "title": "+5V.1"
+   }
+  },
+  {
+   "doc": "SYMBOL",
+   "atom": {
+    "BBOX": [
+     -5.5,
+     -0.5,
+     5.5,
+     10.5
+    ],
+    "title": "+5V.1"
+   }
+  },
+  {
+   "doc": "SYMBOL",
+   "atom": {
+    "BBOX": [
+     -10.5,
+     -8.5,
+     10.5,
+     8.5
+    ],
+    "title": "0.1u.1"
+   }
+  },
+  {
+   "doc": "SYMBOL",
+   "atom": {
+    "BBOX": [
+     -10,
+     -4,
+     10,
+     4
+    ],
+    "title": "0603WAF1603T5E.1"
+   }
+  },
+  {
+   "doc": "SYMBOL",
+   "atom": {
+    "BBOX": [
+     -5.5,
+     -8.5,
+     5.5,
+     8.5
+    ],
+    "title": "0805B104K500NT.1"
+   }
+  },
+  {
+   "doc": "SYMBOL",
+   "atom": {
+    "BBOX": [
+     -10,
+     -15,
+     10,
+     15
+    ],
+    "title": "1.25-2A.1"
+   }
+  },
+  {
+   "doc": "SYMBOL",
+   "atom": {
+    "BBOX": [
+     -10,
+     -4,
+     10,
+     4
+    ],
+    "title": "0603WAF0000T5E.1"
+   }
+  },
+  {
+   "doc": "SYMBOL",
+   "atom": {
+    "BBOX": [
+     -10,
+     -4,
+     10,
+     4
+    ],
+    "title": "0603WAF1001T5E.1"
+   }
+  },
+  {
+   "doc": "SYMBOL",
+   "atom": {
+    "BBOX": [
+     -10,
+     -4,
+     10,
+     4
+    ],
+    "title": "0603WAF1002T5E.1"
+   }
+  }
+ ],
+ "COMPONENT": [
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "locked": false,
+    "zIndex": 1,
+    "partId": "pid8a0e77bacb214e",
+    "groupId": "",
+    "x": 0,
+    "y": 0,
+    "rotation": 0,
+    "isMirror": false,
+    "attrs": {}
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "locked": false,
+    "zIndex": 33,
+    "partId": "2n3904S-RTK/PS.1",
+    "groupId": "",
+    "x": 525,
+    "y": -575,
+    "rotation": 0,
+    "isMirror": false,
+    "attrs": {}
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "locked": false,
+    "zIndex": 46,
+    "partId": "2n3904S-RTK/PS.1",
+    "groupId": "",
+    "x": 525,
+    "y": -530,
+    "rotation": 0,
+    "isMirror": false,
+    "attrs": {}
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "locked": false,
+    "zIndex": 1,
+    "partId": "pid8a0e77bacb214e",
+    "groupId": "",
+    "x": 0,
+    "y": 0,
+    "rotation": 0,
+    "isMirror": false,
+    "attrs": {}
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "locked": false,
+    "zIndex": 18,
+    "partId": "ES8311.1",
+    "groupId": "",
+    "x": 320,
+    "y": -545,
+    "rotation": 0,
+    "isMirror": false,
+    "attrs": {}
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "locked": false,
+    "zIndex": 27,
+    "partId": "电阻.1",
+    "groupId": "",
+    "x": 165,
+    "y": -645,
+    "rotation": 0,
+    "isMirror": false,
+    "attrs": {}
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "locked": false,
+    "zIndex": 1,
+    "partId": "pid8a0e77bacb214e",
+    "groupId": "",
+    "x": 0,
+    "y": 0,
+    "rotation": 0,
+    "isMirror": false,
+    "attrs": {}
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "locked": false,
+    "zIndex": 32,
+    "partId": "MY-18650-02.1",
+    "groupId": "",
+    "x": 90,
+    "y": -725,
+    "rotation": 0,
+    "isMirror": true,
+    "attrs": {}
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "locked": false,
+    "zIndex": 41,
+    "partId": "MY-18650-02.1",
+    "groupId": "",
+    "x": 90,
+    "y": -630,
+    "rotation": 0,
+    "isMirror": true,
+    "attrs": {}
+   }
+  }
+ ],
+ "LINE": [
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "lineGroup": "e2626",
+    "startX": 550,
+    "startY": -595,
+    "endX": 535,
+    "endY": -595,
+    "strokeColor": null,
+    "strokeStyle": null,
+    "fillColor": null,
+    "strokeWidth": null,
+    "fillStyle": null
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "lineGroup": "e2628",
+    "startX": 550,
+    "startY": -550,
+    "endX": 535,
+    "endY": -550,
+    "strokeColor": null,
+    "strokeStyle": null,
+    "fillColor": null,
+    "strokeWidth": null,
+    "fillStyle": null
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "lineGroup": "e2630",
+    "startX": 440,
+    "startY": -575,
+    "endX": 455,
+    "endY": -575,
+    "strokeColor": null,
+    "strokeStyle": null,
+    "fillColor": null,
+    "strokeWidth": null,
+    "fillStyle": null
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "lineGroup": "e338",
+    "startX": 205,
+    "startY": -585,
+    "endX": 205,
+    "endY": -625,
+    "strokeColor": null,
+    "strokeStyle": null,
+    "fillColor": "none",
+    "strokeWidth": null,
+    "fillStyle": null
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "lineGroup": "e338",
+    "startX": 205,
+    "startY": -625,
+    "endX": 185,
+    "endY": -625,
+    "strokeColor": null,
+    "strokeStyle": null,
+    "fillColor": "none",
+    "strokeWidth": null,
+    "fillStyle": null
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "lineGroup": "e338",
+    "startX": 205,
+    "startY": -585,
+    "endX": 150,
+    "endY": -585,
+    "strokeColor": null,
+    "strokeStyle": null,
+    "fillColor": "none",
+    "strokeWidth": null,
+    "fillStyle": null
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "lineGroup": "e191",
+    "startX": 115,
+    "startY": -625,
+    "endX": 115,
+    "endY": -635,
+    "strokeColor": null,
+    "strokeStyle": null,
+    "fillColor": null,
+    "strokeWidth": null,
+    "fillStyle": null
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "lineGroup": "e191",
+    "startX": 115,
+    "startY": -635,
+    "endX": 145,
+    "endY": -635,
+    "strokeColor": null,
+    "strokeStyle": null,
+    "fillColor": null,
+    "strokeWidth": null,
+    "fillStyle": null
+   }
+  },
+  {
+   "doc": "SCH_PAGE",
+   "atom": {
+    "lineGroup": "e1618",
+    "startX": 565,
+    "startY": -705,
+    "endX": 565,
+    "endY": -725,
+    "strokeColor": null,
+    "strokeStyle": null,
+    "fillColor": null,
+    "strokeWidth": null,
+    "fillStyle": null
+   }
+  }
+ ],
+ "POUR": [
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "netName": "GND",
+    "layerId": 2,
+    "width": 0.2,
+    "name": "gge16427",
+    "order": 0,
+    "path": [
+     [
+      -273.621,
+      1336.611,
+      "L",
+      -228.346,
+      1291.336,
+      1478.344,
+      1291.336,
+      1521.651,
+      1251.966,
+      1521.651,
+      -255.905,
+      1474.407,
+      -208.661,
+      -397.637,
+      -208.661,
+      -393.7,
+      -204.724,
+      -393.7,
+      -141.732,
+      -273.621,
+      1336.611
+     ]
+    ],
+    "pourType": {
+     "pourType": "SOLID",
+     "fineness": 8
+    },
+    "keepIsland": false,
+    "locked": false,
+    "zIndex": 25
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "netName": "GND",
+    "layerId": 1,
+    "width": 0.2,
+    "name": "gge16442",
+    "order": 0,
+    "path": [
+     [
+      -340.55,
+      1366.139,
+      "L",
+      -248.03,
+      1273.619,
+      1610.233,
+      1273.619,
+      1517.714,
+      1181.1,
+      1517.714,
+      -230.315,
+      1488.186,
+      -200.787,
+      -458.66,
+      -200.787,
+      -340.55,
+      1366.139
+     ]
+    ],
+    "pourType": {
+     "pourType": "SOLID",
+     "fineness": 8
+    },
+    "keepIsland": false,
+    "locked": false,
+    "zIndex": 148
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "netName": "GND",
+    "layerId": 2,
+    "width": 0.2,
+    "name": "POUR1",
+    "order": 0,
+    "path": [
+     [
+      "R",
+      -180,
+      535,
+      1400,
+      750,
+      0,
+      0
+     ]
+    ],
+    "pourType": {
+     "pourType": "SOLID",
+     "fineness": 8
+    },
+    "keepIsland": false,
+    "locked": false,
+    "zIndex": 421
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "netName": "GND",
+    "layerId": 2,
+    "width": 0.2,
+    "name": "POUR2",
+    "order": 0,
+    "path": [
+     [
+      "R",
+      -85,
+      2585,
+      1475,
+      2730,
+      0,
+      0
+     ]
+    ],
+    "pourType": {
+     "pourType": "SOLID",
+     "fineness": 8
+    },
+    "keepIsland": false,
+    "locked": false,
+    "zIndex": 1847
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "netName": "GND",
+    "layerId": 1,
+    "width": 0.2,
+    "name": "POUR1",
+    "order": 1,
+    "path": [
+     [
+      "R",
+      -203,
+      2611,
+      1823,
+      2658,
+      0,
+      0
+     ]
+    ],
+    "pourType": {
+     "pourType": "SOLID",
+     "fineness": 8
+    },
+    "keepIsland": false,
+    "locked": false,
+    "zIndex": 1913
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "netName": "GND",
+    "layerId": 1,
+    "width": 0.2,
+    "name": "POUR1",
+    "order": 0,
+    "path": [
+     [
+      "R",
+      1355,
+      1591.6929,
+      3965,
+      3725,
+      0,
+      0
+     ]
+    ],
+    "pourType": {
+     "pourType": "SOLID",
+     "fineness": 8
+    },
+    "keepIsland": false,
+    "locked": false,
+    "zIndex": 610
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "netName": "GND",
+    "layerId": 2,
+    "width": 0.2,
+    "name": "POUR2",
+    "order": 0,
+    "path": [
+     [
+      "R",
+      1355,
+      1591.6929,
+      3965,
+      3725,
+      0,
+      0
+     ]
+    ],
+    "pourType": {
+     "pourType": "SOLID",
+     "fineness": 8
+    },
+    "keepIsland": false,
+    "locked": false,
+    "zIndex": 822
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "netName": "PGND",
+    "layerId": 2,
+    "width": 0.2,
+    "name": "POUR1",
+    "order": 0,
+    "path": [
+     [
+      "R",
+      -38.5197,
+      1029.5349,
+      3274,
+      894,
+      0,
+      0
+     ]
+    ],
+    "pourType": {
+     "pourType": "SOLID",
+     "fineness": 8
+    },
+    "keepIsland": false,
+    "locked": false,
+    "zIndex": 264
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "netName": "GND",
+    "layerId": 1,
+    "width": 0.2,
+    "name": "POUR1",
+    "order": 0,
+    "path": [
+     [
+      "R",
+      -1865,
+      740,
+      3050,
+      1415,
+      0,
+      0
+     ]
+    ],
+    "pourType": {
+     "pourType": "SOLID",
+     "fineness": 8
+    },
+    "keepIsland": false,
+    "locked": false,
+    "zIndex": 2160
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "netName": "GND",
+    "layerId": 2,
+    "width": 0.2,
+    "name": "POUR2",
+    "order": 0,
+    "path": [
+     [
+      "R",
+      -1870,
+      745,
+      3220,
+      1415,
+      0,
+      0
+     ]
+    ],
+    "pourType": {
+     "pourType": "SOLID",
+     "fineness": 8
+    },
+    "keepIsland": false,
+    "locked": false,
+    "zIndex": 2161
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "netName": "GND",
+    "layerId": 1,
+    "width": 0.2,
+    "name": "POUR1",
+    "order": 0,
+    "path": [
+     [
+      "R",
+      1315,
+      325,
+      1380,
+      1990,
+      0,
+      0
+     ]
+    ],
+    "pourType": {
+     "pourType": "SOLID",
+     "fineness": 8
+    },
+    "keepIsland": false,
+    "locked": false,
+    "zIndex": 102
+   }
+  }
+ ],
+ "PAD_NET": [
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "padNet": "VCC",
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "padNet": "D1",
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "padNet": "D0",
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "padNet": "GND",
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "padNet": "OUTP",
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "padNet": "FM",
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "padNet": "WS2812_42",
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "padNet": "GND",
+    "padLen": 0
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "padNet": "5V_LED2",
+    "padLen": 0
+   }
+  }
+ ],
+ "REGION": [
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "layerId": 2,
+    "width": 0.2,
+    "prohibitType": [
+     "COPPER"
+    ],
+    "path": [
+     [
+      "R",
+      435,
+      1117,
+      558,
+      17,
+      0,
+      0
+     ]
+    ],
+    "locked": false,
+    "zIndex": 109,
+    "name": null,
+    "regionType": "PROHIBIT"
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "layerId": 12,
+    "width": 0.2,
+    "prohibitType": [
+     "COPPER"
+    ],
+    "path": [
+     [
+      "R",
+      412,
+      2510,
+      1018,
+      360,
+      0,
+      0
+     ]
+    ],
+    "locked": false,
+    "zIndex": 1411,
+    "name": null,
+    "regionType": "PROHIBIT"
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "layerId": 2,
+    "width": 0.2,
+    "prohibitType": [
+     "COPPER"
+    ],
+    "path": [
+     [
+      "R",
+      432,
+      1117.0032,
+      18,
+      395.8,
+      0,
+      0
+     ]
+    ],
+    "locked": false,
+    "zIndex": 1507,
+    "name": null,
+    "regionType": "PROHIBIT"
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "layerId": 2,
+    "width": 0.2,
+    "prohibitType": [
+     "COPPER"
+    ],
+    "path": [
+     [
+      "R",
+      1034.0433,
+      623.1189,
+      188.974,
+      177.168,
+      0,
+      0
+     ]
+    ],
+    "locked": false,
+    "zIndex": 388,
+    "name": null,
+    "regionType": "PROHIBIT"
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "layerId": 12,
+    "width": 0.2,
+    "prohibitType": [
+     "TRACK",
+     "COPPER"
+    ],
+    "path": [
+     [
+      "R",
+      2245.8386,
+      645,
+      255.8386,
+      260,
+      180,
+      0
+     ]
+    ],
+    "locked": false,
+    "zIndex": 529,
+    "name": null,
+    "regionType": "PROHIBIT"
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "layerId": 12,
+    "width": 0.2,
+    "prohibitType": [
+     "COPPER"
+    ],
+    "path": [
+     [
+      "CIRCLE",
+      470,
+      1311.0512,
+      190.7559
+     ]
+    ],
+    "locked": false,
+    "zIndex": 717,
+    "name": null,
+    "regionType": "PROHIBIT"
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "layerId": 12,
+    "width": 0.2,
+    "prohibitType": [
+     "COPPER"
+    ],
+    "path": [
+     [
+      "R",
+      755,
+      320,
+      550,
+      785,
+      180,
+      78.7402
+     ]
+    ],
+    "locked": false,
+    "zIndex": 718,
+    "name": null,
+    "regionType": "PROHIBIT"
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "layerId": 1,
+    "width": 0.2,
+    "prohibitType": [
+     "COMPONENT"
+    ],
+    "path": [
+     [
+      "R",
+      -8437.0668,
+      1732.5113,
+      282.4016,
+      598.5866,
+      0,
+      0
+     ]
+    ],
+    "locked": false,
+    "name": "PROHIBIT",
+    "regionType": "PROHIBIT"
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "layerId": 1,
+    "width": 0.2,
+    "prohibitType": [
+     "COMPONENT"
+    ],
+    "path": [
+     [
+      "R",
+      -7344.4133,
+      1732.5113,
+      258.0512,
+      592.8898,
+      0,
+      0
+     ]
+    ],
+    "locked": false,
+    "name": "PROHIBIT",
+    "regionType": "PROHIBIT"
+   }
+  },
+  {
+   "doc": "PCB",
+   "atom": {
+    "partitionId": "",
+    "groupId": 0,
+    "layerId": 12,
+    "width": 0.2,
+    "prohibitType": [
+     "COMPONENT"
+    ],
+    "path": [
+     [
+      "CIRCLE",
+      -8727.9201,
+      165.0979,
+      90.5512
+     ]
+    ],
+    "locked": false,
+    "name": "PROHIBIT",
+    "regionType": "PROHIBIT"
+   }
+  }
+ ]
+}

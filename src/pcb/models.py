@@ -38,7 +38,7 @@ class PCBData:
 
     轻量解析只填充 nets/traces/layers；其余字段预留 M2/M3 扩展。
     """
-    format: str = "unknown"            # "lceda_json" | "lceda_epro" | "unknown"
+    format: str = "unknown"            # "lceda_json" | "lceda_epro" | "lceda_epro2" | "unknown"
     layers: list[str] = field(default_factory=list)
     nets: dict[str, PCBNet] = field(default_factory=dict)  # net_name → PCBNet
     traces: list[PCBTrace] = field(default_factory=list)
@@ -47,6 +47,8 @@ class PCBData:
     differential_pairs: list = field(default_factory=list)  # 预留 M3
     board_outline: dict = field(default_factory=dict)       # {width_mm, height_mm, shape}
     component_positions: dict = field(default_factory=dict)  # ref → {x, y, rotation, layer}
+    bom_items: list = field(default_factory=list)           # BOM 行（dict，.epro2 可重建）
+    metadata: dict = field(default_factory=dict)            # 工程元信息 / 元素计数
 
     @property
     def net_count(self) -> int:
