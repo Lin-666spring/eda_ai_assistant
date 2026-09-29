@@ -108,10 +108,16 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 - **会话列表在左侧栏**（`#conversationList`），只显示「当前助手 + 当前工作区」的会话（`getWorkspaceConversations()`）。`SessionStore.load_all()` 返回的会话记录字段是 `{conv_id, workspace_id, title, sort_order}`，**没有 `id`/`messages`**，`loadPersistedState()` 必须归一化；消息按需由 `switchConversation()` → `db_load_messages` 加载（`conv._loaded` 标记）。
 - **工作区选择**在左侧栏顶部（`#workspaceChip` → `#workspaceMenu`）：新建 / 编辑 / 删除工作区，切换后会话列表随之过滤。工作区绑定的本地目录由后端 `create_workspace_dir()` 校验 / 创建；`pick_workspace_dir()` 用子进程跑 tkinter 弹系统目录框（不能在 Eel 主循环里直接开 tkinter，会把服务卡死）。
 - 所有气泡（含流式 AI）都必须包在 `.msg-row` 里，否则 `clearChatMessages()` 清不掉，切换会话会重复显示回答。
+- **生成/加载过程必须有动效**，统一走三个入口（不要再各写各的 spinner）：
+  - `setStatus(msg)` → 顶栏状态胶囊（spinner + 文案）+ `#topProgress` 顶部滑动进度条；「就绪 / 已… / …失败」这类终态自动转 ✓ 并在 1.5s 后淡出。**它不再是空实现**，所有老调用点都因此生效；
+  - `createStreamingBubble()` 内建「思考中」块（`.think` = 三点脉冲 + 轮换文案 + 计时器），**首个 token 到达自动让位**给正文 —— 不要在等待期留一个空白气泡；`bubble.think(text)` 可让文案跟随当前动作（如「正在调用工具」）；
+  - `_btnLoading(btn, label)` / `_btnLoaded(btn)` → 按钮内联 spinner + 文案替换 + 禁用，可无损还原；`_btnFromEvent()` 在 inline `onclick` 里同步取当前按钮。
+  慢的后端调用由 `_BUSY_LABELS` 白名单在 `eel.*` 上统一包一层 `withBusy()`；**轮询类调用（`poll_toggle` 每 500ms）绝不能进白名单**，否则进度条会一直闪。占位骨架用 `.skeleton-card` / `.skeleton-line`，面板占位用 `.panel-loading`；所有动效在 `prefers-reduced-motion` 下降级为静态但仍可见。
 - 深浅色主题都走 `:root` / `body[data-theme="dark"]` 的 token，不要在规则里硬编码颜色。
 - 图标统一用 `ICONS` 里的内联 SVG（`app.js`），不用 emoji 字体图标；`confirm()` 已由自定义对话框替代。
 
-回归手段：`python tests/ui_smoke.py`（Playwright 真机驱动 + stub LLM，零 API 花费，57 项检查 + 截图到 `output/ui_smoke/`）。覆盖布局回归 P12（主页面默认是对话）/ P13（左侧会话栏 + 工作区隔离）。
+回归手段：`python tests/ui_smoke.py`（Playwright 真机驱动 + stub LLM，零 API 花费，68 项检查 + 截图到 `output/ui_smoke/`）。覆盖布局回归 P12（主页面默认是对话）/ P13（左侧会话栏 + 工作区隔离）/ P14（生成中的加载动效：思考气泡、顶栏胶囊+进度条、审查骨架屏、按钮 loading）。
+⚠️ Playwright 要起自己的驱动子进程（管道 stdio），在受限沙箱里会 `PermissionError` —— 它需要能正常 `spawn` 的权限，不是代码问题。
 文件名不以 `test_` 开头，因此不会被 pytest 收集；配套的 pytest 用例是 `tests/test_tool_catalog.py`（锁前后端工具目录一致性）与 `tests/test_persistence.py`（含 workspaces 用例）。
 
 ### Module map

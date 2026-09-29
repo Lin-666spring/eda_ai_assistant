@@ -555,6 +555,9 @@ async function saveWorkspaceFromDialog() {
 async function browseWorkspaceDir() {
   const pathInput = document.getElementById('wsPathInput');
   const err = document.getElementById('wsDialogError');
+  const btn = _btnFromEvent();
+  _btnLoading(btn, '选择中');
+  setStatus('等待选择目录…');
   try {
     const resp = await eel.pick_workspace_dir()();
     if (resp && resp.ok && resp.path) {
@@ -567,6 +570,8 @@ async function browseWorkspaceDir() {
   } catch (e) {
     if (err) { err.textContent = '无法打开目录选择器，请手动输入路径'; err.style.display = ''; }
   }
+  _btnLoaded(btn);
+  setStatus('就绪');
 }
 
 async function openWorkspacePath() {
@@ -1425,6 +1430,8 @@ function showEmptyState(show) {
 async function startDemo() {
   // Switch to chat-stream mode: hide view container, show chat messages
   _enterChatStream();
+  const demoBtn = _btnFromEvent();
+  _btnLoading(demoBtn, '演示加载中');
 
   // ⚠️ 先把会话准备好：否则首条消息发送时 getActiveConversation() →
   //    newConversation() → clearChatMessages() 会把刚展示的演示结果清空
@@ -1443,6 +1450,7 @@ async function startDemo() {
   appendSystem(' 加载示例数据: 有缺陷的 MCU 板 BOM + 坐标');
   setStatus('加载演示数据...');
   disableInput(true);
+  try {
   let resp;
   try { resp = await eel.load_demo_data()(); } catch(e) {
     appendTip(' 加载失败: ' + e, 'error'); setStatus('就绪'); disableInput(false); return;
@@ -1465,6 +1473,9 @@ async function startDemo() {
   renderConversations();
   // 演示数据也是一次「BOM 到位」，工具可用性跟着变
   if (resp && resp.ok) await refreshToolCatalog();
+  } finally {
+    _btnLoaded(demoBtn);
+  }
 }
 
 /** Feature card click dispatcher */
@@ -1617,7 +1628,13 @@ async function sendChat() {
   disableInput(true);
 
   if (hasImage) {
-    // Image analysis: keep non-streaming
+    // Image analysis: 非流式接口，但同样给加载动效（多模态推理常要十几秒）
+    _streamTokenCount = 0;
+    _activeStreamBubble = createStreamingBubble();
+    document.getElementById('chatMessages').appendChild(_activeStreamBubble.element);
+    _activeStreamBubble.setStatus('正在分析图片…');
+    scrollChat();
+
     let resp;
     try {
       resp = await eel.send_image(userText, currentImage)();
@@ -1628,17 +1645,14 @@ async function sendChat() {
     disableInput(false);
     setStatus('就绪');
 
-    if (resp && resp.ok) {
-      appendBubble('ai', resp.result);
-      conv.messages.push({ role: 'ai', content: resp.result });
-      _persistMessage(activeConvId, 'ai', resp.result);
-      showReport(resp.result);
-    } else {
-      const errMsg = '处理失败: ' + (resp ? resp.result : '未知错误');
-      appendBubble('ai', errMsg);
-      conv.messages.push({ role: 'ai', content: errMsg });
-      _persistMessage(activeConvId, 'ai', errMsg);
-    }
+    const resultText = (resp && resp.ok)
+      ? resp.result
+      : ('处理失败: ' + (resp ? resp.result : '未知错误'));
+    _activeStreamBubble.finalize(resultText);
+    conv.messages.push({ role: 'ai', content: resultText });
+    _persistMessage(activeConvId, 'ai', resultText);
+    if (resp && resp.ok) showReport(resp.result);
+    _activeStreamBubble = null;
   } else {
     // Text message: use streaming API or Agent Loop
     _streamTokenCount = 0;
@@ -1671,6 +1685,8 @@ async function sendChat() {
 }
 
 async function generateHTMLBOM() {
+  const btn = _btnFromEvent();
+  _btnLoading(btn, '生成中');
   setStatus('生成 HTML BOM...');
   try {
     const resp = await eel.generate_html_bom()();
@@ -1688,6 +1704,7 @@ async function generateHTMLBOM() {
       appendTip(resp.report || '生成失败', 'error');
     }
   } catch(e) { appendTip('生成失败: ' + e, 'error'); }
+  _btnLoaded(btn);
   setStatus('就绪');
 }
 
@@ -1745,7 +1762,9 @@ function appendBubbleWithImage(type, text, imageDataUrl) {
 // ── Streaming bubble support ──
 
 /** Create a streaming AI bubble that updates incrementally.
- *  Returns { updateToken(token), finalize(fullText), element } */
+ *  首个 token 到达前显示「思考中」动效（三点脉冲 + 轮换文案 + 计时），
+ *  避免用户对着空气泡干等。
+ *  Returns { updateToken(token), finalize(fullText), setStatus(text), element } */
 function createStreamingBubble() {
   showEmptyState(false);
   // Clear leftover tool-call cards from a previous turn
@@ -1764,6 +1783,7 @@ function createStreamingBubble() {
   let buffer = '';
   let tokenCount = 0;
   const RERENDER_EVERY = 3;  // throttle: rerender every N tokens
+  const thinking = _mountThinking(bubble);   // 立刻进入加载动效
 
   function rerender() {
     // Build inner HTML with streamed content + blinking cursor
@@ -1776,17 +1796,25 @@ function createStreamingBubble() {
     element: row,
     bubble: bubble,
     updateToken(token) {
+      if (bubble.classList.contains('thinking')) {
+        thinking.stop();
+        buffer += token;
+        tokenCount++;
+        rerender();                       // 首个 token 立即出字，不等节流
+        return;
+      }
       buffer += token;
       tokenCount++;
       if (tokenCount % RERENDER_EVERY === 0) {
         rerender();
       }
     },
-    /** 运行中的状态文案（不走 Markdown，立即渲染） */
-    setStatus(text) {
-      bubble.innerHTML = `<span class="stream-status">${escapeHtml(text)}</span>`;
-    },
+    /** 运行中的状态文案（不走 Markdown，保持加载动效） */
+    setStatus(text) { thinking.become(text); },
+    /** 让思考文案跟随当前动作（如「正在调用工具」） */
+    think(text) { thinking.become(text); },
     finalize(fullText) {
+      thinking.stop();
       buffer = fullText || buffer;
       // Final render: no cursor
       bubble.innerHTML = renderMarkdown(buffer) + `<div class="bubble-time">${timeLabel}</div>`;
@@ -2375,10 +2403,175 @@ async function clearAllData() {
 
 // ═══════════ Utils ═══════════
 
-function setStatus(msg) { /* simplified — no status bar in new UI */ }
+// ── 全局忙碌反馈 ──
+// setStatus() 以前是空实现（新 UI 没有状态栏），所有调用点都白调了。
+// 现在它驱动两个全局指示器：顶栏状态胶囊 + 顶部不确定进度条。
+// 终态（就绪/已加载/失败…）自动收尾，运行态自动点亮进度条。
+
+const _DONE_PREFIXES = ['就绪', '完成', '审查完成', '错误', '失败', '取消',
+                        '已', '无', '加载失败', '生成失败', '导入失败', '审查失败'];
+
+function _isDoneStatus(msg) {
+  const s = String(msg || '');
+  return _DONE_PREFIXES.some(p => s.startsWith(p));
+}
+
+let _busyDepth = 0;
+let _statusToken = 0;
+let _statusHideTimer = null;
+
+function setStatus(msg, forceDone) {
+  const pill = document.getElementById('statusPill');
+  const bar = document.getElementById('topProgress');
+  const token = ++_statusToken;
+  if (_statusHideTimer) { clearTimeout(_statusHideTimer); _statusHideTimer = null; }
+
+  if (!msg) {
+    if (pill) pill.classList.add('hidden');
+    if (bar) bar.classList.remove('on');
+    return;
+  }
+
+  const isDone = forceDone === true || _isDoneStatus(msg);
+  if (pill) {
+    pill.classList.remove('hidden');
+    pill.classList.toggle('done', isDone);
+    pill.innerHTML = (isDone ? '<span class="status-check">✓</span>'
+                             : '<span class="status-spinner"></span>')
+      + `<span class="status-pill-text">${escapeHtml(msg)}</span>`;
+  }
+  if (bar) bar.classList.toggle('on', !isDone);
+  if (isDone) {
+    _statusHideTimer = setTimeout(() => {
+      if (_statusToken !== token) return;        // 期间又开始了新任务 → 不收回
+      if (pill) pill.classList.add('hidden');
+      if (bar) bar.classList.remove('on');
+    }, 1500);
+  }
+}
+
+/** 包住一段异步任务：进入即点亮全局加载态，结束还原（可嵌套）。 */
+async function withBusy(label, fn) {
+  _busyDepth++;
+  setStatus(label);
+  try {
+    return await fn();
+  } finally {
+    _busyDepth = Math.max(0, _busyDepth - 1);
+    if (_busyDepth === 0) setStatus('就绪');
+  }
+}
+
+// ── 按钮内联 loading ──
+function _btnLoading(btn, label) {
+  if (!btn || btn.dataset.loading === '1') return;
+  btn.dataset.loading = '1';
+  btn.dataset.origHtml = btn.innerHTML;
+  btn.classList.add('is-loading');
+  btn.disabled = true;
+  if (label) btn.textContent = label;
+}
+function _btnLoaded(btn) {
+  if (!btn || btn.dataset.loading !== '1') return;
+  btn.dataset.loading = '';
+  btn.classList.remove('is-loading');
+  btn.disabled = false;
+  if (btn.dataset.origHtml !== undefined) btn.innerHTML = btn.dataset.origHtml;
+}
+/** 取当前点击事件所在按钮（inline onclick="fn()" 里同步调用才拿得到）。 */
+function _btnFromEvent() {
+  try {
+    const t = window.event && window.event.target;
+    return t && t.closest ? t.closest('button') : null;
+  } catch (e) { return null; }
+}
+
+// ── 后端调用统一加载反馈（白名单：只包慢调用，不碰 500ms 轮询）──
+const _BUSY_LABELS = {
+  check_rules: '运行 71 条设计规则…',
+  review_design_multi_agent: '多智能体审查中…',
+  generate_html_bom: '生成 HTML BOM…',
+  import_bom_file: '解析 BOM 文件…',
+  import_project_file: '解析工程文件…',
+  import_pcb_file: '解析 PCB 文件…',
+  import_pos_file: '解析坐标文件…',
+  query_knowledge_base: '检索知识库…',
+  get_drc_heatmap: '统计违规热力图…',
+  load_demo_data: '加载示例数据…',
+  send_image: '分析图片…',
+  test_llm_connection: '测试模型连接…',
+  fetch_provider_models: '拉取模型列表…',
+  get_design_suggestions: '识别设计意图…',
+};
+
+(function wrapSlowEelCalls() {
+  if (typeof eel === 'undefined') return;
+  Object.keys(_BUSY_LABELS).forEach(name => {
+    const orig = eel[name];
+    if (typeof orig !== 'function') return;
+    eel[name] = function (...args) {
+      const call = orig.apply(eel, args);
+      if (typeof call !== 'function') return call;
+      return function (...cbArgs) {
+        const last = cbArgs[cbArgs.length - 1];
+        if (typeof last === 'function') return call.apply(eel, cbArgs);  // 回调式，不接管
+        const p = call.apply(eel, cbArgs);
+        if (!p || typeof p.then !== 'function') return p;
+        return withBusy(_BUSY_LABELS[name], () => p);
+      };
+    };
+  });
+})();
+
 function disableInput(disabled) {
   document.getElementById('chatInput').disabled = disabled;
   document.getElementById('sendBtn').disabled = disabled;
+}
+
+// ── 思考动效：三点脉冲 + 轮换文案 + 计时 ──
+const THINK_PHRASES = ['正在理解你的问题', '正在读取设计数据', '正在组织回答', '马上就好'];
+const THINK_SLOW_TEXT = '仍在处理，这一步比较耗时…';
+
+/** 渲染/刷新气泡里的「思考中」块。返回 { setText, stop } */
+function _mountThinking(bubble, firstText) {
+  const start = Date.now();
+  let idx = 0, forced = firstText || '', interval = null;
+
+  bubble.classList.add('thinking');
+  bubble.innerHTML =
+    '<div class="think">' +
+      '<span class="think-dots"><i></i><i></i><i></i></span>' +
+      `<span class="think-text">${escapeHtml(forced || THINK_PHRASES[0])}</span>` +
+      '<span class="think-timer">0.0s</span>' +
+    '</div>';
+  const timerEl = bubble.querySelector('.think-timer');
+
+  function setText(text) {
+    const el = bubble.querySelector('.think-text');
+    if (!el || el.textContent === text) return;
+    el.textContent = text;
+    el.style.animation = 'none';
+    void el.offsetWidth;                 // 强制重排，重放淡入动画
+    el.style.animation = '';
+  }
+
+  interval = setInterval(() => {
+    const el = (Date.now() - start) / 1000;
+    if (timerEl) {
+      timerEl.textContent = el.toFixed(1) + 's';
+      timerEl.classList.toggle('slow', el > 15);
+    }
+    if (el > 25) { setText(THINK_SLOW_TEXT); return; }
+    if (forced) return;
+    const i = Math.min(Math.floor(el / 2.5), THINK_PHRASES.length - 1);
+    if (i !== idx) { idx = i; setText(THINK_PHRASES[i]); }
+  }, 120);
+
+  return {
+    setText,
+    become(text) { forced = text || ''; idx = 0; setText(forced || THINK_PHRASES[0]); },
+    stop() { if (interval) { clearInterval(interval); interval = null; } bubble.classList.remove('thinking'); },
+  };
 }
 
 function escapeHtml(str) {
@@ -2460,17 +2653,40 @@ function onToolCall(toolName) {
   card.innerHTML = `<span class="tool-call-spinner"></span>
     <span class="tool-call-icon">🔧</span>
     <span class="tool-call-name">${label}</span>
-    <span class="tool-call-status">执行中…</span>`;
+    <span class="tool-call-status">执行中…</span>
+    <span class="tool-call-timer">0.0s</span>`;
   _activeStreamBubble.element.parentNode.insertBefore(card, _activeStreamBubble.element);
   _activeToolCards.push(card);
+  // 卡片自带计时器：让「慢工具」看起来是在跑，而不是卡住
+  const t0 = Date.now();
+  const timerEl = card.querySelector('.tool-call-timer');
+  card._stopTimer = () => {
+    if (card._timerId) { clearInterval(card._timerId); card._timerId = null; }
+    if (timerEl) timerEl.textContent = ((Date.now() - t0) / 1000).toFixed(1) + 's';
+  };
+  card._timerId = setInterval(() => {
+    if (timerEl) timerEl.textContent = ((Date.now() - t0) / 1000).toFixed(1) + 's';
+  }, 100);
+  // 气泡里的思考文案跟着工具走
+  if (_activeStreamBubble.think) _activeStreamBubble.think(`正在调用「${label}」`);
   // Mark previous card as done
   if (_activeToolCards.length > 1) {
     const prev = _activeToolCards[_activeToolCards.length - 2];
     prev.classList.add('done');
+    if (prev._stopTimer) prev._stopTimer();
     prev.querySelector('.tool-call-spinner').replaceWith(makeDoneIcon());
     prev.querySelector('.tool-call-status').textContent = '已完成';
   }
   scrollChat();
+}
+function _finishToolCard(c) {
+  if (!c || c.classList.contains('done')) return;
+  c.classList.add('done');
+  if (c._stopTimer) c._stopTimer();
+  const sp = c.querySelector('.tool-call-spinner');
+  if (sp) sp.replaceWith(makeDoneIcon());
+  const st = c.querySelector('.tool-call-status');
+  if (st) st.textContent = '已完成';
 }
 function makeDoneIcon() {
   const s = document.createElement('span');
@@ -2491,15 +2707,7 @@ function onStreamToken(token) {
 eel.expose(onStreamDone, 'on_stream_done');
 function onStreamDone(fullText) {
   // Finalize any pending tool-call cards
-  _activeToolCards.forEach(c => {
-    if (!c.classList.contains('done')) {
-      c.classList.add('done');
-      const sp = c.querySelector('.tool-call-spinner');
-      if (sp) sp.replaceWith(makeDoneIcon());
-      const st = c.querySelector('.tool-call-status');
-      if (st) st.textContent = '已完成';
-    }
-  });
+  _activeToolCards.forEach(c => _finishToolCard(c));
   _activeToolCards = [];
   if (_activeStreamBubble) {
     _activeStreamBubble.finalize(fullText);
@@ -2536,23 +2744,73 @@ function onStreamError(errorMsg) {
 //  Multi-Agent Review
 // ══════════════════════════════════════════
 
+// ── 审查进行中的骨架屏（5 位专家 = 5 张占位卡）──
+let _reviewLoadingTimer = null;
+let _reviewLoadingTextEl = null;
+
+function _showReviewLoading() {
+  const box = document.getElementById('reviewLoading');
+  if (!box) return;
+  const phrases = ['正在解析设计数据', '5 位专家并行评审中', '正在汇总共识意见', '正在生成改进路线图'];
+  box.innerHTML =
+    '<div class="review-loading-head">' +
+      '<span class="think-dots"><i></i><i></i><i></i></span>' +
+      `<span class="review-loading-text">${phrases[0]}</span>` +
+    '</div>' +
+    Array.from({ length: 5 }, () =>
+      '<div class="skeleton-card">' +
+        '<div class="skeleton-line h12 w45"></div>' +
+        '<div class="skeleton-line w90"></div>' +
+        '<div class="skeleton-line w70"></div>' +
+      '</div>').join('');
+  box.style.display = 'block';
+  _reviewLoadingTextEl = box.querySelector('.review-loading-text');
+  let i = 0;
+  clearInterval(_reviewLoadingTimer);
+  _reviewLoadingTimer = setInterval(() => {
+    i = (i + 1) % phrases.length;
+    if (_reviewLoadingTextEl) _reviewLoadingTextEl.textContent = phrases[i];
+  }, 2200);
+}
+
+function _hideReviewLoading() {
+  clearInterval(_reviewLoadingTimer);
+  _reviewLoadingTimer = null;
+  _reviewLoadingTextEl = null;
+  const box = document.getElementById('reviewLoading');
+  if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+}
+
 async function runMultiAgentReview() {
   const startBtn = document.querySelector('.review-start-btn');
   const resultDiv = document.getElementById('reviewResult');
   const emptyHint = document.getElementById('reviewEmpty');
   if (startBtn) startBtn.disabled = true;
+  if (startBtn) startBtn.style.display = 'none';   // 让位给骨架屏，别并存两个「启动」入口
   if (emptyHint) emptyHint.style.display = 'none';
   setStatus('多智能体审查中...');
+  _showReviewLoading();
 
   try {
     const raw = await eel.review_design_multi_agent()();
     const data = JSON.parse(raw);
-    if (data.error) { setStatus('审查失败'); if (startBtn) startBtn.disabled = false; alert(data.error); return; }
+    if (data.error) {
+      _hideReviewLoading(); setStatus('审查失败');
+      if (startBtn) { startBtn.disabled = false; startBtn.style.display = ''; }
+      if (emptyHint) emptyHint.style.display = '';
+      alert(data.error); return;
+    }
     renderReviewResult(data);
+    _hideReviewLoading();
     if (resultDiv) resultDiv.style.display = 'block';
     if (startBtn) startBtn.style.display = 'none';
     setStatus('审查完成');
-  } catch (e) { console.error(e); setStatus('审查失败'); if (startBtn) startBtn.disabled = false; }
+  } catch (e) {
+    console.error(e);
+    _hideReviewLoading(); setStatus('审查失败');
+    if (startBtn) { startBtn.disabled = false; startBtn.style.display = ''; }
+    if (emptyHint) emptyHint.style.display = '';
+  }
 }
 
 function renderReviewResult(data) {
@@ -2669,10 +2927,17 @@ async function loadDrcHeatmap() {
   var section = document.getElementById('drcHeatmapSection');
   var chartDom = document.getElementById('drcHeatmapChart');
   var emptyHint = document.getElementById('drcHeatmapEmpty');
+  var holder = document.getElementById('drcHeatmapLoading');
+  var btn = document.querySelector('.heatmap-load-btn');
   if (!section || !chartDom) return;
 
   section.style.display = 'block';
   emptyHint.style.display = 'none';
+  // 统计要遍历全量违规 → 先上占位动效，别让 300px 高度空着
+  chartDom.style.display = 'none';
+  if (holder) holder.style.display = 'flex';
+  _btnLoading(btn, '统计中');
+  setStatus('统计违规热力图…');
 
   try {
     var raw = await eel.get_drc_heatmap()();
@@ -2688,6 +2953,10 @@ async function loadDrcHeatmap() {
     console.error('Heatmap load failed:', e);
     emptyHint.style.display = 'block';
     chartDom.style.display = 'none';
+  } finally {
+    if (holder) holder.style.display = 'none';
+    _btnLoaded(btn);
+    setStatus('就绪');
   }
 }
 

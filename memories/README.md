@@ -8,6 +8,7 @@
 | [epro2-format.md](epro2-format.md) | 立创EDA V3 `.epro2` 格式、解析器实现与 78 工程实测（含四个实现坑） |
 | [experiment-status.md](experiment-status.md) | 真实 PCB 数据集实验结果、指标、复现命令 |
 | [audit-findings.md](audit-findings.md) | 项目"不符合预期"清单与修复状态 |
+| [session/2026-09-29-ui-loading.md](session/2026-09-29-ui-loading.md) | 会话小结：**前端加载动效**——setStatus 落地（原来是空实现）、思考气泡三点+计时、审查骨架屏，UI 冒烟 57→68 项 |
 | [session/2026-09-29-summary.md](session/2026-09-29-summary.md) | 会话小结：**按抽查报告把判据修完**——11 处修复 + 判定类口径 B′，违规 4944→3293、耗时 347s→58s |
 | [session/2026-09-18-summary.md](session/2026-09-18-summary.md) | 会话小结：激活走线锐角/直角规则 + 拐角校准 |
 | [session/2026-09-18-rule-spotcheck.md](session/2026-09-18-rule-spotcheck.md) | 会话小结：**规则抽查**——150 条分层抽样，走线类精确率 11.1%、非走线类 5.5%，确认 15 条判据 bug |

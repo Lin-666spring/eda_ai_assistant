@@ -26,6 +26,8 @@
   P11 伴生模式 4 张 KPI 卡片竖排占满整屏
   P12 主页面必须默认是对话界面；模式入口点开的是「功能子页面」
   P13 左侧栏承载会话列表 + 工作区选择，会话按工作区隔离
+  P14 生成/加载过程必须有动效：思考气泡（三点脉冲+计时）、顶栏状态胶囊 +
+      顶部进度条、多智能体审查骨架屏、按钮内联 loading
 另外附带若干"只报告不失败"的巡检（死 id 引用、视图溢出）。
 """
 
@@ -594,6 +596,155 @@ def check_chat_and_views(page, res: Result):
               f"hidden={vc['hidden']} h={vc['h']}")
 
 
+def check_loading_states(page, res: Result):
+    """P14 加载动效：思考气泡 / 顶栏胶囊+进度条 / 审查骨架屏 / 按钮 loading。
+
+    关键回归点：流式气泡在首个 token 到达前必须是「思考中」动效，
+    而不是一个空白气泡（用户视角 = 点了发送没反应）。
+    """
+    page.evaluate("() => { _enterChatStream(); }")
+    page.wait_for_timeout(200)
+
+    think = page.evaluate("""() => {
+        const b = createStreamingBubble();
+        document.getElementById('chatMessages').appendChild(b.element);
+        window.__probeBubble = b;
+        const el = b.element.querySelector('.bubble-ai');
+        return {
+          thinking: el.classList.contains('thinking'),
+          dots: el.querySelectorAll('.think-dots i').length,
+          text: (el.querySelector('.think-text') || {}).textContent || '',
+          timer: (el.querySelector('.think-timer') || {}).textContent || '',
+          blank: el.textContent.trim().length === 0,
+        };
+    }""")
+    res.check("P14 生成中气泡是思考动效（非空白气泡）",
+              think["thinking"] and think["dots"] == 3 and not think["blank"] and bool(think["text"]),
+              f"dots={think['dots']} text={think['text']!r} timer={think['timer']!r}")
+
+    page.wait_for_timeout(600)
+    page.screenshot(path=str(SHOT_DIR / "loading_thinking.png"))
+    t2 = page.evaluate(
+        "() => (document.querySelector('#chatMessages .think-timer') || {}).textContent || ''")
+    res.check("P14 思考计时器在走", t2 != think["timer"], f"{think['timer']} → {t2}")
+
+    first = page.evaluate("""() => {
+        window.__probeBubble.updateToken('第一段正文');
+        const el = window.__probeBubble.element.querySelector('.bubble-ai');
+        return {thinking: el.classList.contains('thinking'), text: el.textContent};
+    }""")
+    res.check("P14 首个 token 到达即让位给正文",
+              (not first["thinking"]) and "第一段正文" in first["text"],
+              first["text"][:40])
+    page.evaluate("() => { window.__probeBubble.finalize('完成'); window.__probeBubble = null; }")
+
+    st = page.evaluate("""() => {
+        setStatus('运行 71 条设计规则…');
+        const pill = document.getElementById('statusPill');
+        return {hidden: pill.classList.contains('hidden'),
+                text: pill.textContent.trim(),
+                spinner: pill.querySelectorAll('.status-spinner').length,
+                bar: document.getElementById('topProgress').classList.contains('on')};
+    }""")
+    res.check("P14 运行态点亮顶栏状态胶囊 + 顶部进度条",
+              (not st["hidden"]) and st["spinner"] == 1 and st["bar"],
+              f"pill={st['text']!r} bar={st['bar']}")
+
+    done = page.evaluate("""() => {
+        setStatus('就绪');
+        const pill = document.getElementById('statusPill');
+        return {done: pill.classList.contains('done'),
+                bar: document.getElementById('topProgress').classList.contains('on')};
+    }""")
+    res.check("P14 完成后进度条熄灭、胶囊转完成态", done["done"] and not done["bar"], str(done))
+    page.wait_for_timeout(1900)
+    res.check("P14 完成态胶囊自动淡出",
+              page.evaluate("() => document.getElementById('statusPill').classList.contains('hidden')"))
+
+    # 骨架屏视觉存档：调的就是真实路径用的那个渲染函数，只为避开毫秒级 stub 的时序
+    page.evaluate("""() => {
+        openRightPanel(); switchTab('review');
+        const b = document.querySelector('.review-start-btn');
+        if (b) b.style.display = 'none';
+        _showReviewLoading();
+    }""")
+    page.wait_for_timeout(450)
+    page.screenshot(path=str(SHOT_DIR / "loading_review.png"))
+    page.evaluate("""() => {
+        _hideReviewLoading();
+        const b = document.querySelector('.review-start-btn');
+        if (b) b.style.display = '';
+    }""")
+
+    sk = page.evaluate("""() => {
+        featureCmd('__review');      // 打开右面板 + 切到审查页 + 启动审查（同步段）
+        const box = document.getElementById('reviewLoading');
+        const b = document.querySelector('.review-start-btn');
+        return {shown: box.style.display !== 'none',
+                cards: box.querySelectorAll('.skeleton-card').length,
+                lines: box.querySelectorAll('.skeleton-line').length,
+                head: box.textContent.trim(),
+                bar: document.getElementById('topProgress').classList.contains('on'),
+                btn: b ? b.disabled : null};
+    }""")
+    res.check("P14 多智能体审查立刻铺 5 张骨架卡（不等后端）",
+              sk["shown"] and sk["cards"] == 5 and sk["lines"] >= 10 and sk["bar"] and sk["btn"] is True,
+              f"{sk['cards']} 卡 / {sk['lines']} 行 / {sk['head'][:24]!r}")
+
+    page.wait_for_timeout(3000)
+    after = page.evaluate("""() => {
+        const box = document.getElementById('reviewLoading');
+        const b = document.querySelector('.review-start-btn');
+        return {shown: box.style.display !== 'none',
+                result: document.getElementById('reviewResult').style.display !== 'none',
+                btnBack: b ? !b.disabled : false,
+                cards: document.querySelectorAll('#reviewResult .review-agent-card').length};
+    }""")
+    res.check("P14 审查结束撤掉骨架屏（出结果或恢复按钮）",
+              (not after["shown"]) and (after["result"] or after["btnBack"]),
+              f"result={after['result']} cards={after['cards']} btnBack={after['btnBack']}")
+
+    btn = page.evaluate("""() => {
+        const b = document.querySelector('.heatmap-load-btn');
+        const orig = b.textContent.trim();
+        _btnLoading(b, '统计中');
+        const r = {orig: orig, loading: b.classList.contains('is-loading'), disabled: b.disabled,
+                   text: b.textContent.trim(),
+                   spin: getComputedStyle(b, '::after').content !== 'none'};
+        _btnLoaded(b);
+        r.restored = b.textContent.trim();
+        r.cleared = !b.classList.contains('is-loading') && !b.disabled;
+        return r;
+    }""")
+    res.check("P14 按钮 loading 态（内联 spinner + 文案替换 + 可还原）",
+              btn["loading"] and btn["disabled"] and btn["text"] == "统计中" and btn["spin"]
+              and btn["cleared"] and btn["restored"] == btn["orig"],
+              f"{btn['orig']!r} → {btn['text']!r} → {btn['restored']!r}")
+
+    # 热力图：占位动效必须真的挂上并被撤掉（同步段读取，避免和毫秒级后端抢时序）
+    hm = page.evaluate("""() => {
+        loadDrcHeatmap();            // 故意不 await：只看同步段
+        const h = document.getElementById('drcHeatmapLoading');
+        const b = document.querySelector('.heatmap-load-btn');
+        return {shown: h.style.display !== 'none',
+                spin: h.querySelectorAll('.status-spinner').length,
+                btnLoading: b.classList.contains('is-loading'),
+                text: b.textContent.trim()};
+    }""")
+    res.check("P14 热力图统计期间显示占位动效 + 按钮 loading",
+              hm["shown"] and hm["spin"] == 1 and hm["btnLoading"] and hm["text"] == "统计中",
+              str(hm))
+    page.screenshot(path=str(SHOT_DIR / "loading_heatmap.png"))
+    page.wait_for_timeout(2500)
+    res.check("P14 热力图结束后撤掉占位动效",
+              page.evaluate("""() => {
+                  const h = document.getElementById('drcHeatmapLoading');
+                  const b = document.querySelector('.heatmap-load-btn');
+                  return h.style.display === 'none' && !b.classList.contains('is-loading')
+                         && b.textContent.trim() === '加载热力图';
+              }"""))
+
+
 def scan_warnings(page, res: Result, app_js: Path):
     """只报告、不判失败：死 id 引用 / 视图内容溢出。"""
     ids = sorted(set(re.findall(
@@ -715,6 +866,7 @@ def run(port: int, headed: bool) -> int:
             check_dark_theme(page, res)
             check_companion(page, res)
             check_chat_and_views(page, res)
+            check_loading_states(page, res)
             check_sidebar_conversations(page, res)
             check_workspace(page, res)
             scan_warnings(page, res, ROOT / "web" / "js" / "app.js")
