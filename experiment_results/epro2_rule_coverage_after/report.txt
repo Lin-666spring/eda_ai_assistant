@@ -1,0 +1,64 @@
+源目录: test_data\_incoming_epro2
+参与实验的设计: 76（已按 元件/网络/过孔/走线 指纹去重）
+规则总数: 71（带数据守卫 29 条）
+耗时: 45.1s（零 LLM、零网络）
+
+═══ 口径 A：可判定（守卫通过 = 规则真的做了判断）═══
+  C1 旧口径（四种导出）: 50/71 = 70.4%
+  C2 +PCB元件/网络（无铜）: 56/71 = 78.9%
+  C3 全量 .epro2: 71/71 = 100.0%
+
+═══ 口径 B：有输出（该配置下实际产出 ≥1 条违规的规则）═══
+  C1 旧口径（四种导出）: 39/71 = 54.9%（违规总数 2215）
+  C2 +PCB元件/网络（无铜）: 45/71 = 63.4%（违规总数 2621）
+  C3 全量 .epro2: 60/71 = 84.5%（违规总数 4000）
+
+C2 相对 C1 新解锁: 6 条
+C3 相对 C2 新解锁: 15 条
+C3 相对 C1 共新解锁: 21 条
+
+═══ 被 .epro2 解锁的规则（C1 拦截 → C3 可判定）═══
+  [C3] _check_clock_guard_trace（时钟信号包地检查）  ← 守卫: not pcb or not pcb.traces
+          可判定 76/76 个设计，有输出 48/76 个，违规 238 次
+  [C2] _check_copper_pour_connectivity（铜皮连接检查）  ← 守卫: not pcb
+          可判定 76/76 个设计，有输出 2/76 个，违规 2 次
+  [C3] _check_crosstalk_spacing（3W 串扰间距检查）  ← 守卫: not pcb or not pcb.traces
+          可判定 76/76 个设计，有输出 76/76 个，违规 192 次
+  [C3] _check_diff_pair_length（差分对等长检查）  ← 守卫: not pcb or not pcb.traces
+          可判定 76/76 个设计，有输出 43/76 个，违规 135 次
+  [C3] _check_diff_pair_spacing（差分对间距检查）  ← 守卫: not pcb or not pcb.traces
+          可判定 76/76 个设计，有输出 9/76 个，违规 15 次
+  [C2] _check_ground_plane_continuity（地平面连续性检查）  ← 守卫: not pcb
+          可判定 76/76 个设计，有输出 76/76 个，违规 76 次
+  [C3] _check_hs_signal_reference_plane（高速信号参考平面检查）  ← 守卫: not pcb or not pcb.traces
+          可判定 76/76 个设计，有输出 55/76 个，违规 55 次
+  [C3] _check_impedance_matching（特征阻抗匹配检查）  ← 守卫: not pcb or not pcb.traces
+          可判定 76/76 个设计，有输出 27/76 个，违规 117 次
+  [C3] _check_loop_area（环路面积检查）  ← 守卫: not pcb or not pcb.traces
+          可判定 76/76 个设计，有输出 23/76 个，违规 100 次
+  [C2] _check_net_antenna（天线效应检查）  ← 守卫: not pcb or not pcb.nets
+          可判定 76/76 个设计，有输出 31/76 个，违规 31 次
+  [C3] _check_power_traces（电源线载流检查）  ← 守卫: not pcb or not pcb.traces
+          可判定 76/76 个设计，有输出 30/76 个，违规 118 次
+  [C3] _check_signal_traces（信号线宽度检查）  ← 守卫: not pcb or not pcb.traces
+          可判定 76/76 个设计，有输出 8/76 个，违规 268 次
+  [C2] _check_silkscreen_pad_clearance（丝印焊盘间距检查）  ← 守卫: not pcb or not pcb.component_positions
+          可判定 76/76 个设计，有输出 76/76 个，违规 76 次
+  [C2] _check_silkscreen_readability（丝印可读性检查）  ← 守卫: not pcb
+          可判定 76/76 个设计，有输出 76/76 个，违规 76 次
+  [C3] _check_stub_length（短桩线检查）  ← 守卫: not pcb or not pcb.vias
+          可判定 75/76 个设计，有输出 46/76 个，违规 46 次
+  [C2] _check_testpoint_coverage（测试点覆盖检查）  ← 守卫: not pcb
+          可判定 76/76 个设计，有输出 71/76 个，违规 71 次
+  [C3] _check_trace_acute_angles（_check_trace_acute_angles）  ← 守卫: not pcb or not pcb.traces
+          可判定 76/76 个设计，有输出 0/76 个，违规 0 次
+  [C3] _check_trace_edge_clearance（走线板边间距检查）  ← 守卫: not pcb or not pcb.traces
+          可判定 76/76 个设计，有输出 1/76 个，违规 1 次
+  [C3] _check_unconnected_pins（未连接引脚检查）  ← 守卫: not netlist or not bom_items
+          可判定 76/76 个设计，有输出 41/76 个，违规 58 次
+  [C3] _check_via_density（过孔密度检查）  ← 守卫: not pcb or not pcb.vias
+          可判定 75/76 个设计，有输出 9/76 个，违规 27 次
+  [C3] _check_via_thermal_relief（过孔热焊盘检查）  ← 守卫: not pcb or not pcb.vias
+          可判定 75/76 个设计，有输出 71/76 个，违规 71 次
+
+═══ 全量 .epro2 下仍被拦下的规则（0 条）═══

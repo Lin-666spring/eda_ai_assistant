@@ -1,0 +1,67 @@
+{
+ "69de1f0b5019-bom_value_range-14": {
+  "v": "FP",
+  "s": "no",
+  "r": "E24 查表有 10× 比例 bug（mantissa*100 与 e*10 比较），20kΩ 本是标准值"
+ },
+ "e0b21c2eb89e-bom_value_range-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "同 bug：22µF 是 E24 标准值；实测 100K/100nF 等标准值也一律误报"
+ },
+ "0d385bbc9396-capacitor_voltage_derating-2": {
+  "v": "FP",
+  "s": "no",
+  "r": "料号 KM476M035D11RR0VH2FP0 里的 「R0VH」被正则抓成 0V，耐压 0.0V 是误解析不是实际值"
+ },
+ "f1c53adb55fe-capacitor_voltage_derating-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "同机制：从 value/料号子串里抓到 0V 就报「裕量不足」，属解析误报"
+ },
+ "2b30c85075cc-dcdc_feedback_network-1": {
+  "v": "FP",
+  "s": "no",
+  "r": "SY7200AABC 是 LED 升压恒流驱动，被料号子串匹配判成「开关稳压器」；扩流后还包含 MPU6500(IMU)、磁珠、钽电容"
+ },
+ "38b5022c1cf4-dcdc_feedback_network-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "LED1(XL-1608SURC-06) 是 LED，因料号前缀 XL 被判为开关稳压器，ERROR 级误报"
+ },
+ "cf50567ab4e5-mosfet_gate_resistor-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "CARD2 是 SMN-304 NanoSIM 卡座，因名字里含 si 被裸子串判成功率 MOSFET"
+ },
+ "ae2924a3d9fe-mosfet_gate_resistor-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "规则算出的 has_gate_r 从未参与判断，命中即无条件建议串栅极电阻，属提示非判定"
+ },
+ "a5b2e4f5da26-resistor_power_rating-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "LED1 描述含「功率:60mW」+0603 封装就被当成功率电阻，属描述关键词误判"
+ },
+ "40264558a191-decoupling_proximity-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "配对逻辑把「除电阻电感外的所有元件」当 IC：MIC1(咪头) 当 IC、B1/BUZZER 当去耦电容；112 实为配对数"
+ },
+ "a4a5c575708a-decoupling_proximity-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "同上：MIC2/C1、MIC2/CN2 这类配对不成立"
+ },
+ "9a530303acc8-net_antenna-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "≤1 引脚网络被一律提示「可能浮空/天线」，未查铜皮与连接性，属提示"
+ },
+ "e0b21c2eb89e-net_antenna-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "该板 535 网络里 214 个零引脚，是 pins 数据缺失（封装文档查不到就丢弃），「234 个网络浮空」不成立"
+ }
+}

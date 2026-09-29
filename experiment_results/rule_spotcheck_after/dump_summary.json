@@ -1,0 +1,30 @@
+{
+ "source": "test_data\\_incoming_epro2",
+ "designs": 76,
+ "rules_run": 2,
+ "violations": 72,
+ "elapsed_s": 13.0,
+ "by_rule_func": {
+  "_check_power_traces": 68,
+  "_check_bom_value_range": 4
+ },
+ "by_rule_name": {
+  "电源线载流检查": 68,
+  "参数范围检查": 4
+ },
+ "rule_errors": {},
+ "trace_rules": [
+  "_check_signal_traces",
+  "_check_power_traces",
+  "_check_trace_acute_angles",
+  "_check_crosstalk_spacing",
+  "_check_diff_pair_length",
+  "_check_diff_pair_spacing",
+  "_check_clock_guard_trace",
+  "_check_hs_signal_reference_plane",
+  "_check_loop_area",
+  "_check_stub_length",
+  "_check_trace_edge_clearance",
+  "_check_impedance_matching"
+ ]
+}

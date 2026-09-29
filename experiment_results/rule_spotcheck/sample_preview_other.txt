@@ -1,0 +1,375 @@
+[339710d4dd91-analog_digital_separation-0] ESP-Hi：ESP32-C3 超低成本 AI 对话机器狗_2026-09-14 | 模数分离检查 | warning
+    发现 1 对模拟-数字元件间距<5.0mm
+    ev: design="ESP-Hi：ESP32-C3 超低成本 AI 对话机器狗_2026"; ctx={"components": 73, "nets": 71, "traces": 105, "vias": 384, "pours": 8}
+
+[2b30c85075cc-antenna_keepout-0] 承载我所有幻想的键盘_2026-09-14 (1).epro2 | 天线净空区检查 | warning
+    无线模块 U1 天线周围需净空区
+    ev: design="承载我所有幻想的键盘_2026-09-14 (1).epro2"; ctx={"components": 471, "nets": 535, "traces": 796, "vias": 1844, "pours": 57}
+
+[5516bd2c0c00-antenna_keepout-0] 无线激光雕刻机_2026-09-14.epro2 | 天线净空区检查 | warning
+    无线模块 Q3 天线周围需净空区
+    ev: design="无线激光雕刻机_2026-09-14.epro2"; ctx={"components": 62, "nets": 54, "traces": 63, "vias": 46, "pours": 2}
+
+[69de1f0b5019-battery_voltage_divider-0] LW焊台_2026-09-14.epro2 | 电池电压分压器检查 | warning
+    电池供电系统缺少电压监测分压电阻网络
+    ev: design="LW焊台_2026-09-14.epro2"; ctx={"components": 144, "nets": 152, "traces": 238, "vias": 628, "pours": 44}
+
+[d619077597d4-battery_voltage_divider-0] 立创·梁山派开发板_2026-09-14.epro2 | 电池电压分压器检查 | warning
+    电池供电系统缺少电压监测分压电阻网络
+    ev: design="立创·梁山派开发板_2026-09-14.epro2"; ctx={"components": 85, "nets": 133, "traces": 234, "vias": 429, "pours": 9}
+
+[b96a1767fff0-bga_fanout-0] 立创·泰山派3M（RK3576)开发板_2026-09-14.epro2 | BGA 扇出检查 | warning
+    BGA 封装 U14 需要扇出设计——确认过孔尺寸/间距满足工艺能力
+    ev: design="立创·泰山派3M（RK3576)开发板_2026-09-14.epr"; ctx={"components": 947, "nets": 668, "traces": 1320, "vias": 2052, "pours": 51}
+
+[e3f96b3e50dc-bga_fanout-0] 立创·逻辑派FPGA-G1开发板_2026-09-14.epro2 | BGA 扇出检查 | warning
+    BGA 封装 U29 需要扇出设计——确认过孔尺寸/间距满足工艺能力
+    ev: design="立创·逻辑派FPGA-G1开发板_2026-09-14.epro2"; ctx={"components": 281, "nets": 268, "traces": 502, "vias": 697, "pours": 12}
+
+[69de1f0b5019-bom_value_range-14] LW焊台_2026-09-14.epro2 | 参数范围检查 | info
+    R33 参数 [20kΩ] 不在 E24 标准系列
+    ev: design="LW焊台_2026-09-14.epro2"; ctx={"components": 144, "nets": 152, "traces": 238, "vias": 628, "pours": 44}
+
+[e0b21c2eb89e-bom_value_range-0] AirLink（无线！USB HUB）_2026-09-14.epro2 | 参数范围检查 | info
+    C102 参数 [22uF] 不在 E24 标准系列
+    ev: design="AirLink（无线！USB HUB）_2026-09-14.epr"; ctx={"components": 405, "nets": 535, "traces": 496, "vias": 706, "pours": 10}
+
+[0d385bbc9396-capacitor_voltage_derating-2] 【RA】农田环境数据无线采集灌溉自律系统（基于瑞萨MCU）_2026-09-14 | 电容耐压降额检查 | warning
+    电容 C26 耐压 0.0V，系统最高电压 24.0V，裕量不足
+    ev: design="【RA】农田环境数据无线采集灌溉自律系统（基于瑞萨MCU）_2026"; ctx={"components": 95, "nets": 91, "traces": 132, "vias": 708, "pours": 7}
+
+[f1c53adb55fe-capacitor_voltage_derating-0] EDA-Robot机器狗_2026-09-14.epro2 | 电容耐压降额检查 | warning
+    电容 C3 耐压 0.0V，系统最高电压 5.0V，裕量不足
+    ev: design="EDA-Robot机器狗_2026-09-14.epro2"; ctx={"components": 35, "nets": 19, "traces": 30, "vias": 20, "pours": 2}
+
+[0c30f919fb59-component_edge_clearance-0] 我 DIY 了一款不太一样的迷你对讲机！_2026-09-14.epro2 | 板边间距检查 | warning
+    16 个元件距板边 <3.0mm: C14, D1, L1, L2, LED1
+    ev: design="我 DIY 了一款不太一样的迷你对讲机！_2026-09-14.ep"; ctx={"components": 44, "nets": 38, "traces": 53, "vias": 41, "pours": 2}
+
+[56671a84b78e-component_edge_clearance-0] 立创DAPLINK调试工具_2026-09-14.epro2 | 板边间距检查 | warning
+    27 个元件距板边 <3.0mm: C15, CN1, CN3, CN4, D2
+    ev: design="立创DAPLINK调试工具_2026-09-14.epro2"; ctx={"components": 127, "nets": 98, "traces": 156, "vias": 323, "pours": 17}
+
+[5516bd2c0c00-component_height_zoning-0] 无线激光雕刻机_2026-09-14.epro2 | 元件高度分区检查 | info
+    高元件(2个)与矮元件(32个)混合布局
+    ev: design="无线激光雕刻机_2026-09-14.epro2"; ctx={"components": 62, "nets": 54, "traces": 63, "vias": 46, "pours": 2}
+
+[8963b54a91ea-component_height_zoning-0] 多协议桌面充电站3.0_2026-09-14.epro2 | 元件高度分区检查 | info
+    高元件(2个)与矮元件(74个)混合布局
+    ev: design="多协议桌面充电站3.0_2026-09-14.epro2"; ctx={"components": 213, "nets": 189, "traces": 277, "vias": 1234, "pours": 144}
+
+[00883c256342-component_spacing-0] 专业级全键盘电子钢琴_2026-09-14.epro2 | 元件间距检查 | info
+    约 5 对元件间距 <1.0mm，可能影响 SMT 贴片和返修
+    ev: design="专业级全键盘电子钢琴_2026-09-14.epro2"; ctx={"components": 343, "nets": 433, "traces": 514, "vias": 1526, "pours": 111}
+
+[1a507f98388a-component_spacing-0] All in one服务器三合一扩展卡_2026-09-14.epro2 | 元件间距检查 | info
+    约 5 对元件间距 <1.0mm，可能影响 SMT 贴片和返修
+    ev: design="All in one服务器三合一扩展卡_2026-09-14.epr"; ctx={"components": 505, "nets": 435, "traces": 662, "vias": 1624, "pours": 13}
+
+[57defaf21063-connector_edge_placement-0] 手搓万兆软路由NAS,只需Lattepanda Mu PCIe板_2026-09 | 连接器边沿布局检查 | info
+    连接器 U4 距板边较远(22,17)，可能影响插拔操作
+    ev: design="手搓万兆软路由NAS,只需Lattepanda Mu PCIe板_2"; ctx={"components": 255, "nets": 188, "traces": 259, "vias": 1507, "pours": 5}
+
+[e3f96b3e50dc-connector_edge_placement-2] 立创·逻辑派FPGA-G1开发板_2026-09-14.epro2 | 连接器边沿布局检查 | info
+    连接器 U2 距板边较远(59,27)，可能影响插拔操作
+    ev: design="立创·逻辑派FPGA-G1开发板_2026-09-14.epro2"; ctx={"components": 281, "nets": 268, "traces": 502, "vias": 697, "pours": 12}
+
+[0bbb3bf80e31-copper_pour_connectivity-0] 立创·地奇星RA6E2数字电压电流表扩展板_2026-09-14.epro2 | 铜皮连接检查 | info
+    PCB 文件未包含铜皮数据，请确认覆铜无孤岛
+    ev: design="立创·地奇星RA6E2数字电压电流表扩展板_2026-09-14.e"; ctx={"components": 56, "nets": 44, "traces": 51, "vias": 16, "pours": 0}
+
+[e89b65d2080e-copper_pour_connectivity-0] 立创·地文星CW32数字电压电流表扩展板_2026-09-14.epro2 | 铜皮连接检查 | info
+    PCB 文件未包含铜皮数据，请确认覆铜无孤岛
+    ev: design="立创·地文星CW32数字电压电流表扩展板_2026-09-14.ep"; ctx={"components": 58, "nets": 52, "traces": 50, "vias": 18, "pours": 0}
+
+[cf50567ab4e5-crystal_frequency-0] 立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epr | 晶振频率匹配 | info
+    晶振 X1 (32.768Hz) 建议 CL=12.5pF~15pF
+    ev: design="立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-"; ctx={"components": 772, "nets": 591, "traces": 871, "vias": 1896, "pours": 20}
+
+[fb12f7b89b5b-crystal_frequency-0] Excam基于openmv的多功能机器视觉小相机_2026-09-14.epro | 晶振频率匹配 | info
+    晶振 X1 (12MHz) 建议 CL=15pF~22pF
+    ev: design="Excam基于openmv的多功能机器视觉小相机_2026-09-1"; ctx={"components": 139, "nets": 107, "traces": 149, "vias": 379, "pours": 8}
+
+[38b5022c1cf4-crystal_load_caps-0] 迷你便携无线WIFI热成像_2026-09-14.epro2 | 晶振负载电容检查 | warning
+    晶振负载电容可能不足：板上 0 颗 1-47pF 小电容，需 2 颗覆盖 1 个晶振
+    ev: design="迷你便携无线WIFI热成像_2026-09-14.epro2"; ctx={"components": 52, "nets": 35, "traces": 53, "vias": 255, "pours": 4}
+
+[bdc57176e9b8-crystal_load_caps-0] 立创·逻辑派FPGA-Z1开发板_2026-09-14.epro2 | 晶振负载电容检查 | warning
+    晶振负载电容可能不足：板上 2 颗 1-47pF 小电容，需 8 颗覆盖 4 个晶振
+    ev: design="立创·逻辑派FPGA-Z1开发板_2026-09-14.epro2"; ctx={"components": 113, "nets": 138, "traces": 188, "vias": 266, "pours": 7}
+
+[2b30c85075cc-dcdc_feedback_network-1] 承载我所有幻想的键盘_2026-09-14 (1).epro2 | DC-DC 反馈网络检查 | error
+    开关稳压器 U142(SY7200AABC) 缺少 FB 分压电阻网络
+    ev: design="承载我所有幻想的键盘_2026-09-14 (1).epro2"; ctx={"components": 471, "nets": 535, "traces": 796, "vias": 1844, "pours": 57}
+
+[38b5022c1cf4-dcdc_feedback_network-0] 迷你便携无线WIFI热成像_2026-09-14.epro2 | DC-DC 反馈网络检查 | error
+    开关稳压器 LED1(XL-1608SURC-06) 缺少 FB 分压电阻网络
+    ev: design="迷你便携无线WIFI热成像_2026-09-14.epro2"; ctx={"components": 52, "nets": 35, "traces": 53, "vias": 255, "pours": 4}
+
+[0181b5924c3c-debug_port_accessibility-0] AI智能相框_2026-09-14.epro2 | 调试接口检查 | warning
+    检测到调试接口器件但缺少调试排针
+    ev: design="AI智能相框_2026-09-14.epro2"; ctx={"components": 149, "nets": 110, "traces": 178, "vias": 180, "pours": 16}
+
+[86a5dcabfcf4-debug_port_accessibility-0] 立创·天巧星MSPM0G3519开发板_2026-09-14.epro2 | 调试接口检查 | warning
+    检测到调试接口器件但缺少调试排针
+    ev: design="立创·天巧星MSPM0G3519开发板_2026-09-14.epr"; ctx={"components": 121, "nets": 116, "traces": 207, "vias": 526, "pours": 12}
+
+[38b5022c1cf4-decoupling_cap_per_pin-0] 迷你便携无线WIFI热成像_2026-09-14.epro2 | 多电源引脚去耦检查 | warning
+    主控 U1(QFN-32_L5.0-W5.0-P0.50-TL-EP3.7,32引脚) 电容数量(0)可能不足
+    ev: design="迷你便携无线WIFI热成像_2026-09-14.epro2"; ctx={"components": 52, "nets": 35, "traces": 53, "vias": 255, "pours": 4}
+
+[f5023e060fb7-decoupling_cap_per_pin-0] 赛博挂坠【源码已开放】_2026-09-14.epro2 | 多电源引脚去耦检查 | warning
+    主控 U13(QFN-32_L5.0-W5.0-P0.50-TL-EP3.7,32引脚) 电容数量(0)可能不足
+    ev: design="赛博挂坠【源码已开放】_2026-09-14.epro2"; ctx={"components": 58, "nets": 38, "traces": 38, "vias": 87, "pours": 16}
+
+[0c30f919fb59-decoupling_caps-5] 我 DIY 了一款不太一样的迷你对讲机！_2026-09-14.epro2 | 去耦电容检查 | warning
+    IC U6 缺少体电容(10µF)用于低频纹波
+    ev: design="我 DIY 了一款不太一样的迷你对讲机！_2026-09-14.ep"; ctx={"components": 44, "nets": 38, "traces": 53, "vias": 41, "pours": 2}
+
+[0d385bbc9396-decoupling_caps-6] 【RA】农田环境数据无线采集灌溉自律系统（基于瑞萨MCU）_2026-09-14 | 去耦电容检查 | error
+    IC U15 缺少 100nF 高频去耦电容
+    ev: design="【RA】农田环境数据无线采集灌溉自律系统（基于瑞萨MCU）_2026"; ctx={"components": 95, "nets": 91, "traces": 132, "vias": 708, "pours": 7}
+
+[40264558a191-decoupling_proximity-0] 天空星·筑基学习板_2026-09-14.epro2 | 去耦电容距离检查 | warning
+    112 个去耦电容距 IC >15.0mm: MIC1/B1(65.9mm), MIC1/BUZZER1(83.1mm), MIC1/BUZZER2(72.8mm)
+    ev: design="天空星·筑基学习板_2026-09-14.epro2"; ctx={"components": 619, "nets": 361, "traces": 508, "vias": 2312, "pours": 19}
+
+[a4a5c575708a-decoupling_proximity-0] 立创·3.1寸MIPI屏幕扩展板_2026-09-14.epro2 | 去耦电容距离检查 | warning
+    14 个去耦电容距 IC >15.0mm: MIC2/C1(30.7mm), MIC2/C2(20.5mm), MIC2/CN2(48.5mm)
+    ev: design="立创·3.1寸MIPI屏幕扩展板_2026-09-14.epro2"; ctx={"components": 34, "nets": 26, "traces": 44, "vias": 140, "pours": 2}
+
+[0d385bbc9396-emi_filter-0] 【RA】农田环境数据无线采集灌溉自律系统（基于瑞萨MCU）_2026-09-14 | EMI 滤波检查 | info
+    电源入口缺少共模电感/EMI 滤波器件
+    ev: design="【RA】农田环境数据无线采集灌溉自律系统（基于瑞萨MCU）_2026"; ctx={"components": 95, "nets": 91, "traces": 132, "vias": 708, "pours": 7}
+
+[f63ddcd060ef-emi_filter-0] EagleH7-EDU_2026-09-14.epro2 | EMI 滤波检查 | info
+    电源入口缺少共模电感/EMI 滤波器件
+    ev: design="EagleH7-EDU_2026-09-14.epro2"; ctx={"components": 202, "nets": 169, "traces": 266, "vias": 302, "pours": 4}
+
+[04c2858068c9-esd_protection-0] ESP-HDMI-Bridge_2026-09-14.epro2 | ESD 保护检查 | warning
+    存在外部连接器但未检测到 TVS/ESD 保护器件
+    ev: design="ESP-HDMI-Bridge_2026-09-14.epro2"; ctx={"components": 96, "nets": 74, "traces": 93, "vias": 430, "pours": 8}
+
+[51d7b3e13ef5-esd_protection-0] 立创·天机星TMS320F28P550开发板_2026-09-14.epro2 | ESD 保护检查 | warning
+    存在外部连接器但未检测到 TVS/ESD 保护器件
+    ev: design="立创·天机星TMS320F28P550开发板_2026-09-14."; ctx={"components": 68, "nets": 100, "traces": 139, "vias": 289, "pours": 11}
+
+[2b30c85075cc-ferrite_bead_isolation-0] 承载我所有幻想的键盘_2026-09-14 (1).epro2 | 磁珠隔离检查 | warning
+    数模混合电路缺少磁珠进行电源域隔离
+    ev: design="承载我所有幻想的键盘_2026-09-14 (1).epro2"; ctx={"components": 471, "nets": 535, "traces": 796, "vias": 1844, "pours": 57}
+
+[e0dceb8f7a42-ferrite_bead_isolation-0] 柯南同款, 全自研高速电动滑板开源!_2026-09-14.epro2 | 磁珠隔离检查 | warning
+    数模混合电路缺少磁珠进行电源域隔离
+    ev: design="柯南同款, 全自研高速电动滑板开源!_2026-09-14.epro"; ctx={"components": 180, "nets": 137, "traces": 210, "vias": 971, "pours": 10}
+
+[00883c256342-fiducial_mark-0] 专业级全键盘电子钢琴_2026-09-14.epro2 | 光学定位点检查 | info
+    PCB 含较多元件但未确认是否有光学定位(Mark)点
+    ev: design="专业级全键盘电子钢琴_2026-09-14.epro2"; ctx={"components": 343, "nets": 433, "traces": 514, "vias": 1526, "pours": 111}
+
+[2b30c85075cc-fiducial_mark-0] 承载我所有幻想的键盘_2026-09-14 (1).epro2 | 光学定位点检查 | info
+    PCB 含较多元件但未确认是否有光学定位(Mark)点
+    ev: design="承载我所有幻想的键盘_2026-09-14 (1).epro2"; ctx={"components": 471, "nets": 535, "traces": 796, "vias": 1844, "pours": 57}
+
+[00883c256342-floating_pins-0] 专业级全键盘电子钢琴_2026-09-14.epro2 | 悬空引脚检查 | warning
+    主控 U5 的 RST/BOOT/EN 等控制引脚可能悬空
+    ev: design="专业级全键盘电子钢琴_2026-09-14.epro2"; ctx={"components": 343, "nets": 433, "traces": 514, "vias": 1526, "pours": 111}
+
+[00f0c73de5c4-floating_pins-0] 立创·实战派ESP32-S3开发板_2026-09-14.epro2 | 悬空引脚检查 | warning
+    主控 U1 的 RST/BOOT/EN 等控制引脚可能悬空
+    ev: design="立创·实战派ESP32-S3开发板_2026-09-14.epro2"; ctx={"components": 180, "nets": 128, "traces": 196, "vias": 216, "pours": 11}
+
+[38b5022c1cf4-ground_plane_continuity-0] 迷你便携无线WIFI热成像_2026-09-14.epro2 | 地平面连续性检查 | info
+    高速信号需要连续的地平面作为回流路径。割裂的地平面增加环路面积和EMI。
+    ev: design="迷你便携无线WIFI热成像_2026-09-14.epro2"; ctx={"components": 52, "nets": 35, "traces": 53, "vias": 255, "pours": 4}
+
+[e01706f8c02c-ground_plane_continuity-0] Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.ep | 地平面连续性检查 | info
+    高速信号需要连续的地平面作为回流路径。割裂的地平面增加环路面积和EMI。
+    ev: design="Mini-LinuxPC-Pro全志H618掌上电脑_2026-09"; ctx={"components": 121, "nets": 140, "traces": 154, "vias": 259, "pours": 4}
+
+[2b30c85075cc-i2c_pullups-0] 承载我所有幻想的键盘_2026-09-14 (1).epro2 | I2C 上拉电阻检查 | warning
+    检测到 I2C 器件但未发现典型上拉电阻(2.2~10kΩ)
+    ev: design="承载我所有幻想的键盘_2026-09-14 (1).epro2"; ctx={"components": 471, "nets": 535, "traces": 796, "vias": 1844, "pours": 57}
+
+[1a507f98388a-inductor_saturation_margin-0] All in one服务器三合一扩展卡_2026-09-14.epro2 | 电感饱和电流检查 | info
+    功率电感 L2 建议验证额定电流 ≥1.3× Ipeak
+    ev: design="All in one服务器三合一扩展卡_2026-09-14.epr"; ctx={"components": 505, "nets": 435, "traces": 662, "vias": 1624, "pours": 13}
+
+[e0dceb8f7a42-inductor_saturation_margin-0] 柯南同款, 全自研高速电动滑板开源!_2026-09-14.epro2 | 电感饱和电流检查 | info
+    功率电感 L1 建议验证额定电流 ≥1.3× Ipeak
+    ev: design="柯南同款, 全自研高速电动滑板开源!_2026-09-14.epro"; ctx={"components": 180, "nets": 137, "traces": 210, "vias": 971, "pours": 10}
+
+[0d385bbc9396-led_current_limit-1] 【RA】农田环境数据无线采集灌溉自律系统（基于瑞萨MCU）_2026-09-14 | LED 限流电阻检查 | warning
+    LED LED1 可能缺少限流电阻
+    ev: design="【RA】农田环境数据无线采集灌溉自律系统（基于瑞萨MCU）_2026"; ctx={"components": 95, "nets": 91, "traces": 132, "vias": 708, "pours": 7}
+
+[d9bf616df549-led_current_limit-0] [精品毕设]分布式设备的物联网控制系统设计_星火计划_2026-09-14.ep | LED 限流电阻检查 | warning
+    LED LED14 可能缺少限流电阻
+    ev: design="[精品毕设]分布式设备的物联网控制系统设计_星火计划_2026-09"; ctx={"components": 39, "nets": 42, "traces": 58, "vias": 125, "pours": 2}
+
+[ae2924a3d9fe-mosfet_gate_resistor-0] AI-Box离线DeepSeekR1助手_2026-09-14.epro2 | MOSFET 栅极电阻检查 | info
+    功率 MOSFET Q1 建议串联栅极电阻
+    ev: design="AI-Box离线DeepSeekR1助手_2026-09-14.ep"; ctx={"components": 43, "nets": 53, "traces": 33, "vias": 27, "pours": 2}
+
+[cf50567ab4e5-mosfet_gate_resistor-0] 立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epr | MOSFET 栅极电阻检查 | info
+    功率 MOSFET CARD2 建议串联栅极电阻
+    ev: design="立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-"; ctx={"components": 772, "nets": 591, "traces": 871, "vias": 1896, "pours": 20}
+
+[9a530303acc8-net_antenna-0] 微米级轮廓仪Micro-Profilometer_2026-09-14.epro | 天线效应检查 | warning
+    9 个网络仅连接 ≤1 个引脚，可能为浮空网络或天线
+    ev: count=9; single_pin_nets=["$1N6660", "EN2", "SS", "EN1", "$1N6634", "SLEW", "SEQ", "SYNC", "$1N2268"]; design="微米级轮廓仪Micro-Profilometer_2026-09-1"; ctx={"components": 149, "nets": 84, "traces": 97, "vias": 132, "pours": 28}
+
+[e0b21c2eb89e-net_antenna-0] AirLink（无线！USB HUB）_2026-09-14.epro2 | 天线效应检查 | warning
+    234 个网络仅连接 ≤1 个引脚，可能为浮空网络或天线
+    ev: count=234; single_pin_nets=["SSTX1-", "SSTX1+", "SSTX2-", "SSTX2+", "SSTX3-", "SSTX3+", "SSTX4-", "SSTX4+", "$9N3342", "$9N3341", "HSD4-", "HSD4+", "VDD_5V", "OSC25M_O", "OSC25M_I", "+3.3V_RTL", "VDD_3V3_WIFI_DISP", "SSRX1-", "SSRX1+", "SSRX2-"]; design="AirLink（无线！USB HUB）_2026-09-14.epr"; ctx={"components": 405, "nets": 535, "traces": 496, "vias": 706, "pours": 10}
+
+[8d3fcf99d222-opamp_feedback_network-0] 球形六足双形态机器人_2026-09-14.epro2 | 运放反馈网络检查 | warning
+    运放 U6(OPA2188AIDR) 可能缺少反馈电阻网络(仅0个同前缀电阻)
+    ev: design="球形六足双形态机器人_2026-09-14.epro2"; ctx={"components": 52, "nets": 31, "traces": 43, "vias": 429, "pours": 2}
+
+[f73c5df43c0a-opamp_feedback_network-0] 简易数字示波器设计（入门版）_2026-09-14.epro2 | 运放反馈网络检查 | warning
+    运放 U5(TL072IP) 可能缺少反馈电阻网络(仅0个同前缀电阻)
+    ev: design="简易数字示波器设计（入门版）_2026-09-14.epro2"; ctx={"components": 59, "nets": 40, "traces": 47, "vias": 39, "pours": 4}
+
+[40264558a191-opto_isolation_creepage-0] 天空星·筑基学习板_2026-09-14.epro2 | 光耦隔离间距检查 | warning
+    检测到光耦元件，隔离式光耦初次级之间需保证≥6mm爬电距离
+    ev: design="天空星·筑基学习板_2026-09-14.epro2"; ctx={"components": 619, "nets": 361, "traces": 508, "vias": 2312, "pours": 19}
+
+[1a507f98388a-optocoupler_input_resistor-1] All in one服务器三合一扩展卡_2026-09-14.epro2 | 光耦输入限流检查 | warning
+    光耦 U9 输入端可能缺少限流电阻
+    ev: design="All in one服务器三合一扩展卡_2026-09-14.epr"; ctx={"components": 505, "nets": 435, "traces": 662, "vias": 1624, "pours": 13}
+
+[fb12f7b89b5b-optocoupler_input_resistor-1] Excam基于openmv的多功能机器视觉小相机_2026-09-14.epro | 光耦输入限流检查 | warning
+    光耦 U110 输入端可能缺少限流电阻
+    ev: design="Excam基于openmv的多功能机器视觉小相机_2026-09-1"; ctx={"components": 139, "nets": 107, "traces": 149, "vias": 379, "pours": 8}
+
+[002d4444a5dd-package_consistency-0] 【八卦.键盘】Sudo. Wang(YQ.)  #星火计划#_2026-09-1 | 封装一致性检查 | warning
+    型号 [LTW-C193SN5] 出现多种封装: LED0603, LED0603-FD
+    ev: design="【八卦.键盘】Sudo. Wang(YQ.)  #星火计划#_202"; ctx={"components": 159, "nets": 156, "traces": 116, "vias": 222, "pours": 4}
+
+[bdc57176e9b8-package_consistency-0] 立创·逻辑派FPGA-Z1开发板_2026-09-14.epro2 | 封装一致性检查 | warning
+    型号 [CC0402KRX7R7BB104] 出现多种封装: R0402, c0402
+    ev: design="立创·逻辑派FPGA-Z1开发板_2026-09-14.epro2"; ctx={"components": 113, "nets": 138, "traces": 188, "vias": 266, "pours": 7}
+
+[a4a5c575708a-pdn_target_impedance-0] 立创·3.1寸MIPI屏幕扩展板_2026-09-14.epro2 | PDN 目标阻抗分析 | info
+    5.0V/0.50A 电源: 目标阻抗 Z_target=1000mΩ，平面电容 1.00nF，建议 ≥1 个去耦电容，IR压降≈0.5mV
+    ev: design="立创·3.1寸MIPI屏幕扩展板_2026-09-14.epro2"; ctx={"components": 34, "nets": 26, "traces": 44, "vias": 140, "pours": 2}
+
+[a5b2e4f5da26-pdn_target_impedance-0] ESPMonitor_Plus_2026-09-14.epro2 | PDN 目标阻抗分析 | info
+    3.3V/1.00A 电源: 目标阻抗 Z_target=330mΩ，平面电容 1.00nF，建议 ≥1 个去耦电容，IR压降≈1.0mV
+    ev: design="ESPMonitor_Plus_2026-09-14.epro2"; ctx={"components": 42, "nets": 44, "traces": 66, "vias": 369, "pours": 5}
+
+[5fd8810511b8-power_filtering-0] 易扩展的迷你数控可调电源 FLPowerPro_2026-09-14.epro2 | 电源滤波检查 | warning
+    电源入口缺少: 大电解(≥100μF)
+    ev: design="易扩展的迷你数控可调电源 FLPowerPro_2026-09-14"; ctx={"components": 218, "nets": 249, "traces": 363, "vias": 626, "pours": 144}
+
+[d9bf616df549-power_filtering-0] [精品毕设]分布式设备的物联网控制系统设计_星火计划_2026-09-14.ep | 电源滤波检查 | warning
+    电源入口缺少: 大电解(≥100μF), 小陶瓷(0.1μF)
+    ev: design="[精品毕设]分布式设备的物联网控制系统设计_星火计划_2026-09"; ctx={"components": 39, "nets": 42, "traces": 58, "vias": 125, "pours": 2}
+
+[8983879305d5-power_loop_area-0] 带重力感应的桥式压感智能秤基于立创·地奇星RA6E2_2026-09-14.ep | 功率回路面积检查 | warning
+    检测到开关电源器件，输入电容→开关→电感→输出电容的 di/dt 回路需最小化
+    ev: design="带重力感应的桥式压感智能秤基于立创·地奇星RA6E2_2026-09"; ctx={"components": 127, "nets": 79, "traces": 91, "vias": 570, "pours": 11}
+
+[bdc57176e9b8-power_loop_area-0] 立创·逻辑派FPGA-Z1开发板_2026-09-14.epro2 | 功率回路面积检查 | warning
+    检测到开关电源器件，输入电容→开关→电感→输出电容的 di/dt 回路需最小化
+    ev: design="立创·逻辑派FPGA-Z1开发板_2026-09-14.epro2"; ctx={"components": 113, "nets": 138, "traces": 188, "vias": 266, "pours": 7}
+
+[687a3f3f9e4f-pullup_pulldown-0] 【电子竞赛】21年电赛F题-智能送药小车_2026-09-14.epro2 | 上下拉电阻检查 | warning
+    控制信号网络 [BOOT0] 可能缺少上拉/下拉电阻
+    ev: design="【电子竞赛】21年电赛F题-智能送药小车_2026-09-14.ep"; ctx={"components": 95, "nets": 142, "traces": 170, "vias": 877, "pours": 17}
+
+[9a530303acc8-pullup_pulldown-0] 微米级轮廓仪Micro-Profilometer_2026-09-14.epro | 上下拉电阻检查 | warning
+    控制信号网络 [EN2] 可能缺少上拉/下拉电阻
+    ev: design="微米级轮廓仪Micro-Profilometer_2026-09-1"; ctx={"components": 149, "nets": 84, "traces": 97, "vias": 132, "pours": 28}
+
+[acd428873d75-reference_continuity-2] 迷你数字可调电源_数控电源--Xuemeng V6_2026-09-14.epr | 位号连续性检查 | info
+    L 类位号不连续: L6→L8(跳1号)
+    ev: design="迷你数字可调电源_数控电源--Xuemeng V6_2026-09-"; ctx={"components": 201, "nets": 128, "traces": 204, "vias": 994, "pours": 13}
+
+[e0dceb8f7a42-reference_continuity-2] 柯南同款, 全自研高速电动滑板开源!_2026-09-14.epro2 | 位号连续性检查 | info
+    L 类位号不连续: L2→L4(跳1号)
+    ev: design="柯南同款, 全自研高速电动滑板开源!_2026-09-14.epro"; ctx={"components": 180, "nets": 137, "traces": 210, "vias": 971, "pours": 10}
+
+[2c024ec1eb39-reset_circuit-0] TV-Pro双固件在线大模型小电视_2026-09-14.epro2 | 复位电路检查 | warning
+    MCU U2 复位电路缺少: 对地电容(0.1μF)
+    ev: design="TV-Pro双固件在线大模型小电视_2026-09-14.epro2"; ctx={"components": 15, "nets": 21, "traces": 24, "vias": 0, "pours": 2}
+
+[38b5022c1cf4-reset_circuit-0] 迷你便携无线WIFI热成像_2026-09-14.epro2 | 复位电路检查 | warning
+    MCU U1 复位电路缺少: 上拉电阻(10kΩ), 对地电容(0.1μF)
+    ev: design="迷你便携无线WIFI热成像_2026-09-14.epro2"; ctx={"components": 52, "nets": 35, "traces": 53, "vias": 255, "pours": 4}
+
+[a5b2e4f5da26-resistor_power_rating-0] ESPMonitor_Plus_2026-09-14.epro2 | 电阻功率降额检查 | warning
+    功率电阻 LED1 封装 0603 可能功率不足
+    ev: design="ESPMonitor_Plus_2026-09-14.epro2"; ctx={"components": 42, "nets": 44, "traces": 66, "vias": 369, "pours": 5}
+
+[4f1ed044af3e-reverse_polarity_protection-0] 立创·地正星MSPM0L1306开发板_2026-09-14.epro2 | 电源极性保护检查 | warning
+    直流电源输入未检测到反接保护器件
+    ev: design="立创·地正星MSPM0L1306开发板_2026-09-14.epr"; ctx={"components": 37, "nets": 43, "traces": 53, "vias": 93, "pours": 5}
+
+[bdc57176e9b8-reverse_polarity_protection-0] 立创·逻辑派FPGA-Z1开发板_2026-09-14.epro2 | 电源极性保护检查 | warning
+    直流电源输入未检测到反接保护器件
+    ev: design="立创·逻辑派FPGA-Z1开发板_2026-09-14.epro2"; ctx={"components": 113, "nets": 138, "traces": 188, "vias": 266, "pours": 7}
+
+[97da11617c92-silkscreen_pad_clearance-0] EDA-Pager寻呼机_2026-09-14.epro2 | 丝印焊盘间距检查 | info
+    PCB 含 64 个元件，丝印与焊盘间距需确认
+    ev: design="EDA-Pager寻呼机_2026-09-14.epro2"; ctx={"components": 64, "nets": 51, "traces": 56, "vias": 388, "pours": 2}
+
+[cf50567ab4e5-silkscreen_pad_clearance-0] 立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epr | 丝印焊盘间距检查 | info
+    PCB 含 772 个元件，丝印与焊盘间距需确认
+    ev: design="立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-"; ctx={"components": 772, "nets": 591, "traces": 871, "vias": 1896, "pours": 20}
+
+[40264558a191-silkscreen_readability-0] 天空星·筑基学习板_2026-09-14.epro2 | 丝印可读性检查 | info
+    PCB 包含 619 个元件，建议检查丝印可读性
+    ev: design="天空星·筑基学习板_2026-09-14.epro2"; ctx={"components": 619, "nets": 361, "traces": 508, "vias": 2312, "pours": 19}
+
+[f63ddcd060ef-silkscreen_readability-0] EagleH7-EDU_2026-09-14.epro2 | 丝印可读性检查 | info
+    PCB 包含 202 个元件，建议检查丝印可读性
+    ev: design="EagleH7-EDU_2026-09-14.epro2"; ctx={"components": 202, "nets": 169, "traces": 266, "vias": 302, "pours": 4}
+
+[2c024ec1eb39-switching_regulator_layout-0] TV-Pro双固件在线大模型小电视_2026-09-14.epro2 | 开关电源布局检查 | info
+    DC-DC MIC1 建议优化输入回路布局以降低 EMI
+    ev: design="TV-Pro双固件在线大模型小电视_2026-09-14.epro2"; ctx={"components": 15, "nets": 21, "traces": 24, "vias": 0, "pours": 2}
+
+[e0b21c2eb89e-switching_regulator_layout-0] AirLink（无线！USB HUB）_2026-09-14.epro2 | 开关电源布局检查 | info
+    DC-DC C102 建议优化输入回路布局以降低 EMI
+    ev: design="AirLink（无线！USB HUB）_2026-09-14.epr"; ctx={"components": 405, "nets": 535, "traces": 496, "vias": 706, "pours": 10}
+
+[4f1ed044af3e-testpoint_coverage-0] 立创·地正星MSPM0L1306开发板_2026-09-14.epro2 | 测试点覆盖检查 | info
+    5 个关键网络缺少测试点: 3V3, +5V, NRST, PA20/SWCLK, PA19/SWDIO
+    ev: design="立创·地正星MSPM0L1306开发板_2026-09-14.epr"; ctx={"components": 37, "nets": 43, "traces": 53, "vias": 93, "pours": 5}
+
+[8983879305d5-testpoint_coverage-0] 带重力感应的桥式压感智能秤基于立创·地奇星RA6E2_2026-09-14.ep | 测试点覆盖检查 | info
+    3 个关键网络缺少测试点: +5V, AVDD, 5V_IN
+    ev: design="带重力感应的桥式压感智能秤基于立创·地奇星RA6E2_2026-09"; ctx={"components": 127, "nets": 79, "traces": 91, "vias": 570, "pours": 11}
+
+[0181b5924c3c-thermal_relief-0] AI智能相框_2026-09-14.epro2 | 热焊盘检查 | warning
+    大功率器件需确认散热方案: U4(QFN-16_L3.0-W3.0-P0.50-TL-EP1.7)
+    ev: design="AI智能相框_2026-09-14.epro2"; ctx={"components": 149, "nets": 110, "traces": 178, "vias": 180, "pours": 16}
+
+[cf50567ab4e5-thermal_relief-0] 立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epr | 热焊盘检查 | warning
+    大功率器件需确认散热方案: U43(ESOP-8_L4.9-W3.9-P1.27-LS6.0-BL-EP-1)
+    ev: design="立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-"; ctx={"components": 772, "nets": 591, "traces": 871, "vias": 1896, "pours": 20}
+
+[0181b5924c3c-unconnected_pins-0] AI智能相框_2026-09-14.epro2 | 未连接引脚检查 | info
+    IC U10(QFN-32_L4.0-W4.0-P0.40-BL-EP2.7) 大量引脚可能未连接或 netlist 不完整
+    ev: design="AI智能相框_2026-09-14.epro2"; ctx={"components": 149, "nets": 110, "traces": 178, "vias": 180, "pours": 16}
+
+[f63ddcd060ef-unconnected_pins-1] EagleH7-EDU_2026-09-14.epro2 | 未连接引脚检查 | info
+    IC U16(LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL) 大量引脚可能未连接或 netlist 不完整
+    ev: design="EagleH7-EDU_2026-09-14.epro2"; ctx={"components": 202, "nets": 169, "traces": 266, "vias": 302, "pours": 4}
+
+[49d3ac69809d-via_density-0] Mini FOC无刷平衡车 V2.0版本_2026-09-14.epro2 | 过孔密度检查 | info
+    高速网络 [M1_TIM1_PWM3] 过孔数量(6) ≥ 5
+    ev: design="Mini FOC无刷平衡车 V2.0版本_2026-09-14.ep"; ctx={"components": 148, "nets": 157, "traces": 289, "vias": 875, "pours": 66}
+
+[5fd8810511b8-via_density-1] 易扩展的迷你数控可调电源 FLPowerPro_2026-09-14.epro2 | 过孔密度检查 | info
+    高速网络 [SW1] 过孔数量(11) ≥ 5
+    ev: design="易扩展的迷你数控可调电源 FLPowerPro_2026-09-14"; ctx={"components": 218, "nets": 249, "traces": 363, "vias": 626, "pours": 144}
+
+[00883c256342-via_thermal_relief-0] 专业级全键盘电子钢琴_2026-09-14.epro2 | 过孔热焊盘检查 | info
+    PCB 含 1526 个过孔，大面积铜皮上的过孔应使用热焊盘(Thermal Relief)连接
+    ev: design="专业级全键盘电子钢琴_2026-09-14.epro2"; ctx={"components": 343, "nets": 433, "traces": 514, "vias": 1526, "pours": 111}
+
+[0d385bbc9396-via_thermal_relief-0] 【RA】农田环境数据无线采集灌溉自律系统（基于瑞萨MCU）_2026-09-14 | 过孔热焊盘检查 | info
+    PCB 含 708 个过孔，大面积铜皮上的过孔应使用热焊盘(Thermal Relief)连接
+    ev: design="【RA】农田环境数据无线采集灌溉自律系统（基于瑞萨MCU）_2026"; ctx={"components": 95, "nets": 91, "traces": 132, "vias": 708, "pours": 7}

@@ -169,7 +169,7 @@ class TestSignalTraceCheck:
             layers=["TopLayer"],
             nets={"SPI_SCLK": PCBNet(name="SPI_SCLK", pins=["1", "2"])},
             traces=[
-                PCBTrace(net_name="SPI_SCLK", layer="TopLayer", width_mm=0.12),
+                PCBTrace(net_name="SPI_SCLK", layer="TopLayer", width_mm=0.08),
             ],
         )
 
@@ -514,9 +514,9 @@ class TestRAGIntegration:
         import os
         f2.unlink()
         stats = indexer.index_directory(str(rag_dir))
+
         assert stats["indexed"] == 0  # 无新文件
         assert stats["skipped"] >= 1  # f1 跳过
-
         # 检查 manifest 中无 delete_me.md
         manifest_path = rag_dir / ".index_manifest.json"
         import json
@@ -564,3 +564,252 @@ class TestRAGIntegration:
         ctx = retriever.query_with_context("XYZNotFound99999999")
         # query_with_context 应返回字符串
         assert isinstance(ctx, str)
+
+
+# ══════════════════ 走线类规则阈值校准（2026-09，76 个真实 .epro2） ══════════════════
+# 度量与分布：scripts/calibrate_trace_thresholds.py
+#             experiment_results/trace_threshold_calibration/report.txt
+
+def _outline(minx=0.0, miny=0.0, w=50.0, h=50.0, source="outline"):
+    return {
+        "width_mm": w, "height_mm": h,
+        "min_x_mm": minx, "min_y_mm": miny,
+        "max_x_mm": minx + w, "max_y_mm": miny + h,
+        "shape": "rectangle", "source": source,
+    }
+
+
+class TestCalibratedTraceRules:
+    """锁住校准后的走线类阈值，防止无意回退。"""
+
+    @pytest.fixture
+    def checker(self):
+        return DesignRuleChecker()
+
+    # ── 信号线宽：绝对工艺下限 + 本板主流线宽（上下文感知） ──
+
+    @staticmethod
+    def _width_pcb(widths):
+        return PCBData(
+            format="lceda_epro2", layers=["TopLayer"],
+            traces=[
+                PCBTrace(net_name=f"N{i}", layer="TopLayer", width_mm=w,
+                         segments=[(i, 0, i + 1, 0)])
+                for i, w in enumerate(widths)
+            ],
+        )
+
+    def test_signal_width_below_process_floor_fires(self, checker):
+        pcb = self._width_pcb([PCB.SIGNAL_TRACE_ABS_MIN_WIDTH_MM - 0.02])
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "信号线宽度" in x.rule_name]
+        assert len(v) == 1
+
+    def test_signal_width_mixed_within_net_fires(self, checker):
+        # 本板主流 10mil(0.254)，某条网络内部混用了 5mil(0.127) 细段：
+        # 高于工艺下限、明显偏离本板主流，且不是整网统一选细 → 判为误设
+        pcb = PCBData(
+            format="lceda_epro2", layers=["TopLayer"],
+            traces=[
+                PCBTrace(net_name="N0", layer="TopLayer", width_mm=0.254,
+                         segments=[(0, 0, 1, 0)]),
+                PCBTrace(net_name="N1", layer="TopLayer", width_mm=0.254,
+                         segments=[(1, 0, 2, 0)]),
+                PCBTrace(net_name="N2", layer="TopLayer", width_mm=0.127,
+                         segments=[(2, 0, 3, 0)]),
+                PCBTrace(net_name="N2", layer="TopLayer", width_mm=0.254,
+                         segments=[(3, 0, 4, 0)]),
+            ],
+        )
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "信号线宽度" in x.rule_name]
+        assert len(v) == 1
+        assert "N2" in v[0].description
+
+    def test_signal_width_uniformly_thin_net_ok(self, checker):
+        # 2026-09-24：整条网络统一选细（如阻抗控制网络）属设计意图，不判误设
+        pcb = self._width_pcb([0.254, 0.254, 0.254, 0.127])
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "信号线宽度" in x.rule_name]
+        assert v == []
+
+    def test_signal_width_fine_process_board_ok(self, checker):
+        # 整板统一 4mil(0.1016)：高于工艺下限，且无相对异常 → 不应误报
+        pcb = self._width_pcb([0.1016] * 5)
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "信号线宽度" in x.rule_name]
+        assert v == []
+
+    # ── 过孔密度：只判定高速网络，电源/地缝合孔不算 ──
+
+    def test_via_density_ignores_power_net(self, checker):
+        pcb = PCBData(
+            format="lceda_epro2", layers=["TopLayer"],
+            traces=[PCBTrace(net_name="GND", layer="TopLayer", width_mm=0.3,
+                             segments=[(0, 0, 1, 0)])],
+            vias=[PCBVia(position=(i, 0), drill_mm=0.3, pad_mm=0.6,
+                         from_layer="TopLayer", to_layer="BottomLayer", net_name="GND")
+                  for i in range(50)],
+        )
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "过孔密度" in x.rule_name]
+        assert v == []
+
+    def test_via_density_flags_high_speed_net(self, checker):
+        n = PCB.VIA_DENSITY_MAX_PER_NET
+        pcb = PCBData(
+            format="lceda_epro2", layers=["TopLayer"],
+            traces=[PCBTrace(net_name="DDR_CLK", layer="TopLayer", width_mm=0.2,
+                             segments=[(0, 0, 1, 0)])],
+            vias=[PCBVia(position=(i, 0), drill_mm=0.3, pad_mm=0.6,
+                         from_layer="TopLayer", to_layer="BottomLayer", net_name="DDR_CLK")
+                  for i in range(n)],
+        )
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "过孔密度" in x.rule_name]
+        assert len(v) == 1
+
+    # ── 板边间距：按真实板框几何算；铜包围盒时无判定意义 ──
+
+    def test_edge_clearance_uses_real_outline(self, checker):
+        pcb = PCBData(
+            format="lceda_epro2", layers=["TopLayer"],
+            board_outline=_outline(0, 0, 50, 50),
+            traces=[PCBTrace(net_name="SIG", layer="TopLayer", width_mm=0.2,
+                             segments=[(0.1, 25, 10, 25)])],
+        )
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "板边间距" in x.rule_name]
+        assert len(v) == 1
+
+    def test_edge_clearance_ok_when_far(self, checker):
+        pcb = PCBData(
+            format="lceda_epro2", layers=["TopLayer"],
+            board_outline=_outline(0, 0, 50, 50),
+            traces=[PCBTrace(net_name="SIG", layer="TopLayer", width_mm=0.2,
+                             segments=[(10, 25, 30, 25)])],
+        )
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "板边间距" in x.rule_name]
+        assert v == []
+
+    def test_edge_clearance_skipped_for_copper_bbox(self, checker):
+        pcb = PCBData(
+            format="lceda_epro2", layers=["TopLayer"],
+            board_outline=_outline(0, 0, 50, 50, source="copper"),
+            traces=[PCBTrace(net_name="SIG", layer="TopLayer", width_mm=0.2,
+                             segments=[(0.0, 25, 10, 25)])],
+        )
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "板边间距" in x.rule_name]
+        assert v == []
+
+    # ── 差分对：用工程 NET 规则 (ground truth)，不靠名字猜 ──
+
+    @staticmethod
+    def _pair_pcb(mismatch):
+        return PCBData(
+            format="lceda_epro2", layers=["TopLayer"],
+            differential_pairs=[
+                {"net": "USB_DP", "differential": "DP1", "equal_length_group": None},
+                {"net": "USB_DM", "differential": "DP1", "equal_length_group": None},
+            ],
+            traces=[
+                PCBTrace(net_name="USB_DP", layer="TopLayer", width_mm=0.2,
+                         segments=[(0, 0, 10, 0)]),
+                PCBTrace(net_name="USB_DM", layer="TopLayer", width_mm=0.2,
+                         segments=[(0, 0.4, 10 + mismatch, 0.4)]),
+            ],
+        )
+
+    def test_diff_pair_length_within_tolerance_ok(self, checker):
+        v = [x for x in checker.check_all([], {}, pcb_data=self._pair_pcb(0.1))
+             if "差分对等长" in x.rule_name]
+        assert v == []
+
+    def test_diff_pair_length_exceeds_tolerance_fires(self, checker):
+        # 2026-09-24：门限由「>0.5mm 一刀切」改为「≥2mm 或 ≥10% 组内平均长」，
+        # 故用 2.5mm 失配触发（10mm 走线，2.5mm 同时满足两条量则）
+        pcb = self._pair_pcb(2.5)
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "差分对等长" in x.rule_name]
+        assert len(v) == 1
+
+    def test_diff_pair_small_skew_ok(self, checker):
+        # USB2.0 位周期 2083ps（≈3.25mm），0.7mm 失配 ≈4.7ps，属正常范围
+        pcb = self._pair_pcb(PCB.DIFF_PAIR_MAX_SKEW_MM + 0.2)
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "差分对等长" in x.rule_name]
+        assert v == []
+
+    @staticmethod
+    def _spacing_pcb(gap):
+        return PCBData(
+            format="lceda_epro2", layers=["TopLayer"],
+            differential_pairs=[
+                {"net": "USB_DP", "differential": "DP1", "equal_length_group": None},
+                {"net": "USB_DM", "differential": "DP1", "equal_length_group": None},
+            ],
+            traces=[
+                PCBTrace(net_name="USB_DP", layer="TopLayer", width_mm=0.2,
+                         segments=[(0, 0, 10, 0)]),
+                PCBTrace(net_name="USB_DM", layer="TopLayer", width_mm=0.2,
+                         segments=[(0, gap, 10, gap)]),
+            ],
+        )
+
+    def test_diff_pair_spacing_loose_coupling_fires(self, checker):
+        pcb = self._spacing_pcb(1.0)  # 5W > 3W
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "差分对间距" in x.rule_name]
+        assert len(v) == 1
+
+    def test_diff_pair_spacing_tight_coupling_ok(self, checker):
+        v = [x for x in checker.check_all([], {}, pcb_data=self._spacing_pcb(0.4))
+             if "差分对间距" in x.rule_name]
+        assert v == []
+
+    # ── 3W 串扰：交叉/短平行不算，长平行且间距 <3W 才算 ──
+
+    def test_crosstalk_parallel_close_run_fires(self, checker):
+        # 2026-09-24：3W 只对高速/时钟/差分网络有意义，故用高速网络名
+        pcb = PCBData(
+            format="lceda_epro2", layers=["TopLayer"],
+            traces=[
+                PCBTrace(net_name="USB_DP", layer="TopLayer", width_mm=0.2,
+                         segments=[(0, 0, 20, 0)]),
+                PCBTrace(net_name="USB_DM", layer="TopLayer", width_mm=0.2,
+                         segments=[(0, 0.4, 20, 0.4)]),  # 2W 间距、平行 20mm
+            ],
+        )
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "串扰" in x.rule_name]
+        assert len(v) == 1
+
+    def test_crosstalk_low_speed_pair_ok(self, checker):
+        """按键/GPIO 这类低速线对不套 3W 准则（抽样里 5/5 都是这类误报）。"""
+        pcb = PCBData(
+            format="lceda_epro2", layers=["TopLayer"],
+            traces=[
+                PCBTrace(net_name="KEY_IN", layer="TopLayer", width_mm=0.2,
+                         segments=[(0, 0, 20, 0)]),
+                PCBTrace(net_name="GPIO1", layer="TopLayer", width_mm=0.2,
+                         segments=[(0, 0.4, 20, 0.4)]),
+            ],
+        )
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "串扰" in x.rule_name]
+        assert v == []
+
+    def test_crosstalk_crossing_traces_ok(self, checker):
+        pcb = PCBData(
+            format="lceda_epro2", layers=["TopLayer"],
+            traces=[
+                PCBTrace(net_name="USB_DP", layer="TopLayer", width_mm=0.2,
+                         segments=[(-10, 0, 10, 0)]),
+                PCBTrace(net_name="USB_DM", layer="TopLayer", width_mm=0.2,
+                         segments=[(0, -10, 0, 10)]),  # 垂直交叉
+            ],
+        )
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "串扰" in x.rule_name]
+        assert v == []
+
+    def test_crosstalk_short_parallel_run_ok(self, checker):
+        pcb = PCBData(
+            format="lceda_epro2", layers=["TopLayer"],
+            traces=[
+                PCBTrace(net_name="USB_DP", layer="TopLayer", width_mm=0.2,
+                         segments=[(0, 0, 2, 0)]),
+                PCBTrace(net_name="USB_DM", layer="TopLayer", width_mm=0.2,
+                         segments=[(0, 0.4, 2, 0.4)]),  # 平行仅 2mm < 5mm
+            ],
+        )
+        v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "串扰" in x.rule_name]
+        assert v == []
+

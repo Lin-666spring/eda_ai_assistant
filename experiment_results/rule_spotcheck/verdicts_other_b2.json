@@ -1,0 +1,82 @@
+{
+ "38b5022c1cf4-decoupling_cap_per_pin-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "全板实际 17 颗 1µF 电容（U1 的 3.3V 网络挂 7 颗）；规则只按 BOM 行描述里有无「电容/capacitor」计数 → 该行 desc 是「1uF ±10% 50V」→ 计 0"
+ },
+ "f5023e060fb7-decoupling_cap_per_pin-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "赛博挂坠有 22 颗电容（U13 的 3.3V 网络 11 颗），同样因 BOM 描述无关键词被计成 0"
+ },
+ "2c024ec1eb39-switching_regulator_layout-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "MIC1 是 INMP441 I2S 麦克风，因 dcdc_kw 里裸子串 MP 命中「inmp441」被当 DC-DC"
+ },
+ "e0b21c2eb89e-switching_regulator_layout-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "C102 是 22µF/10V MLCC，料号 CL10A226MP8NUNE 里的 MP 触发命中；同板另有 FPC/JP/LED/晶振共 5+ 处同类误命中"
+ },
+ "04c2858068c9-esd_protection-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "板上 T1/T2/T3(DFN2510-10) 正是 4 通道 HDMI ESD 阵列，但该工程 BOM 的 pn/desc 全空 → 关键词规则失明，结论与事实相反"
+ },
+ "0d385bbc9396-emi_filter-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "BOM 确实无共模电感，但规则只凭 U19 描述里的「Vin=5.5V」认定电源入口，且对太阳能/电池 DC 输入强制要求市电级 CMC，属判据过严"
+ },
+ "f63ddcd060ef-emi_filter-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "开发板 DC/USB 供电，不要求共模电感；规则无「入口类型」概念，见电源关键词即要求 EMI 滤波"
+ },
+ "5fd8810511b8-power_filtering-0": {
+  "v": "TP",
+  "s": "yes",
+  "r": "数据成立：全板电容最大 22µF、无任何电解/直插电容，数控电源缺 ≥100µF 大电解确属真问题（检出方式是子串匹配，粗糙但结论对）"
+ },
+ "d9bf616df549-power_filtering-0": {
+  "v": "UNC",
+  "s": "yes",
+  "r": "未逐条核对；39 元件的物联网小板上「缺大电解」很可能过严，但缺当前 BOM 证据"
+ },
+ "bdc57176e9b8-package_consistency-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "同一型号 7 行分属 R0402/c0402，DEVICE 库 Supplier Footprint 都是 0402，差异只是封装文档命名/大小写；规则按原始字符串区分大小写"
+ },
+ "002d4444a5dd-package_consistency-0": {
+  "v": "UNC",
+  "s": "yes",
+  "r": "LED0603 与 LED0603-FD 疑为同封装命名变体，未逐条核对，无法定性"
+ },
+ "bdc57176e9b8-crystal_load_caps-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "规则把两个磁珠（BLM15PD121SN1D、CBW201209U121T，描述含 @100MHz）当晶振；真晶振 X1 的 12pF 负载电容 C5/C6 正好 2 颗，X2 是有源振荡器不需负载电容"
+ },
+ "38b5022c1cf4-crystal_load_caps-0": {
+  "v": "TP",
+  "s": "yes",
+  "r": "数据准确：40MHz 无源晶振 X1 的两个负载位上是 1µF（C5/C8）而非 12~22pF，全板确无小电容，属真问题"
+ },
+ "0181b5924c3c-unconnected_pins-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "U10(ES7210) 33 个焊盘里 30 个被 23 个网络引用，netlist 完整；规则统计的是「含 ref 子串的网络数」而非引脚数，且应用里 ctx.netlist 恒为空 → 该规则实际静默失效"
+ },
+ "f63ddcd060ef-unconnected_pins-1": {
+  "v": "FP",
+  "s": "no",
+  "r": "同上：判据实现有硬伤（数网络不数引脚），「大量引脚未连接」不成立"
+ },
+ "9a530303acc8-net_antenna-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "这 9 个网络各自还有一个引脚落在 JP1(IPEX 天线座)，被解析器按 orphan 丢弃（metadata orphan_pad_nets=20），实际都是 2 脚网络"
+ }
+}

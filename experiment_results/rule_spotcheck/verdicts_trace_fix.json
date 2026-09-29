@@ -1,0 +1,27 @@
+{
+ "49d3ac69809d-crosstalk_spacing-1": {
+  "v": "UNC",
+  "s": "no",
+  "r": "线对混合：+5V/PGND(0.065mm 反而暴露亚工艺线距)、低速 RGB PWM、开关节点 M1_U；判据无速率门限，无法一句话定性"
+ },
+ "b90fb47ec1c0-crosstalk_spacing-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "top8 全是低速/电源对(1.4~2.0W)：GPIO、32kHz 晶振、SWCLK/VBAT；3W 准则未按速率生效，属适用性误报"
+ },
+ "d9bf616df549-crosstalk_spacing-1": {
+  "v": "FP",
+  "s": "no",
+  "r": "top8 为按键/蜂鸣器/GND-VBUS 等低速与电源对，SPI MISO-MOSI 1.7W 通常可容忍；判据缺速率门限"
+ },
+ "e01706f8c02c-crosstalk_spacing-2": {
+  "v": "UNC",
+  "s": "yes",
+  "r": "内层无名网络($1N*)是否高速无法判定；0.229mm 间距本身在工艺范围内"
+ },
+ "1875282d60eb-trace_acute_angles-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "逐条核对几何后修正：该违规是 Bottom Layer 那个 45° 拐角（腿 0.579/0.18mm、距 C41 焊盘 0.7mm），属焊盘入口几何；同网络 Top Layer 的 42.3°(腿 1.42/0.83mm) 才是真拐角，但不在本条记录里"
+ }
+}

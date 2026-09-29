@@ -1,0 +1,187 @@
+{
+ "2b30c85075cc-antenna_keepout-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "通用要求提示：只按「存在无线模块」命中，未测天线净空区几何"
+ },
+ "5516bd2c0c00-antenna_keepout-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上：未做任何净空区几何判定"
+ },
+ "b96a1767fff0-bga_fanout-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "提示类：「需要扇出设计——确认过孔尺寸/间距」，未判定实际扇出"
+ },
+ "e3f96b3e50dc-bga_fanout-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上"
+ },
+ "5516bd2c0c00-component_height_zoning-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "无信息量：任何有高低元件的板都会命中「高元件与矮元件混合布局」"
+ },
+ "8963b54a91ea-component_height_zoning-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上"
+ },
+ "57defaf21063-connector_edge_placement-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "提示类：未判定插拔空间是否真的受限"
+ },
+ "e3f96b3e50dc-connector_edge_placement-2": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上"
+ },
+ "cf50567ab4e5-crystal_frequency-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "建议类（且单位解析错：32.768Hz 应为 kHz），非违规判定"
+ },
+ "fb12f7b89b5b-crystal_frequency-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "建议类：只给 CL 推荐区间，未比对板上实际电容"
+ },
+ "00883c256342-fiducial_mark-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "提示类：「未确认是否有 Mark 点」，规则没有 Mark 点数据"
+ },
+ "2b30c85075cc-fiducial_mark-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上"
+ },
+ "38b5022c1cf4-ground_plane_continuity-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "纯理论复述（「割裂地平面会增加环路面积」），对本板无任何判定"
+ },
+ "e01706f8c02c-ground_plane_continuity-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上"
+ },
+ "1a507f98388a-inductor_saturation_margin-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "建议验证类：「建议验证额定电流 ≥1.3×Ipeak」，未读电感规格"
+ },
+ "e0dceb8f7a42-inductor_saturation_margin-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上"
+ },
+ "40264558a191-opto_isolation_creepage-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "提示类：未测爬电距离，只提示需保证 ≥6mm"
+ },
+ "a4a5c575708a-pdn_target_impedance-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "PDN 分析输出（Z_target/建议电容数），不是对设计的违规判定"
+ },
+ "a5b2e4f5da26-pdn_target_impedance-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上"
+ },
+ "8983879305d5-power_loop_area-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "提示类：「di/dt 回路需最小化」，未测回路面积"
+ },
+ "bdc57176e9b8-power_loop_area-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上"
+ },
+ "acd428873d75-reference_continuity-2": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "位号跳号（L6→L8）是命名习惯，不是设计缺陷"
+ },
+ "e0dceb8f7a42-reference_continuity-2": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上（L2→L4）"
+ },
+ "97da11617c92-silkscreen_pad_clearance-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "提示类：「丝印与焊盘间距需确认」，解析器无丝印数据"
+ },
+ "cf50567ab4e5-silkscreen_pad_clearance-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上"
+ },
+ "40264558a191-silkscreen_readability-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "提示类：只数了元件个数就建议检查丝印可读性"
+ },
+ "f63ddcd060ef-silkscreen_readability-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上"
+ },
+ "0181b5924c3c-thermal_relief-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "提示类：「大功率器件需确认散热方案」，未做热分析"
+ },
+ "cf50567ab4e5-thermal_relief-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上"
+ },
+ "00883c256342-via_thermal_relief-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "提示类：只数过孔总数，未判断铜皮连接方式"
+ },
+ "0d385bbc9396-via_thermal_relief-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上"
+ },
+ "49d3ac69809d-via_density-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "INFO 阈值提示：PWM 网络 6 个过孔本身不是缺陷"
+ },
+ "5fd8810511b8-via_density-1": {
+  "v": "FP",
+  "s": "no",
+  "r": "SW1 是开关节点，多过孔并联正是降低寄生电感/回路电感的做法；建议减少过孔与工程实践相反"
+ },
+ "00883c256342-component_spacing-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "方法错：只比较元件位置字典里相邻的 4 个元件（非空间最近邻），「约 5 对<1.0mm」不代表板上有 5 处近距"
+ },
+ "1a507f98388a-component_spacing-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "同上：判据取字典序邻居，结论不可复现"
+ },
+ "0bbb3bf80e31-copper_pour_connectivity-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "这是「文件未包含铜皮数据」的缺数据提示；有铜皮时该规则永远返回空，只有缺数据才「有输出」"
+ },
+ "e89b65d2080e-copper_pour_connectivity-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "同上"
+ }
+}

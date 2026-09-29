@@ -82,7 +82,8 @@ RULE_DIMENSION_MAP: dict[str, tuple[str, float]] = {
     "晶振布局": ("signal", 1.5),
     "I2C 上拉电阻": ("signal", 1.0),
     "信号线宽": ("signal", 1.5),
-    "走线锐角": ("signal", 1.0),
+    "走线锐角": ("signal", 1.0),   # 酸陷阱，WARNING
+    "走线直角": ("signal", 0.5),   # 角部阻抗突变，INFO
     "过孔密度": ("signal", 1.0),
     "差分对间距": ("signal", 1.5),
     "差分对等长": ("signal", 2.0),

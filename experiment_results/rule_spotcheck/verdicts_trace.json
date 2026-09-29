@@ -1,0 +1,282 @@
+{
+ "1a507f98388a-clock_guard_trace-14": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "规则只按网络名含 REFCLK 就提示，未检测护线；本处最近 GND 走线 44mm，提示恰好值得看，但仍非判定"
+ },
+ "b96a1767fff0-clock_guard_trace-3": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "通用建议：该板已有 GND 走线 0.46mm 相邻 + 51 处覆铜，提示无信息量"
+ },
+ "b96a1767fff0-clock_guard_trace-6": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "通用建议：最近 GND 走线 0.48mm，参考路径已具备"
+ },
+ "cf50567ab4e5-clock_guard_trace-32": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "通用建议：未判定护线存在与否"
+ },
+ "e0b21c2eb89e-clock_guard_trace-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "通用建议：最近 GND 走线 1.09mm，属正常布线"
+ },
+ "49d3ac69809d-crosstalk_spacing-1": {
+  "v": "FP",
+  "s": "no",
+  "r": "最严重线对 +5V/PGND 间距 0.065mm(0.1W)，电源-地网络本就该紧邻；3W 判据只适用于信号-信号"
+ },
+ "b90fb47ec1c0-crosstalk_spacing-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "最严重线对 SWCLK–VBAT 是信号-电源对(2.0W)，低速调试时钟对电池轨的耦合可忽略"
+ },
+ "d9bf616df549-crosstalk_spacing-1": {
+  "v": "FP",
+  "s": "no",
+  "r": "最严重线对 GND/USB_VBUS 是地-电源对，不构成串扰"
+ },
+ "e01706f8c02c-crosstalk_spacing-2": {
+  "v": "TP",
+  "s": "yes",
+  "r": "内层信号-信号对 $1N410/$1N411 间距 1.8W、平行 13.9mm，判据成立；建议先确认 $1N* 非铺铜碎片"
+ },
+ "e89b65d2080e-crosstalk_spacing-0": {
+  "v": "UNC",
+  "s": "yes",
+  "r": "线对 C/G 为信号-信号且 2.0W/29.4mm，但网络名含义不明（疑继电器触点），无法确认是否真需 3W"
+ },
+ "2b30c85075cc-diff_pair_length-3": {
+  "v": "FP",
+  "s": "no",
+  "r": "USB2 差分对失配 3.25mm≈22ps，仅为 480Mbps 位周期(2083ps)的 1%，0.5mm 门限对 USB2 过严"
+ },
+ "55a1e5d392e0-diff_pair_length-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "AUD_SPK 是音频功放输出对，1.16mm 失配在音频频段无意义"
+ },
+ "acd428873d75-diff_pair_length-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "IN_D+/IN_D- 疑为直流输入正负端，靠后缀猜出的「差分对」，6.89mm 失配不构成问题"
+ },
+ "d662d9ed59fa-diff_pair_length-2": {
+  "v": "TP",
+  "s": "no",
+  "r": "工程 NET 规则定义的 DVP 等长组里 DVP_D6 比其他成员短 2.0~2.5mm，确属组内失配；但 DVP 时序余量大，WARNING 偏高"
+ },
+ "e0b21c2eb89e-diff_pair_length-10": {
+  "v": "TP",
+  "s": "yes",
+  "r": "DP_LANE0± 长度 5.96/6.87mm（偏差 15%），工程规则定义的差分对确失配，值得改"
+ },
+ "002d4444a5dd-diff_pair_spacing-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "D1_P/D1- 是靠后缀猜出的「差分对」（疑为二极管两端），7.5W 无意义"
+ },
+ "1617cf34c8c4-diff_pair_spacing-2": {
+  "v": "TP",
+  "s": "yes",
+  "r": "工程规则定义的 DP5 对内间距 2.07mm≈4.1W，0.5mm 宽线松耦合确实偏离紧耦合设计"
+ },
+ "2b30c85075cc-diff_pair_spacing-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "0.5mm 间距 = 3.1W，仅超出 3W 门限 3%，属阈值边界误报"
+ },
+ "cf50567ab4e5-diff_pair_spacing-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "SPK_VOUT± 是音频功放输出对，6W 松耦合在音频场景无影响"
+ },
+ "e0b21c2eb89e-diff_pair_spacing-2": {
+  "v": "TP",
+  "s": "yes",
+  "r": "DA± 为 0.109mm 细线的差分对，间距 0.55mm=5W 确属松耦合，可收紧"
+ },
+ "00883c256342-hs_signal_reference_plane-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "无实际判定（「需确认」）；且 10 个网络里混入 VUSB/LVDS_RST 等非高速网络"
+ },
+ "0181b5924c3c-hs_signal_reference_plane-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "无实际判定；唯一命中项 SD-CLK 按关键词含 CLK 入选，非高速信号"
+ },
+ "0d385bbc9396-hs_signal_reference_plane-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "无实际判定；SWCLK 是调试时钟，按关键词误命中"
+ },
+ "82d287f80ceb-hs_signal_reference_plane-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "无实际判定；PCIe REFCLK± 确属高速，提醒合理但仍是通用提示"
+ },
+ "d9bf616df549-hs_signal_reference_plane-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "无实际判定；USB_VBUS 是 5V 电源网络，纯关键词误命中"
+ },
+ "55a1e5d392e0-impedance_matching-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "用单端微带 Z0(53Ω) 与 USB 的 90Ω 差分目标比较，量纲不对；0.254mm 线宽本身正常"
+ },
+ "833590d70a7f-impedance_matching-3": {
+  "v": "FP",
+  "s": "no",
+  "r": "同上：USB2_D- 单端 54Ω 被拿去比 90Ω 差分目标"
+ },
+ "b96a1767fff0-impedance_matching-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "HDMI_TX_SDA 是 DDC 慢速 I2C 线，既非高速也不控阻抗；且单端/差分混比"
+ },
+ "e01706f8c02c-impedance_matching-14": {
+  "v": "FP",
+  "s": "no",
+  "r": "HDMI_HCEC 是 1 线慢速控制线；判据用它比 100Ω 差分目标，纯误报"
+ },
+ "f5023e060fb7-impedance_matching-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "USB- 单端 Z0≈60Ω 对比 90Ω 差分目标，判据错；且未考虑实际叠层"
+ },
+ "1a507f98388a-loop_area-11": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "只按线长>50mm 提示，未评估回流路径/环路面积，属通用提示"
+ },
+ "49d3ac69809d-loop_area-1": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上：PWM 网络 53mm 仅略超门限，未真正计算环路面积"
+ },
+ "82d287f80ceb-loop_area-1": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上：PCIe 扩展卡 REFCLK 走线长属结构必然，提示无信息量"
+ },
+ "82d287f80ceb-loop_area-3": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上"
+ },
+ "cf50567ab4e5-loop_area-4": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上"
+ },
+ "00883c256342-power_traces-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "VCC5V 走线在 Top/Bottom（外层），规则却用内层系数得 0.44A；外层应为 0.89A > 需求 0.78A，不违规"
+ },
+ "00883c256342-power_traces-5": {
+  "v": "FP",
+  "s": "no",
+  "r": "AVDD 同样被整板 inner 标志降额（0.44A vs 外层 0.89A），ERROR 不成立"
+ },
+ "00883c256342-power_traces-9": {
+  "v": "FP",
+  "s": "no",
+  "r": "VCC3 同样：外层容量 0.89A > 估算需求 0.78A"
+ },
+ "8963b54a91ea-power_traces-11": {
+  "v": "FP",
+  "s": "no",
+  "r": "+5V 在 Bottom 外层，规则按内层算 0.83A；外层 1.67A 远大于需求 0.90A"
+ },
+ "8963b54a91ea-power_traces-5": {
+  "v": "FP",
+  "s": "no",
+  "r": "VOUT1_B1 外层容量 0.75A > 需求 0.45A，规则用内层 0.38A 才报警"
+ },
+ "2b30c85075cc-signal_traces-12": {
+  "v": "FP",
+  "s": "no",
+  "r": "GPIO9 全网络统一 0.127mm(5mil)，可制造且是有意选择；相对判据(主流 60%)把设计意图当误设"
+ },
+ "2b30c85075cc-signal_traces-44": {
+  "v": "FP",
+  "s": "no",
+  "r": "AS5047P_SS 同样全网络 0.127mm、37.9mm 长，属有意布线"
+ },
+ "61a320430b90-signal_traces-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "H_1_N 0.0965mm≈3.8mil，板含内层(≥4 层)工艺下限 0.09mm，可制造；绝对门限 0.1mm 只适用于 2 层板"
+ },
+ "b96a1767fff0-signal_traces-105": {
+  "v": "FP",
+  "s": "no",
+  "r": "MIPI D-PHY 差分线 0.0889mm=3.5mil，是 6 层板阻抗控制的有意线宽，非误设"
+ },
+ "b96a1767fff0-signal_traces-122": {
+  "v": "FP",
+  "s": "no",
+  "r": "HDMI_TX_D3P 同理，3.5mil 为该板统一的阻抗控制线宽"
+ },
+ "82d287f80ceb-stub_length-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "该板只有 Top/Bottom 两层，不存在 stub；判据把「网络有过孔」直接当作 stub 风险"
+ },
+ "833590d70a7f-stub_length-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "QSPI_SCLK/USB2 各有 1~2 个过孔，过孔≠stub，未测量任何分支长度"
+ },
+ "86a5dcabfcf4-stub_length-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "SWCLK 的 5 个过孔是换层/扇出，不是短桩；判据无 stub 长度测量"
+ },
+ "8963b54a91ea-stub_length-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "USB_DP/DM 等含过孔即报，规则无法区分换层过孔与真 stub"
+ },
+ "e0b21c2eb89e-stub_length-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "命中项含 1V8_HDMI/HDMI-5V 等电源网络，纯关键词误命中，且无 stub 测量"
+ },
+ "0181b5924c3c-trace_acute_angles-5": {
+  "v": "FP",
+  "s": "no",
+  "r": "MIC0_GND 唯一锐角腿长 0.21mm、距元件 0.43mm，是焊盘入口几何；0.2mm 线宽单处 45° 不构成酸陷阱"
+ },
+ "1875282d60eb-trace_acute_angles-0": {
+  "v": "TP",
+  "s": "yes",
+  "r": "3.3V 网络 42.3° 内角、两腿 0.83/1.0mm 且离焊盘/过孔较远，是真实尖锐拐角，建议改 45°"
+ },
+ "38b5022c1cf4-trace_acute_angles-3": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "直角 INFO 且规则自述「普通低速线可接受」；样本直角多在过孔入口(腿 0.18mm)，非缺陷"
+ },
+ "55a1e5d392e0-trace_acute_angles-4": {
+  "v": "FP",
+  "s": "no",
+  "r": "SD_CD 独处锐角腿长 0.48mm 且距元件 0.43mm，属焊盘入口，非布线选择"
+ },
+ "5fd8810511b8-trace_acute_angles-22": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "VCC3 的直角（腿 1.2~1.7mm）对电源线无实际影响，规则自身也承认低速可接受"
+ },
+ "002d4444a5dd-trace_edge_clearance-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "最小 0.292mm 距门限 0.3mm 仅差 8µm，且高于 JLC 铜到边最小 0.2mm，属阈值边界误报"
+ }
+}

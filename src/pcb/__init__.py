@@ -2,6 +2,13 @@
 
 from .models import PCBData, PCBTrace, PCBNet, PCBVia
 from .parser import PCBParseStrategy, LCEDAJsonParser, LCEDAProParser, create_parser
+from .epro2_parser import (
+    Epro2Parser,
+    bom_rows_to_items,
+    load_epro2_bom_items,
+    load_epro2_project,
+)
+from .geometry import Corner, chain_segments, polyline_corners, trace_corners
 from .calculator import (
     microstrip_impedance,
     stripline_impedance,
@@ -34,7 +41,16 @@ __all__ = [
     "PCBParseStrategy",
     "LCEDAJsonParser",
     "LCEDAProParser",
+    "Epro2Parser",
+    "bom_rows_to_items",
+    "load_epro2_bom_items",
+    "load_epro2_project",
     "create_parser",
+    # geometry (走线串联 / 拐角)
+    "Corner",
+    "chain_segments",
+    "polyline_corners",
+    "trace_corners",
     # circuit calculator
     "microstrip_impedance",
     "stripline_impedance",

@@ -221,13 +221,63 @@ class PCBConstants:
     TOP_LAYER: str = "TopLayer"
     BOTTOM_LAYER: str = "BottomLayer"
 
-    # 信号线规则
-    SIGNAL_TRACE_MIN_WIDTH_MM: float = 0.2     # 信号线最小宽度
+    # ── 走线类规则阈值 ──
+    # 2026-09 用 76 个唯一真实 .epro2 设计校准；度量口径与分位数见
+    #   scripts/calibrate_trace_thresholds.py
+    #   experiment_results/trace_threshold_calibration/report.txt
+    # 信号线宽不用单一下限，按「绝对工艺下限 + 本板主流线宽」两级判定：
+    #   - ABS：细于 0.1mm(≈4mil，一般厂最小) → 可能做不出来
+    #   - REL：细于本板信号线宽众数的 0.6 倍 → 明显偏离本板设计意图（疑似误用细线）
+    #   固定 0.127mm 会命中 1347 网络 / 13 设计（立创泰山派3M 一块就 501 条，因为
+    #   整板用的是 4.8mil 主流宽）；改成两级判据后命中 268 网络 / 8 设计，
+    #   且「整板统一用细线」的专业设计不再被误报。
+    SIGNAL_TRACE_ABS_MIN_WIDTH_MM: float = 0.1
+    SIGNAL_TRACE_REL_MIN_RATIO: float = 0.6
     SIGNAL_NET_KEYWORDS: tuple = (              # 低速信号网络关键词
         "SCK", "SCL", "SDA", "MISO", "MOSI", "SS",
         "TX", "RX", "SPI", "I2C", "UART",
         "CLK", "RST", "INT", "CS",
     )
+
+    # 走线到板框最小间距 (mm)。JLC 铜到边最小 0.2 / 推荐 0.3。
+    #   实测 40 个有真实板框的设计：最小 0.292mm，<0.3 的仅 2 条折线。
+    TRACE_EDGE_CLEARANCE_MIN_MM: float = 0.3
+
+    # 过孔密度：只对「高速网络」生效，单网络过孔数达到该值即告警。
+    #   校准前对全部网络生效：646 个网络 / 73 个设计（GND 缝合孔上千个也报）；
+    #   限定高速网络后 27 个网络 / 9 个设计。
+    VIA_DENSITY_MAX_PER_NET: int = 5
+    VIA_DENSITY_NET_KEYWORDS: tuple = ("CLK", "PWM", "SW", "SENSE", "FB", "DRV", "GATE", "DRIVE")
+
+    # 3W 串扰：间距系数（经验准则）+ 平行重叠长度门限。
+    #   只用最短距离判定时 74/74 个设计全中（交叉/过孔处必然接近）；
+    #   要求平行重叠 >5mm 后降到 242 对 / 34 个设计。
+    CROSSTALK_SPACING_FACTOR: float = 3.0
+    CROSSTALK_MIN_PARALLEL_MM: float = 5.0
+
+    # 走线拐角（锐角 / 直角）：判定的是**内角**，45° 布线产生的拐角是 135°。
+    #   2026-09 用 76 个唯一真实设计（78 个 .epro2 去重）校准：
+    #   scripts/calibrate_trace_thresholds.py --no-crosstalk
+    #   --out experiment_results/acute_angle_calibration
+    #   串联后拐角共 110231 处，以 135°/130° 为主（45° 布线）；内角 <89° 的锐角
+    #   862 处 / 63 设计（中位 3 处/板），直角 2146 处 / 75 设计。锐角里有一部分是
+    #   焊盘入口处 <0.05mm 的短桩（属焊盘几何而非布线选择），用最小腿长门限滤除
+    #   （不加门限时 <90° 有 1440 处）。
+    TRACE_ACUTE_ANGLE_MAX_DEG: float = 89.0    # 内角 < 此值 → 锐角（酸陷阱）
+    TRACE_RIGHT_ANGLE_MIN_DEG: float = 89.0    # 内角落在 [min,max] → 直角
+    TRACE_RIGHT_ANGLE_MAX_DEG: float = 91.0
+    TRACE_CORNER_MIN_LEG_MM: float = 0.05      # 拐角任一侧腿短于此值视为退化
+    TRACE_CORNER_PAD_LEG_MM: float = 0.5       # 两腿均短于此值且贴近焊盘/过孔 → 焊盘入口几何
+    TRACE_CORNER_PAD_CLEAR_MM: float = 1.0     # 「贴近焊盘/过孔」的判定半径 (mm)
+
+    # 差分对：长度失配门限 (mm) 与「未紧耦合」间距门限（线宽倍数）。
+    #   ground truth 来自工程 NET 规则 (differentialName)，576 对。
+    #   失配：p50=0.023 / p75=0.181 / p90=1.63mm；>0.5mm 命中 115 对 / 32 设计
+    #        （原 5mil：152 对 / 40 设计）。
+    #   对内最小间距/线宽：p25=1.77 / p50=2.10 / p90=2.71 / p95=3.0W；
+    #        >3W 仅 16 对，>4W 6 对 → 门限取 3W。
+    DIFF_PAIR_MAX_SKEW_MM: float = 0.5
+    DIFF_PAIR_MAX_GAP_FACTOR: float = 3.0
 
     # 电源线规则
     POWER_NET_KEYWORDS: tuple = (               # 电源网络关键词
@@ -260,7 +310,7 @@ class PCBConstants:
     AD_SEPARATION_MIN_MM: float = 5.0         # 模拟/数字最小分离距离 (mm)
 
     # 文件格式
-    SUPPORTED_PCB_FORMATS: tuple = (".json", ".epro")
+    SUPPORTED_PCB_FORMATS: tuple = (".json", ".epro", ".epro2")
 
 
 # ══════════════════ 单例实例 ══════════════════

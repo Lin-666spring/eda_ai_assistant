@@ -1,0 +1,147 @@
+{
+ "69de1f0b5019-battery_voltage_divider-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "板上有 CR2032 座，但 VCC_BAT 网只挂 D3/FPC 引脚、无 MCU/ADC 可监测；规则还要求 R 的 value 含 100K~1M，该 BOM 的 R 行 value 大量为空"
+ },
+ "d619077597d4-battery_voltage_divider-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "梁山派板上根本没有电池：「BAT」来自 D1=BAT54CT 肖特基料号子串，凭空造出「电池供电系统」"
+ },
+ "4f1ed044af3e-reverse_polarity_protection-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "该板唯一输入是 USB Type-C，不存在反接场景；「直流输入」前提来自 U3 描述里的「输入15V」子串（全板确实无防反接器件，但不需要）"
+ },
+ "bdc57176e9b8-reverse_polarity_protection-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "板上就有 D1=SS34 肖特基在 +5V 轨（后接磁珠 U5），规则关键词表没有 SS34、描述也不含「肖特基/diode」→ 漏判"
+ },
+ "2c024ec1eb39-reset_circuit-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "判据是全 BOM 数 R/C 的 value（10k/0.1u），与网络无关；该 epro2 只有 15 个元件、0 个电容、无 RST 网（复位在 ESP32-S3 模组内部）「缺 0.1µF」只是全板无电容"
+ },
+ "38b5022c1cf4-reset_circuit-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "复位由 EN 网（U1.7）上的 C9=1µF+R2=120Ω+Q2=SS8050 实现，规则只认 10k/0.1µF 关键词 → 判成缺失"
+ },
+ "687a3f3f9e4f-pullup_pulldown-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "规则取「第一个名字含 BOOT 的网络」=H1.27（排针脚，无 MCU 引脚）；且 BOM 的 4.7kΩ/10kΩ 行描述不含「电阻」→ has_pull_r=False"
+ },
+ "9a530303acc8-pullup_pulldown-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "EN2 网只有 H2.2（排针脚）靠「EN」子串命中；板上 R14/R23/R25/R27=10kΩ 因描述不含「电阻」被忽略"
+ },
+ "0d385bbc9396-led_current_limit-1": {
+  "v": "FP",
+  "s": "no",
+  "r": "LED1.2 所在网上就挂着 R4.2 与 Q1.1（限流/驱动）；含「电阻」关键词的 BOM 行=0 才触发"
+ },
+ "d9bf616df549-led_current_limit-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "LED14.1 网络直接挂 R23（0603WAF1001T5E=1KΩ），限流电阻存在，仅因描述不含「电阻」误判"
+ },
+ "1a507f98388a-optocoupler_input_resistor-1": {
+  "v": "FP",
+  "s": "no",
+  "r": "U9=TPS56C230 电源芯片不是光耦，被 opto_kw 里两字母「PS」命中 T*PS*… 料号；且 has_input_r 要求电阻前缀==光耦前缀(U vs R)恒为 0"
+ },
+ "fb12f7b89b5b-optocoupler_input_resistor-1": {
+  "v": "FP",
+  "s": "no",
+  "r": "U110=TPS61165 LED 驱动，同样被「PS」子串误判为光耦（同板 U95/U101/U13 等一并误报）"
+ },
+ "2b30c85075cc-ferrite_bead_isolation-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "「数模混合」前提是假的：模拟集合靠 LM（实为光通量单位 lm）、OP 两字母子串拼凑；BOM 里也无磁珠"
+ },
+ "e0dceb8f7a42-ferrite_bead_isolation-0": {
+  "v": "UNC",
+  "s": "yes",
+  "r": "磁珠确无（仅 L1/L2/L4 功率电感）属实，但「数模混合」前提（唯一命中 LM 的 U10）未核实，无法定性"
+ },
+ "00883c256342-floating_pins-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "规则不读 netlist，见 MCU 就报；实际 U5.7(NRST) 网挂 C10/CN2/CN3/R5，U5.44(BOOT0) 挂 R79，未悬空"
+ },
+ "00f0c73de5c4-floating_pins-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "同上：U1 的 RESET 网挂 C7/J4/J5/J6/Q1/R1/SW1/U2，IO0_BOOT 挂 Q1/R2/SW2，均未悬空"
+ },
+ "0181b5924c3c-debug_port_accessibility-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "该板调试走 USB-C + CH340K，另有 TP1~TP4 测试焊盘；无排针不影响调试，规则见到 CH340 就报"
+ },
+ "86a5dcabfcf4-debug_port_accessibility-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "BOM 里有 H1=PZ254V-11-05P「1x5P 2.54mm 方针」、U4/U5=ZX-PZ2.54-2-16PZZ 与 TP1/TP2；conn_kw 漏了立创最常见的「方针」写法"
+ },
+ "2b30c85075cc-i2c_pullups-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "has_i2c 命中的唯一一行是 D6..D36=0603ESDA-05N（料号含 SDA）；板上 10K/10kΩ 电阻与 RN 排阻因描述不含「电阻」被忽略"
+ },
+ "0c30f919fb59-decoupling_caps-5": {
+  "v": "TP",
+  "s": "yes",
+  "r": "数据成立：U6(TPS22919) 的 3.3V 网有 100nF 高频去耦，但全板 15 颗 100nF、无任何 1~100µF 体电容（整板口径，未精确到 U6）"
+ },
+ "0d385bbc9396-decoupling_caps-6": {
+  "v": "FP",
+  "s": "no",
+  "r": "旁路电容值全是 680nF，落在规则 50~500nF 窗口外 → 计 0；U15(CN3791) 的 +5V 网实挂 8 颗电容；34 个「IC」里含端子/排针/跳线"
+ },
+ "8d3fcf99d222-opamp_feedback_network-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "「同前缀」取的是运放自己位号的字母（U），数电阻必然 0 —— 代码 bug；实际 U6 反馈网络 R6~R10 就在 7~9mm 内"
+ },
+ "f73c5df43c0a-opamp_feedback_network-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "同上：U5 的 R13/R15/R4/R8 反馈网络确实存在，只是规则的前缀匹配恒不命中"
+ },
+ "339710d4dd91-analog_digital_separation-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "命中的 FPC2/U1 是 FPC 连接器与 ESP32 模组；「ad」子串命中描述「PicoBlade」被判为模拟元件，真模拟器件 U6(LMV321) 距 U1 有 19.37mm"
+ },
+ "0c30f919fb59-component_edge_clearance-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "判据用元件原点绝对坐标 x<3 或 y<3，完全没用板框（该板 y∈[-40,0] 全员命中）；实测最小距离 1.778mm、无元件 <0.5mm，报警名单里元件在 4.4~17.5mm"
+ },
+ "56671a84b78e-component_edge_clearance-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "全板到板框最小距离 3.373mm > 3.0mm，27 条全是原点坐标判据的产物"
+ },
+ "4f1ed044af3e-testpoint_coverage-0": {
+  "v": "UNC",
+  "s": "yes",
+  "r": "规则没有任何测试点检测能力（只收集关键网络名），报警不是检测所得；该板确实无 TP 位号，故无法按「误报」定"
+ },
+ "8983879305d5-testpoint_coverage-0": {
+  "v": "UNC",
+  "s": "yes",
+  "r": "同上：解析器能读出别处的 TP 焊盘（逻辑派/天巧星/相框都有），本规则完全没用这个能力"
+ },
+ "51d7b3e13ef5-esd_protection-0": {
+  "v": "UNC",
+  "s": "yes",
+  "r": "未逐条核对；同规则的 ESP-HDMI 案例已证明「BOM 无器件文本 → 关键词失明」会造成误报，本板无结论"
+ }
+}
