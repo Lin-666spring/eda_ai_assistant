@@ -723,7 +723,19 @@ def check_loading_states(page, res: Result):
               and btn["cleared"] and btn["restored"] == btn["orig"],
               f"{btn['orig']!r} → {btn['text']!r} → {btn['restored']!r}")
 
-    # 热力图：占位动效必须真的挂上并被撤掉（同步段读取，避免和毫秒级后端抢时序）
+    # 热力图：占位动效必须真的挂上并被撤掉
+    # 先把后端调用人为放慢（模拟真实大板子的统计耗时），这样截图抓到的才是加载态本身
+    page.evaluate("""() => {
+        window.__origHeat = eel.get_drc_heatmap;
+        eel.get_drc_heatmap = (...a) => () => new Promise(res => {
+            setTimeout(() => res(window.__origHeat(...a)()), 1400);
+        });
+        openRightPanel(); switchTab('review');
+        const s = document.getElementById('drcHeatmapSection');
+        s.style.display = 'block';
+        s.scrollIntoView({block: 'center'});
+    }""")
+    page.wait_for_timeout(200)
     hm = page.evaluate("""() => {
         loadDrcHeatmap();            // 故意不 await：只看同步段
         const h = document.getElementById('drcHeatmapLoading');
@@ -736,8 +748,9 @@ def check_loading_states(page, res: Result):
     res.check("P14 热力图统计期间显示占位动效 + 按钮 loading",
               hm["shown"] and hm["spin"] == 1 and hm["btnLoading"] and hm["text"] == "统计中",
               str(hm))
+    page.wait_for_timeout(700)
     page.screenshot(path=str(SHOT_DIR / "loading_heatmap.png"))
-    page.wait_for_timeout(2500)
+    page.wait_for_timeout(1600)
     res.check("P14 热力图结束后撤掉占位动效",
               page.evaluate("""() => {
                   const h = document.getElementById('drcHeatmapLoading');
@@ -745,6 +758,7 @@ def check_loading_states(page, res: Result):
                   return h.style.display === 'none' && !b.classList.contains('is-loading')
                          && b.textContent.trim() === '加载热力图';
               }"""))
+    page.evaluate("() => { eel.get_drc_heatmap = window.__origHeat; }")
 
     # 白名单包装层：真实文件导入必须照常解析，且期间点亮忙碌态
     # （eel.* 被统一包了一层，这里验证包装没把异步返回值弄坏）
