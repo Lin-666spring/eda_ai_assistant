@@ -28,6 +28,8 @@
   P13 左侧栏承载会话列表 + 工作区选择，会话按工作区隔离
   P14 生成/加载过程必须有动效：思考气泡（三点脉冲+计时）、顶栏状态胶囊 +
       顶部进度条、多智能体审查骨架屏、按钮内联 loading
+  P15 热力图数据来源：坐标文件（无 PCB）也能出格、网格边长可切换并传给后端、
+      空状态按 reason 给不同文案（而不是笼统的"无数据"）
 另外附带若干"只报告不失败"的巡检（死 id 引用、视图溢出）。
 """
 
@@ -784,6 +786,99 @@ def check_loading_states(page, res: Result):
               f"{imp['st']} pill={imp['busy']['text']!r} bar={imp['busy']['bar']}")
 
 
+def check_heatmap_data_path(page, res: Result):
+    """P15 热力图（违规计数网格）数据来源与空状态。
+
+    热力图 = 位号 → 坐标 → 分桶计数，与原理图/位图无关。这里验证
+    「一键演示（BOM + 坐标文件，没有 PCB）」这条路径真能画出格子 —— 修复前
+    get_heatmap_data() 只认 PCB 的 component_positions，这条路径恒为空表。
+    P14 里那次真实 import_bom_file 会把上下文换成单行 BOM，所以这里先重新
+    加载一遍演示数据，跑的是**真实后端**（无 stub）。
+    """
+    page.evaluate("() => { openRightPanel(); switchTab('review'); }")
+    page.wait_for_timeout(200)
+
+    real = page.evaluate("""async () => {
+        await eel.load_demo_data()();     // BOM + 坐标文件（无 PCB）
+        const sel = document.getElementById('drcHeatmapGrid');
+        sel.value = '5';
+        await loadDrcHeatmap();
+        const empty = document.getElementById('drcHeatmapEmpty');
+        const chart = document.getElementById('drcHeatmapChart');
+        return {desc: document.getElementById('drcHeatmapDesc').textContent,
+                emptyShown: empty.style.display !== 'none',
+                emptyText: empty.textContent,
+                chartShown: chart.style.display !== 'none',
+                canvases: document.querySelectorAll('#drcHeatmapChart canvas').length,
+                hasEcharts: !!window.echarts,
+                chartInited: !!drcHeatmapChart,
+                options: [...sel.options].map(o => o.value)};
+    }""")
+    res.check("P15 只有坐标文件（无 PCB）也能出热力图",
+              real["chartShown"] and not real["emptyShown"]
+              and "位置来源：坐标文件" in real["desc"],
+              f"描述「{real['desc']}」/ 空提示={real['emptyShown']}")
+    res.check("P15 热力图描述写清来源与计数",
+              "条违规" in real["desc"] and "处计数" in real["desc"],
+              f"描述「{real['desc']}」")
+    if real["hasEcharts"]:
+        res.check("P15 真实渲染出热力图 canvas",
+                  real["chartInited"] and real["canvases"] >= 1,
+                  f"canvas={real['canvases']}")
+    else:
+        res.warn("ECharts 未加载（离线 CDN）→ 只验证了数据与文案，未渲染图表")
+    res.check("P15 网格边长可选（2/5/10/20mm）",
+              real["options"] == ["2", "5", "10", "20"], str(real["options"]))
+
+    # 切换网格边长必须真的把新值传给后端（而不是只改前端标签）
+    grid = page.evaluate("""async () => {
+        const sel = document.getElementById('drcHeatmapGrid');
+        const calls = [];
+        const orig = eel.get_drc_heatmap;
+        eel.get_drc_heatmap = (...a) => { calls.push(a[0]); return orig(...a); };
+        sel.value = '20';
+        sel.dispatchEvent(new Event('change'));
+        await new Promise(r => setTimeout(r, 1200));
+        eel.get_drc_heatmap = orig;
+        return {calls: calls,
+                desc: document.getElementById('drcHeatmapDesc').textContent};
+    }""")
+    res.check("P15 切换网格边长会带上新值重新统计",
+              grid["calls"] and grid["calls"][0] == 20 and "网格 20mm" in grid["desc"],
+              f"后端收到 {grid['calls']} / 描述「{grid['desc']}」")
+
+    # 空状态：按后端 reason 给不同文案，别一律「无数据」
+    empty = page.evaluate("""async () => {
+        const orig = eel.get_drc_heatmap;
+        const out = {};
+        const run = async (reason) => {
+            eel.get_drc_heatmap = () => () => Promise.resolve(JSON.stringify(
+                {ok: true, data: [], grid_size_mm: 5, source: '', violation_count: 0,
+                 mapped: 0, reason: reason}));
+            await loadDrcHeatmap();
+            const e = document.getElementById('drcHeatmapEmpty');
+            out[reason] = {shown: e.style.display !== 'none', text: e.textContent};
+        };
+        await run('no_positions');
+        await run('no_violations');
+        await run('unmapped');
+        eel.get_drc_heatmap = orig;
+        return out;
+    }""")
+    texts = {k: v["text"] for k, v in empty.items()}
+    res.check("P15 空状态按原因给文案（无坐标 / 无违规 / 未关联位号）",
+              all(v["shown"] for v in empty.values())
+              and len(set(texts.values())) == 3
+              and "Pick & Place" in texts.get("no_positions", "")
+              and "通过" in texts.get("no_violations", "")
+              and "位号" in texts.get("unmapped", ""),
+              json.dumps(texts, ensure_ascii=False))
+
+    page.evaluate("() => { document.getElementById('drcHeatmapGrid').value = '5'; loadDrcHeatmap(); }")
+    page.wait_for_timeout(800)
+    page.screenshot(path=str(SHOT_DIR / "heatmap_from_positions.png"))
+
+
 def scan_warnings(page, res: Result, app_js: Path):
     """只报告、不判失败：死 id 引用 / 视图内容溢出。"""
     ids = sorted(set(re.findall(
@@ -869,7 +964,8 @@ def run(port: int, headed: bool) -> int:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=not headed)
             page = browser.new_page(viewport={"width": 1300, "height": 840})
-            page.on("console", lambda m: console.append((m.type, m.text[:200])))
+            page.on("console", lambda m: console.append(
+                (m.type, m.text[:200], getattr(m, "location", None) or {})))
             page.on("pageerror", lambda e: pageerrors.append(
                 (str(e)[:200] + " || " + (getattr(e, "stack", "") or "")[:400])))
             page.on("requestfailed", lambda r: failed.append(r.url[:100]))
@@ -906,20 +1002,32 @@ def run(port: int, headed: bool) -> int:
             check_companion(page, res)
             check_chat_and_views(page, res)
             check_loading_states(page, res)
+            check_heatmap_data_path(page, res)
             check_sidebar_conversations(page, res)
             check_workspace(page, res)
             scan_warnings(page, res, ROOT / "web" / "js" / "app.js")
 
             # 第三方 CDN（字体 / ECharts）不通不算本地回归失败：离线跑时它们是
             # 预期内的降级（图表空、字体回落系统字体），但本地资源必须全绿。
+            # 注意 r"Failed to load resource" 这类控制台错误的 m.text 里**没有 URL**，
+            # 必须靠 m.location 里的 url 才能判定是 CDN —— 否则会被误判成本地回归。
             cdn_down = [u for u in failed if any(h in u for h in CDN_HOSTS)]
             failed = [u for u in failed if not any(h in u for h in CDN_HOSTS)]
-            errs = [c for c in console
-                    if c[0] == "error" and not any(h in c[1] for h in CDN_HOSTS)]
+
+            def _is_cdn(entry) -> bool:
+                _, text, loc = entry
+                url = loc.get("url", "") if isinstance(loc, dict) else ""
+                return any(h in text or h in url for h in CDN_HOSTS)
+
+            errs = [c for c in console if c[0] == "error" and not _is_cdn(c)]
+            cdn_errs = [c for c in console if c[0] == "error" and _is_cdn(c)]
+            if cdn_errs:
+                cdn_down.extend(c[2].get("url", "") for c in cdn_errs if isinstance(c[2], dict))
             if cdn_down:
                 res.warn("第三方 CDN 不可达（离线运行预期降级：ECharts 图表不可用、"
-                         "字体回落系统字体）: " + ", ".join(cdn_down[:2]))
-            res.check("无 JS 控制台错误（本地资源）", not errs, json.dumps(errs[:3], ensure_ascii=False))
+                         "字体回落系统字体）: " + ", ".join(sorted(set(cdn_down))[:2]))
+            res.check("无 JS 控制台错误（本地资源）", not errs,
+                      json.dumps([[c[1], c[2]] for c in errs[:3]], ensure_ascii=False))
             res.check("无未捕获异常", not pageerrors, "; ".join(pageerrors[:3]))
             res.check("无失败请求（本地资源）", not failed, "; ".join(failed[:3]))
             browser.close()

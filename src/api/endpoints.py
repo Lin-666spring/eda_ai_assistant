@@ -317,22 +317,13 @@ def check_bom_health():
 
 @router.get("/drc/heatmap")
 def get_drc_heatmap(grid_size_mm: float = Query(default=5.0)):
-    """Generate heatmap data: DRC violations mapped to PCB component positions.
+    """Generate heatmap data: DRC violations mapped to component positions.
 
-    Returns [[x_bin, y_bin, count], ...] for ECharts heatmap rendering.
-    Empty list if no PCB data or no violations with positions.
+    Returns [[x_bin, y_bin, count], ...] for ECharts heatmap rendering, plus
+    ``source`` (``pcb`` / ``positions``) and ``reason`` when nothing can be drawn.
+    Empty list if no positions are loaded or no violation maps to a component.
     """
-    from src.rules.checker import DesignRuleChecker
-    ctrl = get_controller()
-    ctx = ctrl.context
-    if not ctx.pcb_data or not ctx.has_data:
-        return {"ok": True, "data": []}
-    checker = DesignRuleChecker()
-    violations = checker.check_all(
-        ctx.bom_items, ctx.positions, ctx.netlist, ctx.pcb_data
-    )
-    heatmap_data = checker.get_heatmap_data(violations, grid_size_mm)
-    return {"ok": True, "data": heatmap_data}
+    return get_controller().get_drc_heatmap(grid_size_mm)
 
 
 @router.post("/verify/suggestion")

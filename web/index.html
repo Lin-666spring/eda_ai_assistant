@@ -222,7 +222,16 @@
       <div id="drcHeatmapSection" class="heatmap-section" style="display:none">
         <div class="heatmap-header">
           <h4>📊 DRC 违规热力图</h4>
-          <span class="heatmap-desc">违规集中在图中高亮区域</span>
+          <span class="heatmap-desc" id="drcHeatmapDesc">违规计数网格 · 颜色越深违规越密</span>
+          <label class="heatmap-grid-label" title="网格边长：板子小就调小，板子大就调大">
+            网格
+            <select id="drcHeatmapGrid" class="heatmap-grid-select" onchange="loadDrcHeatmap()">
+              <option value="2">2 mm</option>
+              <option value="5" selected>5 mm</option>
+              <option value="10">10 mm</option>
+              <option value="20">20 mm</option>
+            </select>
+          </label>
           <button class="heatmap-load-btn" onclick="loadDrcHeatmap()">加载热力图</button>
         </div>
         <div id="drcHeatmapLoading" class="panel-loading" style="display:none">
@@ -230,7 +239,7 @@
           <span class="panel-loading-text">正在统计违规热力图…</span>
         </div>
         <div id="drcHeatmapChart" style="width:100%;height:300px;"></div>
-        <div id="drcHeatmapEmpty" class="empty-hint" style="display:none">无位置数据 — 请导入 PCB 文件后运行规则检查</div>
+        <div id="drcHeatmapEmpty" class="empty-hint" style="display:none">无元件坐标 — 请导入 PCB 文件或坐标文件(Pick &amp; Place)后重试</div>
       </div>
     </div>
     <div id="tab-html" class="tab-panel">

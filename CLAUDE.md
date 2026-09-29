@@ -116,9 +116,9 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 - 深浅色主题都走 `:root` / `body[data-theme="dark"]` 的 token，不要在规则里硬编码颜色。
 - 图标统一用 `ICONS` 里的内联 SVG（`app.js`），不用 emoji 字体图标；`confirm()` 已由自定义对话框替代。
 
-回归手段：`python tests/ui_smoke.py`（Playwright 真机驱动 + stub LLM，零 API 花费，68 项检查 + 截图到 `output/ui_smoke/`）。覆盖布局回归 P12（主页面默认是对话）/ P13（左侧会话栏 + 工作区隔离）/ P14（生成中的加载动效：思考气泡、顶栏胶囊+进度条、审查骨架屏、按钮 loading）。
+回归手段：`python tests/ui_smoke.py`（Playwright 真机驱动 + stub LLM，零 API 花费，74 项检查 + 截图到 `output/ui_smoke/`）。覆盖布局回归 P12（主页面默认是对话）/ P13（左侧会话栏 + 工作区隔离）/ P14（生成中的加载动效：思考气泡、顶栏胶囊+进度条、审查骨架屏、按钮 loading）/ P15（热力图数据来源与空状态：坐标文件也能出格、网格边长透传、reason 文案）。
 ⚠️ Playwright 要起自己的驱动子进程（管道 stdio），在受限沙箱里会 `PermissionError` —— 它需要能正常 `spawn` 的权限，不是代码问题。
-文件名不以 `test_` 开头，因此不会被 pytest 收集；配套的 pytest 用例是 `tests/test_tool_catalog.py`（锁前后端工具目录一致性）与 `tests/test_persistence.py`（含 workspaces 用例）。
+文件名不以 `test_` 开头，因此不会被 pytest 收集；配套的 pytest 用例是 `tests/test_heatmap.py`（热力图回落/reason）、`tests/test_tool_catalog.py`（锁前后端工具目录一致性）与 `tests/test_persistence.py`（含 workspaces 用例）。
 
 ### Module map
 
@@ -140,6 +140,7 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 - **Controller is UI-agnostic**: `AppController` has zero UI imports. Both Eel and CLI (`tests/cli_prototype.py`) consume the same API.
 - **`.env` never committed**: API keys go in `.env` (gitignored) or `~/.eda_ai_assistant/settings.json`.
 - **`CommandContext` is mutable session state**: BOM items, positions, PCB data live here with a single `has_data` gate.
+- **DRC 热力图是「违规计数网格」，不是图像**：`violation.location` 正则抠位号 → 查坐标 → 按 `grid_size_mm` 分桶计数，全程不解析原理图/位图。位置来源优先级 **PCB `component_positions` > 坐标文件(`ctx.positions`)**（`DesignRuleChecker.build_heatmap` 统一处理，`get_heatmap_data` 是它的兼容壳）。入口只有 `AppController.get_drc_heatmap()`，Eel 与 FastAPI 都委托它；空结果必须带 `reason`（`no_data`/`no_positions`/`no_violations`/`unmapped`），前端据此给不同文案 —— 不要退回「只认 PCB 坐标」的老写法，那会让一键演示永远显示"无位置数据"。
 - **NLU is lazy-init**: Embedding model loads on first classification call, not at import time.
 - **Three chat paths**: `send_message` (NLU pipeline → dispatch), `send_message_stream` (freeform chat), `send_message_agent` (Function Calling Agent Loop).
 - **Persistence is fire-and-forget**: JS calls `_persist*` helpers without `await` — DB writes are best-effort, not blocking.

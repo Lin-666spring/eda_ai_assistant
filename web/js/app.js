@@ -2944,12 +2944,26 @@ function _gradeColor(score) {
 
 var drcHeatmapChart = null;
 
+// 热力图空状态文案：后端会说明「为什么画不出来」，别一律甩一句"无数据"
+function heatmapEmptyText(payload) {
+  switch (payload && payload.reason) {
+    case 'no_data':      return '还没有设计数据 — 请先导入 BOM 或工程文件';
+    case 'no_positions': return '无元件坐标 — 请导入 PCB 文件或坐标文件(Pick & Place)后重试';
+    case 'no_violations':return '规则检查通过，没有违规可统计';
+    case 'unmapped':     return '发现的违规没有关联到元件位号（多为网络/板级问题）';
+    default:             return '无元件坐标 — 请导入 PCB 文件或坐标文件(Pick & Place)后重试';
+  }
+}
+
 async function loadDrcHeatmap() {
   var section = document.getElementById('drcHeatmapSection');
   var chartDom = document.getElementById('drcHeatmapChart');
   var emptyHint = document.getElementById('drcHeatmapEmpty');
   var holder = document.getElementById('drcHeatmapLoading');
   var btn = document.querySelector('.heatmap-load-btn');
+  var descEl = document.getElementById('drcHeatmapDesc');
+  var gridSel = document.getElementById('drcHeatmapGrid');
+  var gridMm = gridSel ? (parseFloat(gridSel.value) || 5) : 5;
   if (!section || !chartDom) return;
 
   section.style.display = 'block';
@@ -2961,17 +2975,26 @@ async function loadDrcHeatmap() {
   setStatus('统计违规热力图…');
 
   try {
-    var raw = await eel.get_drc_heatmap()();
+    var raw = await eel.get_drc_heatmap(gridMm)();
     var data = JSON.parse(raw);
     if (!data.ok || !data.data || !data.data.length) {
       chartDom.style.display = 'none';
+      emptyHint.textContent = heatmapEmptyText(data);
       emptyHint.style.display = 'block';
+      if (descEl) descEl.textContent = '网格 ' + gridMm + 'mm · 无可绘制数据';
       return;
     }
     chartDom.style.display = 'block';
-    renderDrcHeatmap(chartDom, data.data);
+    renderDrcHeatmap(chartDom, data.data, data);
+    if (descEl) {
+      // 数据来源写清楚：PCB 文件自带的坐标 vs 单独导入的坐标文件
+      descEl.textContent = '网格 ' + (data.grid_size_mm || gridMm) + 'mm · 位置来源：'
+        + (data.source === 'pcb' ? 'PCB 元件坐标' : '坐标文件(Pick & Place)')
+        + ' · ' + data.mapped + ' 处计数 / ' + data.violation_count + ' 条违规';
+    }
   } catch (e) {
     console.error('Heatmap load failed:', e);
+    emptyHint.textContent = '热力图统计失败 — 详见控制台日志';
     emptyHint.style.display = 'block';
     chartDom.style.display = 'none';
   } finally {
@@ -2981,7 +3004,7 @@ async function loadDrcHeatmap() {
   }
 }
 
-function renderDrcHeatmap(chartDom, gridData) {
+function renderDrcHeatmap(chartDom, gridData, meta) {
   if (!window.echarts) {
     console.warn('ECharts not loaded');
     return;
@@ -2994,28 +3017,29 @@ function renderDrcHeatmap(chartDom, gridData) {
   var xs = gridData.map(function(d) { return d[0]; });
   var ys = gridData.map(function(d) { return d[1]; });
   var counts = gridData.map(function(d) { return d[2]; });
-  var xMin = Math.min.apply(null, xs), xMax = Math.max.apply(null, xs);
-  var yMin = Math.min.apply(null, ys), yMax = Math.max.apply(null, ys);
   var maxCount = Math.max.apply(null, counts);
 
-  var xLabels = xs.map(function(v, i) {
-    return i === 0 || xs.indexOf(v) === i ? '#' + v : '';
-  });
-  var yLabels = ys.map(function(v, i) {
-    return i === 0 || ys.indexOf(v) === i ? '#' + v : '';
-  });
+  // 网格序号 → 真实 mm：有 meta 就把格子换算回坐标区间，tooltip 才说得清位置
+  var gridMm = (meta && meta.grid_size_mm) || 5;
+  var hasOrigin = meta && typeof meta.x_min === 'number' && typeof meta.y_min === 'number';
 
   var option = {
     tooltip: {
       formatter: function(p) {
-        return '网格 [' + p.value[0] + ', ' + p.value[1] + ']<br/>违规数: <b>' + p.value[2] + '</b>';
+        var head = '网格 [' + p.value[0] + ', ' + p.value[1] + ']<br/>违规数: <b>' + p.value[2] + '</b>';
+        if (!hasOrigin) return head;
+        var x0 = meta.x_min + p.value[0] * gridMm;
+        var y0 = meta.y_min + p.value[1] * gridMm;
+        return head
+          + '<br/>X ' + x0.toFixed(1) + '–' + (x0 + gridMm).toFixed(1) + ' mm'
+          + '<br/>Y ' + y0.toFixed(1) + '–' + (y0 + gridMm).toFixed(1) + ' mm';
       }
     },
     grid: { left: 60, right: 20, top: 20, bottom: 40 },
     xAxis: {
       type: 'category',
       data: Array.from(new Set(xs)).sort(function(a, b) { return a - b; }),
-      name: 'X 网格',
+      name: 'X 网格 (' + gridMm + 'mm)',
       nameLocation: 'center',
       nameGap: 25,
       axisLabel: { fontSize: 9 }
@@ -3023,7 +3047,7 @@ function renderDrcHeatmap(chartDom, gridData) {
     yAxis: {
       type: 'category',
       data: Array.from(new Set(ys)).sort(function(a, b) { return a - b; }),
-      name: 'Y 网格',
+      name: 'Y 网格 (' + gridMm + 'mm)',
       nameLocation: 'center',
       nameGap: 45,
       axisLabel: { fontSize: 9 }

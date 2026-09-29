@@ -1551,6 +1551,17 @@ body.companion-mode .agent-toggle { padding: 0 8px; }
   transition: all 0.2s;
 }
 .heatmap-load-btn:hover { background: var(--accent); color: #fff; }
+.heatmap-grid-label {
+  display: flex; align-items: center; gap: 4px; margin-left: auto;
+  font-size: 11px; color: var(--text-muted);
+}
+.heatmap-header .heatmap-load-btn { margin-left: 0; }
+.heatmap-grid-select {
+  padding: 3px 6px; font-size: 11px; font-family: var(--font);
+  background: var(--bg-input); color: var(--text-primary);
+  border: 1px solid var(--border); border-radius: 6px; outline: none; cursor: pointer;
+}
+.heatmap-grid-select:focus { border-color: var(--accent); }
 
 /* ════════════════════════════════════════
    Toast & Design Suggestions

@@ -356,6 +356,47 @@ class AppController:
         )
         return checker.get_report(violations)
 
+    def get_drc_heatmap(self, grid_size_mm: float = 5.0) -> dict:
+        """DRC 违规热力图数据 — Eel / FastAPI / 前端共用的唯一实现。
+
+        热力图是「违规计数网格」，不是图像：从违规文本里抠位号 → 查坐标 → 按
+        ``grid_size_mm`` 分桶计数。位置来源优先级：PCB 元件坐标 > 坐标文件(Pick & Place)。
+
+        Returns:
+            dict: ``{ok, data: [[x,y,count],...], grid_size_mm, source,
+            violation_count, mapped, reason}``；``reason`` 说明为什么画不出来
+            （``no_data`` / ``no_positions`` / ``no_violations`` / ``unmapped``）。
+        """
+        ctx = self.context
+        g = DesignRuleChecker._normalize_grid_size(grid_size_mm)
+        empty = {
+            "ok": True, "data": [], "grid_size_mm": g, "source": "",
+            "violation_count": 0, "mapped": 0, "reason": "",
+        }
+
+        if not ctx.has_data and not ctx.pcb_data:
+            empty["reason"] = "no_data"
+            return empty
+        if not ctx.pcb_data and not ctx.positions:
+            empty["reason"] = "no_positions"
+            return empty
+
+        checker = DesignRuleChecker()
+        violations = checker.check_all(
+            ctx.bom_items, ctx.positions, ctx.netlist, ctx.pcb_data
+        )
+        result = checker.build_heatmap(violations, g)
+
+        if result["source"] == "":
+            reason = "no_positions"
+        elif not violations:
+            reason = "no_violations"
+        elif not result["data"]:
+            reason = "unmapped"
+        else:
+            reason = ""
+        return {"ok": True, "reason": reason, **result}
+
     def review_design_multi_agent(self) -> str:
         """多智能体协同设计审查 — 5 个专业 Agent 并行审查 + 合成报告
 

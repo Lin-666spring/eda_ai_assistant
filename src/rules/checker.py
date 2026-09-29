@@ -2745,10 +2745,12 @@ class DesignRuleChecker:
 
     def __init__(self):
         self._pcb_data: Optional[PCBData] = None
+        self._positions: Optional[dict] = None
         self._rules = [getattr(self, name) for name in sorted(dir(self)) if name.startswith('_check_')]
 
     def check_all(self, bom_items, positions=None, netlist=None, pcb_data=None):
         self._pcb_data = pcb_data
+        self._positions = positions
         violations = []
         for rule_func in self._rules:
             try:
@@ -2759,44 +2761,94 @@ class DesignRuleChecker:
         logger.info(f"规则检查完成: 发现 {len(violations)} 项违规")
         return violations
 
-    def get_heatmap_data(self, violations, grid_size_mm=5.0):
-        """将违规映射到 PCB 坐标网格，生成热力图数据 [x, y, count]。
+    # ── 热力图 ──
+    #
+    # 热力图 = 「违规计数网格」，与原理图/位图无关：
+    #   ① 从 `violation.location` 正则抠出位号  ② 查「位号 → 坐标」表
+    #   ③ 按 grid_size_mm 分桶计数              ④ 交给 ECharts heatmap 着色
+    # 任何一步缺数据都返回空列表（宁可不画，也不编数据）。
+    #
+    # 位置来源优先级：PCB 文件的 component_positions > 坐标文件(Pick & Place)，
+    # 因为 PCB 那份是随板子一起导出的、与网络/走线同源。
 
-        ECharts heatmap 格式: [[x_bin, y_bin, count], ...]
-        若无位置数据，返回空列表。
-        """
-        if not violations or not self._pcb_data:
-            return []
+    DEFAULT_GRID_MM = 5.0
+    MIN_GRID_MM = 0.5
+    MAX_GRID_MM = 200.0
 
-        positions = self._pcb_data.component_positions
-        if not positions:
-            return []
+    @classmethod
+    def _normalize_grid_size(cls, grid_size_mm) -> float:
+        """网格边长容错：非法/非正值回落默认，并夹到 [0.5, 200] mm（防除零）。"""
+        try:
+            g = float(grid_size_mm)
+        except (TypeError, ValueError):
+            return cls.DEFAULT_GRID_MM
+        if not math.isfinite(g) or g <= 0:
+            return cls.DEFAULT_GRID_MM
+        return max(cls.MIN_GRID_MM, min(cls.MAX_GRID_MM, g))
 
-        # 计算坐标范围
-        xs, ys = [], []
+    def _resolve_positions(self, positions=None) -> tuple[dict, str]:
+        """挑一份可用的「位号 → 坐标」，返回 (positions, 来源标记)。"""
+        pcb_positions = getattr(self._pcb_data, "component_positions", None) if self._pcb_data else None
+        if pcb_positions:
+            return pcb_positions, "pcb"
+        for candidate in (positions, self._positions):
+            if candidate:
+                return candidate, "positions"
+        return {}, ""
+
+    @staticmethod
+    def _extract_xy(positions: dict) -> dict[str, tuple[float, float]]:
+        """把各种坐标写法归一化成 {大写位号: (x, y)}，无法解析的条目跳过。"""
         ref_to_pos: dict[str, tuple[float, float]] = {}
-
         for ref, pos in positions.items():
-            if isinstance(pos, dict):
-                px, py = pos.get("x", 0), pos.get("y", 0)
-            elif isinstance(pos, (tuple, list)) and len(pos) >= 2:
-                px, py = float(pos[0]), float(pos[1])
-            else:
+            try:
+                if isinstance(pos, dict):
+                    px, py = pos.get("x"), pos.get("y")
+                elif isinstance(pos, (tuple, list)) and len(pos) >= 2:
+                    px, py = pos[0], pos[1]
+                else:
+                    continue
+                px, py = float(px), float(py)
+            except (TypeError, ValueError):
                 continue
-            xs.append(px)
-            ys.append(py)
-            ref_to_pos[ref.upper()] = (px, py)
+            if not (math.isfinite(px) and math.isfinite(py)):
+                continue
+            ref_to_pos[str(ref).upper()] = (px, py)
+        return ref_to_pos
 
-        if not xs:
-            return []
+    def build_heatmap(self, violations, grid_size_mm=5.0, positions=None) -> dict:
+        """违规 → 坐标网格，返回 ECharts 数据 + 元信息（前端据此显示单位/来源）。
 
-        # 按 grid_size 分桶
-        g = grid_size_mm
-        x_min, x_max = min(xs) - g, max(xs) + g
-        y_min, y_max = min(ys) - g, max(ys) + g
+        Returns:
+            {
+              "data": [[bx, by, count], ...],   # 空列表 = 没有可画的东西
+              "grid_size_mm": 5.0,
+              "source": "pcb" | "positions" | "",   # "" = 完全没有位置数据
+              "x_min": float, "y_min": float,       # 网格原点(mm)，用于 tooltip 还原真实坐标
+              "violation_count": int,               # 本轮违规条数
+              "mapped": int,                        # 真正落进网格的计数（一违规可计多格）
+            }
+        """
+        g = self._normalize_grid_size(grid_size_mm)
+        pos_source, source = self._resolve_positions(positions)
+        meta = {
+            "data": [],
+            "grid_size_mm": g,
+            "source": source,
+            "violation_count": len(violations or []),
+            "mapped": 0,
+        }
+
+        ref_to_pos = self._extract_xy(pos_source) if pos_source else {}
+        if not violations or not ref_to_pos:
+            return meta
+
+        xs = [p[0] for p in ref_to_pos.values()]
+        ys = [p[1] for p in ref_to_pos.values()]
+        x_min, y_min = min(xs) - g, min(ys) - g
+        meta["x_min"], meta["y_min"] = x_min, y_min
 
         grid: dict[tuple[int, int], int] = {}
-
         for v in violations:
             if not v.location:
                 continue
@@ -2810,10 +2862,13 @@ class DesignRuleChecker:
                 key = (bx, by)
                 grid[key] = grid.get(key, 0) + 1
 
-        if not grid:
-            return []
+        meta["data"] = [[bx, by, cnt] for (bx, by), cnt in grid.items()]
+        meta["mapped"] = sum(grid.values())
+        return meta
 
-        return [[bx, by, cnt] for (bx, by), cnt in grid.items()]
+    def get_heatmap_data(self, violations, grid_size_mm=5.0, positions=None):
+        """兼容旧调用：只取 ``build_heatmap`` 的 [[x_bin, y_bin, count], ...] 部分。"""
+        return self.build_heatmap(violations, grid_size_mm, positions)["data"]
 
     def get_report(self, violations):
         if not violations:

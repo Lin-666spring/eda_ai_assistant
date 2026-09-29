@@ -279,18 +279,9 @@ def run_electrical_health_check() -> str:
 
 @eel.expose
 def get_drc_heatmap(grid_size_mm: float = 5.0) -> str:
-    """DRC 违规热力图数据 — 返回 JSON {ok, data: [[x,y,count],...]}"""
+    """DRC 违规热力图数据 — 返回 JSON {ok, data: [[x,y,count],...], grid_size_mm, source, reason}"""
     import json
-    from src.rules.checker import DesignRuleChecker
-    ctx = controller.context
-    if not ctx.pcb_data or not ctx.has_data:
-        return json.dumps({"ok": True, "data": []})
-    checker = DesignRuleChecker()
-    violations = checker.check_all(
-        ctx.bom_items, ctx.positions, ctx.netlist, ctx.pcb_data
-    )
-    heatmap_data = checker.get_heatmap_data(violations, grid_size_mm)
-    return json.dumps({"ok": True, "data": heatmap_data})
+    return json.dumps(controller.get_drc_heatmap(grid_size_mm), ensure_ascii=False)
 
 
 @eel.expose
