@@ -51,15 +51,46 @@
 `prefers-reduced-motion` 下不是"关掉动效"而是"降级为静态仍可见"：
 进度条变常亮细线、三点变实心点、骨架停成纯色块、发送键不闪。
 
-## 验证（`tests/ui_smoke.py` 新增 `check_loading_states`，P14 共 11 项）
+## 踩到的坑（值得记住）
+
+### `eel.*` 不能在 app.js 解析时就替换
+
+第一版白名单包装写成「app.js 顶层遍历 `eel[name]` 逐个换成包一层」，
+测试里 14 个慢调用**一个都没生效**。原因在 `eel/eel.js`：
+
+```js
+eel._websocket.onopen = function () {          // ← Python 函数到这一步才挂上去
+    for (...) eel._import_py_function(py_function);
+};
+```
+
+`eel.import_bom_file` 是 **websocket 连上之后**才被赋值的，而 app.js 在
+`DOMContentLoaded` 之前就跑完了 —— 那时 `eel[name]` 还是 `undefined`，
+`typeof orig !== 'function'` 把每个条目都静默跳过了（`typeof eel` 本身是 object，
+所以连"eel 不存在"的兜底也没触发）。
+
+**正确做法：钩住安装动作本身** —— 覆盖 `eel._import_py_function`，
+每装一个就按白名单包一层；再补一次立即执行，兼容热重载时 websocket 已连上的情况。
+用 `fn.__busyWrapped` 防止重连时二次包装。
+
+排查手段：在页面里 `eel.someFn.toString()` —— 包装成功会打印包装函数的源码。
+
+### 其它
+
+- UI 冒烟现在把第三方 CDN（`cdn.jsdelivr.net` 的 Inter 字体 / ECharts）不通
+  降级为"只报告不失败"：离线跑本来就该降级（图表空、字体回落），
+  但**本地资源必须全绿**，所以检查名改成「无 JS 控制台错误（本地资源）」。
+
+## 验证（`tests/ui_smoke.py` 新增 `check_loading_states`，P14 共 12 项）
 
 ```
-68/68 通过（原 57 项 + P14 11 项），无 JS 报错、无未捕获异常、无失败请求
+69/69 通过（原 57 项 + P14 12 项），无 JS 报错、无未捕获异常、无失败请求
 ```
 
 覆盖：思考动效存在性与计时器跳动、首个 token 让位、胶囊/进度条点亮与自动淡出、
 审查骨架屏在**同步段**就出现（不等后端）、结束后撤掉、按钮 loading 可还原、
-热力图占位挂上与撤掉。
+热力图占位挂上与撤掉、**导入类调用被包装后仍正常返回且期间点亮忙碌态**
+（这条专门守 `eel.*` 包装层，就是它抓出了上面那个"一个都没包上"的 bug）。
 
 截图存档：`output/ui_smoke/loading_thinking.png`（思考气泡）、
 `loading_review.png`（5 张骨架卡）、`loading_heatmap.png`。

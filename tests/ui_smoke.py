@@ -49,6 +49,8 @@ sys.path.insert(0, str(ROOT))
 
 DEFAULT_PORT = 8137
 SHOT_DIR = ROOT / "output" / "ui_smoke"
+# 第三方 CDN 资源（index.html 里的 Inter 字体 + ECharts）；离线时降级不算本地回归
+CDN_HOSTS = ("cdn.jsdelivr.net",)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -744,6 +746,29 @@ def check_loading_states(page, res: Result):
                          && b.textContent.trim() === '加载热力图';
               }"""))
 
+    # 白名单包装层：真实文件导入必须照常解析，且期间点亮忙碌态
+    # （eel.* 被统一包了一层，这里验证包装没把异步返回值弄坏）
+    page.evaluate("""() => {
+        const csv = 'Reference,Value,Package,PartNumber,Quantity\\nR1,10k,0603,RC0603FR-0710KL,1\\n';
+        window.__imp = {state: 'pending'};
+        eel.import_bom_file('_smoke_bom.csv', btoa(csv))().then(r => {
+            window.__imp = {state: 'done', ok: !!(r && r.ok)};
+        }).catch(e => { window.__imp = {state: 'error', err: String(e)}; });
+        // 同步段抓忙碌态（包装层在 await 之前就已经点亮）
+        const p = document.getElementById('statusPill');
+        window.__impPill = {text: p.classList.contains('hidden') ? '' : p.textContent.trim(),
+                            bar: document.getElementById('topProgress').classList.contains('on')};
+    }""")
+    try:
+        page.wait_for_function("() => window.__imp.state !== 'pending'", timeout=15000)
+    except Exception:
+        pass
+    imp = page.evaluate("() => ({st: window.__imp, busy: window.__impPill})")
+    res.check("P14 导入类调用被包装后仍正常返回，且期间有忙碌反馈",
+              imp["st"].get("state") == "done" and imp["st"].get("ok") is True
+              and bool(imp["busy"]["text"]) and imp["busy"]["bar"],
+              f"{imp['st']} pill={imp['busy']['text']!r} bar={imp['busy']['bar']}")
+
 
 def scan_warnings(page, res: Result, app_js: Path):
     """只报告、不判失败：死 id 引用 / 视图内容溢出。"""
@@ -871,10 +896,18 @@ def run(port: int, headed: bool) -> int:
             check_workspace(page, res)
             scan_warnings(page, res, ROOT / "web" / "js" / "app.js")
 
-            errs = [c for c in console if c[0] == "error"]
-            res.check("无 JS 控制台错误", not errs, json.dumps(errs[:3], ensure_ascii=False))
+            # 第三方 CDN（字体 / ECharts）不通不算本地回归失败：离线跑时它们是
+            # 预期内的降级（图表空、字体回落系统字体），但本地资源必须全绿。
+            cdn_down = [u for u in failed if any(h in u for h in CDN_HOSTS)]
+            failed = [u for u in failed if not any(h in u for h in CDN_HOSTS)]
+            errs = [c for c in console
+                    if c[0] == "error" and not any(h in c[1] for h in CDN_HOSTS)]
+            if cdn_down:
+                res.warn("第三方 CDN 不可达（离线运行预期降级：ECharts 图表不可用、"
+                         "字体回落系统字体）: " + ", ".join(cdn_down[:2]))
+            res.check("无 JS 控制台错误（本地资源）", not errs, json.dumps(errs[:3], ensure_ascii=False))
             res.check("无未捕获异常", not pageerrors, "; ".join(pageerrors[:3]))
-            res.check("无失败请求", not failed, "; ".join(failed[:3]))
+            res.check("无失败请求（本地资源）", not failed, "; ".join(failed[:3]))
             browser.close()
     finally:
         server.terminate()

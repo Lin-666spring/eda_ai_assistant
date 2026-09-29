@@ -2504,23 +2504,44 @@ const _BUSY_LABELS = {
   get_design_suggestions: '识别设计意图…',
 };
 
-(function wrapSlowEelCalls() {
-  if (typeof eel === 'undefined') return;
-  Object.keys(_BUSY_LABELS).forEach(name => {
-    const orig = eel[name];
-    if (typeof orig !== 'function') return;
-    eel[name] = function (...args) {
-      const call = orig.apply(eel, args);
-      if (typeof call !== 'function') return call;
-      return function (...cbArgs) {
-        const last = cbArgs[cbArgs.length - 1];
-        if (typeof last === 'function') return call.apply(eel, cbArgs);  // 回调式，不接管
-        const p = call.apply(eel, cbArgs);
-        if (!p || typeof p.then !== 'function') return p;
-        return withBusy(_BUSY_LABELS[name], () => p);
-      };
+function _wrapBusyCall(orig, label) {
+  const wrapped = function (...args) {
+    const call = orig.apply(eel, args);
+    if (typeof call !== 'function') return call;
+    return function (...cbArgs) {
+      const last = cbArgs[cbArgs.length - 1];
+      if (typeof last === 'function') return call.apply(eel, cbArgs);  // 回调式，不接管
+      const p = call.apply(eel, cbArgs);
+      if (!p || typeof p.then !== 'function') return p;
+      return withBusy(label, () => p);
     };
-  });
+  };
+  wrapped.__busyWrapped = true;
+  return wrapped;
+}
+
+// ⚠️ 不能在本文件解析时就 eel[name] 逐个替换：eel 的 Python 函数是
+//    `_websocket.onopen` → `eel._import_py_function(name)` 时才挂上去的
+//    （见 eel/eel.js），那时 app.js 早就跑完了 —— 直接替换会静默跳过全部。
+//    所以钩住「安装动作」本身：每装一个就按白名单包一层。
+(function hookPythonFunctionImport() {
+  if (typeof eel === 'undefined') return;
+  const install = () => {
+    Object.keys(_BUSY_LABELS).forEach(name => {
+      const fn = eel[name];
+      if (typeof fn === 'function' && !fn.__busyWrapped) {
+        eel[name] = _wrapBusyCall(fn, _BUSY_LABELS[name]);
+      }
+    });
+  };
+  if (typeof eel._import_py_function === 'function') {
+    const origImport = eel._import_py_function;
+    eel._import_py_function = function (name) {
+      origImport.call(eel, name);
+      install();
+    };
+  }
+  install();   // 万一脚本在 websocket 已连上之后才执行（热重载等）
 })();
 
 function disableInput(disabled) {
