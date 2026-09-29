@@ -1,11 +1,15 @@
 # 记忆索引 (Memory Index)
 
-> 由 context-memory 技能维护 | 最近更新 2026-09-14
+> 由 context-memory 技能维护 | 最近更新 2026-09-29
 > DSH 不会自动加载本目录，`CLAUDE.md` 里有指针。
 
 | 文件 | 内容 |
 |---|---|
-| [epro2-format.md](epro2-format.md) | 立创EDA V3 `.epro2` 格式与解析要点（下一步 PCB 解析的核心） |
+| [epro2-format.md](epro2-format.md) | 立创EDA V3 `.epro2` 格式、解析器实现与 78 工程实测（含四个实现坑） |
 | [experiment-status.md](experiment-status.md) | 真实 PCB 数据集实验结果、指标、复现命令 |
 | [audit-findings.md](audit-findings.md) | 项目"不符合预期"清单与修复状态 |
-| [session/2026-09-13-summary.md](session/2026-09-13-summary.md) | 本次会话小结与待办 |
+| [session/2026-09-29-summary.md](session/2026-09-29-summary.md) | 会话小结：**按抽查报告把判据修完**——11 处修复 + 判定类口径 B′，违规 4944→3293、耗时 347s→58s |
+| [session/2026-09-18-summary.md](session/2026-09-18-summary.md) | 会话小结：激活走线锐角/直角规则 + 拐角校准 |
+| [session/2026-09-18-rule-spotcheck.md](session/2026-09-18-rule-spotcheck.md) | 会话小结：**规则抽查**——150 条分层抽样，走线类精确率 11.1%、非走线类 5.5%，确认 15 条判据 bug |
+| [session/2026-09-15-summary.md](session/2026-09-15-summary.md) | .epro2 接入、规则覆盖率、阈值校准、前端改版 |
+| [session/2026-09-13-summary.md](session/2026-09-13-summary.md) | 上次会话小结（.epro2 调研 + thing_designs 实验） |

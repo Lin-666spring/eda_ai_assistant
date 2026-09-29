@@ -79,7 +79,9 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 
 ### Persistence
 
-`src/core/persistence.py` — `SessionStore` SQLite persistence layer. 4 tables: `assistants`, `conversations`, `messages`, `app_state`. Foreign key cascades ensure referential integrity. Database stored at `~/.eda_ai_assistant/sessions.db`. 8 Eel endpoints in `main.py` (`db_load_all`, `db_save/delete_assistant/conversation/message`, etc.). JS persistence helpers in `app.js` are fire-and-forget (no `await`, best-effort).
+`src/core/persistence.py` — `SessionStore` SQLite persistence layer. 5 tables: `workspaces`, `assistants`, `conversations`, `messages`, `app_state`. Foreign key cascades ensure referential integrity. Database stored at `~/.eda_ai_assistant/sessions.db`. Eel endpoints in `main.py` (`db_load_all`, `db_save/delete_assistant/conversation/message`, `db_save/delete_workspace`, `db_set_active_workspace`, `create_workspace_dir`, `pick_workspace_dir`, etc.). JS persistence helpers in `app.js` are fire-and-forget (no `await`, best-effort).
+
+**Workspaces (工作区)** scope conversations: every conversation carries `workspace_id`, and the left sidebar shows only the current workspace's conversations. `DEFAULT_WORKSPACE_ID = "ws_default"` is created on init and cannot be deleted; deleting another workspace migrates its conversations back to the default. Renaming a conversation must not pass an empty `workspace_id`, or it would silently move to the default workspace — so `save_conversation()` keeps the existing value when the argument is empty. Legacy DBs are migrated inside `_ensure_db()` (adds the `workspace_id` column, backfills `''` → default).
 
 ### System bridge
 
@@ -97,18 +99,20 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 
 ### Frontend
 
-`web/` — Eel-served static files. **Two-level navigation** (top nav 视图 → 卡片入口), not the old three-column layout:
-`index.html` 顶栏 = 品牌 + 一级导航（BOM 分析 / 设计审查 / 工具箱 / 报告中心 / 配置管理）+ 会话下拉 + 模式/Agent/设置/面板按钮；
-`#viewContainer` 渲染当前视图（KPI + 主操作 + 统一工具卡片），`#chatMessages` 渲染消息流，`#rightPanel` 是可折叠任务面板。
+`web/` — Eel-served static files. **Chat-first 布局**：主页面永远是对话界面，模式功能收进「功能子页面」，会话列表在左侧栏。
+`#appShell` = `#sidebar`（工作区选择 + `#conversationList` + 助手实例） + `#mainCol`（`#topBar` 模式入口 + `#bodyRow`）；
+`#bodyRow` = `#chatArea` + `#rightPanel`（可折叠任务面板）。`#chatArea` 内部依次是 `#subPage`（功能子页面，默认 `.hidden`）/ `#chatMessages` / `#chatFooter`。
 
+- **主页面 = 对话**：启动时不打开任何视图，`closeSubPage()` 保证 `#subPage.hidden`、`#chatMessages` 可见。点顶栏模式入口（`switchView()`）打开功能子页面；点「← 返回对话」，或任何一次发送 / 运行工具（`_enterChatStream()` → `closeSubPage()`）都会回到对话。
 - **工具箱是工具的统一管理界面**：目录由后端 `get_tools_catalog()` 派生（即 `src/agent/tools.py` 的 ToolRegistry），前端只声明每个视图「展示哪些工具」。卡片组件 `.tool-card` 在工具箱和所有视图里复用，直接运行走 `run_tool()` → `controller._dispatch_operation()`，与聊天路径共用同一张派发表。**不要在前端另写一份工具名称/描述**。
-- 会话（conversations）的唯一入口是顶栏的会话下拉（`#conversationList`）。`SessionStore.load_all()` 返回的会话记录字段是 `{conv_id, title, sort_order}`，**没有 `id`/`messages`**，`loadPersistedState()` 必须归一化。
+- **会话列表在左侧栏**（`#conversationList`），只显示「当前助手 + 当前工作区」的会话（`getWorkspaceConversations()`）。`SessionStore.load_all()` 返回的会话记录字段是 `{conv_id, workspace_id, title, sort_order}`，**没有 `id`/`messages`**，`loadPersistedState()` 必须归一化；消息按需由 `switchConversation()` → `db_load_messages` 加载（`conv._loaded` 标记）。
+- **工作区选择**在左侧栏顶部（`#workspaceChip` → `#workspaceMenu`）：新建 / 编辑 / 删除工作区，切换后会话列表随之过滤。工作区绑定的本地目录由后端 `create_workspace_dir()` 校验 / 创建；`pick_workspace_dir()` 用子进程跑 tkinter 弹系统目录框（不能在 Eel 主循环里直接开 tkinter，会把服务卡死）。
 - 所有气泡（含流式 AI）都必须包在 `.msg-row` 里，否则 `clearChatMessages()` 清不掉，切换会话会重复显示回答。
 - 深浅色主题都走 `:root` / `body[data-theme="dark"]` 的 token，不要在规则里硬编码颜色。
 - 图标统一用 `ICONS` 里的内联 SVG（`app.js`），不用 emoji 字体图标；`confirm()` 已由自定义对话框替代。
 
-回归手段：`python tests/ui_smoke.py`（Playwright 真机驱动 + stub LLM，零 API 花费，42 项检查 + 截图到 `output/ui_smoke/`）。
-文件名不以 `test_` 开头，因此不会被 pytest 收集；配套的 pytest 用例是 `tests/test_tool_catalog.py`（锁前后端工具目录一致性）。
+回归手段：`python tests/ui_smoke.py`（Playwright 真机驱动 + stub LLM，零 API 花费，57 项检查 + 截图到 `output/ui_smoke/`）。覆盖布局回归 P12（主页面默认是对话）/ P13（左侧会话栏 + 工作区隔离）。
+文件名不以 `test_` 开头，因此不会被 pytest 收集；配套的 pytest 用例是 `tests/test_tool_catalog.py`（锁前后端工具目录一致性）与 `tests/test_persistence.py`（含 workspaces 用例）。
 
 ### Module map
 
@@ -134,4 +138,5 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 - **Three chat paths**: `send_message` (NLU pipeline → dispatch), `send_message_stream` (freeform chat), `send_message_agent` (Function Calling Agent Loop).
 - **Persistence is fire-and-forget**: JS calls `_persist*` helpers without `await` — DB writes are best-effort, not blocking.
 - **Multi-instance assistant model**: `ASSISTANT_TYPES` defines 4 types, `assistantInstances` holds runtime instances. Conversations keyed by instance ID.
+- **Conversations are scoped by workspace**: the sidebar filters on `workspace_id`, and a workspace's optional folder path is the project context. Never render all conversations of an instance at once — go through `getWorkspaceConversations()`.
 - **Companion mode**: `Ctrl+Shift+E` or tray menu toggles between 1300×840 full layout and 380×540 companion window.
