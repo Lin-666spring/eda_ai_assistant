@@ -13,42 +13,80 @@
 </head>
 <body data-theme="light">
 
-<!-- ═══════════ TopBar ═══════════ -->
-<header id="topBar">
-  <div class="topbar-brand">
+<div id="appShell">
+<!-- ═══════════ Left Sidebar: 工作区 + 对话 ═══════════ -->
+<aside id="sidebar">
+  <div class="sb-brand">
     <span class="topbar-logo">EDA</span>
-    <span class="topbar-title">EDA AI 智能助手</span>
+    <span class="sb-brand-name">EDA AI 智能助手</span>
   </div>
+
+  <!-- 工作区选择 -->
+  <div class="sb-workspace" id="workspaceWrap">
+    <button class="sb-workspace-btn" id="workspaceChip" onclick="toggleWorkspaceMenu(event)" title="切换工作区">
+      <svg class="sb-ws-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <span class="sb-workspace-name" id="workspaceChipName">默认工作区</span>
+      <svg class="session-caret" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4,6 8,10 12,6"/></svg>
+    </button>
+    <div class="sb-workspace-menu" id="workspaceMenu">
+      <div class="sb-menu-head">
+        <span>工作区</span>
+        <button class="sb-menu-new" onclick="openWorkspaceDialog(event)">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+          新建
+        </button>
+      </div>
+      <div class="sb-ws-list" id="workspaceList"></div>
+    </div>
+  </div>
+
+  <button class="sb-new-chat" id="newChatBtn" onclick="newConversation()">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+    <span>新建对话</span>
+  </button>
+
+  <div class="sb-section-head">
+    <span>对话</span>
+    <span class="sb-conv-count" id="conversationCount"></span>
+  </div>
+  <div class="sb-conv-list" id="conversationList"></div>
+
+  <div class="sb-foot">
+    <div class="sb-assistant-wrap" id="assistantWrap">
+      <button class="sb-assistant" id="assistantChip" onclick="toggleAssistantMenu(event)" title="切换助手实例">
+        <span class="sb-assistant-dot"></span>
+        <span class="sb-assistant-name" id="assistantChipName">未创建助手</span>
+        <svg class="session-caret" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4,6 8,10 12,6"/></svg>
+      </button>
+      <div class="sb-assistant-menu" id="assistantMenu">
+        <div class="sb-menu-head">
+          <span>助手实例</span>
+          <button class="sb-menu-new" onclick="showNewAssistantDialog(); closeAssistantMenu();">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+            新建
+          </button>
+        </div>
+        <div class="sb-asst-list" id="assistantList"></div>
+      </div>
+    </div>
+    <button class="header-icon-btn" onclick="toggleSettings()" title="设置">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
+  </div>
+</aside>
+
+<!-- ═══════════ Main Column ═══════════ -->
+<div id="mainCol">
+<!-- ═══════════ TopBar: 模式入口 + 窗口控制 ═══════════ -->
+<header id="topBar">
   <nav class="topbar-nav">
-    <button class="nav-item active" data-view="bom" onclick="switchView('bom')">BOM 分析</button>
+    <button class="nav-item" data-view="bom" onclick="switchView('bom')">BOM 分析</button>
     <button class="nav-item" data-view="review" onclick="switchView('review')">设计审查</button>
     <button class="nav-item" data-view="tools" onclick="switchView('tools')">工具箱</button>
     <button class="nav-item" data-view="report" onclick="switchView('report')">报告中心</button>
     <button class="nav-item" data-view="config" onclick="switchView('config')">配置管理</button>
   </nav>
   <div class="topbar-right">
-    <!-- 会话切换（conversations 的唯一入口） -->
-    <div class="session-wrap" id="sessionWrap">
-      <button class="session-chip" id="sessionChip" onclick="toggleSessionMenu(event)" title="切换 / 新建会话">
-        <span class="session-dot"></span>
-        <span class="session-name" id="sessionChipName">新对话</span>
-        <svg class="session-caret" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4,6 8,10 12,6"/></svg>
-      </button>
-      <div class="session-menu" id="sessionMenu">
-        <div class="session-menu-head">
-          <span class="session-menu-assistant" id="sessionMenuAssistant">EDA 通用助手</span>
-          <button class="session-new-btn" onclick="newConversation(); closeSessionMenu();">
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
-            新对话
-          </button>
-        </div>
-        <div class="session-menu-list" id="conversationList"></div>
-        <button class="session-menu-foot" onclick="showNewAssistantDialog(); closeSessionMenu();">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V5M9 5h6"/></svg>
-          管理助手实例
-        </button>
-      </div>
-    </div>
     <button class="header-icon-btn" id="modeToggleBtn" onclick="toggleWindowMode()" title="切换伴生模式">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
     </button>
@@ -56,7 +94,7 @@
       <span class="agent-toggle-dot"></span>
       <span class="agent-toggle-label">Agent</span>
     </button>
-    <button class="header-icon-btn" onclick="toggleSettings()" title="设置">
+    <button class="header-icon-btn" id="settingsBtn" onclick="toggleSettings()" title="设置">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
     </button>
     <button class="header-icon-btn" id="panelToggleTop" onclick="toggleRightPanel()" title="展开/折叠任务面板">
@@ -65,15 +103,25 @@
   </div>
 </header>
 
-<!-- ═══════════ Main Area ═══════════ -->
-<!-- ═══════════ Body Row: Main + Right Panel ═══════════ -->
+<!-- ═══════════ Body Row: Chat + Right Panel ═══════════ -->
 <div id="bodyRow">
 <main id="chatArea">
-  <!-- 视图内容容器（当前一级项的标题 + 二级入口卡片） -->
-  <div id="viewContainer"></div>
+  <!-- 功能子页面：点击顶栏模式入口后，在此展示该模式的工具卡片。
+       默认隐藏 —— 软件主页面默认就是对话界面。 -->
+  <div id="subPage" class="hidden">
+    <div class="subpage-bar">
+      <button class="subpage-back" onclick="closeSubPage()">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="10,3 5,8 10,13"/></svg>
+        返回对话
+      </button>
+      <span class="subpage-crumb" id="subpageCrumb"></span>
+      <span class="subpage-hint">点击卡片直接运行，结果回到当前对话</span>
+    </div>
+    <div id="viewContainer"></div>
+  </div>
 
-  <!-- 消息/结果流（默认隐藏，有内容时显示） -->
-  <div id="chatMessages" class="hidden">
+  <!-- 消息/结果流（主页面的主体） -->
+  <div id="chatMessages">
     <div id="chatEmpty">
       <div class="chat-empty-icon">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 20h8M12 18v2"/></svg>
@@ -179,11 +227,34 @@
   </div>
 </aside>
 </div><!-- /#bodyRow -->
+</div><!-- /#mainCol -->
+</div><!-- /#appShell -->
 
 <!-- ═══════════ Hidden file inputs ═══════════ -->
 <input type="file" id="bomFileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="onFileSelected('bom', this)">
-<input type="file" id="pcbFileInput" accept=".json,.epro" style="display:none" onchange="onFileSelected('pcb', this)">
+<input type="file" id="pcbFileInput" accept=".json,.epro,.epro2" style="display:none" onchange="onFileSelected('pcb', this)">
 <input type="file" id="posFileInput" accept=".csv" style="display:none" onchange="onFileSelected('pos', this)">
+
+<!-- ═══════════ Workspace Dialog ═══════════ -->
+<div id="workspaceOverlay" class="modal-overlay" onclick="closeWorkspaceDialog()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2 id="workspaceDialogTitle">新建工作区</h2>
+    <p class="modal-desc">工作区是一组对话的工程上下文，可选绑定一个本地工程目录。</p>
+    <label class="settings-field-label">名称</label>
+    <input type="text" id="wsNameInput" class="settings-input" placeholder="例如：MCU 主板 v2">
+    <label class="settings-field-label" style="margin-top:14px">工程目录 <span class="label-hint">可选</span></label>
+    <div class="settings-path-row">
+      <input type="text" id="wsPathInput" class="settings-input" placeholder="C:\Projects\mcu-board">
+      <button class="btn-sm" onclick="browseWorkspaceDir()">浏览…</button>
+      <button class="btn-sm" id="wsOpenBtn" onclick="openWorkspacePath()">打开</button>
+    </div>
+    <div id="wsDialogError" class="settings-note" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeWorkspaceDialog()">取消</button>
+      <button class="btn-primary" onclick="saveWorkspaceFromDialog()">保存</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════ Settings Modal (Premium) ═══════════ -->
 <div id="settingsOverlay" class="modal-overlay" onclick="closeSettings(event)">

@@ -93,7 +93,30 @@ def import_pos_file(name: str, b64: str) -> dict:
 
 
 @eel.expose
+def import_project_file(name: str, b64: str) -> dict:
+    """导入立创 EDA V3 .epro2 工程：一次得到 BOM + PCB"""
+    try:
+        path = _write_temp(name, b64)
+        count, msg = controller.load_project(path)
+        pcb = controller.context.pcb_data
+        info = {}
+        if pcb:
+            info = {
+                "format": pcb.format,
+                "net_count": pcb.net_count,
+                "trace_count": pcb.trace_count,
+                "via_count": pcb.via_count,
+                "pour_count": len(pcb.copper_pours),
+                "layers": pcb.layers,
+            }
+        return {"ok": True, "count": count, "msg": msg, "pcb": info, "items": _bom_items()}
+    except Exception as e:
+        return {"ok": False, "msg": str(e), "items": []}
+
+
+@eel.expose
 def import_pcb_file(name: str, b64: str) -> dict:
+    """导入 PCB 文件（.json / .epro / .epro2）"""
     try:
         path = _write_temp(name, b64)
         count, msg = controller.load_pcb(path)
@@ -682,10 +705,11 @@ def db_delete_assistant(instance_id: str):
 
 
 @eel.expose
-def db_save_conversation(conv_id: str, instance_id: str, title: str = "新对话"):
-    """保存新对话"""
+def db_save_conversation(conv_id: str, instance_id: str, title: str = "新对话",
+                         workspace_id: str = ""):
+    """保存新对话（workspace_id 决定它归属哪个工作区）"""
     try:
-        _store.save_conversation(conv_id, instance_id, title)
+        _store.save_conversation(conv_id, instance_id, title, workspace_id=workspace_id)
         _store.save_state("active_conv", conv_id)
         return {"ok": True}
     except Exception as e:
@@ -733,9 +757,12 @@ def db_load_messages(conv_id: str) -> dict:
 
 
 @eel.expose
-def db_save_active_state(active_assistant: str = "", active_conv: str = ""):
-    """保存当前活跃的助手和对话"""
+def db_save_active_state(active_assistant: str = "", active_conv: str = "",
+                         active_workspace: str = ""):
+    """保存当前活跃的工作区 / 助手 / 对话"""
     try:
+        if active_workspace:
+            _store.save_state("active_workspace", active_workspace)
         if active_assistant:
             _store.save_state("active_assistant", active_assistant)
         if active_conv:
@@ -744,6 +771,134 @@ def db_save_active_state(active_assistant: str = "", active_conv: str = ""):
     except Exception as e:
         logger.exception("db_save_active_state failed")
         return {"ok": False, "msg": str(e)}
+
+
+# ══════════════════════════════════════════
+#  工作区（workspace）— 对话按工程上下文隔离
+# ══════════════════════════════════════════
+
+@eel.expose
+def db_save_workspace(workspace_id: str, name: str, path: str = "") -> dict:
+    """新建 / 更新工作区（name + 可选的本地目录）"""
+    try:
+        if not workspace_id:
+            return {"ok": False, "error": "缺少 workspace_id"}
+        _store.save_workspace(workspace_id, name or "未命名工作区", path or "")
+        return {"ok": True, "workspace": {
+            "workspace_id": workspace_id, "name": name, "path": path or "",
+        }}
+    except Exception as e:
+        logger.exception("db_save_workspace failed")
+        return {"ok": False, "error": str(e)}
+
+
+@eel.expose
+def db_delete_workspace(workspace_id: str) -> dict:
+    """删除工作区（其对话回落到默认工作区，不丢数据）"""
+    try:
+        _store.delete_workspace(workspace_id)
+        return {"ok": True}
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
+    except Exception as e:
+        logger.exception("db_delete_workspace failed")
+        return {"ok": False, "error": str(e)}
+
+
+@eel.expose
+def db_set_active_workspace(workspace_id: str) -> dict:
+    """切换当前工作区（持久化，下次启动仍在同一工作区）"""
+    try:
+        _store.save_state("active_workspace", workspace_id)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("db_set_active_workspace failed")
+        return {"ok": False, "error": str(e)}
+
+
+@eel.expose
+def db_load_workspaces() -> dict:
+    """单独加载工作区列表（设置面板 / 刷新用）"""
+    try:
+        ws = [{
+            "workspace_id": w.workspace_id,
+            "name": w.name,
+            "path": w.path,
+            "sort_order": w.sort_order,
+        } for w in _store.load_workspaces()]
+        return {"ok": True, "workspaces": ws}
+    except Exception as e:
+        logger.exception("db_load_workspaces failed")
+        return {"ok": False, "error": str(e), "workspaces": []}
+
+
+_TK_PICK_SCRIPT = """
+import tkinter as tk
+from tkinter import filedialog
+root = tk.Tk()
+root.withdraw()
+root.attributes('-topmost', True)
+path = filedialog.askdirectory(title='选择工作区目录')
+root.destroy()
+print(path or '')
+"""
+
+
+@eel.expose
+def pick_workspace_dir() -> dict:
+    """弹出系统文件夹选择框，返回选中的目录。
+
+    用子进程跑 tkinter：Eel 的主循环跑在 gevent 上，在主线程里开 tkinter
+    对话框会把整个服务卡死，所以隔离到独立进程。
+    """
+    import subprocess
+    try:
+        if getattr(sys, "frozen", False):
+            # 打包后 sys.executable 是应用本体，不能再喂 -c 脚本
+            return {"ok": False, "error": "打包版本暂不支持目录选择，请手动输入路径"}
+        proc = subprocess.run(
+            [sys.executable, "-c", _TK_PICK_SCRIPT],
+            capture_output=True, text=True, timeout=180,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        path = (proc.stdout or "").strip().splitlines()[-1] if proc.stdout else ""
+        if not path:
+            return {"ok": False, "error": "未选择目录", "cancelled": True}
+        return {"ok": True, "path": path}
+    except Exception as e:
+        logger.warning("pick_workspace_dir failed: %s", e)
+        return {"ok": False, "error": str(e)}
+
+
+@eel.expose
+def create_workspace_dir(path: str) -> dict:
+    """确保工作区目录存在（不存在则创建），返回规范化后的绝对路径。"""
+    try:
+        target = Path(path).expanduser()
+        target.mkdir(parents=True, exist_ok=True)
+        if not target.is_dir():
+            return {"ok": False, "error": "路径不是目录"}
+        return {"ok": True, "path": str(target.resolve())}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@eel.expose
+def open_workspace_dir(path: str) -> dict:
+    """在资源管理器中打开工作区目录"""
+    try:
+        target = Path(path).expanduser()
+        if not target.is_dir():
+            return {"ok": False, "error": "目录不存在"}
+        if sys.platform.startswith("win"):
+            os.startfile(str(target))  # noqa: S606 — 本地桌面应用，打开自己的目录
+        else:
+            import subprocess
+            opener = "open" if sys.platform == "darwin" else "xdg-open"
+            subprocess.Popen([opener, str(target)])
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 # ══════════════════════════════════════════

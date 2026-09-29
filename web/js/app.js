@@ -41,8 +41,12 @@ let conversations = {};        // { instanceId: [{ id, title, messages: [] }] }
 let activeConvId = null;
 let convCounter = 0;
 
+// ── Workspaces（工作区：对话的工程上下文）──
+const DEFAULT_WORKSPACE_ID = 'ws_default';
+let workspaces = [];            // [{ id, name, path }]
+let currentWorkspaceId = null;  // 当前工作区 id
+
 // ── UI state ──
-let sidebarTab = 'assistants'; // 'assistants' | 'topics'
 let currentImage = null;
 let _activeStreamBubble = null;
 let _streamTokenCount = 0;
@@ -74,15 +78,15 @@ if (typeof marked !== 'undefined') {
 document.addEventListener('DOMContentLoaded', async () => {
   await loadPersistedState();
 
-  // 统一工具目录（后端 ToolRegistry 派生）— 视图与工具箱共用
+  // 统一工具目录（后端 ToolRegistry 派生）— 子页面与工具箱共用
   await loadToolCatalog();
+  renderWorkspaces();
   updateSessionBar();
   renderConversations();
+  renderAssistantMenu();
 
-  // Default to BOM analysis view (two-level navigation)
-  if (!activeConvId || (getActiveConversation() && (getActiveConversation().messages||[]).length === 0)) {
-    switchView('bom');
-  }
+  // 主页面默认就是对话：不自动打开任何模式子页面。
+  closeSubPage();
 
   // Theme — 以 settings 为准，未知值一律回落浅色
   try {
@@ -134,7 +138,21 @@ async function loadPersistedState() {
   try { resp = await eel.db_load_all()(); } catch(e) { return; }
   if (!resp || !resp.ok || !resp.data) return;
 
-  const { assistants: saved, conversations: savedConvs, active_assistant, active_conv } = resp.data;
+  const { workspaces: savedWs, assistants: saved, conversations: savedConvs,
+          active_workspace, active_assistant, active_conv } = resp.data;
+
+  // 工作区：后端首跑会写入默认工作区；这里再兜底一次，保证至少有得选。
+  workspaces = (savedWs || []).map(w => ({
+    id: w.workspace_id,
+    name: w.name || '工作区',
+    path: w.path || '',
+  }));
+  if (!workspaces.length) {
+    workspaces = [{ id: DEFAULT_WORKSPACE_ID, name: '默认工作区', path: '' }];
+  }
+  currentWorkspaceId = workspaces.some(w => w.id === active_workspace)
+    ? active_workspace
+    : workspaces[0].id;
 
   // 无持久化数据 → 自动创建默认助手实例（首跑引导）
   if (!saved || saved.length === 0) {
@@ -145,9 +163,10 @@ async function loadPersistedState() {
     if (inst) currentAssistantInstance = inst.instanceId;
     conversations[currentAssistantInstance] = conversations[currentAssistantInstance] || [];
     updateSessionBar();
+    renderWorkspaces();
     _persistState();
-    // First run → show BOM analysis view as the landing screen
-    switchView('bom');
+    // 首跑落地页就是对话页（不再自动切到 BOM 视图）
+    closeSubPage();
     return;
   }
 
@@ -158,15 +177,16 @@ async function loadPersistedState() {
     name: a.name,
   }));
   // ⚠️ 归一化：SessionStore.load_all() 返回的会话记录字段是
-  //    {conv_id, title, sort_order}（没有 id / messages），直接用会导致
-  //    switchConversation() 里 `conv.messages.length` 抛 undefined
-  //    （2026-09-10 实测：切换助手即崩，历史会话根本打不开）。
+  //    {conv_id, workspace_id, title, sort_order}（没有 id / messages），
+  //    直接用会导致 switchConversation() 里 `conv.messages.length` 抛 undefined。
   conversations = {};
   saved.forEach(a => {
     conversations[a.instance_id] = (savedConvs[a.instance_id] || []).map(c => ({
       id: c.id || c.conv_id,
       title: c.title || '新对话',
-      messages: c.messages || [],
+      workspaceId: c.workspace_id || DEFAULT_WORKSPACE_ID,
+      messages: [],
+      _loaded: false,
     }));
   });
 
@@ -179,50 +199,28 @@ async function loadPersistedState() {
 
   updateChatHeader();
   renderQuickActions();
+  renderWorkspaces();
+  renderAssistantMenu();
 
-  // 恢复当前对话
-  const convs = conversations[currentAssistantInstance] || [];
+  // 恢复当前工作区里最近的对话
+  const convs = getWorkspaceConversations();
   if (active_conv && convs.find(c => c.id === active_conv)) {
-    activeConvId = active_conv;
-    await restoreConversationMessages(active_conv);
+    await switchConversation(active_conv);
   } else if (convs.length > 0) {
-    activeConvId = convs[0].id;
-    await restoreConversationMessages(convs[0].id);
+    await switchConversation(convs[0].id);
   } else {
-    // No conversations → land on BOM analysis view
-    switchView('bom');
+    activeConvId = null;
+    clearChatMessages();
+    closeSubPage();
+    showEmptyState(true);
   }
 }
 
-async function restoreConversationMessages(convId) {
-  let resp;
-  try { resp = await eel.db_load_messages(convId)(); } catch(e) { return; }
-  if (!resp || !resp.ok) return;
-  const msgs = resp.messages || [];
-  // 回填到会话对象，否则切走再切回来消息就没了（messages 一直是空的）
-  const conv = findConversation(convId);
-  if (conv) {
-    conv.messages = msgs.map(m => ({
-      role: m.role,
-      content: m.content,
-      image: m.image || undefined,
-    }));
-  }
-  if (msgs.length === 0) { switchView(_currentView || 'bom'); return; }
-  // Has messages → show chat stream, hide view
-  const vc = document.getElementById('viewContainer');
-  const cm = document.getElementById('chatMessages');
-  if (vc) vc.classList.add('hidden');
-  if (cm) cm.classList.remove('hidden');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  msgs.forEach(m => {
-    if (m.image) {
-      appendBubbleWithImage(m.role, m.content, m.image);
-    } else {
-      appendBubble(m.role, m.content);
-    }
-  });
-  renderConversations();
+/** 当前助手 + 当前工作区下的会话列表 */
+function getWorkspaceConversations(instanceId) {
+  const iid = instanceId || currentAssistantInstance;
+  const all = conversations[iid] || [];
+  return all.filter(c => (c.workspaceId || DEFAULT_WORKSPACE_ID) === currentWorkspaceId);
 }
 
 // ── Fire-and-forget persistence helpers ──
@@ -238,7 +236,8 @@ function _persistDeleteAssistant(instanceId) {
 function _persistConversation(conv) {
   const inst = assistantInstances.find(i => i.instanceId === currentAssistantInstance);
   if (!inst) return;
-  try { eel.db_save_conversation(conv.id, inst.instanceId, conv.title)(); } catch(e) {}
+  const ws = conv.workspaceId || currentWorkspaceId || DEFAULT_WORKSPACE_ID;
+  try { eel.db_save_conversation(conv.id, inst.instanceId, conv.title, ws)(); } catch(e) {}
 }
 
 function _persistDeleteConversation(convId) {
@@ -252,16 +251,23 @@ function _persistMessage(convId, role, content, image) {
 function _persistState() {
   try { eel.db_save_active_state(
     currentAssistantInstance || '',
-    activeConvId || ''
+    activeConvId || '',
+    currentWorkspaceId || ''
   )(); } catch(e) {}
 }
 
-// ═══════════ Sidebar Tabs ═══════════
+// ── 工作区持久化（fire-and-forget，与其它 _persist* 一致）──
 
-function switchSidebarTab(tab) {
-  // Legacy: sidebar tabs removed in the two-level nav redesign. Kept as no-op
-  // so existing callers (e.g. newConversation) don't throw.
-  sidebarTab = tab;
+function _persistWorkspace(ws) {
+  try { eel.db_save_workspace(ws.id, ws.name, ws.path || '')(); } catch(e) {}
+}
+
+function _persistDeleteWorkspace(wsId) {
+  try { eel.db_delete_workspace(wsId)(); } catch(e) {}
+}
+
+function _persistActiveWorkspace(wsId) {
+  try { eel.db_set_active_workspace(wsId)(); } catch(e) {}
 }
 
 // ═══════════ Assistant Management ═══════════
@@ -274,10 +280,11 @@ function getActiveAssistant() {
 }
 
 function renderAssistants() {
+  renderAssistantMenu();
   const container = document.getElementById('configAssistantList');
   const countEl = document.getElementById('configAssistantCount');
   if (countEl) countEl.textContent = `${assistantInstances.length} 个`;
-  if (!container) return;  // only render when config view is active
+  if (!container) return;  // only render when the config sub-page is open
   if (assistantInstances.length === 0) {
     container.innerHTML = '<div class="session-empty">暂无助手，点击下方按钮新建</div>';
     return;
@@ -303,6 +310,44 @@ function renderAssistants() {
   }).join('');
 }
 
+/** 侧边栏底部的助手选择菜单 */
+function renderAssistantMenu() {
+  const box = document.getElementById('assistantList');
+  const nameEl = document.getElementById('assistantChipName');
+  const active = getActiveAssistant();
+  if (nameEl) nameEl.textContent = active ? active.name : '未创建助手';
+  if (!box) return;
+  if (assistantInstances.length === 0) {
+    box.innerHTML = '<div class="session-empty">暂无助手实例</div>';
+    return;
+  }
+  box.innerHTML = assistantInstances.map(inst => {
+    const type = ASSISTANT_TYPES[inst.typeId] || {};
+    const isActive = inst.instanceId === currentAssistantInstance;
+    return `<div class="sb-asst-item ${isActive ? 'active' : ''}"
+        onclick="selectAssistant('${inst.instanceId}'); closeAssistantMenu();"
+        title="${escapeAttr(type.description || '')}">
+      <span class="sb-asst-item-name">${escapeHtml(inst.name)}</span>
+      <span class="sb-asst-item-count">${(getWorkspaceConversations(inst.instanceId) || []).length}</span>
+    </div>`;
+  }).join('');
+}
+
+function toggleAssistantMenu(e) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  const menu = document.getElementById('assistantMenu');
+  if (!menu) return;
+  const willOpen = !menu.classList.contains('show');
+  closeWorkspaceMenu();
+  menu.classList.toggle('show', willOpen);
+  if (willOpen) renderAssistantMenu();
+}
+
+function closeAssistantMenu() {
+  const menu = document.getElementById('assistantMenu');
+  if (menu) menu.classList.remove('show');
+}
+
 function selectAssistant(instanceId) {
   currentAssistantInstance = instanceId;
   if (!conversations[instanceId]) conversations[instanceId] = [];
@@ -314,13 +359,15 @@ function selectAssistant(instanceId) {
   renderAssistants();
   renderConversations();
   updateChatHeader();
-  const convs = conversations[instanceId] || [];
+  const convs = getWorkspaceConversations(instanceId);
   if (convs.length > 0) {
     switchConversation(convs[0].id);
   } else {
     activeConvId = null;
     clearChatMessages();
+    closeSubPage();
     showEmptyState(true);
+    _persistState();
   }
   updateSessionBar();
   renderQuickActions();
@@ -346,6 +393,7 @@ function deleteAssistant(instanceId, event) {
           currentAssistantInstance = null;
           activeConvId = null;
           clearChatMessages();
+          closeSubPage();
           showEmptyState(true);
           updateChatHeader();
           renderQuickActions();
@@ -358,37 +406,213 @@ function deleteAssistant(instanceId, event) {
 }
 
 function updateSessionBar() {
-  // 顶栏只有一个「会话」入口，助手身份显示在下拉头部。
+  // 侧边栏底部显示当前助手；对话本身在左侧列表中高亮，不再有独立的会话下拉。
   const a = getActiveAssistant();
-  const owner = document.getElementById('sessionMenuAssistant');
-  if (owner) owner.textContent = a ? a.name : '未创建助手';
-  const chip = document.getElementById('sessionChipName');
-  const conv = activeConvId ? findConversation(activeConvId) : null;
-  if (chip) chip.textContent = conv ? conv.title : (a ? '新对话' : '未创建助手');
+  const nameEl = document.getElementById('assistantChipName');
+  if (nameEl) nameEl.textContent = a ? a.name : '未创建助手';
+  const wsEl = document.getElementById('workspaceChipName');
+  const ws = workspaces.find(w => w.id === currentWorkspaceId);
+  if (wsEl) wsEl.textContent = ws ? ws.name : '默认工作区';
 }
 
 // 兼容旧调用点
 function updateChatHeader() { updateSessionBar(); }
 
-// ── 会话下拉（conversations 的唯一 UI 入口） ──
+// ── 工作区选择（左侧栏顶部，conversations 按工作区隔离） ──
 
-function toggleSessionMenu(e) {
+let _editingWorkspaceId = null;
+
+function toggleWorkspaceMenu(e) {
   if (e && e.stopPropagation) e.stopPropagation();
-  const menu = document.getElementById('sessionMenu');
+  const menu = document.getElementById('workspaceMenu');
   if (!menu) return;
   const willOpen = !menu.classList.contains('show');
+  closeAssistantMenu();
   menu.classList.toggle('show', willOpen);
-  if (willOpen) renderConversations();
+  if (willOpen) renderWorkspaces();
 }
 
-function closeSessionMenu() {
-  const menu = document.getElementById('sessionMenu');
+function closeWorkspaceMenu() {
+  const menu = document.getElementById('workspaceMenu');
   if (menu) menu.classList.remove('show');
 }
 
+function renderWorkspaces() {
+  const box = document.getElementById('workspaceList');
+  const nameEl = document.getElementById('workspaceChipName');
+  const cur = workspaces.find(w => w.id === currentWorkspaceId);
+  if (nameEl) nameEl.textContent = cur ? cur.name : '默认工作区';
+  if (!box) return;
+  box.innerHTML = workspaces.map(w => {
+    const n = Object.values(conversations).flat()
+      .filter(c => (c.workspaceId || DEFAULT_WORKSPACE_ID) === w.id).length;
+    const isDefault = w.id === DEFAULT_WORKSPACE_ID;
+    return `<div class="sb-ws-item ${w.id === currentWorkspaceId ? 'active' : ''}"
+        onclick="selectWorkspace('${w.id}')" title="${escapeAttr(w.path || w.name)}">
+      <span class="sb-ws-item-main">
+        <span class="sb-ws-item-name">${escapeHtml(w.name)}</span>
+        <span class="sb-ws-item-path">${escapeHtml(w.path || '未绑定目录')}</span>
+      </span>
+      <span class="sb-ws-item-count">${n}</span>
+      <button class="sb-ws-item-edit" onclick="openWorkspaceDialog(event, '${w.id}')" title="编辑">
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 2.5l2.5 2.5L5 13.5 2 14l.5-3z"/></svg>
+      </button>
+      ${isDefault ? '' : `<button class="sb-ws-item-del" onclick="deleteWorkspace('${w.id}', event)" title="删除">
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+      </button>`}
+    </div>`;
+  }).join('');
+}
+
+function selectWorkspace(wsId) {
+  const ws = workspaces.find(w => w.id === wsId);
+  if (!ws) return;
+  closeWorkspaceMenu();
+  if (wsId === currentWorkspaceId) return;
+  currentWorkspaceId = wsId;
+  _persistActiveWorkspace(wsId);
+  renderWorkspaces();
+  renderConversations();
+  renderAssistantMenu();
+  const convs = getWorkspaceConversations();
+  if (convs.length > 0) {
+    switchConversation(convs[0].id);
+  } else {
+    activeConvId = null;
+    clearChatMessages();
+    closeSubPage();
+    showEmptyState(true);
+    _persistState();
+  }
+  showToast(`已切换到工作区「${ws.name}」`, 'info');
+}
+
+function openWorkspaceDialog(e, editId) {
+  if (e && e.stopPropagation) e.stopPropagation();
+  closeWorkspaceMenu();
+  _editingWorkspaceId = editId || null;
+  const title = document.getElementById('workspaceDialogTitle');
+  const nameInput = document.getElementById('wsNameInput');
+  const pathInput = document.getElementById('wsPathInput');
+  const err = document.getElementById('wsDialogError');
+  if (err) { err.style.display = 'none'; err.textContent = ''; }
+  const ws = editId ? workspaces.find(w => w.id === editId) : null;
+  if (title) title.textContent = ws ? '编辑工作区' : '新建工作区';
+  if (nameInput) nameInput.value = ws ? ws.name : '';
+  if (pathInput) pathInput.value = ws ? ws.path : '';
+  const overlay = document.getElementById('workspaceOverlay');
+  if (overlay) overlay.classList.add('show');
+  if (nameInput) setTimeout(() => nameInput.focus(), 30);
+}
+
+function closeWorkspaceDialog() {
+  const overlay = document.getElementById('workspaceOverlay');
+  if (overlay) overlay.classList.remove('show');
+  _editingWorkspaceId = null;
+}
+
+async function saveWorkspaceFromDialog() {
+  const nameInput = document.getElementById('wsNameInput');
+  const pathInput = document.getElementById('wsPathInput');
+  const err = document.getElementById('wsDialogError');
+  const name = (nameInput.value || '').trim();
+  let path = (pathInput.value || '').trim();
+  const fail = (msg) => { if (err) { err.textContent = msg; err.style.display = ''; } };
+  if (!name) { fail('请填写工作区名称'); return; }
+  if (err) { err.style.display = 'none'; }
+  if (path) {
+    // 让后端确认目录可用（不存在则创建），避免存下一个假路径
+    try {
+      const resp = await eel.create_workspace_dir(path)();
+      if (resp && resp.ok) path = resp.path;
+      else { fail('目录不可用：' + ((resp && resp.error) || path)); return; }
+    } catch (e) { fail('目录校验失败：' + e); return; }
+  }
+  if (_editingWorkspaceId) {
+    const ws = workspaces.find(w => w.id === _editingWorkspaceId);
+    if (ws) { ws.name = name; ws.path = path; _persistWorkspace(ws); }
+    closeWorkspaceDialog();
+    renderWorkspaces();
+    showToast('工作区已更新', 'success');
+    return;
+  }
+  const ws = { id: 'ws_' + Date.now().toString(36), name, path };
+  workspaces.push(ws);
+  _persistWorkspace(ws);
+  closeWorkspaceDialog();
+  currentWorkspaceId = ws.id;
+  _persistActiveWorkspace(ws.id);
+  activeConvId = null;
+  clearChatMessages();
+  closeSubPage();
+  showEmptyState(true);
+  renderWorkspaces();
+  renderConversations();
+  _persistState();
+  showToast(`已创建工作区「${name}」`, 'success');
+}
+
+async function browseWorkspaceDir() {
+  const pathInput = document.getElementById('wsPathInput');
+  const err = document.getElementById('wsDialogError');
+  try {
+    const resp = await eel.pick_workspace_dir()();
+    if (resp && resp.ok && resp.path) {
+      pathInput.value = resp.path;
+      if (err) err.style.display = 'none';
+    } else if (resp && !resp.cancelled && err) {
+      err.textContent = resp.error || '未选择目录';
+      err.style.display = '';
+    }
+  } catch (e) {
+    if (err) { err.textContent = '无法打开目录选择器，请手动输入路径'; err.style.display = ''; }
+  }
+}
+
+async function openWorkspacePath() {
+  const pathInput = document.getElementById('wsPathInput');
+  const cur = workspaces.find(w => w.id === currentWorkspaceId) || {};
+  const p = (pathInput && pathInput.value.trim()) || cur.path || '';
+  if (!p) { showToast('该工作区未绑定目录', 'warning'); return; }
+  try {
+    const resp = await eel.open_workspace_dir(p)();
+    if (resp && !resp.ok) showToast(resp.error || '无法打开目录', 'warning');
+  } catch (e) {}
+}
+
+function deleteWorkspace(wsId, event) {
+  if (event) event.stopPropagation();
+  const ws = workspaces.find(w => w.id === wsId);
+  if (!ws) return;
+  showConfirmDialog({
+    title: '删除工作区',
+    message: `确定要删除工作区「${ws.name}」吗？\n其中的对话会移动到默认工作区，不会丢失。`,
+    okText: '删除',
+    onOk: () => {
+      _persistDeleteWorkspace(wsId);
+      workspaces = workspaces.filter(w => w.id !== wsId);
+      // 前端同步迁移，和后端行为保持一致
+      Object.values(conversations).forEach(list => list.forEach(c => {
+        if ((c.workspaceId || DEFAULT_WORKSPACE_ID) === wsId) c.workspaceId = DEFAULT_WORKSPACE_ID;
+      }));
+      if (currentWorkspaceId === wsId) {
+        currentWorkspaceId = DEFAULT_WORKSPACE_ID;
+        _persistActiveWorkspace(DEFAULT_WORKSPACE_ID);
+      }
+      _persistState();
+      renderWorkspaces();
+      renderConversations();
+      renderAssistantMenu();
+      showToast('工作区已删除，对话已迁移到默认工作区', 'info');
+    },
+  });
+}
+
 document.addEventListener('click', (e) => {
-  const wrap = document.getElementById('sessionWrap');
-  if (wrap && !wrap.contains(e.target)) closeSessionMenu();
+  const wsWrap = document.getElementById('workspaceWrap');
+  if (wsWrap && !wsWrap.contains(e.target)) closeWorkspaceMenu();
+  const aWrap = document.getElementById('assistantWrap');
+  if (aWrap && !aWrap.contains(e.target)) closeAssistantMenu();
 });
 
 function switchAssistant(instanceId) {
@@ -481,8 +705,7 @@ function createAssistantFromDialog(typeId) {
   conversations[inst.instanceId] = [];
   closeNewAssistantDialog();
   selectAssistant(inst.instanceId);
-  // Switch to topics tab and auto-create first conversation
-  switchSidebarTab('topics');
+  // 新助手没有对话 → 直接开一个，用户马上能说话
   newConversation();
 }
 
@@ -500,7 +723,9 @@ function newConversation() {
   const conv = {
     id: `conv_${Date.now()}_${convCounter}`,
     title: '新对话',
+    workspaceId: currentWorkspaceId || DEFAULT_WORKSPACE_ID,
     messages: [],
+    _loaded: true,
   };
   convs.unshift(conv);
   activeConvId = conv.id;
@@ -508,21 +733,42 @@ function newConversation() {
   _persistState();
   renderConversations();
   clearChatMessages();
+  closeSubPage();
   showEmptyState(true);
   document.getElementById('chatInput').focus();
 }
 
-function switchConversation(convId) {
+async function switchConversation(convId) {
   activeConvId = convId;
   _persistState();
   renderConversations();
   clearChatMessages();
   showEmptyState(false);
+  closeSubPage();
 
+  // 历史会话的消息是按需加载的（load_all 不带 messages）
   const conv = findConversation(convId);
+  if (conv && !conv._loaded) {
+    try {
+      const resp = await eel.db_load_messages(convId)();
+      if (resp && resp.ok) {
+        conv.messages = (resp.messages || []).map(m => ({
+          role: m.role,
+          content: m.content,
+          image: m.image || undefined,
+        }));
+      }
+    } catch (e) {}
+    conv._loaded = true;
+  }
+  if (activeConvId !== convId) return;   // 加载期间用户又切走了
+
   const msgs = (conv && conv.messages) || [];
   if (msgs.length > 0) {
-    msgs.forEach(m => appendBubble(m.role, m.content, m.image));
+    msgs.forEach(m => {
+      if (m.image) appendBubbleWithImage(m.role, m.content, m.image);
+      else appendBubble(m.role, m.content);
+    });
   } else {
     showEmptyState(true);
   }
@@ -545,11 +791,13 @@ function deleteConversation(convId, event) {
       convs.splice(idx, 1);
 
       if (activeConvId === convId) {
-        if (convs.length > 0) {
-          switchConversation(convs[0].id);
+        const remaining = getWorkspaceConversations();
+        if (remaining.length > 0) {
+          switchConversation(remaining[0].id);
         } else {
           activeConvId = null;
           clearChatMessages();
+          closeSubPage();
           showEmptyState(true);
         }
       }
@@ -577,21 +825,25 @@ function getActiveConversation() {
 function renderConversations() {
   updateSessionBar();
   const container = document.getElementById('conversationList');
+  const countEl = document.getElementById('conversationCount');
   if (!container) return;
   if (!currentAssistantInstance) {
+    if (countEl) countEl.textContent = '';
     container.innerHTML = '<div class="session-empty">请先新建助手</div>';
     return;
   }
-  const convs = conversations[currentAssistantInstance] || [];
+  // 左侧栏只显示「当前工作区」下的对话 —— 工作区隔离的核心
+  const convs = getWorkspaceConversations();
+  if (countEl) countEl.textContent = convs.length ? String(convs.length) : '';
   if (convs.length === 0) {
-    container.innerHTML = '<div class="session-empty">暂无历史会话</div>';
+    container.innerHTML = '<div class="session-empty">暂无历史会话<br>点击上方「新建对话」开始</div>';
     return;
   }
   container.innerHTML = convs.map(c => {
     const n = (c.messages || []).length;
     return `
     <div class="session-item ${c.id === activeConvId ? 'active' : ''}"
-         onclick="switchConversation('${c.id}'); closeSessionMenu();" title="${escapeAttr(c.title)}">
+         onclick="switchConversation('${c.id}')" title="${escapeAttr(c.title)}">
       <svg class="session-item-icon" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h9A1.5 1.5 0 0 1 14 4.5v5A1.5 1.5 0 0 1 12.5 11H6l-3 2.5V11h-.5A1.5 1.5 0 0 1 2 9.5z"/></svg>
       <span class="session-item-name">${escapeHtml(c.title)}</span>
       <span class="session-item-count">${n}</span>
@@ -695,9 +947,10 @@ function getTool(name) {
 async function refreshToolCatalog() {
   await loadToolCatalog(true);
   const vc = document.getElementById('viewContainer');
+  const sub = document.getElementById('subPage');
   const view = VIEWS[_currentView];
-  // 只在视图可见时就地重绘；聊天流模式下不要把用户拽回视图
-  if (vc && view && !vc.classList.contains('hidden')) {
+  // 只在子页面打开时就地重绘；对话为主时不要把用户拽回子页面
+  if (vc && sub && view && !sub.classList.contains('hidden')) {
     const keepScroll = vc.scrollTop;
     vc.innerHTML = renderViewHTML(view);
     if (view.hub) renderToolGrid();
@@ -913,21 +1166,36 @@ async function switchView(viewId) {
   // 视图里要用工具目录渲染统一卡片 → 首次进入前先拉目录
   if (!TOOL_CATALOG.length) await loadToolCatalog();
   if (_currentView !== viewId) return;   // 期间用户又切了视图
-  // Top nav active state
+  // Top mode bar active state
   document.querySelectorAll('.nav-item').forEach(n => {
     n.classList.toggle('active', n.dataset.view === viewId);
   });
-  // Hide chat messages, show view
-  document.getElementById('chatMessages').classList.add('hidden');
+  // 打开功能子页面：聊天流让位给该模式的工具卡片
+  const sub = document.getElementById('subPage');
+  const cm = document.getElementById('chatMessages');
+  if (sub) sub.classList.remove('hidden');
+  if (cm) cm.classList.add('hidden');
+  const crumb = document.getElementById('subpageCrumb');
+  if (crumb) crumb.textContent = view.title;
   const vc = document.getElementById('viewContainer');
   vc.classList.remove('hidden');
   vc.innerHTML = renderViewHTML(view);
   vc.scrollTop = 0;
   if (view.hub) renderToolGrid();
-  // Re-render assistants list if entering config view
+  // Re-render assistants list if entering config sub-page
   if (viewId === 'config') {
     setTimeout(() => { renderAssistants(); }, 0);
   }
+}
+
+/** 关闭功能子页面，回到对话主页面 */
+function closeSubPage() {
+  const sub = document.getElementById('subPage');
+  const cm = document.getElementById('chatMessages');
+  if (sub) sub.classList.add('hidden');
+  if (cm) cm.classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  _syncChatEmpty();
 }
 
 function renderMetrics(metrics) {
@@ -1064,13 +1332,9 @@ function renderToolGrid() {
 
 // ── 工具启动 ──
 
-/** 切到聊天流：隐藏视图容器，显示消息流 */
+/** 切到聊天流：关闭功能子页面，显示消息流 */
 function _enterChatStream() {
-  const vc = document.getElementById('viewContainer');
-  const cm = document.getElementById('chatMessages');
-  if (vc) vc.classList.add('hidden');
-  if (cm) cm.classList.remove('hidden');
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  closeSubPage();
 }
 
 async function launchTool(toolName) {
@@ -1651,8 +1915,16 @@ function onFileSelected(type, input) {
         if (resp.ok) { appendSystem(resp.msg); renderBOMTable(resp.items); setStatus(`已加载 BOM (${resp.count} 条)`); showDesignSuggestions(); }
         else { appendTip(resp.msg, 'error'); setStatus('加载失败'); }
       } else if (type === 'pcb') {
-        const resp = await eel.import_pcb_file(file.name, b64)();
-        if (resp.ok) { appendSystem(resp.msg); setStatus(`已加载 PCB`); }
+        // .epro2 是立创 V3 工程，一次导入同时拿到 BOM + PCB
+        const isProject = /\.epro2$/i.test(file.name) && typeof eel.import_project_file === 'function';
+        const resp = isProject
+          ? await eel.import_project_file(file.name, b64)()
+          : await eel.import_pcb_file(file.name, b64)();
+        if (resp.ok) {
+          appendSystem(resp.msg);
+          if (resp.items && resp.items.length) renderBOMTable(resp.items);
+          setStatus(isProject ? `已加载工程 (${resp.count} 行 BOM)` : `已加载 PCB`);
+        }
         else { appendTip(resp.msg, 'error'); setStatus('加载失败'); }
       } else if (type === 'pos') {
         const resp = await eel.import_pos_file(file.name, b64)();
@@ -2426,7 +2698,9 @@ function renderDrcHeatmap(chartDom, gridData) {
   }
   if (drcHeatmapChart) drcHeatmapChart.dispose();
 
-  drcHeatmapChart = echarts.init(chartDom, 'dark');
+  // 图表主题跟随当前外观（默认浅色），不要写死 dark
+  var chartTheme = document.body.getAttribute('data-theme') === 'dark' ? 'dark' : null;
+  drcHeatmapChart = echarts.init(chartDom, chartTheme);
   var xs = gridData.map(function(d) { return d[0]; });
   var ys = gridData.map(function(d) { return d[1]; });
   var counts = gridData.map(function(d) { return d[2]; });

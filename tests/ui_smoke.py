@@ -24,6 +24,8 @@
      切换会话后同一个回答显示两遍
   P10 一键演示的结果在首次发送时被 clearChatMessages() 清空
   P11 伴生模式 4 张 KPI 卡片竖排占满整屏
+  P12 主页面必须默认是对话界面；模式入口点开的是「功能子页面」
+  P13 左侧栏承载会话列表 + 工作区选择，会话按工作区隔离
 另外附带若干"只报告不失败"的巡检（死 id 引用、视图溢出）。
 """
 
@@ -112,13 +114,40 @@ class Result:
 
 
 def _open_settings(page):
-    page.click('.header-icon-btn[title="设置"]')
+    page.click("#settingsBtn")
     page.wait_for_timeout(450)
 
 
 def _settings_open(page) -> bool:
     return page.evaluate(
         "() => document.getElementById('settingsOverlay').classList.contains('show')")
+
+
+def check_mode_subpage(page, res: Result):
+    """P12: 点击顶栏模式入口 → 打开功能子页面；「返回对话」回到聊天主页面。"""
+    page.click('.nav-item[data-view="bom"]')
+    page.wait_for_timeout(500)
+    m = page.evaluate("""() => ({
+        subShown: !document.getElementById('subPage').classList.contains('hidden'),
+        chatHidden: document.getElementById('chatMessages').classList.contains('hidden'),
+        crumb: (document.getElementById('subpageCrumb') || {}).textContent || '',
+        navActive: document.querySelectorAll('.nav-item.active').length,
+        cards: document.querySelectorAll('#viewContainer .tool-card').length})""")
+    res.check("P12 模式入口打开功能子页面",
+              m["subShown"] and m["chatHidden"] and m["crumb"] == "BOM 分析"
+              and m["navActive"] == 1 and m["cards"] >= 4,
+              f"crumb「{m['crumb']}」, 卡片 {m['cards']} 张")
+    page.screenshot(path=str(SHOT_DIR / "mode_subpage.png"))
+
+    page.click(".subpage-back")
+    page.wait_for_timeout(400)
+    back = page.evaluate("""() => ({
+        subHidden: document.getElementById('subPage').classList.contains('hidden'),
+        chatVisible: !document.getElementById('chatMessages').classList.contains('hidden'),
+        navActive: document.querySelectorAll('.nav-item.active').length})""")
+    res.check("P12「返回对话」回到主对话页",
+              back["subHidden"] and back["chatVisible"] and back["navActive"] == 0,
+              f"subPage.hidden={back['subHidden']}, navActive={back['navActive']}")
 
 
 def check_settings_close(page, res: Result):
@@ -204,6 +233,9 @@ def check_provider_cards(page, res: Result):
 def check_companion(page, res: Result):
     """P3: 伴生模式 380px 宽不得出现横向滚动条，顶栏按钮不能被推出屏幕。
     P11: 伴生模式 KPI 卡片必须两列（单列会占满整屏，看不到入口卡片）。"""
+    # 主页面默认是对话（没有 KPI）；先打开一个模式子页面，P11 才有得测
+    page.evaluate("() => switchView('bom')")
+    page.wait_for_timeout(700)
     page.click("#modeToggleBtn")
     page.wait_for_timeout(1200)
     body_cls = page.evaluate("() => document.body.className")
@@ -325,39 +357,100 @@ def check_tool_hub(page, res: Result):
     page.screenshot(path=str(SHOT_DIR / "tool_run.png"))
 
 
-def check_session_menu(page, res: Result):
-    """会话下拉：新建/切换会话，且不留残留气泡（P9）。"""
-    page.click("#sessionChip")
-    page.wait_for_timeout(400)
-    menu = page.evaluate("""() => {
-      const menu = document.getElementById('sessionMenu');
-      const foot = document.querySelector('.session-menu-foot');
-      if (!menu || !foot) return null;
-      const mb = menu.getBoundingClientRect(), fb = foot.getBoundingClientRect();
-      return {shown: getComputedStyle(menu).display !== 'none',
-              footInside: fb.bottom <= mb.bottom + 1 && fb.right <= mb.right + 1,
-              menuH: Math.round(mb.height), footBottom: Math.round(fb.bottom),
-              menuBottom: Math.round(mb.bottom)};
+def check_sidebar_conversations(page, res: Result):
+    """左侧会话栏：结构可见、新建会话清空消息区、当前会话高亮、无残留气泡（P9）。"""
+    m = page.evaluate("""() => {
+      const sb = document.getElementById('sidebar');
+      const btn = document.getElementById('newChatBtn');
+      return {sidebar: !!sb, newBtn: !!btn,
+              width: sb ? Math.round(sb.getBoundingClientRect().width) : 0,
+              list: !!document.getElementById('conversationList'),
+              wsChip: !!document.getElementById('workspaceChip')};
     }""")
-    res.check("会话下拉可展开", bool(menu and menu["shown"]))
-    res.check("会话下拉「管理助手实例」在面板内",
-              bool(menu and menu["footInside"]),
-              f"menu 底 {menu and menu['menuBottom']} / 按钮底 {menu and menu['footBottom']}")
-    page.screenshot(path=str(SHOT_DIR / "session_menu.png"))
+    res.check("左侧栏存在（会话列表 + 工作区选择器）",
+              m["sidebar"] and m["list"] and m["wsChip"] and m["newBtn"] and m["width"] >= 200,
+              f"宽 {m['width']}px")
 
-    page.click(".session-new-btn")
+    page.click("#newChatBtn")
     page.wait_for_timeout(600)
     st = page.evaluate("""() => ({
         items: document.querySelectorAll('#conversationList .session-item').length,
+        active: document.querySelectorAll('#conversationList .session-item.active').length,
         rows: document.querySelectorAll('#chatMessages .msg-row').length,
         bare: document.querySelectorAll('#chatMessages > .bubble').length,
-        toolsLeft: document.querySelectorAll('#chatMessages > .tool-call-card').length,
-        chip: document.getElementById('sessionChipName').textContent})""")
-    res.check("新建会话后消息区清空且无残留", st["rows"] == 0 and st["bare"] == 0
-              and st["toolsLeft"] == 0,
+        toolsLeft: document.querySelectorAll('#chatMessages > .tool-call-card').length})""")
+    res.check("新建会话后消息区清空且无残留",
+              st["rows"] == 0 and st["bare"] == 0 and st["toolsLeft"] == 0,
               f"msg-row {st['rows']} / 裸气泡 {st['bare']} / 工具卡 {st['toolsLeft']}")
-    res.check("会话列表有记录", st["items"] >= 1, f"{st['items']} 条")
-    res.check("会话切换器显示当前会话标题", bool(st["chip"].strip()), st["chip"])
+    res.check("会话列表有记录且当前会话高亮",
+              st["items"] >= 1 and st["active"] == 1,
+              f"{st['items']} 条, 高亮 {st['active']}")
+    page.screenshot(path=str(SHOT_DIR / "sidebar_conversations.png"))
+
+
+def check_workspace(page, res: Result):
+    """工作区选择：默认工作区存在、可新建、会话列表按工作区隔离、可切回。"""
+    page.click("#workspaceChip")
+    page.wait_for_timeout(400)
+    m = page.evaluate("""() => {
+      const menu = document.getElementById('workspaceMenu');
+      const chip = document.getElementById('workspaceChipName');
+      return {shown: !!menu && getComputedStyle(menu).display !== 'none',
+              items: document.querySelectorAll('#workspaceList .sb-ws-item').length,
+              chip: chip ? chip.textContent.trim() : '',
+              defaultConvs: document.querySelectorAll('#conversationList .session-item').length};
+    }""")
+    res.check("工作区下拉可展开且含默认工作区",
+              m["shown"] and m["items"] >= 1 and m["chip"] == "默认工作区",
+              f"{m['items']} 个工作区, 当前「{m['chip']}」")
+    page.screenshot(path=str(SHOT_DIR / "workspace_menu.png"))
+
+    # 新建工作区（带一个真实存在的目录，验证后端会创建/校验它）
+    page.click("#workspaceMenu .sb-menu-new")
+    page.wait_for_timeout(400)
+    res.check("新建工作区弹窗可打开",
+              page.evaluate(
+                  "() => document.getElementById('workspaceOverlay').classList.contains('show')"))
+    page.fill("#wsNameInput", "UI 冒烟工作区")
+    page.fill("#wsPathInput", str(SHOT_DIR / "ws_home"))
+    page.click("#workspaceOverlay .modal-actions .btn-primary")
+    page.wait_for_timeout(800)
+    ws = page.evaluate("""() => ({
+        chip: document.getElementById('workspaceChipName').textContent.trim(),
+        items: document.querySelectorAll('#workspaceList .sb-ws-item').length,
+        convs: document.querySelectorAll('#conversationList .session-item').length,
+        active: (() => { const ws = workspaces.find(w => w.id === currentWorkspaceId) || {};
+                 return ws.path || ''; })()})""")
+    res.check("新建后自动切到新工作区且会话列表为空",
+              ws["chip"] == "UI 冒烟工作区" and ws["items"] >= 2 and ws["convs"] == 0,
+              f"当前「{ws['chip']}」, {ws['items']} 个工作区, {ws['convs']} 条会话")
+    res.check("工作区绑定的目录被后端确认",
+              ws["active"].replace("\\", "/").endswith("output/ui_smoke/ws_home"),
+              ws["active"])
+
+    page.click("#newChatBtn")
+    page.wait_for_timeout(500)
+    n = page.evaluate("() => document.querySelectorAll('#conversationList .session-item').length")
+    res.check("新工作区里可以创建会话", n == 1, f"{n} 条")
+    page.screenshot(path=str(SHOT_DIR / "workspace_new.png"))
+
+    # 切回默认工作区：应看到默认工作区自己的会话，而不是新工作区的
+    page.click("#workspaceChip")
+    page.wait_for_timeout(350)
+    page.evaluate("""() => {
+      const rows = [...document.querySelectorAll('#workspaceList .sb-ws-item')];
+      const def = rows.find(r => r.getAttribute('title') === '默认工作区'
+                                 || r.textContent.includes('默认工作区'));
+      if (def) def.click();
+    }""")
+    page.wait_for_timeout(800)
+    back = page.evaluate("""() => ({
+        chip: document.getElementById('workspaceChipName').textContent.trim(),
+        items: document.querySelectorAll('#conversationList .session-item').length})""")
+    res.check("切回默认工作区后看到它自己的会话",
+              back["chip"] == "默认工作区" and back["items"] == m["defaultConvs"],
+              f"当前「{back['chip']}」, {back['items']} 条（默认工作区原有 {m['defaultConvs']} 条）")
+    page.screenshot(path=str(SHOT_DIR / "workspace_back.png"))
 
 
 def check_dark_theme(page, res: Result):
@@ -599,19 +692,31 @@ def run(port: int, headed: bool) -> int:
                 assistants: assistantInstances.length,
                 current: currentAssistantInstance || '',
                 catalog: TOOL_CATALOG.length,
-                defaultTypeOk: !!ASSISTANT_TYPES['eda-general']})""")
+                defaultTypeOk: !!ASSISTANT_TYPES['eda-general'],
+                subHidden: document.getElementById('subPage').classList.contains('hidden'),
+                chatVisible: !document.getElementById('chatMessages').classList.contains('hidden'),
+                workspaces: workspaces.length,
+                wsChip: (document.getElementById('workspaceChipName') || {}).textContent || ''})""")
             res.check("首跑自动创建默认助手（空库不白屏）",
                       boot["assistants"] >= 1 and bool(boot["current"]) and boot["defaultTypeOk"],
                       f"{boot['assistants']} 个助手, current={boot['current'][:24]}")
             res.check("启动即加载统一工具目录", boot["catalog"] >= 20, f"{boot['catalog']} 个能力")
+            res.check("P12 主页面默认是对话界面（子页面隐藏）",
+                      boot["subHidden"] and boot["chatVisible"],
+                      f"subPage.hidden={boot['subHidden']}, chatMessages 可见={boot['chatVisible']}")
+            res.check("P13 启动即有默认工作区",
+                      boot["workspaces"] >= 1 and boot["wsChip"] == "默认工作区",
+                      f"{boot['workspaces']} 个工作区, chip「{boot['wsChip']}」")
 
+            check_mode_subpage(page, res)
             check_settings_close(page, res)
             check_provider_cards(page, res)
             check_tool_hub(page, res)
             check_dark_theme(page, res)
             check_companion(page, res)
             check_chat_and_views(page, res)
-            check_session_menu(page, res)
+            check_sidebar_conversations(page, res)
+            check_workspace(page, res)
             scan_warnings(page, res, ROOT / "web" / "js" / "app.js")
 
             errs = [c for c in console if c[0] == "error"]

@@ -169,7 +169,7 @@ class SettingsRequest(BaseModel):
     base_url: str = ""
     model: str = ""
     temperature: float = 0.7
-    theme: str = "dark"
+    theme: str = "light"
     accent: str = "#4A90D9"
     font_size: int = 14
     data_dir: str = ""
@@ -227,6 +227,7 @@ class ConversationSaveRequest(BaseModel):
     conv_id: str
     instance_id: str
     title: str = "新对话"
+    workspace_id: str = ""
 
 
 class MessageSaveRequest(BaseModel):
@@ -240,6 +241,7 @@ class MessageSaveRequest(BaseModel):
 class ActiveStateRequest(BaseModel):
     active_assistant: str = ""
     active_conv: str = ""
+    active_workspace: str = ""
 
 
 class DemoLoadResponse(BaseModel):

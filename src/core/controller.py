@@ -196,6 +196,40 @@ class AppController:
         )
         return pcb.net_count, summary
 
+    def load_project(self, file_path: str) -> tuple[int, str]:
+        """Load a `.epro2` project: BOM + PCB from one file.
+
+        立创 EDA V3 的 .epro2 同时包含 BOM 与 PCB（网络/走线/过孔/覆铜），
+        所以一次解析即可同时填充 `bom_items` 与 `pcb_data`。
+        Returns (bom_item_count, message).
+        """
+        from ..pcb.epro2_parser import bom_rows_to_items
+
+        pcb = self.eda.get_pcb_data(file_path)
+        self.context.pcb_data = pcb
+
+        bom_count = 0
+        if pcb.bom_items:
+            self.context.bom_items = bom_rows_to_items(pcb.bom_items)
+            bom_count = len(self.context.bom_items)
+
+        name = Path(file_path).name
+        logger.info(
+            "Project loaded: %s (%d BOM rows, %d nets, %d traces, %d vias)",
+            name, bom_count, pcb.net_count, pcb.trace_count, pcb.via_count,
+        )
+        summary = (
+            f" 已加载工程: {name}\n"
+            f"  格式: {pcb.format}\n"
+            f"  BOM: {bom_count} 行 / {sum(i.quantity for i in self.context.bom_items)} 个位号\n"
+            f"  网络: {pcb.net_count} 个\n"
+            f"  走线: {pcb.trace_count} 条\n"
+            f"  过孔: {pcb.via_count} 个\n"
+            f"  覆铜: {len(pcb.copper_pours)} 块\n"
+            f"  层: {', '.join(pcb.layers) if pcb.layers else '无'}"
+        )
+        return bom_count, summary
+
     # ══════════════════════════════════════════════════
     #  BOM operations — each returns a formatted report
     # ══════════════════════════════════════════════════

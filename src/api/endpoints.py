@@ -534,7 +534,7 @@ def get_settings():
         "base_url": saved.get("llm_base_url", ""),
         "model": saved.get("llm_model", ""),
         "temperature": saved.get("llm_temperature", 0.7),
-        "theme": saved.get("selected_theme", "dark"),
+        "theme": saved.get("selected_theme", "light"),
         "accent": saved.get("selected_accent", "#5b8def"),
         "font_size": saved.get("font_size", 13),
         "data_dir": str(SETTINGS_DIR),
@@ -647,7 +647,8 @@ def persist_delete_assistant(instance_id: str):
 @router.post("/persist/conversation")
 def persist_save_conversation(req: ConversationSaveRequest):
     try:
-        _store.save_conversation(req.conv_id, req.instance_id, req.title)
+        _store.save_conversation(req.conv_id, req.instance_id, req.title,
+                                workspace_id=req.workspace_id)
         _store.save_state("active_conv", req.conv_id)
         return {"ok": True}
     except Exception as e:
@@ -694,6 +695,8 @@ def persist_save_active_state(req: ActiveStateRequest):
             _store.save_state("active_assistant", req.active_assistant)
         if req.active_conv:
             _store.save_state("active_conv", req.active_conv)
+        if req.active_workspace:
+            _store.save_state("active_workspace", req.active_workspace)
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "msg": str(e)}

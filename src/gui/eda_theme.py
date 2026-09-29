@@ -48,7 +48,7 @@ def _load_theme_preference() -> str:
                 return name
     except (json.JSONDecodeError, OSError):
         pass
-    return "dark"
+    return "light"
 
 
 def _save_theme_preference(name: str):
@@ -216,7 +216,7 @@ THEMES: Dict[str, Dict[str, str]] = {
     "light": MINIMAL_WHITE,
 }
 
-THEME_DISPLAY_ORDER = ["dark", "light"]
+THEME_DISPLAY_ORDER = ["light", "dark"]
 
 # ══════════════════════════════════════════
 #  Semantic status colours — dark-mode low-saturation glow
