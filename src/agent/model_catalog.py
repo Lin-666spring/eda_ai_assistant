@@ -135,7 +135,7 @@ def list_models(
         return {"ok": False, "provider": preset.name, "models": [],
                 "error": _friendly_http_error(e, preset)}
     except ValueError as e:
-        # ⚠️ 必须排在 RequestException 之前：requests 的 JSONDecodeError
+        # 注意：必须排在 RequestException 之前：requests 的 JSONDecodeError
         #    同时继承 RequestException 和 ValueError，放在后面会被误报成「无法连接」。
         return {"ok": False, "provider": preset.name, "models": [],
                 "error": f"响应不是合法 JSON：{e}"}

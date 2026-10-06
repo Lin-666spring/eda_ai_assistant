@@ -190,15 +190,15 @@ class BOMValidator:
             "        BOM 封装校验报告",
             BOM.REPORT_DOUBLE_SEP,
             f"校验总数：{len(results)}",
-            f"✅ 通过：{sum(1 for r in results if r.is_valid)}",
-            f"❌ 错误：{len(errors)}",
-            f"⚠️  警告：{len(warnings)}",
+            f"通过：{sum(1 for r in results if r.is_valid)}",
+            f"错误：{len(errors)}",
+            f"警告：{len(warnings)}",
             BOM.REPORT_SEPARATOR,
         ]
 
         for severity, emoji, items in [
-            ("error", "❌", errors),
-            ("warning", "⚠️ ", warnings),
+            ("error", "", errors),
+            ("warning", "[警告] ", warnings),
         ]:
             if items:
                 lines.append(f"\n【{severity}项】")

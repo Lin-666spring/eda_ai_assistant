@@ -738,7 +738,7 @@ class MainWindow(QMainWindow):
             self._auto_sync_enabled = False
             self._auto_sync_action.setChecked(False)
             self.chat_panel.add_system_message(
-                "⚠️ 未找到立创 EDA 项目目录。请手动设置监听路径。"
+                "未找到立创 EDA 项目目录。请手动设置监听路径。"
             )
             self._status_message.setText("未找到监听目录")
             return
@@ -753,7 +753,7 @@ class MainWindow(QMainWindow):
         try:
             count, msg = self.controller.load_pcb(filepath)
             self.chat_panel.add_system_message(
-                f"📁 检测到 PCB 文件变化，已自动重新加载\n{msg}"
+                f"检测到 PCB 文件变化，已自动重新加载\n{msg}"
             )
             self._status_message.setText(f"已同步: {Path(filepath).name}")
             if self.controller.context.has_data:

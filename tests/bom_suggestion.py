@@ -143,7 +143,7 @@ def build_correction_prompt(
     # ── 当前变更表（含 old_value，供恢复原值）──
     # 2026-09-10：改用人类可读的操作标签。此前把 canonical 变更渲染成
     # "字段=value / 操作=replace"，模型看不出自己删了元件，无法作出"撤销"决策。
-    _ACTION_LABEL = {"remove": "❌ 删除该元件", "add": "➕ 新增元件"}
+    _ACTION_LABEL = {"remove": "删除该元件", "add": "新增元件"}
 
     def _row(c: BOMChange) -> str:
         label = _ACTION_LABEL.get(c.action) or f"修改 {c.field}"
@@ -189,7 +189,7 @@ def build_correction_prompt(
     worsened_section = ""
     if worsened_lines:
         worsened_section = (
-            "\n## ⚠️ 现有规则恶化（这些规则基线就有，但你的变更使违规数增加）\n"
+            "\n## 现有规则恶化（这些规则基线就有，但你的变更使违规数增加）\n"
             + "\n".join(worsened_lines[:10]) + "\n"
         )
 
@@ -197,7 +197,7 @@ def build_correction_prompt(
     score_section = ""
     if baseline_score is not None and modified_score is not None and modified_score < baseline_score:
         score_section = (
-            f"\n## 📉 综合评分\n"
+            f"\n## 综合评分\n"
             f"基线 {baseline_score:.1f} 分 → 变更后 {modified_score:.1f} 分"
             f"（下降 {baseline_score - modified_score:.1f} 分）。"
             f"评分衡量整体设计质量，即使无新规则，恶化也必须修复。\n"
@@ -213,7 +213,7 @@ def build_correction_prompt(
                 + (f"（{h['attempt']}）" if h.get("attempt") else "")
             )
         history_section = (
-            "\n## 📜 前几轮尝试（重复已失败策略不会产生不同结果，请换策略）\n"
+            "\n## 前几轮尝试（重复已失败策略不会产生不同结果，请换策略）\n"
             + "\n".join(hist_lines) + "\n"
         )
 
@@ -227,7 +227,7 @@ def build_correction_prompt(
     parts.append(
         "修复策略（按优先级）：\n"
         "1. **撤销**：从 changes 中删除导致违规的条目，即恢复该元件原值。变更列表是全量替换语义——"
-        "输出不含某条目 = 该元件恢复原状。若上表里某条是\"❌ 删除该元件\"，**不输出它**就是让该元件保留原值，"
+        "输出不含某条目 = 该元件恢复原状。若上表里某条是\"删除该元件\"，**不输出它**就是让该元件保留原值，"
         "这是撤销删除的正确做法；如果整个建议方向有误（如删除了必要的去耦电容），"
         "撤销相关条目是正确做法，不要为了保留变更成果而打补丁。\n"
         "2. **修正**：按每条违规的'修法'指引调整 new_value（如恢复 100nF、改回耐压足够的型号）。\n"

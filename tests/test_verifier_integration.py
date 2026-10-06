@@ -728,7 +728,9 @@ class TestVerificationReportFormatting:
 
         assert "闭环验证报告" in md
         assert "Safe suggestion" in md
-        assert "✅" in md
+        # 通过态用 ✓ 标记（2026-10-03 起报告里不再用 emoji）
+        assert "✓" in md
+        assert "✗" not in md.split("### 原始建议")[0]
 
     def test_failed_report_markdown(self):
         """A failed report shows violations clearly."""
@@ -740,7 +742,8 @@ class TestVerificationReportFormatting:
         report = engine.verify("Bad suggestion")
         md = report.to_markdown()
 
-        assert "❌" in md
+        assert "✗" in md
+        assert "[错误]" in md
         assert "DECOUPLING_MISSING" in md
         assert "Missing cap near U1" in md
 

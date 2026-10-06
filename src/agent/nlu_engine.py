@@ -504,14 +504,14 @@ class NLUEngine:
 
         if len(top_two) < 2:
             return (
-                "🤔 不太确定您的意思，能再说详细一点吗？\n"
+                "不太确定您的意思，能再说详细一点吗？\n"
                 "例如：\"合并BOM\"、\"检查设计规则\"、\"分析PCB布局\""
             )
 
         label1 = self._get_label(top_two[0][0])
         label2 = self._get_label(top_two[1][0])
 
-        return f"🤔 请问您是想**{label1}**还是**{label2}**？请明确一下。\n\n💡 其他可用操作：合并BOM / 校验封装 / 检查重复 / 设计规则 / PCB分析 / BOM健康 / 生成HTML"
+        return f"请问您是想**{label1}**还是**{label2}**？请明确一下。\n\n其他可用操作：合并BOM / 校验封装 / 检查重复 / 设计规则 / PCB分析 / BOM健康 / 生成HTML"
 
     # ── 内部：向量相似度 ──
 

@@ -1156,7 +1156,7 @@ body[data-theme="dark"] .tool-card-cat.tone-pink   { color: #ef7fb4; }
 .input-eye-btn:hover { opacity: 1; }
 
 /* Provider cards */
-/* ⚠️ 必须用 minmax(0, 1fr)：`1fr` == `minmax(auto, 1fr)`，卡片描述行的
+/* 必须用 minmax(0, 1fr)：`1fr` == `minmax(auto, 1fr)`，卡片描述行的
    min-content 会把列撑到 269/212/253px（合计 734px > 容器 572px），
    第三列直接被弹窗裁掉（2026-09-10 实测）。 */
 .provider-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -1542,7 +1542,9 @@ body.companion-mode .agent-toggle { padding: 0 8px; }
   padding-top: 12px;
 }
 .heatmap-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
-.heatmap-header h4 { margin: 0; font-size: 14px; color: var(--accent); }
+.heatmap-header h4 { margin: 0; font-size: 14px; color: var(--accent); display: flex; align-items: center; gap: 6px; }
+.heatmap-title-icon { display: inline-flex; }
+.heatmap-title-icon svg { width: 15px; height: 15px; }
 .heatmap-desc { font-size: 11px; color: var(--text-muted); }
 .heatmap-load-btn {
   margin-left: auto; padding: 4px 12px; border-radius: 6px;

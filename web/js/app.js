@@ -156,7 +156,7 @@ async function loadPersistedState() {
 
   // 无持久化数据 → 自动创建默认助手实例（首跑引导）
   if (!saved || saved.length === 0) {
-    // ⚠️ typeId 必须是 ASSISTANT_TYPES 里真实存在的键。
+    // 注意：typeId 必须是 ASSISTANT_TYPES 里真实存在的键。
     //    过去写的是 'general'（不存在）→ createAssistantInstance 返回 null
     //    → 紧接着读 inst.instanceId 直接抛异常，首跑白屏（2026-09-10 修正）。
     const inst = createAssistantInstance('eda-general');
@@ -176,7 +176,7 @@ async function loadPersistedState() {
     typeId: a.type_id,
     name: a.name,
   }));
-  // ⚠️ 归一化：SessionStore.load_all() 返回的会话记录字段是
+  // 注意：归一化：SessionStore.load_all() 返回的会话记录字段是
   //    {conv_id, workspace_id, title, sort_order}（没有 id / messages），
   //    直接用会导致 switchConversation() 里 `conv.messages.length` 抛 undefined。
   conversations = {};
@@ -869,7 +869,7 @@ function clearChatMessages() {
   _activeToolCards = [];
   const container = document.getElementById('chatMessages');
   if (!container) return;
-  // ⚠️ 只能保留空态占位节点，其余一律清掉。
+  // 注意：只能保留空态占位节点，其余一律清掉。
   // 过去只删 `.msg-row,.config-tip`，而流式 AI 气泡（裸 .bubble）和
   // `.tool-call-card` 都不带 .msg-row，切换助手/会话后它们会留在 DOM 里，
   // 造成「同一个回答显示两遍」（2026-09-10 实测：bareBubbles 存活 1 个）。
@@ -905,16 +905,16 @@ const TOOL_CATEGORIES = {
   vision: { label: '视觉分析', short: '视觉',   tone: 'pink' },
 };
 
-// tool name → ICONS 中的 emoji 键（统一走同一套线性 SVG 图标）
+// tool name → ICONS 中的语义键（统一走同一套线性 SVG 图标）
 const TOOL_ICONS = {
-  ai_merge_bom: '🤖', merge_bom: '🔗', validate_package: '📐',
-  check_duplicates: '🔍', filter_components: '🧲',
-  generate_html_bom: '🌐', export_bom_csv: '📤', summary_report: '📊',
-  bom_cost_summary: '💰', bom_health: '🩺', find_alternatives: '🔁', supply_risk: '🚚',
-  check_rule: '📐', pcb_status: '🖥️', pcb_analysis: '🧩', calc_trace_width: '📏',
-  explain_design_rule: '📖', generate_drc_rule: '🧾', review_multi_agent: '👥',
-  verify_suggestion: '✅', component_lookup: '🔎', search_component: '🔍',
-  analyze_image: '🖼️', rag_query: '📚',
+  ai_merge_bom: 'robot', merge_bom: 'link', validate_package: 'ruler',
+  check_duplicates: 'search', filter_components: 'magnet',
+  generate_html_bom: 'globe', export_bom_csv: 'upload', summary_report: 'chart',
+  bom_cost_summary: 'coins', bom_health: 'pulse', find_alternatives: 'swap', supply_risk: 'truck',
+  check_rule: 'ruler', pcb_status: 'monitor', pcb_analysis: 'puzzle', calc_trace_width: 'ruler-diag',
+  explain_design_rule: 'book', generate_drc_rule: 'receipt', review_multi_agent: 'users',
+  verify_suggestion: 'check-circle', component_lookup: 'search-plus', search_component: 'search',
+  analyze_image: 'image', rag_query: 'book-open',
 };
 
 // 少数能力的启动方式不是「直接执行」
@@ -980,7 +980,7 @@ function _toolState(t) {
 function renderToolCard(t, index) {
   const cat = TOOL_CATEGORIES[t.category] || { short: t.category, tone: 'blue' };
   const st = _toolState(t);
-  const icon = ICONS[TOOL_ICONS[t.name]] || ICONS['⚙️'] || '';
+  const icon = ICONS[TOOL_ICONS[t.name]] || ICONS['settings'] || '';
   return `<article class="tool-card" data-tool="${t.name}" data-cat="${t.category}" data-state="${st.key}"
       style="--i:${index || 0}" onclick="launchTool('${t.name}')" title="${escapeAttr(t.description)}">
     <div class="tool-card-top">
@@ -998,7 +998,7 @@ function renderToolCard(t, index) {
 
 /** 非工具类快捷入口也用同一种卡片外观，保持视觉统一 */
 function renderActionCard(item, index) {
-  const icon = ICONS[item.icon] || item.icon || ICONS['⚙️'];
+  const icon = ICONS[item.icon] || item.icon || ICONS['settings'];
   return `<article class="tool-card tool-card--action" style="--i:${index || 0}"
       onclick="${item.onClick}" title="${escapeAttr(item.desc || item.title)}">
     <div class="tool-card-top">
@@ -1028,7 +1028,7 @@ const VIEWS = {
     title: 'BOM 分析',
     subtitle: '物料清单的导入、校验、合并与供应链健康检查 — 确保每一颗元件可用、对、省。',
     metrics: [
-      { num: '24', label: '系统能力', icon: '🧩' },
+      { num: '24', label: '系统能力', icon: 'puzzle' },
       { num: '71', label: '设计规则' },
       { num: '3', label: '自研 ML 模型' },
       { num: '98%', label: '缺陷检出率' },
@@ -1043,10 +1043,10 @@ const VIEWS = {
     title: '设计审查',
     subtitle: '71 条 PCB 设计规则全量扫描 · 多智能体协同评审 · 违规密度可视化定位。',
     metrics: [
-      { num: '71', label: 'DRC 规则', icon: '📐' },
-      { num: '5', label: '审查 Agent', icon: '👥' },
-      { num: '18s', label: '平均耗时', icon: '👁️' },
-      { num: 'V2.8', label: '模型版本', icon: '⚙️' },
+      { num: '71', label: 'DRC 规则', icon: 'ruler' },
+      { num: '5', label: '审查 Agent', icon: 'users' },
+      { num: '18s', label: '平均耗时', icon: 'eye' },
+      { num: 'V2.8', label: '模型版本', icon: 'settings' },
     ],
     actions: [
       { label: '启动多智能体审查', sub: '5 个专业 Agent 并行评审', primary: true, onClick: "featureCmd('__review')" },
@@ -1054,8 +1054,8 @@ const VIEWS = {
     ],
     tools: ['check_rule', 'pcb_analysis', 'review_multi_agent', 'verify_suggestion', 'pcb_status', 'explain_design_rule'],
     extras: [
-      { icon: '🔥', title: 'DRC 热力图', desc: '违规密度的空间分布定位', onClick: "featureCmd('__heatmap')", hint: '右侧面板' },
-      { icon: '📥', title: '导入 PCB', desc: '.json / .epro 电路板文件', onClick: "document.getElementById('pcbFileInput').click()", hint: '选择文件' },
+      { icon: 'flame', title: 'DRC 热力图', desc: '违规密度的空间分布定位', onClick: "featureCmd('__heatmap')", hint: '右侧面板' },
+      { icon: 'download', title: '导入 PCB', desc: '.json / .epro 电路板文件', onClick: "document.getElementById('pcbFileInput').click()", hint: '选择文件' },
     ],
   },
   tools: {
@@ -1067,10 +1067,10 @@ const VIEWS = {
     title: '报告中心',
     subtitle: '生成交互式 HTML BOM · 查看历史报告栈 · 导出审查结果。',
     metrics: [
-      { num: 'HTML', label: '报告格式', icon: '📑' },
-      { num: 'CSV', label: '数据导出', icon: '📤' },
-      { num: '历史', label: '报告栈', icon: '📚' },
-      { num: '一键', label: '生成', icon: '✅' },
+      { num: 'HTML', label: '报告格式', icon: 'file-text' },
+      { num: 'CSV', label: '数据导出', icon: 'upload' },
+      { num: '历史', label: '报告栈', icon: 'book-open' },
+      { num: '一键', label: '生成', icon: 'check-circle' },
     ],
     actions: [
       { label: '生成 HTML BOM', sub: '交互式物料表', primary: true, onClick: "generateHTMLBOM()" },
@@ -1078,88 +1078,90 @@ const VIEWS = {
     ],
     tools: ['generate_html_bom', 'export_bom_csv', 'summary_report', 'bom_cost_summary'],
     extras: [
-      { icon: '📑', title: '报告栈', desc: '操作历史报告归档', onClick: "switchTab('report'); toggleRightPanel()", hint: '右侧面板' },
-      { icon: '📊', title: '审查结果', desc: '多智能体评审卡片', onClick: "switchTab('review'); toggleRightPanel()", hint: '右侧面板' },
-      { icon: '🧾', title: 'BOM 表格', desc: '当前物料明细', onClick: "switchTab('bom'); toggleRightPanel()", hint: '右侧面板' },
-      { icon: '👁️', title: 'HTML 预览', desc: '生成的 BOM 预览', onClick: "switchTab('html'); toggleRightPanel()", hint: '右侧面板' },
+      { icon: 'file-text', title: '报告栈', desc: '操作历史报告归档', onClick: "switchTab('report'); toggleRightPanel()", hint: '右侧面板' },
+      { icon: 'chart', title: '审查结果', desc: '多智能体评审卡片', onClick: "switchTab('review'); toggleRightPanel()", hint: '右侧面板' },
+      { icon: 'receipt', title: 'BOM 表格', desc: '当前物料明细', onClick: "switchTab('bom'); toggleRightPanel()", hint: '右侧面板' },
+      { icon: 'eye', title: 'HTML 预览', desc: '生成的 BOM 预览', onClick: "switchTab('html'); toggleRightPanel()", hint: '右侧面板' },
     ],
   },
   config: {
     title: '配置管理',
     subtitle: 'AI 模型 · 外观主题 · 通用设置 · 助手实例管理 — 一切可调项集中于此。',
     metrics: [
-      { num: '5+', label: 'LLM 服务商', icon: '🤖' },
-      { num: '4', label: '助手类型', icon: '🧠' },
-      { num: '本地', label: 'ML 离线', icon: '📦' },
-      { num: 'SQLite', label: '持久化', icon: '💾' },
+      { num: '5+', label: 'LLM 服务商', icon: 'robot' },
+      { num: '4', label: '助手类型', icon: 'cpu' },
+      { num: '本地', label: 'ML 离线', icon: 'package' },
+      { num: 'SQLite', label: '持久化', icon: 'database' },
     ],
     actions: [
       { label: 'AI 模型配置', sub: 'API Key · 模型 · 温度', primary: true, onClick: "openSettingsAt('s-ai')" },
       { label: '新建助手', sub: '多实例助手模型', primary: false, onClick: "showNewAssistantDialog()" },
     ],
     extras: [
-      { icon: '🤖', title: 'AI 模型', desc: '服务商 · API Key · 模型 · 温度', onClick: "openSettingsAt('s-ai')", hint: '设置' },
-      { icon: '🎨', title: '外观主题', desc: '深浅色 · 强调色 · 字号', onClick: "openSettingsAt('s-appearance')", hint: '设置' },
-      { icon: '⚙️', title: '通用设置', desc: '自动保存 · 文件监听 · 操作确认', onClick: "openSettingsAt('s-general')", hint: '设置' },
-      { icon: '💾', title: '数据存储', desc: '数据目录与清除本地数据', onClick: "openSettingsAt('s-general')", hint: '设置' },
-      { icon: '📁', title: '导入 PCB', desc: '.json / .epro 电路板文件', onClick: "document.getElementById('pcbFileInput').click()", hint: '选择文件' },
-      { icon: '📍', title: '导入坐标', desc: '.csv 元件坐标文件', onClick: "document.getElementById('posFileInput').click()", hint: '选择文件' },
+      { icon: 'robot', title: 'AI 模型', desc: '服务商 · API Key · 模型 · 温度', onClick: "openSettingsAt('s-ai')", hint: '设置' },
+      { icon: 'palette', title: '外观主题', desc: '深浅色 · 强调色 · 字号', onClick: "openSettingsAt('s-appearance')", hint: '设置' },
+      { icon: 'settings', title: '通用设置', desc: '自动保存 · 文件监听 · 操作确认', onClick: "openSettingsAt('s-general')", hint: '设置' },
+      { icon: 'database', title: '数据存储', desc: '数据目录与清除本地数据', onClick: "openSettingsAt('s-general')", hint: '设置' },
+      { icon: 'folder', title: '导入 PCB', desc: '.json / .epro 电路板文件', onClick: "document.getElementById('pcbFileInput').click()", hint: '选择文件' },
+      { icon: 'map-pin', title: '导入坐标', desc: '.csv 元件坐标文件', onClick: "document.getElementById('posFileInput').click()", hint: '选择文件' },
     ],
     assistantSection: true,
   },
 };
 
-// ═══════════ SVG 图标映射（Lucide 风格线性图标，替换 emoji） ═══════════
+// ═══════════ SVG 图标映射（Lucide 风格线性图标） ═══════════
+// 键是语义名，不再用 emoji 当键：源码里不出现 emoji 字符，
+// 名字也说得清是什么图标。新增图标请沿用 kebab-case 语义名。
 const ICONS = {
-  '🩺':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12h3l3-8 4 16 3-8h6"/></svg>',
-  '📐':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h12L4 16z"/></svg>',
-  '🔍':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>',
-  '🔗':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 15l6-6M10 6l1.5-1.5a3.5 3.5 0 0 1 5 5L15 11M14 18l-1.5 1.5a3.5 3.5 0 0 1-5-5L9 13"/></svg>',
-  '🤖':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V5M9 5h6"/><path d="M9 13v1M15 13v1"/></svg>',
-  '📋':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a3 3 0 0 1 6 0"/><path d="M9 11h6M9 15h6"/></svg>',
-  '🛤️':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19a2 2 0 1 0 0-8h8a2 2 0 1 1 0 8M4 11V7a2 2 0 0 1 2-2h2"/></svg>',
-  '🖥️':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
-  '🔥':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2c2 4-1 5 0 8a2.5 2.5 0 0 0 5 0c0-3-2-4-2-4 3 2 5 6 4 9a6 6 0 1 1-12 0c0-5 3-7 5-13"/></svg>',
-  '👥':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="8" r="3.5"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3.5 3.5 0 0 1 0 6M14 13a5.5 5.5 0 0 1 6 6"/></svg>',
-  '✅':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
-  '🌐':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a13 13 0 0 1 0 18M12 3a13 13 0 0 0 0 18"/></svg>',
-  '📑':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
-  '📊':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 20h16M7 20V11M12 20V6M17 20v-5"/></svg>',
-  '🗺️':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6l8-3 5 3-6 3-7-3zM8 6v12m8-12v12M8 18l-5 3V9l5-3m8 12l5-3"/></svg>',
-  '🧾':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3h14v18l-2.3-1.6L14.4 21l-2.4-1.6L9.6 21l-2.3-1.7L5 21z"/><path d="M9 8h6M9 12h6"/></svg>',
-  '👁️':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>',
-  '🎨':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22a10 10 0 1 1 10-10c0 2.5-1.8 3-4 3.5a2.5 2.5 0 0 0-2.5 2.5c0 2 1.2 2.5 1.2 4"/><path d="M7 10.5h.01M11 7h.01M15 8.5h.01"/></svg>',
-  '⚙️':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>',
-  '💾':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>',
-  '🧠':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 5V2M12 5V2M15 5V2M9 22v-3M12 22v-3M15 22v-3M5 9H2M5 12H2M5 15H2M22 9h-3M22 12h-3M22 15h-3"/></svg>',
-  '📁':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  'pulse':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12h3l3-8 4 16 3-8h6"/></svg>',
+  'ruler':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h12L4 16z"/></svg>',
+  'search':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg>',
+  'link':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 15l6-6M10 6l1.5-1.5a3.5 3.5 0 0 1 5 5L15 11M14 18l-1.5 1.5a3.5 3.5 0 0 1-5-5L9 13"/></svg>',
+  'robot':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V5M9 5h6"/><path d="M9 13v1M15 13v1"/></svg>',
+  'clipboard':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a3 3 0 0 1 6 0"/><path d="M9 11h6M9 15h6"/></svg>',
+  'route':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19a2 2 0 1 0 0-8h8a2 2 0 1 1 0 8M4 11V7a2 2 0 0 1 2-2h2"/></svg>',
+  'monitor':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
+  'flame':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2c2 4-1 5 0 8a2.5 2.5 0 0 0 5 0c0-3-2-4-2-4 3 2 5 6 4 9a6 6 0 1 1-12 0c0-5 3-7 5-13"/></svg>',
+  'users':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="8" r="3.5"/><path d="M3 19a6 6 0 0 1 12 0M16 5a3.5 3.5 0 0 1 0 6M14 13a5.5 5.5 0 0 1 6 6"/></svg>',
+  'check-circle':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>',
+  'globe':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a13 13 0 0 1 0 18M12 3a13 13 0 0 0 0 18"/></svg>',
+  'file-text':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
+  'chart':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 20h16M7 20V11M12 20V6M17 20v-5"/></svg>',
+  'map':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 6l8-3 5 3-6 3-7-3zM8 6v12m8-12v12M8 18l-5 3V9l5-3m8 12l5-3"/></svg>',
+  'receipt':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 3h14v18l-2.3-1.6L14.4 21l-2.4-1.6L9.6 21l-2.3-1.7L5 21z"/><path d="M9 8h6M9 12h6"/></svg>',
+  'eye':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>',
+  'palette':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22a10 10 0 1 1 10-10c0 2.5-1.8 3-4 3.5a2.5 2.5 0 0 0-2.5 2.5c0 2 1.2 2.5 1.2 4"/><path d="M7 10.5h.01M11 7h.01M15 8.5h.01"/></svg>',
+  'settings':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>',
+  'database':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>',
+  'cpu':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 5V2M12 5V2M15 5V2M9 22v-3M12 22v-3M15 22v-3M5 9H2M5 12H2M5 15H2M22 9h-3M22 12h-3M22 15h-3"/></svg>',
+  'folder':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
   // ── 工具目录补充图标 ──
-  '📦':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>',
-  '🧩':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3h4v4a2 2 0 1 0 4 0h3v4h-3a2 2 0 1 0 0 4h3v4h-4a2 2 0 1 0-4 0H9v-4a2 2 0 1 0-4 0H2v-4h3a2 2 0 1 0 0-4H2V5h4a2 2 0 0 1 4-2z"/></svg>',
-  '🧲':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3v8a6 6 0 0 0 12 0V3"/><path d="M6 8h4M14 8h4"/></svg>',
-  '📤':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/><path d="M12 15V3M8 7l4-4 4 4"/></svg>',
-  '💰':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4h12M6 9h12M12 4v16M8 13c4 0 8 1 8 4"/></svg>',
-  '🔁':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 10a6 6 0 0 1 10-4l3 3M20 14a6 6 0 0 1-10 4l-3-3"/><path d="M17 3v6h-6M7 21v-6h6"/></svg>',
-  '🚚':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="12" height="10" rx="1"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="6" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>',
-  '📏':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 15L15 3l6 6L9 21z"/><path d="M7 11l2 2M10 8l2 2M13 5l2 2"/></svg>',
-  '📖':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h6a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H4z"/><path d="M20 4h-6a3 3 0 0 0-3 3v13a2.5 2.5 0 0 1 2.5-2.5H20z"/></svg>',
-  '🔎':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21M8 11h6"/></svg>',
-  '🖼️':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M4 18l5-5 3 3 3-4 5 6"/></svg>',
-  '📚':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5a2 2 0 0 1 2-2h5v18H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-5v18h5a2 2 0 0 1 2 2z"/></svg>',
-  '📥':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/><path d="M12 3v12M8 11l4 4 4-4"/></svg>',
-  '📍':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s7-7 7-12a7 7 0 1 0-14 0c0 5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
-  '🔧':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a4 4 0 0 1 5 5L11 20H4v-7z"/><path d="M12 9l3 3"/></svg>',
+  'package':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>',
+  'puzzle':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3h4v4a2 2 0 1 0 4 0h3v4h-3a2 2 0 1 0 0 4h3v4h-4a2 2 0 1 0-4 0H9v-4a2 2 0 1 0-4 0H2v-4h3a2 2 0 1 0 0-4H2V5h4a2 2 0 0 1 4-2z"/></svg>',
+  'magnet':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3v8a6 6 0 0 0 12 0V3"/><path d="M6 8h4M14 8h4"/></svg>',
+  'upload':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/><path d="M12 15V3M8 7l4-4 4 4"/></svg>',
+  'coins':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4h12M6 9h12M12 4v16M8 13c4 0 8 1 8 4"/></svg>',
+  'swap':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 10a6 6 0 0 1 10-4l3 3M20 14a6 6 0 0 1-10 4l-3-3"/><path d="M17 3v6h-6M7 21v-6h6"/></svg>',
+  'truck':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="12" height="10" rx="1"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="6" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>',
+  'ruler-diag':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 15L15 3l6 6L9 21z"/><path d="M7 11l2 2M10 8l2 2M13 5l2 2"/></svg>',
+  'book':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h6a3 3 0 0 1 3 3v13a2.5 2.5 0 0 0-2.5-2.5H4z"/><path d="M20 4h-6a3 3 0 0 0-3 3v13a2.5 2.5 0 0 1 2.5-2.5H20z"/></svg>',
+  'search-plus':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21M8 11h6"/></svg>',
+  'image':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M4 18l5-5 3 3 3-4 5 6"/></svg>',
+  'book-open':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5a2 2 0 0 1 2-2h5v18H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-5v18h5a2 2 0 0 1 2 2z"/></svg>',
+  'download':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/><path d="M12 3v12M8 11l4 4 4-4"/></svg>',
+  'map-pin':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s7-7 7-12a7 7 0 1 0-14 0c0 5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  'wrench':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.7 6.3a4 4 0 0 1 5 5L11 20H4v-7z"/><path d="M12 9l3 3"/></svg>',
 };
 // KPI 指标图标（按 label 关键词匹配）
 function _metricIcon(label) {
-  if (/规则/.test(label)) return '📐';
-  if (/ML/.test(label)) return '🧠';
-  if (/检出/.test(label)) return '✅';
-  if (/Agent/.test(label)) return '👥';
-  if (/耗时/.test(label)) return '👁️';
-  if (/版本/.test(label)) return '⚙️';
-  if (/格式/.test(label)) return '📑';
-  return '📊';
+  if (/规则/.test(label)) return 'ruler';
+  if (/ML/.test(label)) return 'cpu';
+  if (/检出/.test(label)) return 'check-circle';
+  if (/Agent/.test(label)) return 'users';
+  if (/耗时/.test(label)) return 'eye';
+  if (/版本/.test(label)) return 'settings';
+  if (/格式/.test(label)) return 'file-text';
+  return 'chart';
 }
 
 let _currentView = 'bom';
@@ -1231,7 +1233,7 @@ function renderViewHTML(view) {
   const assistantSection = view.assistantSection ? `
     <div class="config-section">
       <div class="config-section-head">
-        <span class="config-section-icon">${ICONS['🧠']}</span>
+        <span class="config-section-icon">${ICONS['cpu']}</span>
         <span class="config-section-title">助手实例</span>
         <span class="config-section-count" id="configAssistantCount"></span>
       </div>
@@ -1258,15 +1260,15 @@ function renderToolHub() {
   const ready = TOOL_CATALOG.filter(t => t.ready).length;
   const catIds = Object.keys(TOOL_CATEGORIES).filter(c => TOOL_CATALOG.some(t => t.category === c));
   const metrics = [
-    { num: String(total), label: '系统能力', icon: '🧩' },
-    { num: String(catIds.length), label: '能力分类', icon: '📦' },
-    { num: String(ready), label: '当前可直接运行', icon: '✅' },
-    { num: String(total - ready), label: '需先导入数据', icon: '📥' },
+    { num: String(total), label: '系统能力', icon: 'puzzle' },
+    { num: String(catIds.length), label: '能力分类', icon: 'package' },
+    { num: String(ready), label: '当前可直接运行', icon: 'check-circle' },
+    { num: String(total - ready), label: '需先导入数据', icon: 'download' },
   ];
   const chips = ['all'].concat(catIds).map(c => {
     const n = c === 'all' ? total : TOOL_CATALOG.filter(t => t.category === c).length;
     const label = c === 'all' ? '全部' : (TOOL_CATEGORIES[c] || {}).label || c;
-    const icon = c === 'all' ? ICONS['🧩'] : (ICONS[TOOL_ICONS[(TOOL_CATALOG.find(t => t.category === c) || {}).name]] || '');
+    const icon = c === 'all' ? ICONS['puzzle'] : (ICONS[TOOL_ICONS[(TOOL_CATALOG.find(t => t.category === c) || {}).name]] || '');
     return `<button class="hub-chip ${c === _toolCategory ? 'active' : ''}" data-cat="${c}" onclick="setToolCategory('${c}')">
       <span class="hub-chip-icon">${icon}</span>${label}<span class="hub-chip-num">${n}</span>
     </button>`;
@@ -1289,7 +1291,7 @@ function renderToolHub() {
     <div class="hub-chips">${chips}</div>
     <div class="tool-grid" id="toolGrid"></div>
     <div class="tool-empty" id="toolEmpty" style="display:none">
-      <div class="tool-empty-icon">${ICONS['🔎']}</div>
+      <div class="tool-empty-icon">${ICONS['search-plus']}</div>
       <div class="tool-empty-title">没有匹配的能力</div>
       <div class="tool-empty-desc">换个关键词，或切换到「全部」分类</div>
     </div>
@@ -1393,7 +1395,7 @@ async function runToolInline(t) {
   disableInput(false);
 
   const ok = resp && resp.ok;
-  const text = ok ? (resp.result || '（该能力没有返回文本输出）') : `❌ ${(resp && resp.error) || '执行失败'}`;
+  const text = ok ? (resp.result || '（该能力没有返回文本输出）') : `执行失败：${(resp && resp.error) || '未知错误'}`;
   stream.finalize(text);
   if (conv) {
     conv.messages.push({ role: 'ai', content: text });
@@ -1433,7 +1435,7 @@ async function startDemo() {
   const demoBtn = _btnFromEvent();
   _btnLoading(demoBtn, '演示加载中');
 
-  // ⚠️ 先把会话准备好：否则首条消息发送时 getActiveConversation() →
+  // 注意：先把会话准备好：否则首条消息发送时 getActiveConversation() →
   //    newConversation() → clearChatMessages() 会把刚展示的演示结果清空
   //    （2026-09-10 实测：用户视角就是「刚看到的结论消失了」）。
   const conv = getActiveConversation();
@@ -1544,7 +1546,7 @@ async function sendChat() {
   if (isKnowledgeQuery) {
     const queryText = userText.replace(/^查询知识库[：:]\s*/, '').trim();
     if (!queryText) {
-      appendBubble('ai', '📚 请输入要查询的内容，如「查询知识库: IPC-2221载流能力」');
+      appendBubble('ai', '请输入要查询的内容，如「查询知识库: IPC-2221载流能力」');
       return;
     }
     showEmptyState(false);
@@ -1576,13 +1578,13 @@ async function sendChat() {
         conv.messages.push({ role: 'ai', content: resp.result });
         _persistMessage(activeConvId, 'ai', resp.result);
       } else {
-        _activeStreamBubble.finalize('❌ 查询失败: ' + (resp ? resp.result : '未知错误'));
+        _activeStreamBubble.finalize('查询失败：' + (resp ? resp.result : '未知错误'));
         conv.messages.push({ role: 'ai', content: _activeStreamBubble.text });
         _persistMessage(activeConvId, 'ai', _activeStreamBubble.text);
       }
     } catch(e) {
       if (_activeStreamBubble) {
-        _activeStreamBubble.finalize('❌ 网络错误: ' + e);
+        _activeStreamBubble.finalize('网络错误：' + e);
         conv.messages.push({ role: 'ai', content: _activeStreamBubble.text });
         _persistMessage(activeConvId, 'ai', _activeStreamBubble.text);
       }
@@ -1770,7 +1772,7 @@ function createStreamingBubble() {
   // Clear leftover tool-call cards from a previous turn
   _activeToolCards.forEach(c => c.remove());
   _activeToolCards = [];
-  // ⚠️ element 必须是 .msg-row 外壳（不是裸 .bubble）：
+  // 注意：element 必须是 .msg-row 外壳（不是裸 .bubble）：
   //    否则 AI 气泡既不被 clearChatMessages() 清理，也不被 _syncChatEmpty()
   //    计入，切换会话后会出现重复回答 + 空态不消失（2026-09-10 修正）。
   const row = document.createElement('div');
@@ -2339,7 +2341,7 @@ async function loadSettingsIntoUI() {
 function closeSettings(e) {
   // 关闭条件：无参数调用（✕/取消/Esc 直接调 closeSettings()），
   // 或点击遮罩空白处，或点击关闭/取消控件本身。
-  // ⚠️ 不要写成 `e.target === overlay`：按钮传进来的 target 是按钮自己，
+  // 注意：不要写成 `e.target === overlay`：按钮传进来的 target 是按钮自己，
   //    会导致 ✕ 和「取消」永远关不掉弹窗（2026-09-10 实测确认的 bug）。
   var overlay = document.getElementById('settingsOverlay');
   if (e && e.target && e.target !== overlay) {
@@ -2520,7 +2522,7 @@ function _wrapBusyCall(orig, label) {
   return wrapped;
 }
 
-// ⚠️ 不能在本文件解析时就 eel[name] 逐个替换：eel 的 Python 函数是
+// 注意：不能在本文件解析时就 eel[name] 逐个替换：eel 的 Python 函数是
 //    `_websocket.onopen` → `eel._import_py_function(name)` 时才挂上去的
 //    （见 eel/eel.js），那时 app.js 早就跑完了 —— 直接替换会静默跳过全部。
 //    所以钩住「安装动作」本身：每装一个就按白名单包一层。
@@ -2672,7 +2674,7 @@ function onToolCall(toolName) {
   const card = document.createElement('div');
   card.className = 'tool-call-card';
   card.innerHTML = `<span class="tool-call-spinner"></span>
-    <span class="tool-call-icon">🔧</span>
+    <span class="tool-call-icon">${ICONS['wrench']}</span>
     <span class="tool-call-name">${label}</span>
     <span class="tool-call-status">执行中…</span>
     <span class="tool-call-timer">0.0s</span>`;

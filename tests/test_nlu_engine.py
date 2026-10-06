@@ -130,7 +130,8 @@ class TestClarificationQuestion:
 
     def test_generates_question(self, engine_no_embedding):
         question = engine_no_embedding.get_clarification_question("检查")
-        assert "🤔" in question
+        # 追问文案不再带 emoji 图标（2026-10-03），改钉语义文字
+        assert "不太确定" in question or "请问您是想" in question
         assert len(question) > 20
 
     def test_question_mentions_operations(self, engine_no_embedding):

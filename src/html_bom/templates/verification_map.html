@@ -168,12 +168,12 @@
 
 <!-- ═══════════ Header ═══════════ -->
 <div class="header">
-    <h1><span class="icon">🔬</span>{{ config.title }}</h1>
+    <h1><span class="icon"></span>{{ config.title }}</h1>
     <div class="stats-bar" id="statsBar">
-        <span class="stat-chip err" id="statErrors">❌ <span>0</span> 错误</span>
-        <span class="stat-chip warn" id="statWarnings">⚠️ <span>0</span> 警告</span>
-        <span class="stat-chip info" id="statInfos">ℹ️ <span>0</span> 信息</span>
-        <span class="stat-chip ok" id="statConvergence">✅ 收敛率 <span>—</span></span>
+        <span class="stat-chip err" id="statErrors"><span>0</span> 错误</span>
+        <span class="stat-chip warn" id="statWarnings"><span>0</span> 警告</span>
+        <span class="stat-chip info" id="statInfos"><span>0</span> 信息</span>
+        <span class="stat-chip ok" id="statConvergence">收敛率 <span>—</span></span>
     </div>
     <div class="toolbar">
         <select id="layerFilter" onchange="onLayerChange()">
@@ -182,7 +182,7 @@
             <option value="Bottom">底层 Bottom</option>
         </select>
         <button onclick="resetView()" title="复位视图">↺ 复位</button>
-        <button onclick="exportPNG()" title="导出 PNG">📸 导出</button>
+        <button onclick="exportPNG()" title="导出 PNG">导出</button>
     </div>
 </div>
 
@@ -191,19 +191,19 @@
     <!-- ── Filter Panel ── -->
     <div class="filter-panel" id="filterPanel">
         <div class="filter-group">
-            <h3>🔴 严重度筛选</h3>
+            <h3>严重度筛选</h3>
             <label><input type="checkbox" checked onchange="onFilterChange()" data-sev="error"> 错误 Error</label>
             <label><input type="checkbox" checked onchange="onFilterChange()" data-sev="warning"> 警告 Warning</label>
             <label><input type="checkbox" checked onchange="onFilterChange()" data-sev="info"> 信息 Info</label>
         </div>
         <div class="filter-group">
-            <h3>📊 覆盖层</h3>
-            <label><input type="checkbox" checked onchange="onFilterChange()" data-layer="heatmap"> 🔥 DRC 热力图</label>
-            <label><input type="checkbox" checked onchange="onFilterChange()" data-layer="ai_changes"> 🎯 AI 变更标记</label>
-            <label><input type="checkbox" checked onchange="onFilterChange()" data-layer="agent_markers"> 🤖 Agent 发现</label>
+            <h3>覆盖层</h3>
+            <label><input type="checkbox" checked onchange="onFilterChange()" data-layer="heatmap"> DRC 热力图</label>
+            <label><input type="checkbox" checked onchange="onFilterChange()" data-layer="ai_changes"> AI 变更标记</label>
+            <label><input type="checkbox" checked onchange="onFilterChange()" data-layer="agent_markers"> Agent 发现</label>
         </div>
         <div class="filter-group">
-            <h3>🎨 图例</h3>
+            <h3>图例</h3>
             <div class="legend-item"><span class="legend-dot err"></span> 多个 ERROR</div>
             <div class="legend-item"><span class="legend-dot warn"></span> 警告 / 轻微</div>
             <div class="legend-item"><span class="legend-dot info"></span> 信息</div>
@@ -212,7 +212,7 @@
             <div class="legend-item"><span class="legend-dot analysis"></span> 纯分析 (AI)</div>
         </div>
         <div class="filter-group" id="designList">
-            <h3>📋 实验设计</h3>
+            <h3>实验设计</h3>
             <div id="designListInner" style="font-size:11px;color:var(--text-dim);"></div>
         </div>
     </div>
@@ -224,8 +224,8 @@
             <div class="zoom-badge" id="zoomBadge">100%</div>
             <div class="coords-display" id="coordsDisplay">点击元件查看详情</div>
             <div class="legend-bottom" id="canvasLegend">
-                <span>🟢 顶层</span><span>🟣 底层</span>
-                <span>🔥 热力图覆盖</span><span>⭕ AI 变更环</span>
+                <span>顶层</span><span>底层</span>
+                <span>热力图覆盖</span><span>AI 变更环</span>
             </div>
         </div>
     </div>
@@ -233,7 +233,7 @@
     <!-- ── Detail Panel ── -->
     <div class="detail-panel" id="detailPanel">
         <div class="detail-header" id="detailHeader">
-            <span>📌 点击 PCB 元件查看详情</span>
+            <span>点击 PCB 元件查看详情</span>
         </div>
         <div class="detail-tabs" id="detailTabs" style="display:none;">
             <div class="detail-tab active" onclick="switchTab('violations')" id="tabViolations">
@@ -248,7 +248,7 @@
         </div>
         <div class="detail-content" id="detailContent">
             <div class="detail-empty">
-                <div class="icon">👆</div>
+                <div class="icon"></div>
                 <div>点击左侧 PCB 视图中的元件</div>
                 <div style="font-size:11px;margin-top:4px;">查看 DRC 违规、AI 变更和审查结果</div>
             </div>
@@ -354,7 +354,7 @@ function drawAll() {
     ctx.fillStyle = '#0f0f1a'; ctx.fillRect(0, 0, c.width, c.height);
 
     if (!hasPositions()) {
-        drawNoData(ctx, c, '📋', '尚未导入 Pick & Place 坐标文件');
+        drawNoData(ctx, c, '', '尚未导入 Pick & Place 坐标文件');
         return;
     }
 
@@ -582,7 +582,7 @@ function drawAgentMarkers(ctx, lay) {
             ctx.fillStyle = '#fff';
             ctx.font = Math.max(7, 8 * zoom) + 'px sans-serif';
             ctx.textAlign = 'right';
-            ctx.fillText('🤖', p.x - r - 8, p.y + Math.max(2, 3 * zoom));
+            ctx.fillText('AI', p.x - r - 8, p.y + Math.max(2, 3 * zoom));
         }
     });
 }
@@ -762,10 +762,10 @@ function updateDetailPanel(ref) {
 }
 
 function clearDetailPanel() {
-    document.getElementById('detailHeader').innerHTML = '<span>📌 点击 PCB 元件查看详情</span>';
+    document.getElementById('detailHeader').innerHTML = '<span>点击 PCB 元件查看详情</span>';
     document.getElementById('detailTabs').style.display = 'none';
     document.getElementById('detailContent').innerHTML =
-        '<div class="detail-empty"><div class="icon">👆</div>' +
+        '<div class="detail-empty"><div class="icon"></div>' +
         '<div>点击左侧 PCB 视图中的元件</div>' +
         '<div style="font-size:11px;margin-top:4px;">查看 DRC 违规、AI 变更和审查结果</div></div>';
 }
@@ -809,7 +809,7 @@ function renderTabContent(tab) {
 
     if (tab === 'violations') {
         if (violations.length === 0) {
-            content.innerHTML = '<div class="detail-empty"><div class="icon">✅</div><div>该元件无 DRC 违规</div></div>';
+            content.innerHTML = '<div class="detail-empty"><div class="icon"></div><div>该元件无 DRC 违规</div></div>';
             return;
         }
         var html = '';
@@ -819,23 +819,23 @@ function renderTabContent(tab) {
                 '<span class="sev-tag ' + v.severity + '">' + v.severity.toUpperCase() + '</span>' +
                 '<div style="margin-top:2px;">' + v.desc + '</div>';
             if (v.suggestion) {
-                html += '<div class="suggestion">💡 ' + v.suggestion + '</div>';
+                html += '<div class="suggestion">' + v.suggestion + '</div>';
             }
             html += '</div>';
         });
         content.innerHTML = html;
     } else if (tab === 'ai_changes') {
         if (compChanges.length === 0) {
-            content.innerHTML = '<div class="detail-empty"><div class="icon">🔵</div><div>该元件无 AI 建议变更</div></div>';
+            content.innerHTML = '<div class="detail-empty"><div class="icon"></div><div>该元件无 AI 建议变更</div></div>';
             return;
         }
         var html = '';
         compChanges.forEach(function(ch) {
-            var safetyIcon = { safe: '🟢', warning: '🟠', dangerous: '🔴', analysis: '🔵' };
+            // 安全等级只用文字标签（UPPERCASE），不再配 emoji 图标
             html += '<div class="change-card">' +
                 '<div style="margin-bottom:4px;"><strong>' + ch.design + '</strong> ' +
-                (safetyIcon[ch.safety] || '') + ' ' + ch.safety.toUpperCase() +
-                (ch.converged ? ' ✅收敛' : ' ❌未收敛') + '</div>';
+                ch.safety.toUpperCase() +
+                (ch.converged ? ' 收敛' : ' 未收敛') + '</div>';
             (ch.changes || []).forEach(function(c) {
                 html += '<div style="font-size:11px;padding:2px 0;">' +
                     '<span class="field-name">' + c.field + '</span>: ' +
@@ -850,13 +850,13 @@ function renderTabContent(tab) {
         content.innerHTML = html;
     } else if (tab === 'agent') {
         if (compFindings.length === 0) {
-            content.innerHTML = '<div class="detail-empty"><div class="icon">🤖</div><div>该元件无 Agent 审查发现</div></div>';
+            content.innerHTML = '<div class="detail-empty"><div class="icon"></div><div>该元件无 Agent 审查发现</div></div>';
             return;
         }
         var html = '';
         compFindings.forEach(function(f) {
             html += '<div class="violation-card">' +
-                '<span class="rule-name">🤖 多智能体审查</span>' +
+                '<span class="rule-name">多智能体审查</span>' +
                 '<div style="margin-top:2px;">被提及 <strong>' + f.mentions + '</strong> 次</div>';
             if (f.agents && f.agents.length > 0) {
                 html += '<div style="font-size:10px;color:#8899aa;">审查维度: ' + f.agents.join(', ') + '</div>';

@@ -330,7 +330,8 @@ def test_correction_prompt_renders_removal_readably():
         new_violations=[],
         original_bom=_bom(),
     )
-    assert "❌ 删除该元件" in p
+    # 操作标签用人类可读文字（2026-10-03 起不再带 emoji 图标）
+    assert "删除该元件" in p
     # 旧的误导性渲染不应再出现
     assert "| 位号 | 字段 | 原值 | 当前值 | 操作 |" not in p
 

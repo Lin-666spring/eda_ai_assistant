@@ -411,7 +411,7 @@ class LLMClient:
             "Agent loop hit max_iterations=%d after %d tool calls",
             max_iterations, iteration,
         )
-        summary = "⚠️ 已达到最大操作步数限制。以下是我已完成的操作：\n\n"
+        summary = "已达到最大操作步数限制。以下是我已完成的操作：\n\n"
         summary += "\n".join(f"{i}. {r}" for i, r in enumerate(last_results, 1))
         if on_token:
             for i in range(0, len(summary), 3):

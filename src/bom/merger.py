@@ -183,7 +183,7 @@ class BOMMerger:
         for item in merged:
             if len(item.references) > 1:
                 lines.append(
-                    f"📦 {item.part_number} ({item.package}) "
+                    f"{item.part_number} ({item.package}) "
                     f"×{item.total_quantity} → 位号: {item.reference_str}"
                 )
 

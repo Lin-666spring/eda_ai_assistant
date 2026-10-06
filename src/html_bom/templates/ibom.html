@@ -95,7 +95,7 @@
 </head>
 <body>
 <div class="header">
-    <h1>📊 {{ config.title }}</h1>
+    <h1>{{ config.title }}</h1>
     <div class="stats">
         <div class="stat-item"><div class="stat-value">{{ board_stats.total }}</div><div>总元件</div></div>
         <div class="stat-item"><div class="stat-value">{{ board_stats.top_count }} / {{ board_stats.bottom_count }}</div><div>顶层 / 底层</div></div>
@@ -107,13 +107,15 @@
     <div class="view-panel" id="dotPanel">
         <div class="view-header">
             <span><span class="dot">●</span> 点阵位号图</span>
-            <span class="zoom-hint">🖱️ 滚轮缩放 · 拖拽平移 · 双击复位</span>
+            <span class="zoom-hint">滚轮缩放 · 拖拽平移 · 双击复位</span>
             <span class="view-badge badge-dot">元件位置</span>
         </div>
         <div class="canvas-wrap">
             <div id="dotPlaceholder" class="placeholder-msg" style="display:none; position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#999;z-index:10;pointer-events:none;">
-                <div style="font-size:48px;margin-bottom:12px;">📋</div>
-                <div style="font-size:14px;">尚未导入 Pick & Place 坐标文件</div>
+                <div style="font-size:48px;margin-bottom:12px;">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a3 3 0 0 1 6 0"/><path d="M9 11h6M9 15h6"/></svg>
+                </div>
+                <div style="font-size:14px;">尚未导入 Pick &amp; Place 坐标文件</div>
                 <div style="font-size:12px;margin-top:4px;">导入坐标后可显示元件位置图</div>
             </div>
             <canvas id="dotCanvas"></canvas>
@@ -122,13 +124,15 @@
     <div class="view-panel" id="footprintPanel">
         <div class="view-header">
             <span><span class="footprint">■</span> 封装轮廓图</span>
-            <span class="zoom-hint">🖱️ 滚轮缩放 · 拖拽平移 · 双击复位</span>
+            <span class="zoom-hint">滚轮缩放 · 拖拽平移 · 双击复位</span>
             <span class="view-badge badge-footprint">模拟 PCB</span>
         </div>
         <div class="canvas-wrap">
             <div id="fpPlaceholder" class="placeholder-msg" style="display:none; position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#999;z-index:10;pointer-events:none;">
-                <div style="font-size:48px;margin-bottom:12px;">📋</div>
-                <div style="font-size:14px;">尚未导入 Pick & Place 坐标文件</div>
+                <div style="font-size:48px;margin-bottom:12px;">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4a3 3 0 0 1 6 0"/><path d="M9 11h6M9 15h6"/></svg>
+                </div>
+                <div style="font-size:14px;">尚未导入 Pick &amp; Place 坐标文件</div>
                 <div style="font-size:12px;margin-top:4px;">导入坐标后可显示封装轮廓模拟图</div>
             </div>
             <canvas id="footprintCanvas"></canvas>
@@ -137,7 +141,7 @@
 
     <div class="bom-panel">
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="🔍 搜索位号、型号、参数、封装 — （如 R1 / 10kΩ / 0603）" oninput="filterComponents()">
+            <input type="text" id="searchInput" placeholder="搜索位号、型号、参数、封装 — （如 R1 / 10kΩ / 0603）" oninput="filterComponents()">
         </div>
         <div class="bom-list" id="bomList">
             {% if components %}
@@ -365,7 +369,7 @@ function drawOutline(ctx,lay,dark){
 }
 
 function drawZoomBadge(ctx,canvas,z){
-    var pct=Math.round(z*100), text='🔍 '+pct+'%';
+    var pct=Math.round(z*100), text=''+pct+'%';
     var tw=ctx.measureText(text).width+16;
     ctx.fillStyle='rgba(0,0,0,0.65)';ctx.fillRect(canvas.width-tw-8,4,tw,24);
     ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.fillText(text,canvas.width-tw,20);

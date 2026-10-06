@@ -2921,13 +2921,13 @@ class DesignRuleChecker:
 
     def get_report(self, violations):
         if not violations:
-            return "✅ 设计规则检查通过，未发现违规项。"
+            return "设计规则检查通过，未发现违规项。"
         lines = ["=" * 55, "          PCB 设计规则检查报告", "=" * 55]
         for sev in (RuleSeverity.ERROR, RuleSeverity.WARNING, RuleSeverity.INFO):
             items = [v for v in violations if v.severity == sev]
             if not items: continue
-            emoji = {"error": "❌", "warning": "⚠️ ", "info": "ℹ️ "}[sev.value]
-            lines.append(f"\n【{sev.value.upper()}】{emoji} {len(items)} 项")
+            mark = {"error": "[错误]", "warning": "[警告]", "info": "[提示]"}[sev.value]
+            lines.append(f"\n【{sev.value.upper()}】{mark} {len(items)} 项")
             for v in items:
                 lines.append(f"  • [{v.rule_name}] {v.description}")
                 if v.location: lines.append(f"    位置: {v.location}")

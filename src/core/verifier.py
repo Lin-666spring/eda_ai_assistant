@@ -127,7 +127,7 @@ class VerificationReport:
 
     def to_markdown(self) -> str:
         """生成可读的验证报告"""
-        icon = "✅" if self.accepted else "❌"
+        icon = "✓" if self.accepted else "✗"
         blocking = sum(
             1 for r in self.rounds for i in r.issues
             if i.severity in ("error", "warning")
@@ -146,11 +146,11 @@ class VerificationReport:
             "",
         ]
         for r in self.rounds:
-            s_icon = {"passed": "✅", "failed": "❌", "uncertain": "⚠️"}[r.status.value]
+            s_icon = {"passed": "✓ 通过", "failed": "✗ 未通过", "uncertain": "[警告] 待定"}[r.status.value]
             lines.append(f"### 第 {r.round} 轮 {s_icon}")
             if r.issues:
                 for iss in r.issues:
-                    sev = {"error": "🔴", "warning": "🟡", "info": "🔵"}.get(iss.severity, "")
+                    sev = {"error": "[错误]", "warning": "[警告]", "info": "[提示]"}.get(iss.severity, "")
                     lines.append(f"- {sev} [{iss.rule_name}] {iss.description}")
                     if iss.suggestion:
                         lines.append(f"  → {iss.suggestion}")
@@ -521,7 +521,7 @@ class VerificationEngine:
             "",
         ]
         for i, iss in enumerate(issues, 1):
-            sev_emoji = {"error": "❌ 严重", "warning": "⚠️ 警告", "info": "ℹ️ 提示"}.get(
+            sev_emoji = {"error": "严重", "warning": "警告", "info": "提示"}.get(
                 iss.severity, ""
             )
             lines.append(f"{i}. {sev_emoji} [{iss.rule_name}]")
@@ -544,22 +544,22 @@ class VerificationEngine:
             )
             if total == 0:
                 return (
-                    f"✅ 建议已通过 {report.round_count} 轮闭环验证，未发现任何违规。"
+                    f"建议已通过 {report.round_count} 轮闭环验证，未发现任何违规。"
                 )
             else:
                 return (
-                    f"✅ 建议已通过 {report.round_count} 轮闭环验证。"
+                    f"建议已通过 {report.round_count} 轮闭环验证。"
                     f"发现 {total} 项提示（info 级别，不阻断），"
                     f"无 error/warning 级别违规。"
                 )
         elif report.final_status == VerificationStatus.UNCERTAIN:
-            return "⚠️ 无法完成验证，可能缺少必要的设计数据。请导入 BOM 和 PCB 文件后重试。"
+            return "无法完成验证，可能缺少必要的设计数据。请导入 BOM 和 PCB 文件后重试。"
         else:
             last_round = report.rounds[-1] if report.rounds else None
             remaining = len(last_round.issues) if last_round else 0
             blocking_remaining = len(self._get_blocking_issues(last_round.issues)) if last_round else 0
             return (
-                f"❌ 建议未通过验证。经过 {report.round_count} 轮迭代，"
+                f"建议未通过验证。经过 {report.round_count} 轮迭代，"
                 f"仍有 {blocking_remaining} 项阻断性违规（共 {remaining} 项）未解决。"
                 f"建议人工审查后修改。"
             )

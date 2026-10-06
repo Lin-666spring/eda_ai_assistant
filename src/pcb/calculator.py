@@ -751,18 +751,18 @@ class PCBHealthReport:
     def to_markdown(self) -> str:
         """生成 Markdown 报告"""
         lines = [
-            "## ⚡ PCB 电气健康报告",
+            "## PCB 电气健康报告",
             f"**综合评分**: {self.overall_score:.0f}/100",
             f"**发现问题**: {self.total_issues} 项",
             "",
         ]
         sections = [
-            ("🔌 阻抗", self.impedance_issues),
-            ("⚡ PDN", self.pdn_issues),
-            ("🔋 去耦", self.decoupling_issues),
-            ("🔆 电流", self.current_issues),
-            ("🔥 热", self.thermal_issues),
-            ("📡 串扰", self.crosstalk_issues),
+            ("阻抗", self.impedance_issues),
+            ("PDN", self.pdn_issues),
+            ("去耦", self.decoupling_issues),
+            ("电流", self.current_issues),
+            ("热", self.thermal_issues),
+            ("串扰", self.crosstalk_issues),
         ]
         for label, issues in sections:
             if issues:
@@ -771,5 +771,5 @@ class PCBHealthReport:
                     lines.append(f"- {iss}")
                 lines.append("")
         if self.total_issues == 0:
-            lines.append("✅ 所有电气检查通过。")
+            lines.append("所有电气检查通过。")
         return "\n".join(lines)

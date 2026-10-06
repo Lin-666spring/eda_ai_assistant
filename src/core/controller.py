@@ -777,7 +777,7 @@ class AppController:
         """
         if not query or not query.strip():
             return (
-                "📚 **知识库查询**\n\n"
+                "**知识库查询**\n\n"
                 "请指定要查询的内容，例如：\n"
                 "  • 查询 IPC-2221 载流计算公式\n"
                 "  • DDR5 VREFDQ 配置规范是什么\n"
@@ -797,26 +797,26 @@ class AppController:
             context = retriever.query_with_context(query, top_k=5)
             if context == "（未找到相关文档）":
                 return (
-                    f"🔍 未找到与「{query}」相关的知识库内容。\n\n"
+                    f"未找到与「{query}」相关的知识库内容。\n\n"
                     "建议：\n"
                     "  • 尝试更通用的关键词（如用「DDR5 布线」替代「DDR5-6400 CL40」）\n"
                     "  • 确认知识库已被索引（检查控制台日志）\n"
                     "  • 尝试查询相关主题：IPC 标准、封装尺寸、DRC 规则、去耦电容等"
                 )
-            return f"🔍 **知识库查询结果: {query}**\n\n{context}"
+            return f"**知识库查询结果: {query}**\n\n{context}"
         except FileNotFoundError as e:
             logger.warning("RAG index not found, attempting auto-index: %s", e)
             try:
                 self._rag_index_checked = False  # 重置以允许重建
                 self._ensure_rag_indexed()
                 retriever = RAGRetriever()
-                return f"🔍 **知识库查询结果: {query}**\n\n{retriever.query_with_context(query, top_k=5)}"
+                return f"**知识库查询结果: {query}**\n\n{retriever.query_with_context(query, top_k=5)}"
             except Exception as e2:
                 logger.exception("RAG retrieval failed after auto-index")
-                return f"❌ 知识库查询失败: {e2}\n\n请确保知识库文件已正确放置在 rag_data/ 目录。"
+                return f"知识库查询失败: {e2}\n\n请确保知识库文件已正确放置在 rag_data/ 目录。"
         except Exception as e:
             logger.exception("RAG query failed")
-            return f"❌ 知识库查询失败: {e}"
+            return f"知识库查询失败: {e}"
 
     # ══════════════════════════════════════════════════
     #  Natural-language processing

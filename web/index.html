@@ -221,7 +221,7 @@
       <div id="reviewEmpty" class="empty-hint">导入 BOM 后启动多智能体审查</div>
       <div id="drcHeatmapSection" class="heatmap-section" style="display:none">
         <div class="heatmap-header">
-          <h4>📊 DRC 违规热力图</h4>
+          <h4><span class="heatmap-title-icon" id="heatmapTitleIcon"></span>DRC 违规热力图</h4>
           <span class="heatmap-desc" id="drcHeatmapDesc">违规计数网格 · 颜色越深违规越密</span>
           <label class="heatmap-grid-label" title="网格边长：板子小就调小，板子大就调大">
             网格
@@ -533,3 +533,10 @@
 <script src="js/app.js"></script>
 </body>
 </html>
+// ── 热力图标题图标 ──
+// 内联 SVG 统一由 app.js 的 ICONS 提供（不用 emoji 字体图标）
+document.addEventListener('DOMContentLoaded', function () {
+  var slot = document.getElementById('heatmapTitleIcon');
+  if (slot && typeof ICONS !== 'undefined' && ICONS['chart']) slot.innerHTML = ICONS['chart'];
+});
+</script>

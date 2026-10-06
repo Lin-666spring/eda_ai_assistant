@@ -74,7 +74,7 @@ class BOMDuplicateChecker:
 
     def get_report(self, duplicates: list[DuplicateInfo]) -> str:
         if not duplicates:
-            return "✅ BOM 位号检查通过，无重复位号。"
+            return "BOM 位号检查通过，无重复位号。"
 
         lines = [
             "=" * 50,
@@ -85,7 +85,7 @@ class BOMDuplicateChecker:
         ]
 
         for duplicate in duplicates:
-            parts = [f"  🔴 {duplicate.reference} — "]
+            parts = [f"  {duplicate.reference} — "]
             for item in duplicate.occurrences:
                 parts.append(
                     f"型号 {item.part_number} ({item.package}) "

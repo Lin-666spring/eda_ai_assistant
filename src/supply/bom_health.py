@@ -198,13 +198,13 @@ class BOMHealthChecker:
             lines.append("-" * 58)
             lines.append(f"  低库存 (<100) ({len(report.low_stock)} 项):")
             for m in report.low_stock:
-                lines.append(f"    ⚠ {m['reference']}  {m['part']}  剩{m['stock']}件")
+                lines.append(f"    [警告] {m['reference']}  {m['part']}  剩{m['stock']}件")
 
         if report.lifecycle_warnings:
             lines.append("-" * 58)
             lines.append(f"  生命周期预警 ({len(report.lifecycle_warnings)} 项):")
             for w in report.lifecycle_warnings:
-                lines.append(f"    ⚡ {w['part']}: {w['warning']}")
+                lines.append(f"    {w['part']}: {w['warning']}")
 
         if report.total_cost_estimate > 0:
             lines.append("-" * 58)
