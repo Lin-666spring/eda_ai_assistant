@@ -1,0 +1,1416 @@
+[
+ {
+  "id": "0a237e81fbe5-battery_voltage_divider-0",
+  "design": {
+   "file": "ProPrj_2025年TI杯作品E题-简易自行瞄准装置_2026-09-14.epro2",
+   "title": "2025年TI杯作品E题-简易自行瞄准装置",
+   "ctx": {
+    "components": 43,
+    "nets": 48,
+    "netlist_nets": 48,
+    "traces": 71,
+    "vias": 136,
+    "pours": 4,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     113.086,
+     91.017
+    ],
+    "width_by_len_top3": [
+     [
+      0.3048,
+      432.2
+     ],
+     [
+      0.254,
+      261.1
+     ],
+     [
+      0.762,
+      110.6
+     ]
+    ],
+    "diff_groups_meta": 0
+   }
+  },
+  "rule_func": "_check_battery_voltage_divider",
+  "rule_name": "电池电压分压器检查",
+  "severity": "warning",
+  "description": "电池供电系统缺少电压监测分压电阻网络",
+  "location": "",
+  "suggestion": "电池正极→R1(100k~1MΩ)→ADC 输入端→R2(10k~100kΩ)→GND。Vbat=Vadc×(R1+R2)/R2。分压比使 Vmax_bat 对应 ADC Vref。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 5
+ },
+ {
+  "id": "69de1f0b5019-battery_voltage_divider-0",
+  "design": {
+   "file": "ProPrj_LW焊台_2026-09-14.epro2",
+   "title": "LW焊台",
+   "ctx": {
+    "components": 144,
+    "nets": 152,
+    "netlist_nets": 152,
+    "traces": 238,
+    "vias": 628,
+    "pours": 44,
+    "layers": [
+     "Bottom Layer",
+     "Inner1",
+     "Inner2",
+     "Top Layer"
+    ],
+    "board_mm": [
+     157.35,
+     249.6
+    ],
+    "width_by_len_top3": [
+     [
+      0.1524,
+      1868.5
+     ],
+     [
+      0.254,
+      1313.0
+     ],
+     [
+      0.508,
+      1223.2
+     ]
+    ],
+    "diff_groups_meta": 23
+   }
+  },
+  "rule_func": "_check_battery_voltage_divider",
+  "rule_name": "电池电压分压器检查",
+  "severity": "warning",
+  "description": "电池供电系统缺少电压监测分压电阻网络",
+  "location": "",
+  "suggestion": "电池正极→R1(100k~1MΩ)→ADC 输入端→R2(10k~100kΩ)→GND。Vbat=Vadc×(R1+R2)/R2。分压比使 Vmax_bat 对应 ADC Vref。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 5
+ },
+ {
+  "id": "8983879305d5-component_edge_clearance-0",
+  "design": {
+   "file": "ProPrj_带重力感应的桥式压感智能秤基于立创·地奇星RA6E2_2026-09-14.epro2",
+   "title": "带重力感应的桥式压感智能秤基于立创·地奇星RA6E2",
+   "ctx": {
+    "components": 127,
+    "nets": 79,
+    "netlist_nets": 79,
+    "traces": 91,
+    "vias": 570,
+    "pours": 11,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     99.014,
+     97.39
+    ],
+    "width_by_len_top3": [
+     [
+      0.254,
+      1028.6
+     ],
+     [
+      0.508,
+      768.6
+     ],
+     [
+      0.381,
+      39.4
+     ]
+    ],
+    "diff_groups_meta": 0
+   }
+  },
+  "rule_func": "_check_component_edge_clearance",
+  "rule_name": "板边间距检查",
+  "severity": "warning",
+  "description": "23 个元件距板边 <3.0mm: BUZZER1, C37, C43, C5, H5",
+  "location": "",
+  "suggestion": "元件距板边 ≥3mm，高元件需更大间距",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 60
+ },
+ {
+  "id": "97da11617c92-component_edge_clearance-0",
+  "design": {
+   "file": "ProPrj_EDA-Pager寻呼机_2026-09-14.epro2",
+   "title": "EDA-Pager寻呼机",
+   "ctx": {
+    "components": 64,
+    "nets": 51,
+    "netlist_nets": 50,
+    "traces": 56,
+    "vias": 388,
+    "pours": 2,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     82.737,
+     55.051
+    ],
+    "width_by_len_top3": [
+     [
+      0.254,
+      952.5
+     ],
+     [
+      1.0,
+      155.7
+     ],
+     [
+      0.5,
+      117.2
+     ]
+    ],
+    "diff_groups_meta": 6
+   }
+  },
+  "rule_func": "_check_component_edge_clearance",
+  "rule_name": "板边间距检查",
+  "severity": "warning",
+  "description": "4 个元件距板边 <3.0mm: BUZZER1, PW1, Q1, U1",
+  "location": "",
+  "suggestion": "元件距板边 ≥3mm，高元件需更大间距",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 60
+ },
+ {
+  "id": "54a1d94d430a-connector_edge_placement-0",
+  "design": {
+   "file": "ProPrj_星光4N迷你激光雕刻机_2026-09-14.epro2",
+   "title": "星光4N迷你激光雕刻机",
+   "ctx": {
+    "components": 40,
+    "nets": 26,
+    "netlist_nets": 26,
+    "traces": 41,
+    "vias": 449,
+    "pours": 6,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     100.0,
+     52.0
+    ],
+    "width_by_len_top3": [
+     [
+      0.508,
+      2904.6
+     ],
+     [
+      1.3,
+      276.7
+     ],
+     [
+      0.6,
+      134.6
+     ]
+    ],
+    "diff_groups_meta": 0
+   }
+  },
+  "rule_func": "_check_connector_edge_placement",
+  "rule_name": "连接器边沿布局检查",
+  "severity": "info",
+  "description": "连接器 U9 距板边较远(38,24)，可能影响插拔操作",
+  "location": "U9",
+  "suggestion": "连接器/接口紧贴 PCB 边沿，开口朝外。机壳开孔位置与连接器对准，预留插头空间(如 USB 插头长度 ≈15mm)。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 56
+ },
+ {
+  "id": "e3f96b3e50dc-connector_edge_placement-4",
+  "design": {
+   "file": "ProPrj_立创·逻辑派FPGA-G1开发板_2026-09-14.epro2",
+   "title": "立创·逻辑派FPGA-G1开发板",
+   "ctx": {
+    "components": 281,
+    "nets": 268,
+    "netlist_nets": 268,
+    "traces": 502,
+    "vias": 697,
+    "pours": 12,
+    "layers": [
+     "Bottom Layer",
+     "GND02",
+     "POWER5",
+     "S3",
+     "S4",
+     "Top Layer"
+    ],
+    "board_mm": [
+     43.978,
+     68.505
+    ],
+    "width_by_len_top3": [
+     [
+      0.1016,
+      4894.5
+     ],
+     [
+      0.1295,
+      905.2
+     ],
+     [
+      0.1194,
+      552.5
+     ]
+    ],
+    "diff_groups_meta": 46
+   }
+  },
+  "rule_func": "_check_connector_edge_placement",
+  "rule_name": "连接器边沿布局检查",
+  "severity": "info",
+  "description": "连接器 USB3 距板边较远(37,19)，可能影响插拔操作",
+  "location": "USB3",
+  "suggestion": "连接器/接口紧贴 PCB 边沿，开口朝外。机壳开孔位置与连接器对准，预留插头空间(如 USB 插头长度 ≈15mm)。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 56
+ },
+ {
+  "id": "acd428873d75-crystal_load_caps-0",
+  "design": {
+   "file": "ProPrj_迷你数字可调电源_数控电源--Xuemeng V6_2026-09-14.epro2",
+   "title": "迷你数字可调电源/数控电源--Xuemeng V6",
+   "ctx": {
+    "components": 201,
+    "nets": 128,
+    "netlist_nets": 127,
+    "traces": 204,
+    "vias": 994,
+    "pours": 13,
+    "layers": [
+     "Bottom Layer",
+     "DGND",
+     "PGND",
+     "Top Layer"
+    ],
+    "board_mm": [
+     74.625,
+     52.273
+    ],
+    "width_by_len_top3": [
+     [
+      0.1524,
+      2841.3
+     ],
+     [
+      0.2032,
+      797.0
+     ],
+     [
+      0.508,
+      261.9
+     ]
+    ],
+    "diff_groups_meta": 0
+   }
+  },
+  "rule_func": "_check_crystal_load_caps",
+  "rule_name": "晶振负载电容检查",
+  "severity": "warning",
+  "description": "晶振负载电容可能不足：板上 6 颗 1-47pF 小电容，需 8 颗覆盖 4 个晶振",
+  "location": "BUZZER4,U141,U146,X1",
+  "suggestion": "每颗晶振需 2 个匹配负载电容(通常 12~22pF)，参见数据手册",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 29
+ },
+ {
+  "id": "b96a1767fff0-crystal_load_caps-0",
+  "design": {
+   "file": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+   "title": "立创·泰山派3M（RK3576)开发板",
+   "ctx": {
+    "components": 947,
+    "nets": 668,
+    "netlist_nets": 667,
+    "traces": 1320,
+    "vias": 2052,
+    "pours": 51,
+    "layers": [
+     "Bottom Layer",
+     "POWER06",
+     "PWR05",
+     "S03",
+     "S04",
+     "S07",
+     "S08",
+     "Top Layer"
+    ],
+    "board_mm": [
+     83.983,
+     56.162
+    ],
+    "width_by_len_top3": [
+     [
+      0.1219,
+      6508.3
+     ],
+     [
+      0.1016,
+      3800.7
+     ],
+     [
+      0.0914,
+      2953.6
+     ]
+    ],
+    "diff_groups_meta": 158
+   }
+  },
+  "rule_func": "_check_crystal_load_caps",
+  "rule_name": "晶振负载电容检查",
+  "severity": "warning",
+  "description": "晶振负载电容可能不足：板上 15 颗 1-47pF 小电容，需 20 颗覆盖 10 个晶振",
+  "location": "L18,L31,L5,L6,U73,X1,X2,X3,X4,X6",
+  "suggestion": "每颗晶振需 2 个匹配负载电容(通常 12~22pF)，参见数据手册",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 29
+ },
+ {
+  "id": "51d7b3e13ef5-decoupling_cap_per_pin-0",
+  "design": {
+   "file": "ProPrj_立创·天机星TMS320F28P550开发板_2026-09-14.epro2",
+   "title": "立创·天机星TMS320F28P550开发板",
+   "ctx": {
+    "components": 68,
+    "nets": 100,
+    "netlist_nets": 100,
+    "traces": 139,
+    "vias": 289,
+    "pours": 11,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     44.975,
+     69.967
+    ],
+    "width_by_len_top3": [
+     [
+      0.2032,
+      2088.7
+     ],
+     [
+      0.381,
+      153.1
+     ],
+     [
+      0.508,
+      81.9
+     ]
+    ],
+    "diff_groups_meta": 2
+   }
+  },
+  "rule_func": "_check_decoupling_cap_per_pin",
+  "rule_name": "多电源引脚去耦检查",
+  "severity": "warning",
+  "description": "主控 U2(TMS320F28P550SJ-LQFP-100_16X16MM,100引脚) 电容数量(0)可能不足",
+  "location": "U2",
+  "suggestion": "每个 VDD/VCC 引脚就近放置 0.1μF(100nF)去耦电容。大封装 IC(100引脚)建议≥10个。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 11
+ },
+ {
+  "id": "f5023e060fb7-decoupling_cap_per_pin-0",
+  "design": {
+   "file": "ProPrj_赛博挂坠【源码已开放】_2026-09-14.epro2",
+   "title": "赛博挂坠【源码已开放】",
+   "ctx": {
+    "components": 58,
+    "nets": 38,
+    "netlist_nets": 37,
+    "traces": 38,
+    "vias": 87,
+    "pours": 16,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     14.2,
+     40.0
+    ],
+    "width_by_len_top3": [
+     [
+      0.2,
+      236.9
+     ],
+     [
+      0.5,
+      14.9
+     ],
+     [
+      0.3,
+      14.1
+     ]
+    ],
+    "diff_groups_meta": 0
+   }
+  },
+  "rule_func": "_check_decoupling_cap_per_pin",
+  "rule_name": "多电源引脚去耦检查",
+  "severity": "warning",
+  "description": "主控 U13(QFN-32_L5.0-W5.0-P0.50-TL-EP3.7,32引脚) 电容数量(0)可能不足",
+  "location": "U13",
+  "suggestion": "每个 VDD/VCC 引脚就近放置 0.1μF(100nF)去耦电容。大封装 IC(32引脚)建议≥3个。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 11
+ },
+ {
+  "id": "0a237e81fbe5-emi_filter-0",
+  "design": {
+   "file": "ProPrj_2025年TI杯作品E题-简易自行瞄准装置_2026-09-14.epro2",
+   "title": "2025年TI杯作品E题-简易自行瞄准装置",
+   "ctx": {
+    "components": 43,
+    "nets": 48,
+    "netlist_nets": 48,
+    "traces": 71,
+    "vias": 136,
+    "pours": 4,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     113.086,
+     91.017
+    ],
+    "width_by_len_top3": [
+     [
+      0.3048,
+      432.2
+     ],
+     [
+      0.254,
+      261.1
+     ],
+     [
+      0.762,
+      110.6
+     ]
+    ],
+    "diff_groups_meta": 0
+   }
+  },
+  "rule_func": "_check_emi_filter",
+  "rule_name": "EMI 滤波检查",
+  "severity": "info",
+  "description": "电源入口缺少共模电感/EMI 滤波器件",
+  "location": "",
+  "suggestion": "电源入口建议加共模扼流圈(CMC)+X电容(0.1~1μF)+Y电容(1~4.7nF)。CMC 选型关注额定电流和共模阻抗。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 7
+ },
+ {
+  "id": "1875282d60eb-emi_filter-0",
+  "design": {
+   "file": "ProPrj_#星火计划#ESP32墨水屏MP3收音机阅读器_2026-09-14.epro2",
+   "title": "#星火计划#ESP32墨水屏MP3收音机阅读器",
+   "ctx": {
+    "components": 109,
+    "nets": 83,
+    "netlist_nets": 83,
+    "traces": 111,
+    "vias": 177,
+    "pours": 2,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     33.9,
+     60.2
+    ],
+    "width_by_len_top3": [
+     [
+      0.2,
+      655.2
+     ],
+     [
+      0.2032,
+      151.8
+     ],
+     [
+      0.3,
+      107.9
+     ]
+    ],
+    "diff_groups_meta": 0
+   }
+  },
+  "rule_func": "_check_emi_filter",
+  "rule_name": "EMI 滤波检查",
+  "severity": "info",
+  "description": "电源入口缺少共模电感/EMI 滤波器件",
+  "location": "",
+  "suggestion": "电源入口建议加共模扼流圈(CMC)+X电容(0.1~1μF)+Y电容(1~4.7nF)。CMC 选型关注额定电流和共模阻抗。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 7
+ },
+ {
+  "id": "38b5022c1cf4-fiducial_mark-0",
+  "design": {
+   "file": "ProPrj_迷你便携无线WIFI热成像_2026-09-14.epro2",
+   "title": "迷你便携无线WIFI热成像",
+   "ctx": {
+    "components": 52,
+    "nets": 35,
+    "netlist_nets": 35,
+    "traces": 53,
+    "vias": 255,
+    "pours": 4,
+    "layers": [
+     "Bottom Layer",
+     "POWER",
+     "Top Layer"
+    ],
+    "board_mm": [
+     139.001,
+     109.211
+    ],
+    "width_by_len_top3": [
+     [
+      0.254,
+      453.3
+     ],
+     [
+      0.508,
+      249.6
+     ],
+     [
+      0.5248,
+      35.2
+     ]
+    ],
+    "diff_groups_meta": 6
+   }
+  },
+  "rule_func": "_check_fiducial_mark",
+  "rule_name": "光学定位点检查",
+  "severity": "info",
+  "description": "PCB 含较多元件但未确认是否有光学定位(Mark)点",
+  "location": "",
+  "suggestion": "PCB 对角放置≥2个全局 Mark 点(Φ1.0mm 铜箔+Φ3.0mm 阻焊开窗)。细间距IC(QFP/BGA)局部加Mark点。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 76
+ },
+ {
+  "id": "5fd8810511b8-fiducial_mark-0",
+  "design": {
+   "file": "ProPrj_易扩展的迷你数控可调电源 FLPowerPro_2026-09-14.epro2",
+   "title": "易扩展的迷你数控可调电源 FLPowerPro",
+   "ctx": {
+    "components": 218,
+    "nets": 249,
+    "netlist_nets": 214,
+    "traces": 363,
+    "vias": 626,
+    "pours": 144,
+    "layers": [
+     "Bottom Layer",
+     "Inner2",
+     "Top Layer"
+    ],
+    "board_mm": [
+     91.9,
+     97.6
+    ],
+    "width_by_len_top3": [
+     [
+      0.1524,
+      2368.7
+     ],
+     [
+      0.3048,
+      538.3
+     ],
+     [
+      0.508,
+      488.4
+     ]
+    ],
+    "diff_groups_meta": 0
+   }
+  },
+  "rule_func": "_check_fiducial_mark",
+  "rule_name": "光学定位点检查",
+  "severity": "info",
+  "description": "PCB 含较多元件但未确认是否有光学定位(Mark)点",
+  "location": "",
+  "suggestion": "PCB 对角放置≥2个全局 Mark 点(Φ1.0mm 铜箔+Φ3.0mm 阻焊开窗)。细间距IC(QFP/BGA)局部加Mark点。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 76
+ },
+ {
+  "id": "55a1e5d392e0-inductor_saturation_margin-0",
+  "design": {
+   "file": "ProPrj_TuyaOpen 多模态 AI 口袋机_2026-09-14.epro2",
+   "title": "TuyaOpen 多模态 AI 口袋机",
+   "ctx": {
+    "components": 282,
+    "nets": 211,
+    "netlist_nets": 210,
+    "traces": 349,
+    "vias": 801,
+    "pours": 37,
+    "layers": [
+     "Bottom Layer",
+     "Inner2",
+     "Top Layer"
+    ],
+    "board_mm": [
+     150.546,
+     84.709
+    ],
+    "width_by_len_top3": [
+     [
+      0.1524,
+      3584.5
+     ],
+     [
+      0.254,
+      1229.1
+     ],
+     [
+      0.508,
+      721.8
+     ]
+    ],
+    "diff_groups_meta": 30
+   }
+  },
+  "rule_func": "_check_inductor_saturation_margin",
+  "rule_name": "电感饱和电流检查",
+  "severity": "info",
+  "description": "功率电感 L2 建议验证额定电流 ≥1.3× Ipeak",
+  "location": "L2",
+  "suggestion": "Buck 电感 Ipeak = Iout + ΔIL/2。Isat 需 ≥1.3× Ipeak 防饱和。饱和后 L↓→ΔIL↑→磁芯损耗↑→温升↑。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 50
+ },
+ {
+  "id": "cf50567ab4e5-inductor_saturation_margin-0",
+  "design": {
+   "file": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+   "title": "立创·泰山派RK3566-1F金手指【全功能底板】",
+   "ctx": {
+    "components": 772,
+    "nets": 591,
+    "netlist_nets": 591,
+    "traces": 871,
+    "vias": 1896,
+    "pours": 20,
+    "layers": [
+     "Bottom Layer",
+     "PWR02",
+     "Top Layer"
+    ],
+    "board_mm": [
+     143.98,
+     98.637
+    ],
+    "width_by_len_top3": [
+     [
+      0.127,
+      10065.7
+     ],
+     [
+      0.1092,
+      4774.3
+     ],
+     [
+      0.762,
+      2164.3
+     ]
+    ],
+    "diff_groups_meta": 178
+   }
+  },
+  "rule_func": "_check_inductor_saturation_margin",
+  "rule_name": "电感饱和电流检查",
+  "severity": "info",
+  "description": "功率电感 L1 建议验证额定电流 ≥1.3× Ipeak",
+  "location": "L1",
+  "suggestion": "Buck 电感 Ipeak = Iout + ΔIL/2。Isat 需 ≥1.3× Ipeak 防饱和。饱和后 L↓→ΔIL↑→磁芯损耗↑→温升↑。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 50
+ },
+ {
+  "id": "5e78d941a8e1-net_antenna-0",
+  "design": {
+   "file": "ProPrj_#第十届立创电赛#流浪地球 550W（MOSS）小智AI生态中枢_2026-09-14.epro2",
+   "title": "#第十届立创电赛#流浪地球 550W（MOSS）小智AI生态中枢",
+   "ctx": {
+    "components": 64,
+    "nets": 90,
+    "netlist_nets": 87,
+    "traces": 116,
+    "vias": 345,
+    "pours": 6,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     133.237,
+     122.074
+    ],
+    "width_by_len_top3": [
+     [
+      0.254,
+      2075.7
+     ],
+     [
+      0.762,
+      124.2
+     ],
+     [
+      0.508,
+      96.1
+     ]
+    ],
+    "diff_groups_meta": 0
+   }
+  },
+  "rule_func": "_check_net_antenna",
+  "rule_name": "天线效应检查",
+  "severity": "warning",
+  "description": "18 个网络仅连接 ≤1 个引脚，可能为浮空网络或天线",
+  "location": "",
+  "suggestion": "单端网络(只有1个引脚)检查是否为未布线或孤岛。大面积浮空铜皮=EMI天线。",
+  "is_trace_family": false,
+  "evidence": {
+   "single_pin_nets": [
+    "CAM_RST",
+    "$1N6335",
+    "$2N584",
+    "WS2812_42",
+    "$2N2391",
+    "5V_LED2",
+    "GPIO09",
+    "GPIO07",
+    "GPIO05",
+    "GPIO04",
+    "GPIO03",
+    "GPIO12",
+    "GPIO13",
+    "GPIO11",
+    "GPIO10",
+    "GPIO14",
+    "GPIO48",
+    "$1N5740"
+   ],
+   "count": 18
+  },
+  "stratum_population": 31
+ },
+ {
+  "id": "fb4a2b1a2d2e-net_antenna-0",
+  "design": {
+   "file": "ProPrj_ESP-VoCat 喵伴旋转底座_2026-09-14.epro2",
+   "title": "ESP-VoCat 喵伴旋转底座",
+   "ctx": {
+    "components": 49,
+    "nets": 40,
+    "netlist_nets": 40,
+    "traces": 52,
+    "vias": 133,
+    "pours": 4,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     33.339,
+     52.068
+    ],
+    "width_by_len_top3": [
+     [
+      0.1524,
+      553.7
+     ],
+     [
+      0.508,
+      322.6
+     ],
+     [
+      0.254,
+      98.5
+     ]
+    ],
+    "diff_groups_meta": 2
+   }
+  },
+  "rule_func": "_check_net_antenna",
+  "rule_name": "天线效应检查",
+  "severity": "warning",
+  "description": "3 个网络仅连接 ≤1 个引脚，可能为浮空网络或天线",
+  "location": "",
+  "suggestion": "单端网络(只有1个引脚)检查是否为未布线或孤岛。大面积浮空铜皮=EMI天线。",
+  "is_trace_family": false,
+  "evidence": {
+   "single_pin_nets": [
+    "GPIO6",
+    "GPIO24",
+    "GPIO0"
+   ],
+   "count": 3
+  },
+  "stratum_population": 31
+ },
+ {
+  "id": "002d4444a5dd-pdn_target_impedance-0",
+  "design": {
+   "file": "ProPrj_【八卦.键盘】Sudo. Wang(YQ.)  #星火计划#_2026-09-14.epro2",
+   "title": "【八卦.键盘】Sudo. Wang(YQ.)  #星火计划#",
+   "ctx": {
+    "components": 159,
+    "nets": 156,
+    "netlist_nets": 151,
+    "traces": 116,
+    "vias": 222,
+    "pours": 4,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     313.045,
+     129.705
+    ],
+    "width_by_len_top3": [
+     [
+      0.254,
+      17016.7
+     ],
+     [
+      0.203,
+      3199.7
+     ],
+     [
+      0.4,
+      1100.8
+     ]
+    ],
+    "diff_groups_meta": 0
+   }
+  },
+  "rule_func": "_check_pdn_target_impedance",
+  "rule_name": "PDN 目标阻抗分析",
+  "severity": "info",
+  "description": "3.3V/0.50A 电源: 目标阻抗 Z_target=660mΩ，平面电容 1.00nF，建议 ≥1 个去耦电容，IR压降≈0.5mV",
+  "location": "",
+  "suggestion": "推荐电容组合: 100µF, 10µF, 100nF, 10nF。各频段去耦: 100µF(≤10kHz) + 10µF(≤1MHz) + 100nF(1-100MHz) + 10nF(≥100MHz)。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 76
+ },
+ {
+  "id": "51d7b3e13ef5-pdn_target_impedance-0",
+  "design": {
+   "file": "ProPrj_立创·天机星TMS320F28P550开发板_2026-09-14.epro2",
+   "title": "立创·天机星TMS320F28P550开发板",
+   "ctx": {
+    "components": 68,
+    "nets": 100,
+    "netlist_nets": 100,
+    "traces": 139,
+    "vias": 289,
+    "pours": 11,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     44.975,
+     69.967
+    ],
+    "width_by_len_top3": [
+     [
+      0.2032,
+      2088.7
+     ],
+     [
+      0.381,
+      153.1
+     ],
+     [
+      0.508,
+      81.9
+     ]
+    ],
+    "diff_groups_meta": 2
+   }
+  },
+  "rule_func": "_check_pdn_target_impedance",
+  "rule_name": "PDN 目标阻抗分析",
+  "severity": "info",
+  "description": "3.3V/0.80A 电源: 目标阻抗 Z_target=412mΩ，平面电容 1.00nF，建议 ≥1 个去耦电容，IR压降≈0.8mV",
+  "location": "",
+  "suggestion": "推荐电容组合: 100µF, 10µF, 100nF, 10nF。各频段去耦: 100µF(≤10kHz) + 10µF(≤1MHz) + 100nF(1-100MHz) + 10nF(≥100MHz)。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 76
+ },
+ {
+  "id": "1875282d60eb-pullup_pulldown-0",
+  "design": {
+   "file": "ProPrj_#星火计划#ESP32墨水屏MP3收音机阅读器_2026-09-14.epro2",
+   "title": "#星火计划#ESP32墨水屏MP3收音机阅读器",
+   "ctx": {
+    "components": 109,
+    "nets": 83,
+    "netlist_nets": 83,
+    "traces": 111,
+    "vias": 177,
+    "pours": 2,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     33.9,
+     60.2
+    ],
+    "width_by_len_top3": [
+     [
+      0.2,
+      655.2
+     ],
+     [
+      0.2032,
+      151.8
+     ],
+     [
+      0.3,
+      107.9
+     ]
+    ],
+    "diff_groups_meta": 0
+   }
+  },
+  "rule_func": "_check_pullup_pulldown",
+  "rule_name": "上下拉电阻检查",
+  "severity": "warning",
+  "description": "控制信号网络 [GF_EN] 可能缺少上拉/下拉电阻",
+  "location": "GF_EN",
+  "suggestion": "RST/EN/BOOT 等控制引脚通过 10kΩ 上拉或下拉到确定电平。悬空=不确定行为。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 12
+ },
+ {
+  "id": "fb12f7b89b5b-pullup_pulldown-0",
+  "design": {
+   "file": "ProPrj_Excam基于openmv的多功能机器视觉小相机_2026-09-14.epro2",
+   "title": "Excam基于openmv的多功能机器视觉小相机",
+   "ctx": {
+    "components": 139,
+    "nets": 107,
+    "netlist_nets": 105,
+    "traces": 149,
+    "vias": 379,
+    "pours": 8,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     62.272,
+     60.79
+    ],
+    "width_by_len_top3": [
+     [
+      0.1524,
+      2081.9
+     ],
+     [
+      0.254,
+      848.4
+     ],
+     [
+      0.381,
+      60.2
+     ]
+    ],
+    "diff_groups_meta": 8
+   }
+  },
+  "rule_func": "_check_pullup_pulldown",
+  "rule_name": "上下拉电阻检查",
+  "severity": "warning",
+  "description": "控制信号网络 [RESET] 可能缺少上拉/下拉电阻",
+  "location": "RESET",
+  "suggestion": "RST/EN/BOOT 等控制引脚通过 10kΩ 上拉或下拉到确定电平。悬空=不确定行为。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 12
+ },
+ {
+  "id": "97da11617c92-reverse_polarity_protection-0",
+  "design": {
+   "file": "ProPrj_EDA-Pager寻呼机_2026-09-14.epro2",
+   "title": "EDA-Pager寻呼机",
+   "ctx": {
+    "components": 64,
+    "nets": 51,
+    "netlist_nets": 50,
+    "traces": 56,
+    "vias": 388,
+    "pours": 2,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     82.737,
+     55.051
+    ],
+    "width_by_len_top3": [
+     [
+      0.254,
+      952.5
+     ],
+     [
+      1.0,
+      155.7
+     ],
+     [
+      0.5,
+      117.2
+     ]
+    ],
+    "diff_groups_meta": 6
+   }
+  },
+  "rule_func": "_check_reverse_polarity_protection",
+  "rule_name": "电源极性保护检查",
+  "severity": "warning",
+  "description": "直流电源输入未检测到反接保护器件",
+  "location": "",
+  "suggestion": "串联肖特基二极管(低压降~0.3V)或 PMOS 反接保护电路。PMOS Vgs(th) 选低阈值型(≤2.5V)。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 34
+ },
+ {
+  "id": "fb12f7b89b5b-reverse_polarity_protection-0",
+  "design": {
+   "file": "ProPrj_Excam基于openmv的多功能机器视觉小相机_2026-09-14.epro2",
+   "title": "Excam基于openmv的多功能机器视觉小相机",
+   "ctx": {
+    "components": 139,
+    "nets": 107,
+    "netlist_nets": 105,
+    "traces": 149,
+    "vias": 379,
+    "pours": 8,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     62.272,
+     60.79
+    ],
+    "width_by_len_top3": [
+     [
+      0.1524,
+      2081.9
+     ],
+     [
+      0.254,
+      848.4
+     ],
+     [
+      0.381,
+      60.2
+     ]
+    ],
+    "diff_groups_meta": 8
+   }
+  },
+  "rule_func": "_check_reverse_polarity_protection",
+  "rule_name": "电源极性保护检查",
+  "severity": "warning",
+  "description": "直流电源输入未检测到反接保护器件",
+  "location": "",
+  "suggestion": "串联肖特基二极管(低压降~0.3V)或 PMOS 反接保护电路。PMOS Vgs(th) 选低阈值型(≤2.5V)。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 34
+ },
+ {
+  "id": "d619077597d4-switching_regulator_layout-0",
+  "design": {
+   "file": "ProPrj_立创·梁山派开发板_2026-09-14.epro2",
+   "title": "立创·梁山派开发板",
+   "ctx": {
+    "components": 85,
+    "nets": 133,
+    "netlist_nets": 133,
+    "traces": 234,
+    "vias": 429,
+    "pours": 9,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     45.0,
+     69.992
+    ],
+    "width_by_len_top3": [
+     [
+      0.1524,
+      3611.7
+     ],
+     [
+      0.508,
+      260.2
+     ],
+     [
+      0.1397,
+      181.4
+     ]
+    ],
+    "diff_groups_meta": 59
+   }
+  },
+  "rule_func": "_check_switching_regulator_layout",
+  "rule_name": "开关电源布局检查",
+  "severity": "info",
+  "description": "DC-DC SW3 建议优化输入回路布局以降低 EMI",
+  "location": "SW3",
+  "suggestion": "Buck: Cin→SW→L→Cout 的 di/dt 回路面积最小化。输入电容紧靠 IC VIN/GND 引脚。SW 节点铜皮面积最小,避免成为天线。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 63
+ },
+ {
+  "id": "e89b65d2080e-switching_regulator_layout-0",
+  "design": {
+   "file": "ProPrj_立创·地文星CW32数字电压电流表扩展板_2026-09-14.epro2",
+   "title": "立创·地文星CW32数字电压电流表扩展板",
+   "ctx": {
+    "components": 58,
+    "nets": 52,
+    "netlist_nets": 52,
+    "traces": 50,
+    "vias": 18,
+    "pours": 0,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     65.659,
+     73.533
+    ],
+    "width_by_len_top3": [
+     [
+      0.254,
+      1223.1
+     ],
+     [
+      1.016,
+      162.1
+     ],
+     [
+      0.508,
+      35.4
+     ]
+    ],
+    "diff_groups_meta": 0
+   }
+  },
+  "rule_func": "_check_switching_regulator_layout",
+  "rule_name": "开关电源布局检查",
+  "severity": "info",
+  "description": "DC-DC H1 建议优化输入回路布局以降低 EMI",
+  "location": "H1",
+  "suggestion": "Buck: Cin→SW→L→Cout 的 di/dt 回路面积最小化。输入电容紧靠 IC VIN/GND 引脚。SW 节点铜皮面积最小,避免成为天线。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 63
+ },
+ {
+  "id": "5516bd2c0c00-unconnected_pins-0",
+  "design": {
+   "file": "ProPrj_无线激光雕刻机_2026-09-14.epro2",
+   "title": "无线激光雕刻机",
+   "ctx": {
+    "components": 62,
+    "nets": 54,
+    "netlist_nets": 54,
+    "traces": 63,
+    "vias": 46,
+    "pours": 2,
+    "layers": [
+     "Bottom Layer",
+     "Top Layer"
+    ],
+    "board_mm": [
+     78.08,
+     47.549
+    ],
+    "width_by_len_top3": [
+     [
+      0.4,
+      606.4
+     ],
+     [
+      0.6,
+      519.5
+     ],
+     [
+      0.254,
+      22.4
+     ]
+    ],
+    "diff_groups_meta": 0
+   }
+  },
+  "rule_func": "_check_unconnected_pins",
+  "rule_name": "未连接引脚检查",
+  "severity": "info",
+  "description": "IC U39(SOP-16_L10.0-W3.9-P1.27-LS6.0-BL) 仅 9/16 个引脚出现在网表中，可能大量引脚未连接",
+  "location": "U39",
+  "suggestion": "确认 NC(No Connect)引脚已标记，其余引脚至少上拉/下拉到确定电平。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 6
+ },
+ {
+  "id": "f63ddcd060ef-unconnected_pins-0",
+  "design": {
+   "file": "ProPrj_EagleH7-EDU_2026-09-14.epro2",
+   "title": "EagleH7-EDU",
+   "ctx": {
+    "components": 202,
+    "nets": 169,
+    "netlist_nets": 169,
+    "traces": 266,
+    "vias": 302,
+    "pours": 4,
+    "layers": [
+     "Bottom Layer",
+     "Inner1",
+     "Inner2",
+     "Top Layer"
+    ],
+    "board_mm": [
+     62.692,
+     121.461
+    ],
+    "width_by_len_top3": [
+     [
+      0.1575,
+      3469.1
+     ],
+     [
+      0.3048,
+      800.0
+     ],
+     [
+      0.508,
+      652.3
+     ]
+    ],
+    "diff_groups_meta": 38
+   }
+  },
+  "rule_func": "_check_unconnected_pins",
+  "rule_name": "未连接引脚检查",
+  "severity": "info",
+  "description": "IC U8(QFN-32_L5.0-W5.0-P0.50-TL-EP3.7) 仅 15/32 个引脚出现在网表中，可能大量引脚未连接",
+  "location": "U8",
+  "suggestion": "确认 NC(No Connect)引脚已标记，其余引脚至少上拉/下拉到确定电平。",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 6
+ },
+ {
+  "id": "2b30c85075cc-i2c_pullups-0",
+  "design": {
+   "file": "ProPrj_承载我所有幻想的键盘_2026-09-14 (1).epro2",
+   "title": "承载我所有幻想的键盘",
+   "ctx": {
+    "components": 471,
+    "nets": 535,
+    "netlist_nets": 510,
+    "traces": 796,
+    "vias": 1844,
+    "pours": 57,
+    "layers": [
+     "Bottom Layer",
+     "Inner1",
+     "Inner2",
+     "Top Layer"
+    ],
+    "board_mm": [
+     283.494,
+     120.019
+    ],
+    "width_by_len_top3": [
+     [
+      0.254,
+      16580.0
+     ],
+     [
+      0.127,
+      3969.8
+     ],
+     [
+      0.508,
+      1613.7
+     ]
+    ],
+    "diff_groups_meta": 23
+   }
+  },
+  "rule_func": "_check_i2c_pullups",
+  "rule_name": "I2C 上拉电阻检查",
+  "severity": "warning",
+  "description": "检测到 I2C 器件但未发现典型上拉电阻(2.2~10kΩ)",
+  "location": "",
+  "suggestion": "SDA/SCL 各需上拉电阻到 VCC(常用 4.7kΩ)",
+  "is_trace_family": false,
+  "evidence": {},
+  "stratum_population": 1
+ }
+]

@@ -1,0 +1,152 @@
+{
+ "1a507f98388a-clock_guard_trace-14": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "REFCLK2+ 全长 39.2mm（M.2-1.53/R77.2/R78.1，Top 25.9+Bottom 13.3mm），该板 Top/Bottom/Inner2 三层都有 GND 覆铜（13 块覆铜中 3 块 GND）；规则只按网络名含 CLK 就报 INFO，不看参考平面也不给坐标（location 只有网名），任何带时钟名的板都会响，无法证伪。evidence 的 nearest_gnd_trace_mm=44.04 也只统计 GND 走线（全板仅 2 个 (网,层) 行）而忽略覆铜。"
+ },
+ "26a909d7cea2-clock_guard_trace-2": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "OSC_IN 仅 3.861mm（C31.2/U7.5/U14.1，单层 Top），最近 GND 走线 0.554mm，且 Top/内1/Bottom 三层均为 GND 覆铜；规则判据只有网络名关键词（OSC），与板上实际几何无关，属结构上每板必响的提示，INFO 级别本身合适。"
+ },
+ "7fe20a3c4898-clock_guard_trace-1": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "MCLK 长 28.6mm（R3.1→U4.12，其中 26.9mm 走 PWR 层），该板 4 块覆铜全部是 GND（含 PWR、GND 两个层）；最近 GND 走线 1.011mm。规则仅凭名字里的 MCLK 命中就建议加包地，不检查是否已有参考平面，既无法证伪也与该板实况无关。"
+ },
+ "cf50567ab4e5-clock_guard_trace-32": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "CLKN_OUT 15.92mm（C246.2/R283.2/R285.2，Top 层），距最近 GND 走线仅 0.611mm；该 4 层板（Top/Bottom/PWR02/GND03）四层均有 GND 覆铜，Top 层 GND 走线 855 段、Bottom 728 段。规则对全板地网络布设毫无感知，只因网名含 CLK 就报，属通用提示。"
+ },
+ "e0b21c2eb89e-clock_guard_trace-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "DP_XTAL_OUT 仅 5.016mm（C336.2/R253.1/U150.1/U98.15，Bottom 层），最近 GND 走线 1.09mm，该板 Top/Bottom/Inner3/Inner4 四层均有 GND 覆铜（10 块覆铜中 4 块 GND）；规则只匹配 XTAL 关键词、无任何几何判据，属无法证伪的通用提示。"
+ },
+ "218e353bed7e-diff_pair_length-0": {
+  "v": "FP",
+  "s": "yes",
+  "r": "组 D 是名字猜出来的（该板 net rule 里 0 条差分/等长约束，diff_groups_meta=0），规则自身也只给 INFO；且 D+ 有 9 个引脚（USB1.A6/B6、USB234.A6、U1.14、R13.1、R14.2…）、D- 同样 9 个（USB1.A7/B7、USB234.A7、U1.13…），是分发到多个 USB 座的多分支网络，规则把网络所有线段求和当路径长（50.56 vs 56.44mm），5.884mm 并非点到点偏斜；换算约 39ps，仅为 USB2 高速位周期 2083ps 的 1.9%（<2%）。"
+ },
+ "38b5022c1cf4-diff_pair_length-1": {
+  "v": "TP",
+  "s": "yes",
+  "r": "工程 NET 规则显式把 $1N3306、$1N3345 声明为差分组 ir（group_from_engineering_netrules=true，meta_rows 两条 differential=ir），实测 8.443mm（R13.2→U5.1）对 5.279mm（R14.1→U5.4），极差 3.164mm＝组内平均 6.86mm 的 46.1%，既 ≥2mm 也 ≥10%，与设计者显式声明的差分约束明显矛盾，WARNING 合适。"
+ },
+ "55a1e5d392e0-diff_pair_length-2": {
+  "v": "FP",
+  "s": "no",
+  "r": "USB_DP 6.445mm 对 USB_DN 5.191mm（D2/D3、R3/R4、U4.A6/A7/B6/B7，USB2 数据对），极差 1.254mm≈8.4ps，只占 USB2 高速位周期 2083ps 的 0.40%，远低于 2%；两线最小间距 0.406mm≈1.6W 属紧耦合，1.26mm 的差值对 USB2 无实害，报 WARNING 偏高。"
+ },
+ "e0b21c2eb89e-diff_pair_length-11": {
+  "v": "FP",
+  "s": "no",
+  "r": "RXP 1.323mm、RXN 2.077mm 是共模电感 L35(5/6 脚) 到 U158(4/5 脚) 的引脚扇出（各只有 Top/Bottom 两小段，带过孔），极差 0.754mm≈5.1ps；在 1~2mm 的扇出上『≥10%（0.7546/1.7=44%）』的相对判据必然成立，与信号完整性无关，WARNING 偏高。"
+ },
+ "e0b21c2eb89e-diff_pair_length-7": {
+  "v": "FP",
+  "s": "no",
+  "r": "DP_LANE0+ 5.956mm 对 DP_LANE0- 6.868mm（C297.2/C298.2 交流耦合电容→U98.3/4，仅 Bottom 层、线宽 0.1295mm、两线最小间距 0.2565mm≈2W），极差 0.912mm≈6.1ps，低于 DP HBR2（UI 185ps）族内偏斜预算（≈0.15UI≈28ps）；只是相对值 14% 触发了规则的『≥10%』支臂，绝对偏差可忽略，WARNING 偏高。"
+ },
+ "00883c256342-hs_signal_reference_plane-0": {
+  "v": "GEN",
+  "s": "no",
+  "r": "规则只对含 CLK/USB/HDMI/PCIE/SDRAM/LVDS/ETH 的网名计数并输出『需确认邻层为完整 GND 平面』，不解析叠层也不给位置（location 为空）；本条的 10 个『高速网络』里 VUSB（D5.2/USB1.11/USB1.2 电源脚）、LVDS_RST（复位）、USB_N/USB_P（第二个 USB 座）都不是高速网，属按名字命中即报。该板 Top/Bottom 各有 9 块 GND 覆铜，规则对此毫无感知，WARNING 偏高。"
+ },
+ "0181b5924c3c-hs_signal_reference_plane-0": {
+  "v": "GEN",
+  "s": "no",
+  "r": "仅凭 SD-CLK 命中 CLK 就报（SD1.5↔U2.5，Top 层）；该板 Inner1、Inner2 均为 GND 覆铜（Inner1 另有 AGND），参考平面本就存在，规则既不读叠层也不给坐标，属每板必响的提示，对『1 个高速网络』报 WARNING 偏高。"
+ },
+ "1875282d60eb-hs_signal_reference_plane-0": {
+  "v": "GEN",
+  "s": "no",
+  "r": "该板只有 Top/Bottom 两层（两层均整片 GND 覆铜，共 2 块覆铜），根本不存在内层，规则却建议『邻层必须是完整 GND 平面 / 4 层板推荐 SIG-GND-PWR-SIG』——建议无法落地；EPD_SCLK/USB_D+/USB_D- 全是按网名匹配，属通用提示，WARNING 偏高。"
+ },
+ "26a909d7cea2-hs_signal_reference_plane-0": {
+  "v": "GEN",
+  "s": "no",
+  "r": "列出的 8 个『高速网络』含 FUSB_CC1/FUSB_CC2（USB-C CC 配置脚）、SWCLK（SWD 调试时钟），以及 USB_D+/USB_DM、USB_DP/USB_DM 这类被串联电阻 R27/R28 分开的同一对线，判据是裸子串匹配；规则不读叠层（该板 Top/内1/Bottom 均有 GND 覆铜，内2 为 3V3/VBUS），属通用提示，WARNING 偏高。"
+ },
+ "e01706f8c02c-hs_signal_reference_plane-0": {
+  "v": "GEN",
+  "s": "no",
+  "r": "21 个『高速网络』里 HDMI_5V、USB5V、USB_OUT_5V 是电源网（USB5V 挂 C34.2/R39.1/U16.1/USB1.11 等电源脚），HDMI_HCEC/HSDA/HSCL 是 CEC 与 DDC(I²C) 慢速控制线；真正高速的只有 HDMI_HTX* 差分对与 SPI1_CLK。规则按名字计数即报、不看回流路径（该板 4 层均有 GND 覆铜），WARNING 偏高。"
+ },
+ "2b30c85075cc-loop_area-1": {
+  "v": "FP",
+  "s": "yes",
+  "r": "I2S_MCLK 长 75.9mm（U15.1↔U2.1，Top 54.8+Bottom 21.1mm，线宽 0.2032/0.2mm），但该 4 层板 Top/Inner1/Inner2/Bottom 四层都有 GND 覆铜（分别 5/4/3/4 块），回流路径就在 0.1~0.2mm 介质之外，环路面积不由长度决定；规则判据只是『网名含 CLK 且总长>50mm』，从不计算环路面积（INFO 级别本身合适）。"
+ },
+ "57defaf21063-loop_area-3": {
+  "v": "FP",
+  "s": "yes",
+  "r": "P4_REFCLK1- 127.28mm（PCIE2.A13→U1.93，Bottom 106.0+Top 21.3mm，线宽 0.2032mm）是 PCIe 100MHz 参考时钟差分对的一侧（工程规则 DP14）；该板 Bottom/SIN/Top 三面均有 GND 覆铜（SIN 为内层平面），回流路径存在。规则把总长 127.28mm 直接等同于『环路面积可能偏大』，未看任何回流几何。"
+ },
+ "82d287f80ceb-loop_area-1": {
+  "v": "FP",
+  "s": "yes",
+  "r": "REFCLK+ 71.39mm 与同组 REFCLK- 71.39mm 精确等长（工程差分组 DP1），是设计者为差分等长刻意走出的长度；该 2 层板 Top/Bottom 两面均整片 GND 覆铜并以 539 个过孔缝合，长度由 PCIe 座 CEM1.A13→CN1.55 的位置决定。规则仅凭长度>50mm 报『可能偏大』，也没区分 2 层/多层（INFO 合适）。"
+ },
+ "82d287f80ceb-loop_area-3": {
+  "v": "FP",
+  "s": "yes",
+  "r": "REFCLK1- 126.62mm 与 REFCLK1+ 126.63mm 精确等长（DP16，CEM1.A32→CN2.53），缩短这一侧会直接破坏差分对等长，'缩小环路'的建议不可执行；该板 Top/Bottom 两层均 GND 覆铜 + 539 缝合孔，规则不区分层数、不看回流路径，只按长度>50mm 命中。"
+ },
+ "cf50567ab4e5-loop_area-4": {
+  "v": "FP",
+  "s": "yes",
+  "r": "MIPI_DSI_TX1_CLKP 74.37mm（CN16.141→FPC1.17，线宽 0.1092mm）属工程差分组 MIPI_DSI_TX1_CLK；该板 4 层（Top/Bottom/PWR02/GND03）均有 GND 覆铜，信号-回流间距是介质厚度量级，环路面积很小。规则只按『网名含 CLK + 长度 74mm』判定，未做任何环路面积计算。"
+ },
+ "00883c256342-signal_traces-8": {
+  "v": "FP",
+  "s": "no",
+  "r": "LCD-G5（J3.18↔U1.25）长 31.96mm，其中 28.58mm 走 0.102mm（narrow_share 0.894），另 3.38mm Top 段为 0.1524mm；0.102mm 已是该板常用线宽（全板 46 段 0.102、36 段 0.1524）且高于 0.1mm 工艺下限，属整网统一细线的设计意图（细间距 LCD 扇出），规则用『本板主流 0.254mm 的 60%』相对判据误报，WARNING 偏高。"
+ },
+ "00883c256342-signal_traces-9": {
+  "v": "FP",
+  "s": "no",
+  "r": "DVP_D6（J6.14↔U1.51）两条线宽 0.102mm 与 0.1041mm 只差 0.0021mm（2%，即 4.0mil 与 4.1mil），narrow_share=1.0，整网就是同一档 4mil；规则把四舍五入后不同的两个宽度当成『该网络内混用了多种线宽』（len(set(widths))≥2 无容差）而报 WARNING，纯数值噪音。"
+ },
+ "b96a1767fff0-signal_traces-19": {
+  "v": "FP",
+  "s": "no",
+  "r": "net_min 0.0889mm 只出现在 Top 层 0.892mm 的 2 段出口（narrow_touches_via_mm 0.361、距元件 0.511mm），其余 S04 层 17.1mm 为 0.1219mm，narrow_share 0.05；3.5mil(0.0889) 是该板常用线宽（全板 77 段），与规则『工艺下限 0.09mm』实差 0.0011mm（1.2%），属阻抗控制线宽的取整差，报 WARNING 偏高。"
+ },
+ "b96a1767fff0-signal_traces-21": {
+  "v": "FP",
+  "s": "no",
+  "r": "0.0889mm 段仅 0.892mm（其余 S08 层 19.32mm 为 0.0914mm，差 0.0025mm），规则以 0.09mm 硬下限判『细于工艺下限』，实差 0.0011mm（1.2%）；3.5/3.6mil 的 LPDDR5 走线在该 8 层板上完全是常规工艺，WARNING 偏高。"
+ },
+ "b96a1767fff0-signal_traces-8": {
+  "v": "FP",
+  "s": "no",
+  "r": "DP_TX_AUXP 的 0.0889mm 只占 0.483mm（3 段），其余 S08 层 47.58mm 为 0.0914mm；DP AUX 是 1Mbps 低速通道，0.483mm 上 3.5mil 与 3.6mil 的差别无实际意义，规则报『细于 0.09mm 工艺下限』实差仅 0.0011mm（1.2%），WARNING 偏高。"
+ },
+ "49d3ac69809d-trace_acute_angles-4": {
+  "v": "FP",
+  "s": "no",
+  "r": "该 45.4° 拐角顶点 (-11.938,6.993) 正是 C65(C0402，原点 -11.938/7.493) 的焊盘位置——C65.2 就在本网络 $1N81804 上，距元件仅 0.503mm；折线在该处为 …(-12.454,6.993)→(-11.938,6.993)→(-12.522,6.401)…，腿长 0.516/0.832mm，属焊盘入口几何而非布线拐角，报 WARNING 偏高。"
+ },
+ "5fd8810511b8-trace_acute_angles-1": {
+  "v": "TP",
+  "s": "yes",
+  "r": "POWER_EN（0.1524mm 宽，38.5mm 长）在 (-16.300,-18.733) 内角 45.0°，折线为 …(-15.5,-18.148)→(-16.084,-18.733)→(-16.300,-18.733)→(-15.8,-19.233)…，腿长 0.216/0.707mm，走线方向反转 135° 形成尖楔；最近过孔是 1.442mm 外的 VBUS_OUT、最近元件 C144 1.86mm，不满足焊盘/过孔入口几何，是真实锐角，WARNING 合适。"
+ },
+ "acd428873d75-trace_acute_angles-19": {
+  "v": "FP",
+  "s": "no",
+  "r": "该 45.0° 拐角位于 1.0mm 宽的 VBUS_IN 电源线（腿长 2.155/3.95mm，折线 …(5.45,-24.29)→(9.401,-24.29)→(7.877,-25.814)…），距最近过孔 2.658mm、U138 2.495mm，是直流电源铜皮的折返；酸陷阱与角部阻抗突变判据都针对细线高速信号，对 1mm 宽电源网不成立，WARNING 偏高。"
+ },
+ "b96a1767fff0-trace_acute_angles-33": {
+  "v": "FP",
+  "s": "no",
+  "r": "拐角顶点 (63.841,23.905) 距本网络 VCC3V3_HUB 的过孔仅 0.005mm（该过孔焊盘 0.356mm），距 C467 0.279mm，整条折线只有 0.374+0.602mm；45° 楔形完全落在过孔焊盘铜内，属过孔/焊盘入口几何（规则 _is_pad_entry 用 max(leg_in,leg_out)<0.5 才过滤，0.602 被漏放）。"
+ },
+ "b96a1767fff0-trace_acute_angles-42": {
+  "v": "FP",
+  "s": "no",
+  "r": "报的 3 处 Bottom 层 45.0° 拐角（腿长 0.259/0.624/0.624mm，线宽 0.1016mm）顶点距本网络 VDD2L_0V9_DDR_S3 的过孔 0.0/0.409/0.0mm、距 C529/C562/C567 0.363~0.7mm；其中 (21.249,38.643) 处是一段 0.405/0.624mm 的菱形铜（4 段闭合）——都是 DDR 电源的过孔-电容扇出，不是布线拐角，报 WARNING 偏高。"
+ }
+}

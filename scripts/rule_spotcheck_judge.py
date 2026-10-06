@@ -3,23 +3,29 @@
 把 verdicts_*.json（{id: {v, s, r}}）合并进 sample.jsonl，生成 judged.jsonl，
 并报告未被判读 / 判读 id 不存在的条目（防止 id 拼写错导致静默丢样本）。
 
-用法: python scripts/rule_spotcheck_judge.py
+用法: python scripts/rule_spotcheck_judge.py [--dir experiment_results/rule_spotcheck]
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
-ROOT = Path("experiment_results/rule_spotcheck")
+DEFAULT_ROOT = Path("experiment_results/rule_spotcheck")
 VALID = {"TP", "FP", "GEN", "UNC"}
 
 
 def main() -> int:
-    sample = [json.loads(l) for l in (ROOT / "sample.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dir", default=str(DEFAULT_ROOT),
+                    help="抽查轮次目录（含 sample.jsonl 与 verdicts_*.json）")
+    args = ap.parse_args()
+    root = Path(args.dir)
+    sample = [json.loads(l) for l in (root / "sample.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
     verdicts: dict = {}
     overridden: list = []
-    for f in sorted(ROOT.glob("verdicts_*.json")):
+    for f in sorted(root.glob("verdicts_*.json")):
         data = json.loads(f.read_text(encoding="utf-8"))
         for k, v in data.items():
             if k in verdicts:
@@ -44,7 +50,7 @@ def main() -> int:
             rec["reason"] = v.get("r", "")
         out.append(rec)
 
-    with (ROOT / "judged.jsonl").open("w", encoding="utf-8") as fh:
+    with (root / "judged.jsonl").open("w", encoding="utf-8") as fh:
         for r in out:
             fh.write(json.dumps(r, ensure_ascii=False) + "\n")
 

@@ -1,0 +1,147 @@
+{
+ "2b30c85075cc-bga_fanout-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "提示类：规则只按封装名含 BGA 命中首个 BOM 行（U2 / BGA25-6X8-1P0 / ESP32S3-8线FLASH）就报『需要扇出设计』，不判实际扇出；该 BGA 3mm 内 5 个 0.3/0.45mm 过孔，1.0mm pitch 下与建议值一致，指不出具体缺陷。"
+ },
+ "e3f96b3e50dc-bga_fanout-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "提示类：U29=MT41J128M16JT-125:K，封装 fbga-96_l14.0-w9.0-p0.80，规则只命中封装名含 BGA 的首行即报，未判扇出；U29 周围 3mm 内 17 个 0.3/0.45mm 过孔，0.8mm pitch BGA 的常规做法，无缺陷可指。"
+ },
+ "5516bd2c0c00-component_height_zoning-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "无信息量：Q3(TO-220)+U1,U18(DIP-16 A4988) 共 2 个『高件』与 32 个矮件即触发，规则不看坐标、不做遮挡/装配判定，任何含 2 个插件件的板都会命中。"
+ },
+ "c8bc1ea6da94-component_height_zoning-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上无位置判据；且『高元件』之一 L9 是贴片电感 2.2uH 4*4*1.8mm（高 1.8mm），按关键词『电感』被计成高件（>10mm），判据本身不成立，输出无遮挡分析。"
+ },
+ "0bbb3bf80e31-copper_pour_connectivity-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "缺数据提示而非板级判定，且『文件未包含铜皮数据』与文件内容相反：该 .epru 含 POLY 439 个、FILL 621 个覆铜几何，但解析器只认 'POUR' 元素类型（此文件 0 个；有 POUR 的板如 ESPMonitor 能解析出 5 块铜皮）→ 解析侧失明被当成设计输出。"
+ },
+ "e89b65d2080e-copper_pour_connectivity-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "同上：该 .epru 有 POLY 1621 个、FILL 1064 个，'POUR' 元素 0 个，copper_pours 因此为空；规则在『有铜皮』时恒返回空，只有缺数据才『有输出』，属未检出而非本板问题。"
+ },
+ "a5b2e4f5da26-dcdc_feedback_network-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "分压网络就在板上：网 DCDC_FB=U1.5(FP6381AS5CTR 的 FB)/R1.1/R2.2/C3.1，R1=453kΩ 接 3V3、R2=100kΩ 接 GND（0.6V 基准 → 3.3V 输出），不存在『缺少 FB 分压电阻』；规则只按 pn/desc 是否含『电阻/resistor』认电阻（R1 描述『453kΩ ±1% 100mW』、R3…R15 描述为空 device=Res_0603），唯一认到的『电阻』是 SW1 描述里的『绝缘电阻:100MΩ』→ ERROR 级误报。"
+ },
+ "fb12f7b89b5b-dcdc_feedback_network-2": {
+  "v": "FP",
+  "s": "no",
+  "r": "U95(TPS259261DRCR) 是 eFuse/热插拔保护器，不是开关稳压器：3/4/5 脚为 USBVIN 输入、6/7/8 脚为 VBUS 输出，1/2/10 脚外挂 C114(dV/dt)、R111(过压)、R112(限流)，根本没有 FB 分压网络这一说；它是被 pn 前缀『TPS』裸匹配命中的。板上电阻 ≥40 只（R142…R161 一档 33 只、R128/R129、R111/R112…），规则只认到 1 行带『厚膜电阻』字样的 R116/R117 → 判据与落点都错。"
+ },
+ "d9bf616df549-decoupling_caps-1": {
+  "v": "FP",
+  "s": "no",
+  "r": "该板 100nF 去耦实际存在：C1/C2/C16/C17/C21/C22 的器件名是『104_C0805』（104=100nF，合计 7 只），规则只读 value 字段（这些行全空）→ total_100nf=0，于是给 8 个『IC』各发一条 ERROR。另外被点名的 U10,U3 封装是『电池座』(device=电池焊点)，根本不是 IC。"
+ },
+ "d9bf616df549-decoupling_caps-8": {
+  "v": "FP",
+  "s": "no",
+  "r": "体电容也存在：C9 器件名『10u』(=10µF)、C13『47uf』(=47µF)，只是 value 字段为空没被 _parse_capacitance 解析，规则把『字段缺值』当成『电容缺失』。"
+ },
+ "54a1d94d430a-esd_protection-0": {
+  "v": "UNC",
+  "s": "yes",
+  "r": "BOM 里确无 TVS/ESD 器件（24 行全查），16 个连接器 CN1–CN16/H2 均为机内模块互连（FPC→A4988 插座 U2/U3 与步进电机、XH CN6/CN7→激光 PWM 与 5V、U1=Arduino Nano 模块座），唯一外露的是 DC1 12V 电源座；这些机内接线是否必须加 TVS 取决于整机外壳与 EMC 要求（规则之外的信息），规则只按位号前缀 CN/H 命中、不区分是否外露，故无法定性。"
+ },
+ "bdc57176e9b8-esd_protection-0": {
+  "v": "TP",
+  "s": "yes",
+  "r": "板上确有外露接口且确无保护：USBC1(TYPE-C-31-M-12) 的 USB_DP=U3.17+USBC1.A6/B6、USB_DM=U3.16+USBC1.A7/B7 直连 CH347T，35 行 BOM 与 113 个位号里没有任何 TVS/ESD 器件（同系列 FPGA-G1 板有 RCLAMP0524P、0402ESDA-05N 作对照），该加未加；warning 合适。"
+ },
+ "00f0c73de5c4-floating_pins-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "控制脚并未悬空且规则根本没查：它只按 BOM 文本命中 'ESP32' 就报，不读 netlist。实际 RESET 网=C7.1/J4.4/J5.5/J6.6/Q1.6/R1.2/SW1.2/U1.3/U2.15（U1.3 有 R1 10k 上拉+ C7），IO0_BOOT 网=Q1.3/R2.2/SW2.1/U1.27（R2 上拉 + BOOT 按键），均已按建议处理。"
+ },
+ "a5b2e4f5da26-floating_pins-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "EN 已按建议接 RC：网 EN=C9.1/Q1.6/R8.1/U4.3，即 U4(ESP32-S3-WROOM-1) 的 EN 脚挂 R8(10k)+C9(100nF)；规则只按 BOM 里的 'ESP32' 字样命中首个 MCU 行，未做任何悬空判定 → 落在不是问题的地方。"
+ },
+ "0d385bbc9396-led_current_limit-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "限流电阻就在 LED 网上：$1N53996=LED1.2/Q1.1/R4.2，$1N72107=LED1.2/LED2.2/R14.1（另有 R13/R23=91Ω）；规则要求 BOM 描述含『电阻/resistor』才认电阻，而该板电阻行描述只写『0805』或空 → 认到 0 个电阻即报，属关键词失明（与第一轮同板同判）。"
+ },
+ "0d385bbc9396-led_current_limit-1": {
+  "v": "FP",
+  "s": "no",
+  "r": "与 -0 是同一条误报的重复：BOM 有两条都含 LED1 的行（ref=LED1 与 ref=LED1,LED2,LED5），规则逐行各报一次；实际 LED1.2 所在网挂着 R4/R14 限流电阻，规则认到的电阻数=0。"
+ },
+ "9a530303acc8-opamp_feedback_network-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "判据结构性错误：nearby_rs 数的是『位号前缀与运放相同』的电阻，U11 前缀是 U、电阻前缀是 R，恒为 0。且 U11 本身是电压跟随器——DAC_OUT1 网=R30.2/U11.2(−IN)/U11.6(OUT)，220Ω 为串联输出电阻，本就不需要反馈电阻网络。"
+ },
+ "f73c5df43c0a-opamp_feedback_network-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "反馈网络实际存在：U5(TL072IP) 的 R15(10kΩ) 一端在 U5.6(IN−B)、另一端在 ADC 网(U5.7=OUT B)，R13(20kΩ) 接 U5.6→$1N24226(U5.1/U5.2)；判据却是『同前缀(U)电阻』，恒为 0 个 → 误报。"
+ },
+ "5fd8810511b8-power_filtering-0": {
+  "v": "TP",
+  "s": "yes",
+  "r": "结论成立：FLPowerPro 全部 17 档电容最大只有 22µF（22uF 若干、10uF、1uF、100nF），全板无任何 ≥100µF 电容、也无直插/电解封装（capnum 全表扫描）；作为输入 12V/输出 28V 的数控电源，电源入口缺大容量储能确属应改项，warning 合适。"
+ },
+ "69de1f0b5019-power_filtering-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "板上已有大电解：C3 与 C6 均为 330uF/63V（pn 63PX330MEFC10X20，直插 D10×L20mm）；规则的大电解白名单只列 ['100u','220u','470u','1000u','100ΜF'] 字面串，'330uF' 不在其中 → 被报成『缺少大电解(≥100μF)』。"
+ },
+ "002e8247cb7d-reference_continuity-1": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "位号跳号属命名习惯、不是设计缺陷（沿用第一轮量则）。该条数据本身正确：全量 R 位号=[4,14,37,40,41,70,…]，R5–R13 确实不存在，但删件后不重排是常规做法，INFO 提示无落点。"
+ },
+ "c564ec8527d7-reference_continuity-1": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同属命名习惯（第一轮同规则判 GEN）；但本条计算还有缺陷：规则只取每行第一个位号，R4/R5 因此被丢掉，才报出实际不存在的『R3→R6(跳2号)』——全量 R 位号含 3,4,5,6,7,12,13,14，真正的缺口是 R8–R11。"
+ },
+ "acd428873d75-silkscreen_pad_clearance-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "提示类：解析器没有丝印几何，规则只判 component_positions=201 > 5 就报『丝印与焊盘间距需确认』，没有任何丝印-焊盘间距计算，无位置、无法证伪。"
+ },
+ "f63ddcd060ef-silkscreen_pad_clearance-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上：202 个元件位置即触发，规则不读取丝印数据、无具体落点，属每板必响的通用提示（第一轮同规则判 GEN）。"
+ },
+ "51d7b3e13ef5-testpoint_coverage-0": {
+  "v": "UNC",
+  "s": "yes",
+  "r": "规则没有任何测试点检测能力（只收集名字含 VCC/VDD/3V3/5V/RST/BOOT/SWD 的网络并原样列出）；天机星 BOM 里确实不存在任何 TP 位号/Test-Point 器件，被点名的 3V3/5V/VDD/VDDA/VDDIO/USB-5V 是否算『缺测试点』取决于调试与量产测试方案（规则之外），故既不能判 FP 也无 TP 依据。"
+ },
+ "acd428873d75-testpoint_coverage-0": {
+  "v": "UNC",
+  "s": "yes",
+  "r": "同上：该板唯一测试点 TP3 在网 PWM_IPWM(TP3.1/U141.38/U97.5)，并不在被点名的 VCC_3.3V/VDD/VCC/VCC_12V/NRST/BOOT0/BOOT1 上；规则不看测试点，缺不缺需按测试方案判。"
+ },
+ "40264558a191-via_density-5": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "INFO 阈值提示：SPI_CLK 网络共 8 个过孔（Top 段 83.6mm + Bottom 段 100.7mm，扇出到 H8.5/U30.6/U31.3/U32.13 四个端点），规则按整个网络计数、不判这些孔是否在同一路径上串联、也不看 SPI 速率，≥5 即报，单条不构成缺陷。"
+ },
+ "40264558a191-via_density-9": {
+  "v": "FP",
+  "s": "no",
+  "r": "判据用错（裸子串命中）：网名 ACTIVE-BUZZER_OR_PASSIVE-BUZZER_SWITCH 中的 'SW' 是 SWITCH 的子串，被打成『高速网络/开关节点』；该网实为拨码开关 SW7 选择有源/无源蜂鸣器的通路（pins=R166.1/SW7.4/U44.7/U67.6），与高速无关。"
+ },
+ "40264558a191-opto_isolation_creepage-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "提示类：规则只按料号含 'TLP' 命中 U51(TLP2362，隔离 3750Vrms，初次级分别在 PUL-/IPS2_* 域) 就报，未测任何爬电距离、location 为空，属未测即提示、无法证伪（第一轮同规则判 GEN）。"
+ }
+}

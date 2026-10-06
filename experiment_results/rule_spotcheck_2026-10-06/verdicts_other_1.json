@@ -1,0 +1,152 @@
+{
+ "5516bd2c0c00-antenna_keepout-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "Q3 是 IRFZ44N(N沟道 60V/60A, TO-220-3), 因 wireless_kw 里的裸子串 'rf' 命中 'IRFZ44N' 被判成无线模块; 该板真正的无线模组是 U38(ESP32-WROOM-32E, 板载天线), Q3 处没有天线, 报错对象。"
+ },
+ "97da11617c92-antenna_keepout-0": {
+  "v": "GEN",
+  "s": "no",
+  "r": "U5=ESP32-C3-WROOM-02-N4(2.4GHz) 确实是带板载天线的模组, 但规则对任何命中关键词的模组都只吐同一句『天线周围需净空区』, 不读位置/走线/铜皮, ≥5mm 净空是否满足无法证伪(全板仅此 1 条)。"
+ },
+ "acd428873d75-bom_value_range-0": {
+  "v": "FP",
+  "s": "yes",
+  "r": "R266=16.9kΩ±1%(FRC0603F1692TS), 归一化尾数 169 正是 E96 标准值(对 E24 最近档 16/18 的偏差 5.62%/6.1%, 只是 E24±5% 口径的边界); 规则建议自己写的 E48/E96 就含 16.9k, 常规 1% 电阻被当『非标值』。"
+ },
+ "e0dceb8f7a42-bom_value_range-0": {
+  "v": "FP",
+  "s": "yes",
+  "r": "R22=169Ω±0.1% 薄膜电阻(RT0805BRD07169RL), 169 属 E96(也是 E192); 0.1% 精度件本就只在 E96/E192 供货, 用 E24±5% 判『非标』是口径用错, 该处无需改动。"
+ },
+ "0181b5924c3c-component_spacing-0": {
+  "v": "FP",
+  "s": "yes",
+  "r": "报出的 17 对含 C10(T 面)/D3(B 面)0.108mm、R22(B)/R23(T)0.941mm、C17(T)/R2(B)0.725mm 等异面对, 本板 34 对<1.0mm 里至少 10 对分居正反面, 物理上不可能干涉; 同面命中全是 0402 按 1.000mm 栅格排的电容链(C21→C22→…C60, 实距约 0.5mm), 且只比 positions 里索引相邻 4 项, 计数口径不成立。"
+ },
+ "1a507f98388a-component_spacing-0": {
+  "v": "FP",
+  "s": "yes",
+  "r": "5 对全是 0402: R63/R150(0.927mm)、C115/C134(0.996)、R139/R141(0.964)、PC26/PC7(1.000)、R24/R49(0.991), 按各自 rotation 折算本体间隙约 0.43~0.5mm; 更近的 U14/PC26(0.508mm)、M.2-1/C33(0.698mm) 反而被漏掉(只比较 positions 相邻 4 项), 5 对不代表真实最近邻。"
+ },
+ "bdc57176e9b8-crystal_frequency-0": {
+  "v": "FP",
+  "s": "yes",
+  "r": "X1 的描述就写着『8MHz ±10ppm 12pF』, 板上 C5/C6 均为 12pF(0402CG120J500NT, 距 X1 2.45/2.56mm) 正合该 CL; 规则硬套 8M→18~22pF 查表, 给出的建议与该器件自身规格矛盾(照做会过载晶振)。"
+ },
+ "cf50567ab4e5-crystal_frequency-1": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "X2=X322525MOB4SI(25MHz ±10ppm 12pF), 旁边 CX1/CX2 也是 12pF, 规则输出的『12~18pF』只是频率查表结果, 不读板; 同函数在本板对 X1/X4/X7 一律输出(X1 那 32.768kHz 还被写成『32.768Hz』), 属通用提示。"
+ },
+ "44a4e9d1b40d-debug_port_accessibility-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "命中源只是 U19=CH340C(描述含『串口』),『缺少调试排针』的依据仅是 BOM 文本里没有『排针/HEADER』字样; 板上 H1~H4 正是 4 个 2x5P 2.54mm 方针排针(PZ254R-12-10P / PM254-2-05-W-8.5, 走 IN/VCC/GND/SDA/SCL/HGATE/LGATE), 排针明明存在, WARNING 不成立。"
+ },
+ "8983879305d5-debug_port_accessibility-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "命中源 U13=CH340C, 其 UART 已接 MCU(U13.2/U13.3→MCURX/MCUTX), 而 MCU 本身就是插件式开发板模组 U1(LCKFB-DQX-RA6E2, 自带 USB 调试), 板上另有 2.54mm 排针 H5(1x6P) 与 Type-C USB3;『缺少调试排针』纯由 BOM 关键词缺失推出, 未看 PCB。"
+ },
+ "0d385bbc9396-decoupling_proximity-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "C26 是 220µF/16V 直插电解(KM227M016E11RR0VH2FP0, CAP-TH_BD6.3), 其网络 $1N11870 的成员是 C27.2/R13.2/R23.2/U15.7, 与 U18(SX1308 升压, 电源脚 U18.5=VBAT) 不同网; 把大电解当『去耦电容』再判它离 U18 24.1mm 太远, 前提不成立(U18 边上另有 L2 4.7µH 6.84mm、C13 680nF 5.56mm)。"
+ },
+ "54a1d94d430a-decoupling_proximity-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "C7=120pF/3kV(FV43N121J302ECG, C1812) 在网 $1N40367→5V, 是高压/激光侧吸收电容而非去耦电容; C4(100nF@5V) 的最近『IC』其实是 22.46mm 的 ARDUINO_NANO 模组 U1, 说明中心距口径对模组尺寸不敏感, 22.2mm/26.6mm 两个落点都不足为凭。"
+ },
+ "2b30c85075cc-ferrite_bead_isolation-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "『模拟』侧命中的是 TP4056-42-ESOP8 和 NS4150B MSOP-8 里的裸子串 'op'(充电管理/音频功放), 真正带『模拟』字样的只有 U5/U9/U135~U138 RS2227XN(USB 模拟开关); 数模混合前提由子串命中拼出, 据此断言缺磁珠不成立。"
+ },
+ "e0dceb8f7a42-ferrite_bead_isolation-0": {
+  "v": "GEN",
+  "s": "no",
+  "r": "板上确有 STM32F103C8T6(U3/U5) 与 LM358DT(U10), 但 U10 就挂在 +5V(U10.8→+5V) 上; 规则不做任何电源域/网络/铜皮分析,『缺少磁珠』仅由 BOM 文本无 磁珠/bead/BLM/MPZ 字样推出(bead_kw 里的 'FB' 也只搜料号与描述、从不搜位号), 无法证伪。"
+ },
+ "38b5022c1cf4-ground_plane_continuity-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "函数只要 pcb 数据存在就无条件返回同一条提示(本板解析出 4 块铺铜、Top/POWER/Bottom 三层, 规则不读 pours/网络), 属 ADVISE_RULES 通用提示, INFO 级合适。"
+ },
+ "e89b65d2080e-ground_plane_continuity-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上: 该板解析出的 copper_pours=0、只有 Top/Bottom 两层, 规则照样输出同一条『高速信号需要连续地平面』, 对这块板没有任何具体判定。"
+ },
+ "0d385bbc9396-mosfet_gate_resistor-0": {
+  "v": "FP",
+  "s": "yes",
+  "r": "判据实为『BOM 里找不到任何含 电阻/resistor 的行』: 本板 7 行电阻全是 desc='0805'、value 为空(如 R10,R24,R30,R27,R28,R12,R14,R16,R15,R17), 于是 Q3(AO4435, P 沟道) 必报; 而 Q3 栅极网 $1N16544 只含 Q3.4/U15.10, 同一文件又把 Q3.4 放进 SET 网, 数据自相矛盾, 无法据此认定缺栅极电阻。"
+ },
+ "0d385bbc9396-mosfet_gate_resistor-1": {
+  "v": "FP",
+  "s": "yes",
+  "r": "Q6(AO3407A) 的栅极网 $1N34316 里就有 R21.2(R21.1 接 +5V), 说明栅极上确实串/并了电阻; 规则只因 BOM 无『电阻』字样就报, 判据用错(该板电阻行 desc 全是 '0805'、无 value)。"
+ },
+ "69de1f0b5019-package_consistency-5": {
+  "v": "FP",
+  "s": "no",
+  "r": "B5819W SL 的两个『封装』SOD-123 与 SOD-123_L2.7-W1.6-LS3.7-RD-1 是同一种 SOD-123 的两种命名; 本板 14 条全是此类别名(0402/C0402、SOT-23-3/SOT-23-3_L2.9-…、直插,D10xL20mm/CAP-TH_BD10.0-…), 且 D2/D3/D6/D7/D9 的 footprint_name 实测完全一致 —— 缺封装名归一化导致的误报。"
+ },
+ "b96a1767fff0-package_consistency-2": {
+  "v": "FP",
+  "s": "no",
+  "r": "C0603 / C0603_5 / C0603_6 是同一 0603 尺寸的库内变体(C186/C355/C510/C531/C574 的 footprint_name=C0603_5, C511=C0603, C97/C98/C73/C74=C0603_6); 同板 26 条同类里还有 'CL05B104KO5NNNC→C0402_2/R0402_6' 这种同尺寸异名, 规则比字符串不比几何。"
+ },
+ "c8bc1ea6da94-power_loop_area-0": {
+  "v": "GEN",
+  "s": "no",
+  "r": "只要任一料号含 DC-DC/BUCK/BOOST/开关/MP/TPS/XL/SY 子串就无条件输出同一条(loc 为空, 不测任何回路面积); 本板命中里还混着 LED 'XL-1608UGC-04' 与晶振 'XL7EL89COI-111YLC-32M' 的裸 'XL'(真 buck 是 U2/U6 SY8113BADC、U20 SY7088DGC), 输出与这块板的具体布局无关。"
+ },
+ "e3f96b3e50dc-power_loop_area-0": {
+  "v": "GEN",
+  "s": "no",
+  "r": "同上: 'MP' 命中的是 RCLAMP0524P(ESD 保护) 与 MPZ1608S101ATAH0(100Ω@100MHz 磁珠), 真 buck 为 U2/U31/U32 SY8113BADC、U23 TPS51200; 规则从不测量 Cin-SW-L-Cout 回路面积, 属通用提示。"
+ },
+ "2c024ec1eb39-reset_circuit-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "整板 15 个元件里一个电容都没有(BOM 只有 9 行, 无 C 行), 而 U2 是插件式模组 LCKFB-ESP32S3R8N8(立创 ESP32S3R8N8 开发板, DIP-40, 引脚只出 +3.3V/GND 与 I/O), 其 EN 的 RC 在模组上; 对载板要求外挂 0.1µF 对地电容不成立。"
+ },
+ "38b5022c1cf4-reset_circuit-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "U1=ESP32-C3FH4 的 EN 网(U1.7) 已有 C9=1µF(CL10A105KB8NNNC) 到 GND 和 R2=120Ω 上拉到 3.3V, 复位 RC 存在(ESP32-C3 CHIP_EN 的典型 RC 正是 10k+1µF); 规则只在全 BOM 找字面值 10k/4.7k 与 0.1µF/100nF/104, 找不到就判『缺少』, 是值匹配口径错误。"
+ },
+ "5516bd2c0c00-silkscreen_readability-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "判据是 comp_count>10 就输出(本板 62 个元件), 从不解析丝印层/丝印与焊盘间距; 属 ADVISE_RULES 通用提示, INFO 级合适。"
+ },
+ "833590d70a7f-silkscreen_readability-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上: 65 个元件触发同一句『建议检查丝印可读性』, 对丝印方向、字符高度、是否压焊盘没有任何核实。"
+ },
+ "0181b5924c3c-thermal_relief-0": {
+  "v": "GEN",
+  "s": "no",
+  "r": "U4=BQ24075RGTR(锂电充电+电源路径管理, QFN-16_L3.0-W3.0-EP1.7) 因描述含『电源』且封装串含 'EP' 命中; 规则只看描述/封装名, 不检查散热铜皮或过孔阵列, 输出的是『需确认散热方案』这种无法证伪的提示。"
+ },
+ "cf50567ab4e5-thermal_relief-0": {
+  "v": "GEN",
+  "s": "no",
+  "r": "U43=NS4110B(18W 单声道 AB/D 类功放, ESOP-8-…-EP-1) 因描述含『功率』命中; 规则不读铜皮/过孔/热阻, 只输出『需确认散热方案』, 与该板实际散热设计无关。"
+ },
+ "1617cf34c8c4-via_thermal_relief-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "判据是 via_count>20 就报(本板 55 个过孔), 不判断哪些过孔落在大铜皮上、是否已经是十字花连接; INFO 级通用提示合适。"
+ },
+ "26a909d7cea2-via_thermal_relief-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上: 305 个过孔触发同一句提示, 未核实过孔与铜皮(12 块铺铜)的连接方式。"
+ }
+}

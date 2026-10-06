@@ -1,0 +1,2196 @@
+{
+ "label_a": "修复前",
+ "label_b": "修复后",
+ "总体": {
+  "a": {
+   "judged": 150,
+   "TP": 7,
+   "FP": 84,
+   "GEN": 50,
+   "UNC": 9,
+   "precision": 0.0769,
+   "ci95": [
+    0.0378,
+    0.1504
+   ],
+   "precision_unc_as_fp": 0.07,
+   "ci95_unc_as_fp": [
+    0.0343,
+    0.1375
+   ],
+   "share_GEN": 0.3333,
+   "severity_too_high": 86
+  },
+  "b": {
+   "judged": 144,
+   "TP": 6,
+   "FP": 86,
+   "GEN": 43,
+   "UNC": 9,
+   "precision": 0.0652,
+   "ci95": [
+    0.0302,
+    0.1351
+   ],
+   "precision_unc_as_fp": 0.0594,
+   "ci95_unc_as_fp": [
+    0.0275,
+    0.1236
+   ],
+   "share_GEN": 0.2986,
+   "severity_too_high": 83
+  }
+ },
+ "走线类": {
+  "a": {
+   "judged": 56,
+   "TP": 4,
+   "FP": 32,
+   "GEN": 17,
+   "UNC": 3,
+   "precision": 0.1111,
+   "ci95": [
+    0.0441,
+    0.2532
+   ],
+   "precision_unc_as_fp": 0.1026,
+   "ci95_unc_as_fp": [
+    0.0406,
+    0.2358
+   ],
+   "share_GEN": 0.3036,
+   "severity_too_high": 34
+  },
+  "b": {
+   "judged": 56,
+   "TP": 4,
+   "FP": 33,
+   "GEN": 14,
+   "UNC": 5,
+   "precision": 0.1081,
+   "ci95": [
+    0.0429,
+    0.2471
+   ],
+   "precision_unc_as_fp": 0.0952,
+   "ci95_unc_as_fp": [
+    0.0377,
+    0.2207
+   ],
+   "share_GEN": 0.25,
+   "severity_too_high": 31
+  }
+ },
+ "非走线类": {
+  "a": {
+   "judged": 94,
+   "TP": 3,
+   "FP": 52,
+   "GEN": 33,
+   "UNC": 6,
+   "precision": 0.0545,
+   "ci95": [
+    0.0187,
+    0.1485
+   ],
+   "precision_unc_as_fp": 0.0492,
+   "ci95_unc_as_fp": [
+    0.0169,
+    0.1349
+   ],
+   "share_GEN": 0.3511,
+   "severity_too_high": 52
+  },
+  "b": {
+   "judged": 88,
+   "TP": 2,
+   "FP": 53,
+   "GEN": 29,
+   "UNC": 4,
+   "precision": 0.0364,
+   "ci95": [
+    0.01,
+    0.1232
+   ],
+   "precision_unc_as_fp": 0.0339,
+   "ci95_unc_as_fp": [
+    0.0093,
+    0.1154
+   ],
+   "share_GEN": 0.3295,
+   "severity_too_high": 52
+  }
+ },
+ "by_rule": {
+  "3W 串扰间距检查": {
+   "a": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 3,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     -0.0,
+     0.4345
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 3
+   },
+   "b": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 5,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     -0.0,
+     0.4345
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     -0.0,
+     0.4345
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 5
+   }
+  },
+  "BGA 扇出检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   }
+  },
+  "DC-DC 反馈网络检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "EMI 滤波检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "ESD 保护检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 1,
+    "GEN": 0,
+    "UNC": 1,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.7935
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 1
+   },
+   "b": {
+    "judged": 2,
+    "TP": 1,
+    "FP": 0,
+    "GEN": 0,
+    "UNC": 1,
+    "precision": 1.0,
+    "ci95": [
+     0.2065,
+     1.0
+    ],
+    "precision_unc_as_fp": 0.5,
+    "ci95_unc_as_fp": [
+     0.0945,
+     0.9055
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 0
+   }
+  },
+  "I2C 上拉电阻检查": {
+   "a": {
+    "judged": 1,
+    "TP": 0,
+    "FP": 1,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.7935
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.7935
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 1
+   },
+   "b": {
+    "judged": 1,
+    "TP": 0,
+    "FP": 1,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.7935
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.7935
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 1
+   }
+  },
+  "LED 限流电阻检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "MOSFET 栅极电阻检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 1,
+    "GEN": 1,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.7935
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.7935
+    ],
+    "share_GEN": 0.5,
+    "severity_too_high": 1
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 0
+   }
+  },
+  "PDN 目标阻抗分析": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   }
+  },
+  "上下拉电阻检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "丝印可读性检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   }
+  },
+  "丝印焊盘间距检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   }
+  },
+  "位号连续性检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   }
+  },
+  "信号线宽度检查": {
+   "a": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 5,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     -0.0,
+     0.4345
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     -0.0,
+     0.4345
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 5
+   },
+   "b": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 5,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     -0.0,
+     0.4345
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     -0.0,
+     0.4345
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 5
+   }
+  },
+  "元件间距检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 0
+   }
+  },
+  "元件高度分区检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   }
+  },
+  "光学定位点检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   }
+  },
+  "光耦隔离间距检查": {
+   "a": {
+    "judged": 1,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 1,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 1,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 1,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   }
+  },
+  "功率回路面积检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 2
+   }
+  },
+  "去耦电容检查": {
+   "a": {
+    "judged": 2,
+    "TP": 1,
+    "FP": 1,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.5,
+    "ci95": [
+     0.0945,
+     0.9055
+    ],
+    "precision_unc_as_fp": 0.5,
+    "ci95_unc_as_fp": [
+     0.0945,
+     0.9055
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 1
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "去耦电容距离检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "参数范围检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 0
+   }
+  },
+  "地平面连续性检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   }
+  },
+  "复位电路检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "多电源引脚去耦检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "天线净空区检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 1,
+    "GEN": 1,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.7935
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.7935
+    ],
+    "share_GEN": 0.5,
+    "severity_too_high": 2
+   }
+  },
+  "天线效应检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "封装一致性检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 1,
+    "GEN": 0,
+    "UNC": 1,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.7935
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 1
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "差分对等长检查": {
+   "a": {
+    "judged": 5,
+    "TP": 2,
+    "FP": 3,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.4,
+    "ci95": [
+     0.1176,
+     0.7693
+    ],
+    "precision_unc_as_fp": 0.4,
+    "ci95_unc_as_fp": [
+     0.1176,
+     0.7693
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 4
+   },
+   "b": {
+    "judged": 5,
+    "TP": 1,
+    "FP": 4,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.2,
+    "ci95": [
+     0.0362,
+     0.6245
+    ],
+    "precision_unc_as_fp": 0.2,
+    "ci95_unc_as_fp": [
+     0.0362,
+     0.6245
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 3
+   }
+  },
+  "差分对间距检查": {
+   "a": {
+    "judged": 5,
+    "TP": 2,
+    "FP": 3,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.4,
+    "ci95": [
+     0.1176,
+     0.7693
+    ],
+    "precision_unc_as_fp": 0.4,
+    "ci95_unc_as_fp": [
+     0.1176,
+     0.7693
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 3
+   },
+   "b": {
+    "judged": 5,
+    "TP": 1,
+    "FP": 4,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.2,
+    "ci95": [
+     0.0362,
+     0.6245
+    ],
+    "precision_unc_as_fp": 0.2,
+    "ci95_unc_as_fp": [
+     0.0362,
+     0.6245
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 0
+   }
+  },
+  "开关电源布局检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "悬空引脚检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "时钟信号包地检查": {
+   "a": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 5,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 5,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   }
+  },
+  "晶振负载电容检查": {
+   "a": {
+    "judged": 2,
+    "TP": 1,
+    "FP": 1,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.5,
+    "ci95": [
+     0.0945,
+     0.9055
+    ],
+    "precision_unc_as_fp": 0.5,
+    "ci95_unc_as_fp": [
+     0.0945,
+     0.9055
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 1
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "晶振频率匹配": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 1,
+    "GEN": 1,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.7935
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.7935
+    ],
+    "share_GEN": 0.5,
+    "severity_too_high": 0
+   }
+  },
+  "未连接引脚检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 1,
+    "GEN": 0,
+    "UNC": 1,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.7935
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 1
+   }
+  },
+  "板边间距检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "测试点覆盖检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 0,
+    "UNC": 2,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 0,
+    "UNC": 2,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 0
+   }
+  },
+  "热焊盘检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 2
+   }
+  },
+  "特征阻抗匹配检查": {
+   "a": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 5,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     -0.0,
+     0.4345
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     -0.0,
+     0.4345
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 5
+   },
+   "b": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 3,
+    "GEN": 0,
+    "UNC": 2,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.5615
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     -0.0,
+     0.4345
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 5
+   }
+  },
+  "环路面积检查": {
+   "a": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 5,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 5,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     -0.0,
+     0.4345
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     -0.0,
+     0.4345
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 0
+   }
+  },
+  "电感饱和电流检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   }
+  },
+  "电池电压分压器检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "电源极性保护检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "电源滤波检查": {
+   "a": {
+    "judged": 2,
+    "TP": 1,
+    "FP": 0,
+    "GEN": 0,
+    "UNC": 1,
+    "precision": 1.0,
+    "ci95": [
+     0.2065,
+     1.0
+    ],
+    "precision_unc_as_fp": 0.5,
+    "ci95_unc_as_fp": [
+     0.0945,
+     0.9055
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 1,
+    "FP": 1,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.5,
+    "ci95": [
+     0.0945,
+     0.9055
+    ],
+    "precision_unc_as_fp": 0.5,
+    "ci95_unc_as_fp": [
+     0.0945,
+     0.9055
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 1
+   }
+  },
+  "电源线载流检查": {
+   "a": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 5,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     -0.0,
+     0.4345
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     -0.0,
+     0.4345
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 5
+   },
+   "b": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 3,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     -0.0,
+     0.4345
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 4
+   }
+  },
+  "短桩线检查": {
+   "a": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 5,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     -0.0,
+     0.4345
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     -0.0,
+     0.4345
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 5
+   },
+   "b": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 1,
+    "GEN": 4,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.7935
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.7935
+    ],
+    "share_GEN": 0.8,
+    "severity_too_high": 0
+   }
+  },
+  "磁珠隔离检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 1,
+    "GEN": 0,
+    "UNC": 1,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.7935
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 1
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 1,
+    "GEN": 1,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.7935
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.7935
+    ],
+    "share_GEN": 0.5,
+    "severity_too_high": 2
+   }
+  },
+  "调试接口检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "走线板边间距检查": {
+   "a": {
+    "judged": 1,
+    "TP": 0,
+    "FP": 1,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.7935
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.7935
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 1
+   },
+   "b": {
+    "judged": 1,
+    "TP": 1,
+    "FP": 0,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 1.0,
+    "ci95": [
+     0.2065,
+     1.0
+    ],
+    "precision_unc_as_fp": 1.0,
+    "ci95_unc_as_fp": [
+     0.2065,
+     1.0
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 0
+   }
+  },
+  "走线锐角检查": {
+   "a": {
+    "judged": 3,
+    "TP": 0,
+    "FP": 3,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.5615
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.5615
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 3
+   },
+   "b": {
+    "judged": 5,
+    "TP": 1,
+    "FP": 4,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.2,
+    "ci95": [
+     0.0362,
+     0.6245
+    ],
+    "precision_unc_as_fp": 0.2,
+    "ci95_unc_as_fp": [
+     0.0362,
+     0.6245
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 4
+   }
+  },
+  "过孔密度检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 1,
+    "GEN": 1,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.7935
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.7935
+    ],
+    "share_GEN": 0.5,
+    "severity_too_high": 1
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 1,
+    "GEN": 1,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.7935
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.7935
+    ],
+    "share_GEN": 0.5,
+    "severity_too_high": 1
+   }
+  },
+  "过孔热焊盘检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   }
+  },
+  "运放反馈网络检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "连接器边沿布局检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 2,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "铜皮连接检查": {
+   "a": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   },
+   "b": {
+    "judged": 2,
+    "TP": 0,
+    "FP": 2,
+    "GEN": 0,
+    "UNC": 0,
+    "precision": 0.0,
+    "ci95": [
+     0.0,
+     0.6576
+    ],
+    "precision_unc_as_fp": 0.0,
+    "ci95_unc_as_fp": [
+     0.0,
+     0.6576
+    ],
+    "share_GEN": 0.0,
+    "severity_too_high": 2
+   }
+  },
+  "高速信号参考平面检查": {
+   "a": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 5,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 0
+   },
+   "b": {
+    "judged": 5,
+    "TP": 0,
+    "FP": 0,
+    "GEN": 5,
+    "UNC": 0,
+    "precision": null,
+    "ci95": null,
+    "precision_unc_as_fp": null,
+    "ci95_unc_as_fp": null,
+    "share_GEN": 1.0,
+    "severity_too_high": 5
+   }
+  }
+ }
+}

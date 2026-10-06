@@ -1,0 +1,147 @@
+{
+ "0a237e81fbe5-battery_voltage_divider-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "has_battery 只因 CN3(XT30UPB-M) 描述含「航模锂电池控制器连接器插头」；本板 U 件只有 U1=XC6206 LDO、U2=DRV8701 电机驱动、U3=SN74HC125，板上无 MCU/ADC，VM 网(CN3.2/D2/D3/Q1-Q6/R1.1)没有可接 ADC 的端点；且判据只认描述含「电阻」且 value 含 100K/200K/300K/470K/1M 的行，板上 10kΩ 行(R1=0603WAF1002T5E、ERJP06J103V 行)全被忽略"
+ },
+ "69de1f0b5019-battery_voltage_divider-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "电池命中来自 B1=BS-2-1「CR2032 电池 卧式底座」，VCC_BAT 网只挂 B1.1/D3.2/FPC1.5/6/35/36、VBAT 网= C14.2/D2.1/D3.1/U1.6，是 RTC 备份电，无 ADC 监测需求；同时板上 R11=100kΩ、R13=300kΩ、R2/R3=1MΩ 因描述不含「电阻」未进 resistors 列表，判据自身数据就错"
+ },
+ "8983879305d5-component_edge_clearance-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "判据用原点绝对坐标 x<3 或 y<3，未减板框原点：该板铜域 y∈[-99.441,-2.051] 全为负故全体命中；名单里 BUZZER1(y=-12.065) 距最近板边 10.01mm、C37 8.72mm、C43 17.91mm、C5 11.68mm、H5 8.26mm，无一 <3mm"
+ },
+ "97da11617c92-component_edge_clearance-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "板框 min_y=-12.222，规则却拿绝对 y 比 3.0：BUZZER1(y=-5.715) 距边 6.51mm、PW1(y=-6.604) 5.62mm、Q1(y=1.270) 13.49mm、U1(y=-0.508) 7.90mm，4 条全是 >5mm 的误报"
+ },
+ "54a1d94d430a-connector_edge_placement-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "U9 是 XXL1509-5.0「150KHz、3A PWM 降压型 DC/DC 转换器」(SOIC-8)，被 conn_kw 里裸子串「DC」命中「DC/DC」当成连接器；真连接器 DC1(DC044 电源插座, x=8.1,y=12.0) 因 x<10 反而未报，板 100x52mm 原点(0,0)"
+ },
+ "e3f96b3e50dc-connector_edge_placement-4": {
+  "v": "FP",
+  "s": "no",
+  "r": "USB3=HDMI-101S 位于(36.79,18.82)，板框原点(25.099,14.696)，到最近板边实测 4.12mm(远小于 10mm 门限)，「距板边较远(37,19)」是把原点当(0,0)算出来的；同板 U2/U31=SY8113BADC 也靠裸子串 DC 入选"
+ },
+ "acd428873d75-crystal_load_caps-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "4 个「晶振」里 3 个不是晶振：BUZZER4=MLT-5020 4kHz 蜂鸣器(命中 khz)、U141=STM32F103C8T6、U146=STM32F103CBT6(描述含 72 MHz)；唯一真晶振 X1(8MHz/12pF) 的 OSC_IN/OSC_OUT 已各挂 C272 与 C271=12pF，2 颗正好够 1 颗晶振"
+ },
+ "b96a1767fff0-crystal_load_caps-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "10 个「晶振」里 L18/L31/L5/L6 是磁珠(描述「阻抗120Ω@100MHz」)、U73=TMI3112H 2.3MHz 降压；5 颗真晶振 X1/X2/X3/X4/X6 的 OSC 网各自都有 2 颗负载电容(C41=12pF+C42、CX1+CX2、C327+C328、C75+C349、C456+C457)，多数只是缺 BOM 行才被数成「3 颗」"
+ },
+ "51d7b3e13ef5-decoupling_cap_per_pin-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "cap_count=0 是关键词语失明：判据只在 BOM 行 part_number/description 里找「电容/capacitor」，而本板 desc 形如「100nF ±10% 50V」；按封装分类有 5 行电容、逐颗计≥24 颗(单行 C65,C67,…,C84 就是 14 颗 100nF)，远超 pin_count/20=5"
+ },
+ "f5023e060fb7-decoupling_cap_per_pin-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "同上关键词失明：U13(ESP32-C3/QFN-32) 板上有 11 行电容(10uF×3、100nF×3、10nF×2、100uF、1uF、15pF)，阈值仅 32/20=1.6；规则正文写「建议≥pin_count//10」与实际判据 pin_count/20 也不一致"
+ },
+ "0a237e81fbe5-emi_filter-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "全板唯一 pwr_in 命中是 U3=SN74HC125PWR(TSSOP-14 缓冲器，料号后缀 PWR)，板上并无电源入口器件(电源从 CN3/XT30 进)，以「料号含 PWR」推定电源入口再要共模扼流圈，落点错"
+ },
+ "1875282d60eb-emi_filter-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "pwr_in 命中仅 U4=ME6210A33M3G 的规格文本「正 Vin=18V Vout=3.3V 500mA」(LDO 输入电压)，不是电源入口；该机为锂电/DC 供电，规则按市电入口要求 CMC，且忽略板上 L1-L4(10uH/0603) 滤波电感"
+ },
+ "38b5022c1cf4-fiducial_mark-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "判据只有 positions>10：本板 52 个坐标必然命中，规则不读任何 Mark 点数据(BOM/铜层无 FID/MK 位号)，「未确认是否有 Mark 点」在任何板上都成立"
+ },
+ "5fd8810511b8-fiducial_mark-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上：218 个坐标 >10 即无条件报「未确认是否有光学定位点」，输出不随板内容变化，属结构必响的提示"
+ },
+ "55a1e5d392e0-inductor_saturation_margin-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "规则取 BOM 顺序第一个含「电感/inductor/μH」的行(此处是合并行 L2,L3,L14 = WPN201610M1R0MT 1uH±20% 3.35A)，只输出固定文案「建议验证额定电流 ≥1.3×Ipeak」，既不算 Ipeak 也不读 Isat，无法证伪"
+ },
+ "cf50567ab4e5-inductor_saturation_margin-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同判据：板上有 8 颗电感(L1 4.7uH/5A、L10 4.7uH/1A、L15 10uH/850mA、L16 2.2uH/2A、L2-L4 3.3uH、L5 2.2uH/3A)，只报 BOM 第一行 L1 并给同一句「建议验证」，与 VCC3V3_SYS 上的实际电流无关"
+ },
+ "5e78d941a8e1-net_antenna-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "18 条里多数是有铜网络、第二端点被解析器当 orphan 丢弃(metadata orphan_pad_nets=77)：CAM_RST 走线 26.3mm/U3.3、GPIO12 89.1mm/H3.1、GPIO13 91.0mm/H2.1、GPIO14 100.2mm/H3.2、5V_LED2 41.4mm/H7.1；另 $2N2391/GPIO09/GPIO10 是零引脚网络，被 len(pins)<=1 一并计入"
+ },
+ "fb4a2b1a2d2e-net_antenna-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "GPIO6/GPIO24/GPIO0 三条各 1 个引脚，全落在 U1(磁吸母座_4P) 上且 trace_count=0、总长 0.000mm——板上根本没有铜，「大面积浮空铜皮=EMI天线」的前提不成立"
+ },
+ "002d4444a5dd-pdn_target_impedance-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "规则无条件 append 一条输出、任何板都报：Z_target=660mΩ 由 _estimate_power_current 的 0.5A 底值算出，平面电容 1.00nF 来自硬编码 board_area_mm2=5000，而该板实为 313.045×129.705mm≈40600mm² 的两层板(无内层平面)，IR压降≈0.5mV 也是固定 1mΩ"
+ },
+ "51d7b3e13ef5-pdn_target_impedance-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同上恒出：3.3V/0.80A 由 0.5A 底值+0.3A(关键词命中 MCU)估得，Z_target=412mΩ 与「平面电容 1.00nF」都来自 board_area_mm2=5000 硬编码(该板仅 44.975×69.967mm≈3147mm²)，与板上实际去耦数量无关"
+ },
+ "1875282d60eb-pullup_pulldown-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "被点名的 GF_EN 网上就挂着 10K 电阻 R22(另一脚 R22.2 接 GND，即下拉)；判 has_pull_r=False 只因 BOM 行「R1,R6,…,R22,…| val=10K」描述为空不含「电阻」，全板 26+ 颗 10K 被判不存在"
+ },
+ "fb12f7b89b5b-pullup_pulldown-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "RESET 网成员是 C160.2/R131.1/SW3.1/U2.14(STM32H743VIT6)，已是 R131(10K)+C160+复位键的典型电路；判缺上拉是因 R131 所在 BOM 行(「R142,…,R131,…」val=10K)描述为空，另 DCMI_RST/BOOT0 也被子串命中"
+ },
+ "97da11617c92-reverse_polarity_protection-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "has_pwr_in 由 U2=ME6217C33M5G 描述「输入7V」与 U3=ML307C-DC-CN(模组料号含 DC)触发，两者都不是直流输入端子；该板由 IP5306(U6) 锂电+USB 供电，本无反接场景"
+ },
+ "fb12f7b89b5b-reverse_polarity_protection-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "板上已有 D1/U3/U99/U100=SS54 肖特基(在 IN 网)、D22=P6SMBJ6.0CA TVS、Q3/Q98=AO3401 P-MOS、U95=TPS259261 eFuse，判据只在描述里找「二极管/肖特基/TVS」，SS54 行只有「电压:40V 电流:5A」→ 全漏；触发 pwr_in 的也只是 XC6206 的「输入8V」文本"
+ },
+ "d619077597d4-switching_regulator_layout-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "被点名的 SW3 是料号 PTS815SJK250SMTRLFS 的轻触开关(网表 SW3.1/2=GND、SW3.3/4=RESET)，命中原因是料号里 SMTR 含子串 MT；dcdc_kw 至今仍带裸子串 MP/XL/SY/MT"
+ },
+ "e89b65d2080e-switching_regulator_layout-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "被点名的 H1 是 22850120ANG1SYA01「间距2.54mm 1x20P 直插」排针(网上是 +5V/COM1-6/GND)，料号含 SY 被当成 DC-DC；全板唯一稳压件是 U1=SE8533K2-HF 线性 LDO，无开关电源输入回路可优化"
+ },
+ "5516bd2c0c00-unconnected_pins-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "网表契约正常(引脚写作 U39.5，同板 U1 16/16 齐全)；U39=CH340C 连上的 9 脚正是 GND/TXD/RXD/V3/UD+/UD-/DTR/RTS/VCC，缺的 7 脚是 7、8(该型号内置振荡器，datasheet 标 NC)+9~12 未用调制解调器控制脚+15 R232，属标准接法，非缺陷"
+ },
+ "f63ddcd060ef-unconnected_pins-0": {
+  "v": "UNC",
+  "s": "yes",
+  "r": "原始 PAD_NET 显示 U8(ESP32-C3/QFN-32+EP) 33 个焊盘有 18 个 net 为空(含电 4/5/6/13/19)，而同板 U1(LQFP-100) 100/100 齐全、U8.11/17/31/32 已明确挂 VCC3.3——正常工作的 ESP32-C3 不可能让 VDD3P3 悬空，无法区分「真未连接」与「导出丢网络」，需原理图网表才能定性"
+ },
+ "2b30c85075cc-i2c_pullups-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "has_i2c 唯一命中是 D6-D36 共 25 颗 0603ESDA-05N 双向 ESD 管(料号含 SDA)，不是 I2C 器件；has_pullup=False 只因 10K 行描述为空(「R22,R120,…|10K」、RN1-RN20=4D03WGJ0103T5E 10kΩ±5%)不含「电阻」，判据对全板 10kΩ 电阻/排阻视而不见"
+ }
+}

@@ -89,6 +89,39 @@
 - [ ] frontend/ 去留：原封不动的 Vite React+TS 模板（node_modules 未提交），实际 UI 是 web/
 - [ ] 其他：simulator.py 是占位；convergence.py 基类 evaluate 抛 NotImplementedError；.zcode/config.json 含明文 key（已 gitignore）
 
+## 2026-10-06 第二轮抽查确认的判据问题（30 条，未修）
+
+> 报告：[docs/规则抽查_报告_2026-10-06.md](../docs/规则抽查_报告_2026-10-06.md)；
+> 样本与判读证据：`experiment_results/rule_spotcheck_2026-10-06/`。
+> **重要结论：本轮修复把违规量从 5769 压到 3241（−44%），但抽样精确率 7.7% → 6.5%（CI 重叠）没有提升。**
+
+**代码 bug（4，改起来最值）**
+- [ ] `_check_trace_acute_angles` 过孔锚点恒为空：`checker.py:1368` 取 `getattr(v,"x"/"y")`，而 `PCBVia` 只有 `position`（`src/pcb/models.py:25-27`）
+- [ ] `_is_pad_entry` 用 `max(leg_in,leg_out)<0.5`，与注释「两腿均短于 0.5mm」不符
+- [ ] `_check_opamp_feedback_network` 数「与运放同前缀的电阻」（U vs R 恒为 0）→ 结构恒真
+- [ ] `_check_reference_continuity` 只取每行第一个位号（"R4,R5" 只算 R4）→ 报出不存在的跳号
+
+**判据用「存在性/子串」代替网表与几何（FP 主体）**
+- [ ] `_check_crosstalk_spacing` 把工程声明的差分对**自身两半**当串扰（5/5 样本）；且仍有名字猜配对
+- [ ] `_check_diff_pair_spacing` 缺高速接口门控、缺平行重叠前置条件（重叠 0.0mm 也报「耦合过松」）
+- [ ] `_check_pullup_pulldown`/`_check_dcdc_feedback_network`/`_check_led_current_limit`/`_check_decoupling_cap_per_pin`/`_check_i2c_pullups` 用「描述含『电阻/电容』」代替网表 → BOM 描述为空即恒报
+- [ ] `_check_antenna_keepout` 裸 `"rf"`；`_check_power_loop_area`/`_check_switching_regulator_layout` 裸 `MP/XL/SY/MT`；`_check_ferrite_bead_isolation` 裸 `'op'`（ESOP8/MSOP8）
+- [ ] `_check_net_antenna` 的 `len(pins)<=1` 把零引脚网络算作单端网络（该板 orphan_pad_nets=77）
+- [ ] `_check_via_density` 裸 `SW` 命中 `…BUZZER_SWITCH`；`_check_stub_length` 把 USB_GND 地网当高速网
+- [ ] `_check_esd_protection`/`_check_emi_filter`/`_check_reverse_polarity_protection` 靠描述子串认接口与保护器件
+- [ ] `_check_component_edge_clearance`/`_check_connector_edge_placement` 拿绝对坐标比门限，**不减板框原点**
+
+**阈值/公式/硬编码**
+- [ ] `calculator.microstrip_impedance` 窄线分支（w/h<1）偏低约 2×（40.9Ω vs IPC-2141 72.7Ω）→ 阻抗结论方向反；另硬编码 h=0.2mm 且无层数/长度门控
+- [ ] `_check_pdn_target_impedance` 无条件 append + 板面积/层间距/平面电阻全硬编码
+- [ ] `_check_power_traces` 需求电流靠 BOM 关键词（"电机控制" 给 MCU 加 1.5A）
+- [ ] `_check_signal_traces` 线宽「混用」无容差（0.102 vs 0.1041mm）；0.09mm 下限注释换算错（=3.54mil）
+- [ ] `_check_diff_pair_length` 描述 0.5mm vs 实现 ≥2mm/≥10%；长度取全网线段和
+- [ ] `_check_power_filtering` 白名单漏 330µF；`_check_bom_value_range` 只认 E24（E96 值被判非标）
+- [ ] `_check_component_spacing` 只比字典相邻 4 项且不分层；`_check_package_consistency` 封装名无别名归一
+- [ ] `_check_copper_pour_connectivity` 只认 `POUR` 元素，`.epru` 的 `POLY`+`FILL` 覆铜读不到 → 恒报缺数据
+- [ ] `_check_trace_edge_clearance` 用包围盒而非板框多边形（误差 ±0.06mm）
+
 ## 文档仍偏旧
 
 - PROJECT_BLUEPRINT.md 仍描述 PyQt5 + src/gui/，实际是 Eel web/

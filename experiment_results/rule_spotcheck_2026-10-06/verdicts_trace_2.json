@@ -1,0 +1,132 @@
+{
+ "26a909d7cea2-crosstalk_spacing-1": {
+  "v": "FP",
+  "s": "no",
+  "r": "该层唯一命中是差分对自身两半 USB_DM/USB_DP（工程差分组 DP1）：0.2794mm 线宽、中心距 0.483mm=1.73W、重叠 16.82mm；1.7~2W 是 USB 边耦合刻意取的间距，3W 准则不适用于对内耦合（其余 KEY_*/CC1/DN1 等线对已被类别门控排除）"
+ },
+ "acd428873d75-crosstalk_spacing-1": {
+  "v": "FP",
+  "s": "no",
+  "r": "唯一命中 [IN_D-/VCC_3.3V]：一侧是电源网 VCC_3.3V（0.508mm 宽），另一侧 IN_D- 只因子串 'd-' 命中 _HIGH_SPEED_NET_KW，且该板 diff_groups_meta=0（纯 +/- 后缀猜测配对）；直流输入检测线与 3.3V 电源平行 6.67mm、间距 0.508mm 不构成 3W 串扰"
+ },
+ "b96a1767fff0-crosstalk_spacing-2": {
+  "v": "FP",
+  "s": "no",
+  "r": "Bottom 层 6 对里 3 对是工程差分组自身（PCIE0_REFCLKN/P 0.241mm=2.71W、LPDDR5_WCK1N_B/P 0.244mm=2.67W、USBHUB_HOST4_DM/DP 0.218mm=2.10W），1 对是 GND+MIPI 差分；被当最严重的 UIM_CLK/UIM_DATA 是 UIM/SIM 卡接口（1~5MHz）0.267mm=2.19W/16.6mm，非高速串扰"
+ },
+ "e01706f8c02c-crosstalk_spacing-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "Top 层 17 对中 11 对是工程声明组内配对（USB0_DM/USB0_DP、BT-UART、WL-SDIO、E1_MII_TX_N/P 等），最严重项正是 USB2 差分对自身：0.327mm=2.07W、重叠 55.4mm 属刻意紧耦合，不是串扰风险"
+ },
+ "e0b21c2eb89e-crosstalk_spacing-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "Bottom 层 21 对中 17 对是差分组自身（HSD0+/HSD0- 0.257mm=1.98W/26.8mm、USBA_D2±/D3± 1.98W、HDMI_D0N/P 2.4W、#SSTX0±/#SSRX0± 等），1.98~2.4W 是 HDMI/USB3 差分对的正常边耦合间距，规则把它当串扰"
+ },
+ "1617cf34c8c4-diff_pair_spacing-0": {
+  "v": "FP",
+  "s": "yes",
+  "r": "组 DP5={$1N1982,$1N1983} 是 NS4150B(U11) 功放经磁珠 L1/L2（60Ω@100MHz）到扬声器座 U8 的音频输出线（C14/C15 落 SPK_GND），音频对无需差分紧耦合；且 2.072mm/0.5mm=4.14W 落在 3.0~4.5W 阈值边界"
+ },
+ "1617cf34c8c4-diff_pair_spacing-1": {
+  "v": "FP",
+  "s": "yes",
+  "r": "两网络各只有 1 条 0.78mm 走线（$1N3924=C9.2/R11.1、$1N3930=C10.2/R12.1，是 U11 输入侧 100nF+30kΩ 的 RC 节点），同层平行重叠 0.0mm；2.842mm 只是两个互不相干节点的最近距离，11.2W 无从谈起"
+ },
+ "1617cf34c8c4-diff_pair_spacing-2": {
+  "v": "FP",
+  "s": "yes",
+  "r": "UART_RXD/UART_TXD 是 H1 排针经 R50/R51(100Ω) 引出的 UART，不是差分对；两网总长仅 0.82/0.76mm、平行重叠 0.43mm，2.284mm=9.0W 只是两个独立网络的最近距离"
+ },
+ "38b5022c1cf4-diff_pair_spacing-0": {
+  "v": "FP",
+  "s": "yes",
+  "r": "组名 'ir' 实为 MLX90640(U5) 的 I2C 两条线：$1N3306=R13.2/U5.1(SDA 侧)、$1N3345=R14.1/U5.4(SCL 侧)，I2C 不需要差分紧耦合；且两网 8.44/5.28mm 走线平行重叠仅 2.54mm，最小间距 1.347mm=5.3W 无实际含义"
+ },
+ "e0b21c2eb89e-diff_pair_spacing-0": {
+  "v": "TP",
+  "s": "yes",
+  "r": "DA+/DA- 是网口变压器 L35(HX0068ANLTP)→RJ45(RJ1.1/RJ1.2) 的线侧 100Ω 差分对，0.1092mm 线宽下最小中心距 0.550mm=5.04W、平行段 4.24mm，≥4.5W 属明显松耦合"
+ },
+ "04c2858068c9-impedance_matching-0": {
+  "v": "FP",
+  "s": "no",
+  "r": "microstrip_impedance 窄线分支(w/h<1)偏低约 2×：w=0.1524/h=0.2mm 工具算 40.9Ω，IPC-2141 为 72.7Ω（Hammerstad 79.7Ω），由 40.9 推出的 Zdiff=73Ω 实际应 ~129Ω；且 I_MIPI_CLK+ 只是 U1(LT8912B) 引脚 7→R13 的 1.75mm 逃逸线，阻抗控制无意义"
+ },
+ "04c2858068c9-impedance_matching-11": {
+  "v": "UNC",
+  "s": "no",
+  "r": "同板：LVDS_D1- 10.61mm 到 J3.3，0.1524mm/0.305mm 在 4 层 0.2mm 假设下真实 Zdiff≈129Ω（报 73Ω、方向相反）；算不算违规需真实叠层与接口速率才能定"
+ },
+ "04c2858068c9-impedance_matching-4": {
+  "v": "FP",
+  "s": "no",
+  "r": "同板同公式问题（40.9Ω vs IPC-2141 72.7Ω → 真实 Zdiff≈129Ω 而非报出的 73Ω）；I_MIPI_D1+ 仅 3.87mm、2 引脚（U1.3→R11.2）是 QFN 逃逸段，0.1524mm 也是最小线宽"
+ },
+ "04c2858068c9-impedance_matching-7": {
+  "v": "UNC",
+  "s": "no",
+  "r": "LVDS_CLK- 11.13mm 走到 J3(CON9X2_2P54 排针)，是否要求 100Ω 取决于叠层与 LVDS 速率，而 .epru 的 LAYER_PHYS thickness/permittivity 全为 0（文件无叠层）；规则报的 73Ω 又因窄线分支公式偏低约 2×（IPC-2141 下 Zdiff≈129Ω），两端都无法确证"
+ },
+ "56671a84b78e-impedance_matching-1": {
+  "v": "FP",
+  "s": "no",
+  "r": "该板只有 Top/Bottom 两层（无 0.2mm 处参考平面），规则仍套 4 层兜底 h=0.2mm/εr=4.5：真 h≈1.6mm 时 0.1524mm 线 Z0≈147Ω、Zdiff≈175Ω，报出的 72Ω 与 100Ω 的比较不成立；RS485 从 SM712(D2) 到 H4 排针 11.7mm，2 层板不做阻抗控制"
+ },
+ "acd428873d75-power_traces-5": {
+  "v": "FP",
+  "s": "no",
+  "r": "需求 2.58A 是编出来的：est_total 4.3A 中 U141/U146（STM32F103C8T6/CBT6，描述含“电机控制”）各被 _estimate_power_current 计入 1.5A 电机电流（裸子串命中）；VIN 实为 59.62mm@1.016mm(外层 2.42A)+8.05mm@0.2032mm 颈部"
+ },
+ "acd428873d75-power_traces-6": {
+  "v": "FP",
+  "s": "no",
+  "r": "VDD 只有 3 个引脚、8.48mm 的局部网络（C284.2/R278.1/U120.1），却被按全板电流 60%=2.58A 判；该 2.58A 同样来自 U141/U146 描述里“电机控制”子串误加的 3A 电机电流"
+ },
+ "e0dceb8f7a42-power_traces-0": {
+  "v": "UNC",
+  "s": "no",
+  "r": "+5V 主干 265mm@0.508mm（外层各 1.46A），只有 12.5mm@0.254mm(Inner1, 0.443A) 颈部低于需求 0.48A（差 9%）；而 0.48A 只是 0.5A 底数+1 条 STM32 关键词的估算，实际电流需板外信息（BOM 真值/原理图）"
+ },
+ "e0dceb8f7a42-power_traces-1": {
+  "v": "UNC",
+  "s": "no",
+  "r": "+3.3V 有 311.8mm@0.508mm(外层)，仅 9.7mm(Inner1)+8.5mm(Inner4)@0.254mm 颈部 0.443A<0.48A（差 9%）；需求为 BOM 关键词估算（0.8A×60%），挂 LED1~LED5/SW2/U19 的真实负载无法从 PCB 判定"
+ },
+ "e3f96b3e50dc-power_traces-1": {
+  "v": "UNC",
+  "s": "yes",
+  "r": "+5V_IN 有 71.99mm@0.508mm+27.45mm@1.016mm，仅 4.05mm@0.1524mm(POWER5 内层 0.306A) 颈部低于 0.48A；需求 0.48A 来自 0.5A 底数+GD32“ARM”一条关键词，真值未知，但输入电流若确有 0.5A 该颈部确需加宽"
+ },
+ "26a909d7cea2-stub_length-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "短桩线检查在 checker.ADVISE_RULES 提示类里：4 层板只数到 FUSB_CC1(2 过孔)/LCD_CLK(2)/USB_D-(2)/USB_DM(2)/USB_DP(2)，没有任何 stub 长度或层拓扑度量，结论是“可能存在 stub 分支”，换任何 4 层板都会响"
+ },
+ "49d3ac69809d-stub_length-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "同为提示类：5 层板 875 个过孔中 MPU_SPI3_CLK/M_TLE5012_CLK 各 4 个、SW_CLK 2 个过孔即命中，规则不测 stub 长度、不给位置，无具体证据"
+ },
+ "5fd8810511b8-stub_length-0": {
+  "v": "FP",
+  "s": "yes",
+  "r": "该条唯一命中的网络是 USB_GND——5 层板上只有 2 个过孔的地网络（缝合/回流孔），被裸子串 'USB' 当成高速网络；地网不存在信号 stub 分支，判据用错（同类子串问题：b96a1767fff0 里 FUSB302_INT 中断线、e01706f8c02c 里 USB5V/USB_OUT_5V 电源网同样被命中）"
+ },
+ "b96a1767fff0-stub_length-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "10 层板 2052 个过孔，命中 82 个网络名——含 MINIPCIE_3V3/VCC5V0_USB3.0_HOST/VDDA_HDMI_S0 等电源网与 FUSB302_INT 中断线，规则只报“各有 ≥2 个过孔、可能存在 stub 分支”，无 stub 长度/位置证据"
+ },
+ "e01706f8c02c-stub_length-0": {
+  "v": "GEN",
+  "s": "yes",
+  "r": "4 层板命中 HDMI_HTX0N/P~HTXCP 等 TMDS 对（各 2 过孔），也命中 USB5V(4)/USB_OUT_5V(6) 电源网；规则结构上只数过孔数、不测 stub 长度，属每板必响的通用提示"
+ },
+ "002d4444a5dd-trace_edge_clearance-0": {
+  "v": "TP",
+  "s": "yes",
+  "r": "按真实板框多边形复算：D2_2(Top，561.0mm) 距板边 0.231mm、U2_30(Bottom，143.1mm) 0.254mm，均 <0.3mm 推荐值（规则用包围盒算成 0.292/0.2997mm，口径误差 ±0.06mm，但结论成立）"
+ }
+}
