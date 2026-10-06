@@ -603,14 +603,27 @@ def knowledge_query(req: KnowledgeQueryRequest):
 #  Persistence (SQLite session store) — thin wrappers over SessionStore
 # ═══════════════════════════════════════════════════════════════
 
-_store = SessionStore()
+_store: "SessionStore | None" = None
+
+
+def _get_store() -> SessionStore:
+    """惰性单例：不要在 import 时打开数据库。
+
+    模块级 SessionStore() 会在「导入 src.api.endpoints」这一步就去创建
+    ~/.eda_ai_assistant/sessions.db（含 WAL 文件），只读/受限环境下 import
+    直接失败，把整包测试的收集都拖垮。改成首次用时才建。
+    """
+    global _store
+    if _store is None:
+        _store = SessionStore()
+    return _store
 
 
 @router.get("/persist/load-all")
 def persist_load_all():
     """Startup snapshot: assistants, conversations, active state."""
     try:
-        return {"ok": True, "data": _store.load_all()}
+        return {"ok": True, "data": _get_store().load_all()}
     except Exception as e:
         logger.exception("persist_load_all failed")
         return {"ok": False, "msg": str(e)}
@@ -619,8 +632,8 @@ def persist_load_all():
 @router.post("/persist/assistant")
 def persist_save_assistant(req: AssistantSaveRequest):
     try:
-        _store.save_assistant(req.instance_id, req.type_id, req.name, req.sort_order)
-        _store.save_state("active_assistant", req.instance_id)
+        _get_store().save_assistant(req.instance_id, req.type_id, req.name, req.sort_order)
+        _get_store().save_state("active_assistant", req.instance_id)
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "msg": str(e)}
@@ -629,7 +642,7 @@ def persist_save_assistant(req: AssistantSaveRequest):
 @router.delete("/persist/assistant/{instance_id}")
 def persist_delete_assistant(instance_id: str):
     try:
-        _store.delete_assistant(instance_id)
+        _get_store().delete_assistant(instance_id)
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "msg": str(e)}
@@ -638,9 +651,9 @@ def persist_delete_assistant(instance_id: str):
 @router.post("/persist/conversation")
 def persist_save_conversation(req: ConversationSaveRequest):
     try:
-        _store.save_conversation(req.conv_id, req.instance_id, req.title,
+        _get_store().save_conversation(req.conv_id, req.instance_id, req.title,
                                 workspace_id=req.workspace_id)
-        _store.save_state("active_conv", req.conv_id)
+        _get_store().save_state("active_conv", req.conv_id)
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "msg": str(e)}
@@ -649,7 +662,7 @@ def persist_save_conversation(req: ConversationSaveRequest):
 @router.delete("/persist/conversation/{conv_id}")
 def persist_delete_conversation(conv_id: str):
     try:
-        _store.delete_conversation(conv_id)
+        _get_store().delete_conversation(conv_id)
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "msg": str(e)}
@@ -658,7 +671,7 @@ def persist_delete_conversation(conv_id: str):
 @router.post("/persist/message")
 def persist_save_message(req: MessageSaveRequest):
     try:
-        _store.save_message(req.conv_id, req.role, req.content, req.image or None, req.seq)
+        _get_store().save_message(req.conv_id, req.role, req.content, req.image or None, req.seq)
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "msg": str(e)}
@@ -667,7 +680,7 @@ def persist_save_message(req: MessageSaveRequest):
 @router.get("/persist/messages/{conv_id}")
 def persist_load_messages(conv_id: str):
     try:
-        messages = _store.load_messages(conv_id)
+        messages = _get_store().load_messages(conv_id)
         return {
             "ok": True,
             "messages": [
@@ -683,11 +696,11 @@ def persist_load_messages(conv_id: str):
 def persist_save_active_state(req: ActiveStateRequest):
     try:
         if req.active_assistant:
-            _store.save_state("active_assistant", req.active_assistant)
+            _get_store().save_state("active_assistant", req.active_assistant)
         if req.active_conv:
-            _store.save_state("active_conv", req.active_conv)
+            _get_store().save_state("active_conv", req.active_conv)
         if req.active_workspace:
-            _store.save_state("active_workspace", req.active_workspace)
+            _get_store().save_state("active_workspace", req.active_workspace)
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "msg": str(e)}

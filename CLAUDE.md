@@ -21,7 +21,7 @@ pip install -r requirements.txt
 # Run the app (Eel Web UI, opens Chrome/Edge)
 python main.py
 
-# Run all 843 tests
+# Run all tests (965 collected)
 python -m pytest tests/ -q
 
 # Run a single test module
@@ -96,6 +96,8 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 `src/config.py` — `AppConfig` dataclass with `LLMConfig`, `PathConfig`, `GUIConfig` sub-objects. Priority: environment variables > `~/.eda_ai_assistant/settings.json` (GUI settings panel) > provider presets > legacy `DEEPSEEK_*` env vars. Settings are persisted by the JS frontend calling `save_settings()`.
 
 `src/constants.py` — Frozen dataclasses for all magic numbers/strings: BOM tolerances, PCB trace widths, IPC-2221 current-carrying params, LCSC API endpoints, etc.
+
+存储目录统一由 `constants.app_home()` 给出（settings.json 与 sessions.db 同源），可用环境变量 **`EDA_AI_HOME`** 覆盖 —— 测试/受限环境靠它把落盘位置改到临时目录，不要再各自写 `Path.home() / ".eda_ai_assistant"`。`SessionStore` 支持传入 `db_path`，并按它的父目录建目录。
 
 ### Frontend
 

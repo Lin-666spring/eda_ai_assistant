@@ -10,9 +10,18 @@ or monkeypatch the relevant field themselves.
 """
 from __future__ import annotations
 
+import os
+import tempfile
+
 import pytest
 
-from src.config import config
+# 必须在 import src.config 之前设置：config / persistence 都在模块级把
+# ~/.eda_ai_assistant 解析成常量。测试统一写临时目录 —— 既不污染开发者数据，
+# 也让受限/只读沙箱里的 pytest tests/ 能正常收集（否则 SessionStore 在 import
+# 期就打开 WAL 数据库，直接 OperationalError，整个包都收集不起来）。
+os.environ.setdefault("EDA_AI_HOME", tempfile.mkdtemp(prefix="eda_ai_test_home_"))
+
+from src.config import config  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

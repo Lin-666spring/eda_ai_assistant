@@ -45,7 +45,9 @@ class CommandContext:
 
     bom_items: list = field(default_factory=list)
     positions: dict = field(default_factory=dict)
-    netlist: list = field(default_factory=list)
+    # 网络表 {网络名: ["U1.12", ...]}；为空时 check_all 会从 pcb_data.nets 反推，
+    # 保证「未连接引脚 / 上下拉」这类规则在软件里和离线实验口径一致。
+    netlist: dict = field(default_factory=dict)
     bom_file: Optional[str] = None
     pcb_data: Optional[PCBData] = None
 

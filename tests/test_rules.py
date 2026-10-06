@@ -209,3 +209,54 @@ class TestGetReport:
         assert "ERROR" in report
         assert "WARNING" in report
         assert "INFO" in report
+
+
+class TestCheckAllContract:
+    """check_all 的输入契约与错误记账（2026-10-02 口径统一）。"""
+
+    def test_normalize_keeps_explicit_dict(self, checker):
+        nl = {"N1": ["U1.1"]}
+        assert checker.normalize_netlist(nl, None) == nl
+
+    def test_normalize_derives_from_pcb_nets(self, checker):
+        from src.pcb.models import PCBData, PCBNet
+        pcb = PCBData(nets={
+            "VCC": PCBNet(name="VCC", pins=["U1.1", "C1.1"]),
+            "EMPTY": PCBNet(name="EMPTY", pins=[]),
+        })
+        assert checker.normalize_netlist({}, pcb) == {"VCC": ["U1.1", "C1.1"]}
+
+    def test_normalize_drops_plain_list(self, checker):
+        # 旧契约里 netlist 是 list、且全项目从未赋值；引脚信息拿不回来，
+        # 只能当作「没有网表」，不能假装有。
+        assert checker.normalize_netlist(["VCC", "GND"], None) == {}
+
+    def test_rule_errors_are_recorded_not_swallowed(self, checker, monkeypatch):
+        def boom(*args, **kwargs):
+            raise RuntimeError("boom")
+        monkeypatch.setattr(checker, "_check_led_current_limit", boom)
+        checker._rules = [getattr(checker, name) for name in sorted(dir(checker))
+                          if name.startswith("_check_")]
+        checker.check_all([], {}, None, None)
+        assert checker.rule_errors, "规则异常必须被记录，不能被静默吞掉"
+        assert any("boom" in e["error"] for e in checker.rule_errors)
+
+    def test_unconnected_pins_counts_real_pins(self, checker):
+        from src.bom.parser import BOMItem
+        bom = [BOMItem(reference="U1", value="", package="LQFP-48",
+                       part_number="STM32F103C8T6", description="MCU", quantity=1)]
+        few = {f"N{i}": [f"U1.{i}"] for i in range(3)}
+        assert checker._check_unconnected_pins(bom, {}, few)
+        # 40 个引脚已连接 → 不报。旧实现把「提到 U1 的网络数」当引脚数，
+        # 也能凑到 40，但换成 40 条只提到 U1 的网络就会误判成已连接。
+        many = {f"N{i}": [f"U1.{i}", "R1.1"] for i in range(40)}
+        assert checker._check_unconnected_pins(bom, {}, many) == []
+
+    def test_unconnected_pins_accepts_pcbnets_values(self, checker):
+        from src.bom.parser import BOMItem
+        from src.pcb.models import PCBNet
+        bom = [BOMItem(reference="U1", value="", package="QFN-48",
+                       part_number="X", description="MCU", quantity=1)]
+        nets = {f"N{i}": PCBNet(name=f"N{i}", pins=[f"U1.{i}"]) for i in range(40)}
+        assert checker._check_unconnected_pins(bom, {}, nets) == []
+

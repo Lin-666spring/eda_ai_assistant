@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 from .constants import (
-    AGENT, GUI, LLM_PROVIDER_PRESETS, DEFAULT_PROVIDER,
+    AGENT, GUI, LLM_PROVIDER_PRESETS, DEFAULT_PROVIDER, app_home,
 )
 
 # 尝试加载 .env 文件
@@ -29,7 +29,8 @@ except ImportError:
     pass
 
 # 本地持久化设置文件 (项目外，避免被 git 跟踪)
-SETTINGS_DIR = Path.home() / ".eda_ai_assistant"
+# 目录可用 EDA_AI_HOME 覆盖（测试/受限环境改到临时目录）。
+SETTINGS_DIR = app_home()
 SETTINGS_FILE = SETTINGS_DIR / "settings.json"
 
 

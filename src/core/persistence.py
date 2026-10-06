@@ -25,10 +25,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from ..constants import app_home
+
 logger = logging.getLogger(__name__)
 
-# 与 config.py 共享同一存储目录
-DB_DIR = Path.home() / ".eda_ai_assistant"
+# 与 config.py 共享同一存储目录（EDA_AI_HOME 可覆盖，见 constants.app_home）
+DB_DIR = app_home()
 DB_PATH = DB_DIR / "sessions.db"
 
 
@@ -92,7 +94,9 @@ class SessionStore:
 
     def _ensure_db(self):
         """创建目录和数据库表"""
-        DB_DIR.mkdir(parents=True, exist_ok=True)
+        # 用自定义路径时父目录未必存在（测试传 tmp_path）；按 db_path 的父目录建，
+        # 而不是永远 mkdir 全局 DB_DIR。
+        self._db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
             conn.executescript("""
                 CREATE TABLE IF NOT EXISTS workspaces (

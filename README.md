@@ -74,7 +74,7 @@ src/
 ├── html_bom/                 # HTML BOM 生成
 └── interfaces/               # EDA 适配器
 
-tests/                        # 843 条测试（pytest 收集）
+tests/                        # 965 条测试（pytest 收集）
 ```
 
 ## 配置
@@ -97,7 +97,7 @@ tests/                        # 843 条测试（pytest 收集）
 ## 测试
 
 ```bash
-python -m pytest tests/ -q     # 843 条测试
+python -m pytest tests/ -q     # 965 条测试
 python -m pytest tests/ -v     # 详细输出
 ```
 

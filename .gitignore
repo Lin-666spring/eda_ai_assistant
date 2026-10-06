@@ -42,6 +42,9 @@ release/
 .pytest_cache/
 .coverage
 htmlcov/
+# 受限环境/沙箱下跑测试时把落盘位置指到工作区内（见 CLAUDE.md 的 EDA_AI_HOME）
+.pytest-home/
+.pytest-tmp/
 
 # RAG 向量数据 (只提交源文档，不提交 chromadb 二进制)
 rag_data/*/
@@ -50,6 +53,9 @@ rag_data/*.sqlite3
 # Claude Code
 .claude/
 .zcode/
+
+# DSH harness（本地技能与会话状态，不入库）
+.dsh/
 test_data/_incoming_thing/
 test_data/_incoming_epro2/
 .specs/

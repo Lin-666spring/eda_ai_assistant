@@ -2359,28 +2359,35 @@ class DesignRuleChecker:
         """未连接引脚：IC 引脚应全部连接（至少连到某网络或标记NC）"""
         if not netlist or not bom_items: return []
         violations = []
+        pkg_pins = {"SOP-8": 8, "SOP-16": 16, "TSSOP-20": 20, "QFN-32": 32,
+                    "QFN-48": 48, "LQFP-48": 48, "LQFP-64": 64, "LQFP-100": 100}
+        # 引脚在网表里写作 "U1.12"：按「位号.」前缀数这个器件真正的引脚数，
+        # 而不是数「有多少条网络提到过这个位号」——旧写法里 values() 是引脚列表、
+        # getattr(list, "pins") 取不到东西，connected 恒为 0，等于「有 IC 就报」。
+        pin_lists = [self._net_pins(v) for v in netlist.values()]
         for item in bom_items:
             ref = getattr(item, "reference", "").split(",")[0].strip()
+            if not ref:
+                continue
             pkg = (getattr(item, "package", "") or "").upper()
-            pn = (getattr(item, "part_number", "") or "").upper()
-            # 粗略估算引脚数
-            pkg_pins = {"SOP-8": 8, "SOP-16": 16, "TSSOP-20": 20, "QFN-32": 32,
-                        "QFN-48": 48, "LQFP-48": 48, "LQFP-64": 64, "LQFP-100": 100}
             est_pins = 0
             for k, v in pkg_pins.items():
-                if k in pkg: est_pins = v; break
-            if est_pins >= 16:
-                # 检查该 IC 有多少引脚出现在 netlist 中
-                connected = sum(1 for n in (netlist or {}).values()
-                               if any(ref in p for p in (getattr(n, "pins", []) or [])))
-                if connected < est_pins * 0.6:
-                    violations.append(RuleViolation(
-                        rule_name="未连接引脚检查",
-                        description=f"IC {ref}({pkg}) 大量引脚可能未连接或 netlist 不完整",
-                        severity=RuleSeverity.INFO, location=ref,
-                        suggestion="确认 NC(No Connect)引脚已标记，其余引脚至少上拉/下拉到确定电平。",
-                        theory="CMOS 输入悬空→电压由漏电流决定→处于亚稳态→振荡、功耗增大、闩锁。每个输入引脚必须有确定的 DC 路径到 VDD 或 GND。",
-                    ))
+                if k in pkg:
+                    est_pins = v
+                    break
+            if est_pins < 16:
+                continue
+            prefix = ref + "."
+            connected = sum(1 for pins in pin_lists for p in pins
+                            if p == ref or p.startswith(prefix))
+            if connected < est_pins * 0.6:
+                violations.append(RuleViolation(
+                    rule_name="未连接引脚检查",
+                    description=f"IC {ref}({pkg}) 仅 {connected}/{est_pins} 个引脚出现在网表中，可能大量引脚未连接",
+                    severity=RuleSeverity.INFO, location=ref,
+                    suggestion="确认 NC(No Connect)引脚已标记，其余引脚至少上拉/下拉到确定电平。",
+                    theory="CMOS 输入悬空→电压由漏电流决定→处于亚稳态→振荡、功耗增大、闩锁。每个输入引脚必须有确定的 DC 路径到 VDD 或 GND。",
+                ))
         return violations
 
     def _check_polarity_orientation(self, bom_items, positions, netlist):
@@ -2746,18 +2753,60 @@ class DesignRuleChecker:
     def __init__(self):
         self._pcb_data: Optional[PCBData] = None
         self._positions: Optional[dict] = None
+        # 每条规则抛出的异常（{rule, error}）——check_all 不再静默吞掉规则 bug，
+        # 调用方/实验脚本可以据此把「规则异常」当红灯（见 audit-findings.md）。
+        self.rule_errors: list[dict] = []
         self._rules = [getattr(self, name) for name in sorted(dir(self)) if name.startswith('_check_')]
+
+    @staticmethod
+    def _net_pins(net_value) -> list[str]:
+        """规整一条网络的引脚表示：容忍 [pins] 列表或带 .pins 的对象。"""
+        if isinstance(net_value, (list, tuple, set)):
+            return [str(p) for p in net_value]
+        pins = getattr(net_value, "pins", None)
+        return [str(p) for p in (pins or [])]
+
+    @staticmethod
+    def normalize_netlist(netlist, pcb_data=None) -> dict:
+        """把网络表归一化成 {网络名: ["U1.12", ...]}。
+
+        软件的 CommandContext.netlist 与离线实验脚本都传 dict，但历史上
+        controller 传的是空 list、且全项目从没给它赋过值，导致「未连接引脚」
+        「上下拉电阻」两条规则在产品里恒不触发、而覆盖率实验里却有输出 ——
+        实验与产品口径就此分裂。这里统一兜底：netlist 为空时从 pcb_data.nets 反推。
+        """
+        if isinstance(netlist, dict) and netlist:
+            return netlist
+        nets = getattr(pcb_data, "nets", None) if pcb_data is not None else None
+        if nets:
+            derived = {name: list(getattr(n, "pins", []) or []) for name, n in nets.items()}
+            derived = {k: v for k, v in derived.items() if v}
+            if derived:
+                return derived
+        return netlist if isinstance(netlist, dict) else {}
 
     def check_all(self, bom_items, positions=None, netlist=None, pcb_data=None):
         self._pcb_data = pcb_data
         self._positions = positions
+        netlist = self.normalize_netlist(netlist, pcb_data)
         violations = []
+        self.rule_errors = []
         for rule_func in self._rules:
             try:
                 result = rule_func(bom_items, positions, netlist)
                 if result: violations.extend(result)
             except Exception as e:
+                self.rule_errors.append({
+                    "rule": rule_func.__name__,
+                    "error": f"{type(e).__name__}: {e}",
+                })
                 logger.warning(f"规则检查异常 ({rule_func.__name__}): {e}")
+        if self.rule_errors:
+            logger.warning(
+                "规则检查有 %d 条规则抛异常: %s",
+                len(self.rule_errors),
+                ", ".join(err["rule"] for err in self.rule_errors),
+            )
         logger.info(f"规则检查完成: 发现 {len(violations)} 项违规")
         return violations
 

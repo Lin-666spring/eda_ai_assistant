@@ -220,3 +220,26 @@ class TestSaveAll:
         assert len(data["assistants"]) == 2
         assert data["active_assistant"] == "a1"
         assert data["active_conv"] == "c1"
+
+
+def test_custom_db_path_creates_missing_parent(tmp_path):
+    """自定义 db_path 时按它自己的父目录建目录（而不是永远 mkdir 全局 DB_DIR）。"""
+    from src.core.persistence import SessionStore
+    db_path = tmp_path / "nested" / "deeper" / "sessions.db"
+    store = SessionStore(db_path=db_path)
+    assert db_path.exists()
+    store.save_state("k", "v")
+    assert store.load_all() is not None
+
+
+def test_app_home_honors_env(monkeypatch, tmp_path):
+    from src.constants import app_home
+    monkeypatch.setenv("EDA_AI_HOME", str(tmp_path))
+    assert app_home() == tmp_path
+
+
+def test_app_home_defaults_to_user_dir(monkeypatch):
+    from src.constants import app_home
+    monkeypatch.delenv("EDA_AI_HOME", raising=False)
+    assert app_home().name == ".eda_ai_assistant"
+
