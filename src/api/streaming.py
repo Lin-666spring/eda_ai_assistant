@@ -38,25 +38,31 @@ async def _stream_chat_sse(text: str, agent_mode: bool = False):
     """
     queue: asyncio.Queue[dict] = asyncio.Queue()
     controller = get_controller()
+    loop = asyncio.get_running_loop()
+
+    def _enqueue(event: dict) -> None:
+        """执行器线程回调统一入口。
+
+        2026-10-06 修复：controller 的 on_token/on_tool_call 跑在线程池线程里，
+        而 asyncio.Queue 非线程安全 —— 之前直接 put_nowait 有竞态（并发多路
+        流式请求时可能丢事件或损坏内部 deque）。现在 call_soon_threadsafe
+        跳回事件循环线程入队。
+        """
+        try:
+            loop.call_soon_threadsafe(queue.put_nowait, event)
+        except RuntimeError:
+            pass  # 客户端断开导致 loop 已关，丢弃残余 token 即可
 
     def _on_token(token: str) -> None:
         """Called by the controller for each token chunk."""
-        try:
-            queue.put_nowait({"event": "token", "data": token})
-        except asyncio.QueueFull:
-            pass  # Should not happen with unlimited queue
+        _enqueue({"event": "token", "data": token})
 
     def _on_tool_call(name: str, args: dict) -> None:
         """Called by agent_loop before each tool execution."""
-        try:
-            queue.put_nowait({
-                "event": "tool_call",
-                "data": json.dumps({"name": name, "args": args}, ensure_ascii=False),
-            })
-        except asyncio.QueueFull:
-            pass
-
-    loop = asyncio.get_running_loop()
+        _enqueue({
+            "event": "tool_call",
+            "data": json.dumps({"name": name, "args": args}, ensure_ascii=False),
+        })
 
     if agent_mode:
         task = loop.run_in_executor(
@@ -76,6 +82,11 @@ async def _stream_chat_sse(text: str, agent_mode: bool = False):
         except asyncio.TimeoutError:
             if task.done():
                 done = True
+                # 排干残余事件再收尾：最后一个 token 的入队回调可能还挂在
+                # 事件循环 ready 队列里，让一拍 + 取尽队列，避免尾部丢失。
+                await asyncio.sleep(0)
+                while not queue.empty():
+                    yield queue.get_nowait()
                 try:
                     full_text = task.result()
                 except Exception as exc:

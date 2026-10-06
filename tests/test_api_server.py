@@ -492,3 +492,32 @@ class TestCreateControllerFromSettings:
         from src.api.server import _create_controller
         ctrl = _create_controller()
         assert ctrl.agent is None
+
+
+# ═══════════════════════════════════════════════════════════════
+#  SSE 线程安全（2026-10-06 回归：执行器线程原先直接 put_nowait
+#  asyncio.Queue —— 非线程安全，并发流有竞态）
+# ═══════════════════════════════════════════════════════════════
+
+
+class _ThreadEmittingCtrl:
+    """在执行器线程里逐个回调 on_token —— 复现真实调用路径。"""
+
+    def chat_message_stream(self, text, on_token):
+        for i in range(50):
+            on_token(f"词{i}")
+        return "全文"
+
+
+class TestSSEThreadsafe:
+    def test_all_tokens_from_executor_thread_delivered(self, monkeypatch):
+        monkeypatch.setattr(
+            "src.api.streaming.get_controller", lambda: _ThreadEmittingCtrl()
+        )
+        resp = client.get("/api/v1/chat/stream?text=hi&agent_mode=false")
+        body = resp.text
+        assert body.count("event: token") == 50   # 一个不丢
+        assert "event: done" in body
+        assert "全文" in body                      # done.data = 完整文本
+        # 顺序保持：第一个 token 在 done 之前
+        assert body.index("event: token") < body.index("event: done")
