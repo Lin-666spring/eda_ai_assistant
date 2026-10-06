@@ -48,10 +48,11 @@ from src.api.models import (
     ChatStreamRequest,
 )
 from src.api.server import get_controller
+from src.core.controller import AppController
 from src.core.persistence import SessionStore
 from src.bom.parser import BOMItem
 from src.config import SETTINGS_DIR, load_settings, save_settings
-from src.constants import LLM_PROVIDER_PRESETS, ProviderPreset
+from src.constants import get_provider_preset
 
 logger = logging.getLogger(__name__)
 
@@ -480,28 +481,40 @@ def update_llm_config(req: LLMConfigRequest):
 
 @router.post("/llm/test")
 def test_llm_connection(req: LLMTestRequest):
-    """Test LLM connection with a minimal chat request."""
+    """Test LLM connection with a minimal chat request.
+
+    2026-10-06 修复：这里曾 `from openai import OpenAI` 直接建客户端，有两个坑
+    （Eel 侧 main.py 同名函数已修，REST 侧漏改）：
+      1. `openai` 不在 requirements.txt（干净环境必 ImportError）；
+      2. Claude 的 base_url 是原生 Messages API，套给 OpenAI SDK 必 404。
+    现在统一走 AppController._create_llm_client()，协议分支只有一处。
+    """
     import time
 
     try:
-        from openai import OpenAI
-
-        presets: dict[str, ProviderPreset] = LLM_PROVIDER_PRESETS
-        preset = presets.get(req.provider)
-        url = req.base_url or (preset.base_url if preset else "")
+        preset = get_provider_preset(req.provider)
+        url = req.base_url or preset.base_url
         if not url:
             return {"ok": False, "error": "No API base URL configured"}
+        if not req.api_key:
+            return {"ok": False, "error": "API key required"}
 
-        client = OpenAI(api_key=req.api_key, base_url=url)
-        start = time.time()
-        resp = client.chat.completions.create(
-            model=req.model or (preset.default_model if preset else ""),
-            messages=[{"role": "user", "content": "Hi"}],
-            max_tokens=5,
-            temperature=0,
+        client = AppController._create_llm_client(
+            req.api_key, url, req.model or preset.default_model, preset.name,
         )
+        if client is None:
+            return {"ok": False, "error": "无法创建客户端"}
+
+        start = time.time()
+        reply = client.chat("Hi", max_tokens=5, temperature=0)
         latency = round((time.time() - start) * 1000)
-        return {"ok": True, "latency": latency, "model_used": resp.model}
+        return {
+            "ok": True,
+            "latency": latency,
+            "model_used": getattr(client, "model", req.model),
+            "protocol": preset.protocol,
+            "reply_preview": (reply or "")[:40],
+        }
     except Exception as e:
         msg = str(e)
         if len(msg) > 200:

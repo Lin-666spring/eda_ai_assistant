@@ -394,3 +394,59 @@ class TestKnowledgeEndpoint:
         assert "ok" in data
         assert "result" in data
         assert isinstance(data["ok"], bool)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  /llm/test（2026-10-06 回归：原先 from openai import OpenAI，
+#  openai 不在 requirements → 干净环境 ImportError；Claude 原生协议 → 404）
+# ═══════════════════════════════════════════════════════════════
+
+
+class _FakeTestClient:
+    def __init__(self, reply="ok"):
+        self.reply = reply
+        self.model = "fake-model"
+
+    def chat(self, message, **kwargs):
+        return self.reply
+
+
+class TestLLMTestEndpoint:
+    def test_uses_project_client_and_returns_contract(self, monkeypatch):
+        monkeypatch.setattr(
+            "src.core.controller.AppController._create_llm_client",
+            staticmethod(lambda *a, **k: _FakeTestClient()),
+        )
+        resp = client.post("/api/v1/llm/test", json={
+            "provider": "deepseek", "api_key": "sk-test",
+            "base_url": "https://example.com/v1", "model": "m",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["ok"] is True
+        assert "latency" in data and "protocol" in data
+        assert data["model_used"] == "fake-model"
+
+    def test_missing_key_returns_ok_false(self):
+        resp = client.post("/api/v1/llm/test", json={
+            "provider": "deepseek", "api_key": "",
+            "base_url": "https://example.com/v1", "model": "m",
+        })
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is False
+
+    def test_provider_error_surfaces_as_message(self, monkeypatch):
+        def _boom(*a, **k):
+            raise RuntimeError("connection refused")
+        monkeypatch.setattr(
+            "src.core.controller.AppController._create_llm_client",
+            staticmethod(_boom),
+        )
+        resp = client.post("/api/v1/llm/test", json={
+            "provider": "deepseek", "api_key": "sk-test",
+            "base_url": "https://example.com/v1", "model": "m",
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["ok"] is False
+        assert "connection refused" in data["error"]
