@@ -95,11 +95,14 @@
 > 样本与判读证据：`experiment_results/rule_spotcheck_2026-10-06/`。
 > **重要结论：本轮修复把违规量从 5769 压到 3241（−44%），但抽样精确率 7.7% → 6.5%（CI 重叠）没有提升。**
 
-**代码 bug（4，改起来最值）**
-- [ ] `_check_trace_acute_angles` 过孔锚点恒为空：`checker.py:1368` 取 `getattr(v,"x"/"y")`，而 `PCBVia` 只有 `position`（`src/pcb/models.py:25-27`）
-- [ ] `_is_pad_entry` 用 `max(leg_in,leg_out)<0.5`，与注释「两腿均短于 0.5mm」不符
-- [ ] `_check_opamp_feedback_network` 数「与运放同前缀的电阻」（U vs R 恒为 0）→ 结构恒真
-- [ ] `_check_reference_continuity` 只取每行第一个位号（"R4,R5" 只算 R4）→ 报出不存在的跳号
+**代码 bug（3 条，2026-10-06 已由 ZCode 修复并验收；报告 [docs/ZCode修改报告_2026-10-06.md](../docs/ZCode修改报告_2026-10-06.md)）**
+- [x] `_check_trace_acute_angles` 过孔锚点恒为空（`PCBVia` 只有 `position`）→ 改取 `position`；实测锐角 **593 → 572**
+- [x] `_check_opamp_feedback_network` 数「与运放同前缀的电阻」恒为 0 → 改按网表（电阻集合 = BOM ∪ 网表引脚），无网表不判、级别降 INFO；实测 **4 → 0**
+- [x] `_check_reference_continuity` 只取每行第一个位号 → 拆开全部位号；实测 **263 → 179**
+- [x] `microstrip_impedance` 窄线分支偏低约 2×（40.9Ω）→ IPC-2141（72.7Ω）；
+      副作用：`_check_impedance_matching` **23 → 295**（方向翻转，原报「偏低」实为「偏高」）
+- [ ] **（新）阻抗规则 295 条需重新抽查判读**：公式对了不代表目标/±25% 口径对，可能大部分是真检出、也可能引入新误报
+- [x] ~~`_is_pad_entry` 与注释不符~~ → **复查撤销**：常量注释即「两腿均短」，代码与之一致（judge 误判）
 
 **判据用「存在性/子串」代替网表与几何（FP 主体）**
 - [ ] `_check_crosstalk_spacing` 把工程声明的差分对**自身两半**当串扰（5/5 样本）；且仍有名字猜配对

@@ -113,8 +113,11 @@ def microstrip_impedance(
     # 有效宽度（考虑蚀刻因子，简化处理）
     w_eff = w_mm
     if w_mm / h_mm < 1:
-        # 窄微带
-        z0 = (60 / math.sqrt(er + 1.41)) * math.log(4 * h_mm / w_eff)
+        # 窄微带 (IPC-2141)。
+        # 2026-10-06 修复：原式 (60/√(er+1.41))·ln(4h/w) 系数与对数项不配套，
+        # 结果比 IPC-2141 低约 2×（w=0.1524/h=0.2/er=4.5 旧值 40.9Ω、正解 72.7Ω），
+        # 阻抗类规则据此把「偏高」判成「偏低」。
+        z0 = (87 / math.sqrt(er + 1.41)) * math.log(5.98 * h_mm / (0.8 * w_eff + t_mm))
     else:
         # 宽微带
         z0 = (120 * math.pi) / (

@@ -260,3 +260,56 @@ class TestCheckAllContract:
         nets = {f"N{i}": PCBNet(name=f"N{i}", pins=[f"U1.{i}"]) for i in range(40)}
         assert checker._check_unconnected_pins(bom, {}, nets) == []
 
+
+class TestOpampFeedbackNetwork:
+    """2026-10-06 回归：旧判据数「与运放同前缀(U)的电阻」恒为 0 → 有运放必报。
+    现在按网表判断：与运放共网的电阻即反馈网络；无网表不判。
+    """
+
+    @staticmethod
+    def _opamp_bom():
+        return [
+            BOMItem(reference="U5", value="", package="SOP-8",
+                    part_number="LM358", description="", quantity=1),
+        ]
+
+    def test_net_with_resistor_no_violation(self, checker):
+        netlist = {
+            "OUT": ["U5.1", "R3.2"],
+            "IN-": ["U5.2", "R3.1", "R4.1"],
+        }
+        assert checker._check_opamp_feedback_network(self._opamp_bom(), {}, netlist) == []
+
+    def test_net_without_resistor_reports_info(self, checker):
+        netlist = {"OUT": ["U5.1", "C2.1"], "IN-": ["U5.2", "U6.3"]}
+        violations = checker._check_opamp_feedback_network(self._opamp_bom(), {}, netlist)
+        assert len(violations) == 1
+        assert violations[0].severity == RuleSeverity.INFO
+        assert "U5" in violations[0].description
+        assert "OUT" in violations[0].description and "IN-" in violations[0].description
+
+    def test_no_netlist_no_violation(self, checker):
+        assert checker._check_opamp_feedback_network(self._opamp_bom(), {}, {}) == []
+        assert checker._check_opamp_feedback_network(self._opamp_bom(), {}, None) == []
+
+
+class TestReferenceContinuity:
+    """2026-10-06 回归：一行 "R4,R5" 以前只算 R4，报出实际不存在的跳号。"""
+
+    @staticmethod
+    def _rs(refs):
+        return [BOMItem(reference=r, value="10kΩ", package="0603",
+                        part_number="C25804", description="贴片电阻", quantity=1)
+                for r in refs]
+
+    def test_multi_ref_line_no_false_gap(self, checker):
+        bom = self._rs(["R3", "R4,R5", "R6"])
+        assert checker._check_reference_continuity(bom, {}, {}) == []
+
+    def test_real_gap_still_reported(self, checker):
+        bom = self._rs(["R3", "R4", "R6"])   # 删掉 R5 → 真缺口
+        violations = checker._check_reference_continuity(bom, {}, {})
+        assert len(violations) == 1
+        assert violations[0].severity == RuleSeverity.INFO
+        assert "R4→R6" in violations[0].description
+

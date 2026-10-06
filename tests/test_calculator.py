@@ -63,6 +63,20 @@ class TestMicrostripImpedance:
     def test_zero_height_returns_inf(self):
         assert microstrip_impedance(0.3, 0) == float('inf')
 
+    def test_ipc2141_narrow_trace(self):
+        """2026-10-06 修复：窄线分支 (w/h<1) 改用 IPC-2141 公式。
+
+        w=0.1524mm(6mil) / h=0.2mm / t=0.035mm / er=4.5 → ≈72.7Ω
+        （旧公式 (60/√(er+1.41))·ln(4h/w) 误算 40.9Ω，低约 2×）。
+        """
+        z0 = microstrip_impedance(0.1524, 0.2, 0.035, 4.5)
+        assert abs(z0 - 72.7) <= 1.0, f"IPC-2141 expect ~72.7Ω, got {z0}"
+
+    def test_narrow_region_monotonic(self):
+        """窄线区单调性：同 h 下 w 越小 Z 越高；同 w 下 h 越大 Z 越高。"""
+        assert microstrip_impedance(0.10, 0.2, er=4.5) > microstrip_impedance(0.18, 0.2, er=4.5)
+        assert microstrip_impedance(0.15, 0.4, er=4.5) > microstrip_impedance(0.15, 0.2, er=4.5)
+
 
 class TestStriplineImpedance:
     def test_stripline_lower_than_microstrip(self):

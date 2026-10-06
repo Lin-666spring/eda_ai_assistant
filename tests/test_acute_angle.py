@@ -16,7 +16,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.constants import PCB
 from src.pcb.geometry import chain_segments, polyline_corners, trace_corners
-from src.pcb.models import PCBData, PCBTrace
+from src.pcb.models import PCBData, PCBTrace, PCBVia
 from src.rules.checker import DesignRuleChecker, RuleSeverity
 
 ACUTE_RULE = "走线锐角检查"
@@ -153,6 +153,38 @@ class TestAcuteAngleRule:
         rad = math.radians(angle + 0.5)
         segs = [(0, 0, 10, 0), (10, 0, 10 + 10 * math.cos(rad), 10 * math.sin(rad))]
         assert _names(_rule_violations(segs, net="USB_DP")) == [RIGHT_RULE]
+
+
+class TestViaAnchorFilter:
+    """2026-10-06 回归：过孔锚点此前从未生效——PCBVia 只有 position 元组、
+    没有 x/y 属性，原实现 getattr(v, "x") 恒为 None，顶点落在过孔上的
+    焊盘入口拐角（两腿均 <0.5mm、距过孔 <1.0mm）不会被过滤。
+    """
+
+    @staticmethod
+    def _pcb_with_via(via_pos):
+        # 拐角顶点 (10, 0)，内角约 8°（锐角），两腿 0.30mm / 0.28mm（均 <0.5mm）
+        pcb = PCBData(format="lceda_epro2")
+        pcb.traces.append(PCBTrace(
+            net_name="SIG", layer="TopLayer", width_mm=0.25,
+            segments=[(9.7, 0, 10, 0), (10, 0, 9.72, 0.04)],
+        ))
+        pcb.vias.append(PCBVia(
+            position=via_pos, drill_mm=0.3, pad_mm=0.6,
+            from_layer="TopLayer", to_layer="BottomLayer", net_name="SIG",
+        ))
+        return pcb
+
+    def test_corner_on_via_filtered(self):
+        """顶点距过孔 0.005mm（< TRACE_CORNER_PAD_CLEAR_MM=1.0mm）→ 焊盘入口几何，不报。"""
+        pcb = self._pcb_with_via((10.0, 0.005))
+        assert _checker_with(pcb)._check_trace_acute_angles([], {}, {}) == []
+
+    def test_same_corner_far_from_via_still_flagged(self):
+        """同一拐角、过孔移到远处 → 恢复报锐角。"""
+        pcb = self._pcb_with_via((100.0, 100.0))
+        violations = _checker_with(pcb)._check_trace_acute_angles([], {}, {})
+        assert _names(violations) == [ACUTE_RULE]
 
 
 class TestRealEpro2:

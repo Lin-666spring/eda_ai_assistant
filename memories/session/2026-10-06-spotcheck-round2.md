@@ -46,6 +46,28 @@
 4. 子任务会在仓库根留下 `_*.py` 探针与 `tmp_judge/`，收尾要清（本次已清）。
 5. 判读质量取决于「必须回原始数据」这一条：本轮 144 条全部落到具体位号/网络/数值，
    才暴露出 `PCBVia` 只有 `position`、`microstrip_impedance` 窄线公式偏低 2× 这类真 bug。
+6. **judge 也会误判**：trace_1 报的「`_is_pad_entry` 用 `max(leg)<0.5` 与注释不符」经复查**不成立**
+   —— 常量注释就是「两腿均短」，代码与之一致（报告 §4A 第 2 条已撤销）。交给别的 agent 改代码前，
+   每一条都要自己先复核一遍代码，否则会把不存在的缺陷"修"进去。
+
+## 6. 判据修复（交 ZCode 执行，DSH 复核）
+
+用户要求「给 ZCode 做代码修改」——用本机 ZCode headless（`D:\ZCode\resources\glm\zcode.cjs`，
+GLM-5.3-Flash / BigModel Coding Plan）改代码，DSH 会话负责写任务书、复核 diff、补跑测试与量化效果。
+
+- 任务书 `.zcode/task-2026-10-06-drc-fixes.md`（4 处）+ 补修说明 `.zcode/task-2026-10-06-followup.md`；
+  产物存档 [docs/ZCode修改报告_2026-10-06.md](../../docs/ZCode修改报告_2026-10-06.md)
+- **交付前先复核**：judge 报的第 4 条（`_is_pad_entry` 与注释不符）经复核**不成立**，未让 ZCode 改
+- 改了 4 处：拐角过孔锚点（`PCBVia.position`）、运放反馈改网表判据、位号行多号拆分、微带线窄线公式改 IPC-2141
+- 第 1 轮 ZCode 自己的新测试挂了 1 个（电阻只在网表、BOM 漏行）→ 退回重改，第 2 轮 108 passed
+- 验收：定向 **108 passed**；全量 **910 passed / 10 failed / 76 errors**（与改动前逐项一致，无回归）
+- 量化（76 设计）：锐角 593→**572**、位号连续性 263→**179**、运放反馈 4→**0**、
+  阻抗 23→**295**（方向翻转，**待重新抽查判读**）
+- ZCode 侧环境坑：它的 bash 在本机沙箱起不来（`couldn't create signal pipe, Win32 error 5`，
+  沙箱禁止命名管道）→ 命令类验证必须由 DSH 侧代跑；它的会话库在 `C:\Users\lin\.zcode` 也写不进，
+  想让它持久化会话就把 `ZCODE_DATA_BASE_DIR` 指到工作区；启动必须设
+  `ZCODE_BUILTIN_PROVIDER_CONFIG_FILE=D:\ZCode\resources\config\provider\zcode-builtin.json`，
+  **不要**重定向 HOME（它真正的 personal provider 配置在 `C:\Users\lin\.zcode\v2\provider_config.json`）
 
 ## 5. 下一步
 

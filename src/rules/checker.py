@@ -708,11 +708,14 @@ class DesignRuleChecker:
         for item in bom_items:
             ref = getattr(item, "reference", "")
             if not ref: continue
-            first = ref.split(",")[0].strip()
-            prefix = "".join(c for c in first if c.isalpha()).upper()
-            if prefix in rc_prefixes:
-                nums = "".join(c for c in first if c.isdigit())
-                if nums: prefix_map.setdefault(prefix, []).append(int(nums))
+            # 2026-10-06 修复：一行可含多个位号（"R4,R5"），原来只取第一个，
+            # 会把实际存在的位号当跳号报出。中英文逗号、空格分隔都拆开参与判断。
+            for token in re.split(r"[,，\s]+", ref.strip()):
+                if not token: continue
+                prefix = "".join(c for c in token if c.isalpha()).upper()
+                if prefix in rc_prefixes:
+                    nums = "".join(c for c in token if c.isdigit())
+                    if nums: prefix_map.setdefault(prefix, []).append(int(nums))
         for prefix, nums in prefix_map.items():
             nums.sort()
             gaps = []
@@ -998,28 +1001,58 @@ class DesignRuleChecker:
         return violations
 
     def _check_opamp_feedback_network(self, bom_items, positions, netlist):
-        """运放反馈网络：运算放大器应有反馈电阻网络"""
+        """运放反馈网络：运算放大器应有反馈电阻网络
+
+        2026-10-06 修复：旧判据数「位号前缀与运放相同的电阻」——运放是 U 前缀、
+        电阻是 R 前缀，恒为 0，叠加「描述需含『电阻』」（本项目大量 BOM 描述为空），
+        该规则结构上恒报。现在按网表判断：反馈/增益电阻必然与运放引脚共网，
+        含该运放引脚的任一网络上见到 ≥1 个电阻即认为有反馈网络。
+        网表缺失时数据不足，不判（避免退化成「有运放就报」）。
+        """
+        if not netlist:
+            return []
+        net_pins = {name: self._net_pins(v) for name, v in netlist.items()}
+        # 电阻位号集合：R 前缀（R/RN/RNC）或描述/型号写明电阻 —— 与
+        # _classify_component() 规则回退的电阻分支同一口径，但不经 ML（判据要确定性）。
+        resistor_refs: set = set()
+        for item in bom_items:
+            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
+            is_resistor = "电阻" in desc or "resistor" in desc
+            for ref in item.reference_list:
+                prefix = "".join(c for c in ref if c.isalpha()).upper()
+                if is_resistor or prefix.startswith("R"):
+                    resistor_refs.add(ref)
+        # BOM 可能漏行：网表引脚名 "." 前的位号同样是器件类型的权威来源
+        # （"R3.2"→R3，R 前缀即电阻），与 BOM 收集结果取并集。
+        for pins in net_pins.values():
+            for pin in pins:
+                ref = pin.split(".")[0]
+                if "".join(c for c in ref if c.isalpha()).upper().startswith("R"):
+                    resistor_refs.add(ref)
         violations = []
-        opamp_kw = ["运放", "OP", "LM358", "LM324", "TL07", "TL08", "NE553", "OPA", "MCP6", "AD8"]
         for item in bom_items:
             pn = (getattr(item, "part_number", "") or "").strip().upper()
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
-            if not any(kw.upper() in pn for kw in ["LM358", "LM324", "LMV358", "TL07", "TL08", "NE553", "OPA", "MCP6", "AD8"]):
+            if not any(kw in pn for kw in ["LM358", "LM324", "LMV358", "TL07", "TL08",
+                                           "NE553", "OPA", "MCP6", "AD8"]):
                 continue
-            ref = getattr(item, "reference", "").split(",")[0].strip()
-            prefix = "".join(c for c in ref if c.isalpha())
-            nearby_rs = sum(1 for r in bom_items
-                          if "".join(c for c in getattr(r, "reference", "").split(",")[0].strip() if c.isalpha()) == prefix
-                          and any(kw.lower() in (f"{getattr(r, 'part_number', '')} {getattr(r, 'description', '')}").lower()
-                                  for kw in ["电阻", "resistor"]))
-            if nearby_rs < 2:
-                violations.append(RuleViolation(
-                    rule_name="运放反馈网络检查",
-                    description=f"运放 {ref}({pn}) 可能缺少反馈电阻网络(仅{nearby_rs}个同前缀电阻)",
-                    severity=RuleSeverity.WARNING, location=ref,
-                    suggestion="同相放大:Gain=1+Rf/Rg;反相放大:Gain=-Rf/Rin。Rf 通常取 1kΩ~100kΩ,反馈网络靠近反相输入端。",
-                    theory="运放开环增益极高(≥100dB),必须通过负反馈确定闭环增益并保证稳定性。无反馈→运放工作在开环比较器模式,输出饱和至电源轨。反馈电阻热噪声(4kTR·BW)贡献输出噪声。",
-                ))
+            for ref in item.reference_list:
+                pin_prefix = ref + "."
+                opamp_nets = [name for name, pins in net_pins.items()
+                              if any(p == ref or p.startswith(pin_prefix) for p in pins)]
+                if not opamp_nets:
+                    continue    # 网表没提到这个运放：缺数据，不下判断
+                has_r = any(p.split(".")[0] in resistor_refs
+                            for name in opamp_nets for p in net_pins[name])
+                if not has_r:
+                    violations.append(RuleViolation(
+                        rule_name="运放反馈网络检查",
+                        description=(f"运放 {ref}({pn}) 的 {len(opamp_nets)} 个网络"
+                                     f"（{', '.join(opamp_nets[:5])}）上未见电阻，"
+                                     f"可能缺少反馈电阻网络"),
+                        severity=RuleSeverity.INFO, location=ref,
+                        suggestion="同相放大:Gain=1+Rf/Rg;反相放大:Gain=-Rf/Rin。Rf 通常取 1kΩ~100kΩ,反馈网络靠近反相输入端。",
+                        theory="运放开环增益极高(≥100dB),必须通过负反馈确定闭环增益并保证稳定性。无反馈→运放工作在开环比较器模式,输出饱和至电源轨。反馈电阻热噪声(4kTR·BW)贡献输出噪声。",
+                    ))
         return violations
 
     def _check_capacitor_voltage_derating(self, bom_items, positions, netlist):
@@ -1365,10 +1398,18 @@ class DesignRuleChecker:
             diff_members.update(str(n).upper() for n in nets)
         anchor_grid: dict = {}
         for v in (pcb.vias or []):
-            vx, vy = getattr(v, "x", None), getattr(v, "y", None)
-            if vx is not None and vy is not None:
+            # 2026-10-06 修复：PCBVia 只有 position 元组、没有 x/y 属性，
+            # 原来的 getattr(v, "x", None) 永远拿不到坐标 → 过孔锚点从未生效，
+            # 顶点落在过孔上的焊盘入口拐角不会被过滤。优先 position，兼容 x/y。
+            pos = getattr(v, "position", None)
+            if pos is not None and len(tuple(pos)) >= 2:
+                ax, ay = float(pos[0]), float(pos[1])
+            else:
+                vx, vy = getattr(v, "x", None), getattr(v, "y", None)
+                if vx is None or vy is None:
+                    continue
                 ax, ay = float(vx), float(vy)
-                anchor_grid.setdefault((math.floor(ax), math.floor(ay)), []).append((ax, ay))
+            anchor_grid.setdefault((math.floor(ax), math.floor(ay)), []).append((ax, ay))
         for pos in (getattr(pcb, "component_positions", None) or {}).values():
             if isinstance(pos, dict) and "x" in pos and "y" in pos:
                 ax, ay = float(pos["x"]), float(pos["y"])
