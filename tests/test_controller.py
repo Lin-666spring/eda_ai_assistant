@@ -274,3 +274,66 @@ class TestMethodLabel:
 
     def test_unknown_falls_back(self, controller):
         assert controller._method_label("nonexistent") == "nonexistent"
+
+
+# ——— _generate_drc_rule（2026-10-06 回归：context.conversation_history 不存在，
+#      聊天/Agent Loop 触发必然 AttributeError）———
+
+class _FakeLLM:
+    """最小 LLM 客户端替身：记录 chat 调用，返回固定的规则代码。"""
+
+    def __init__(self, reply: str = "", history: list | None = None):
+        self._reply = reply
+        self._history = history or []
+        self.chat_calls: list[str] = []
+
+    def chat(self, prompt, **kwargs):
+        self.chat_calls.append(prompt)
+        return self._reply
+
+    def get_history(self):
+        return list(self._history)
+
+    def clear_history(self):
+        self._history.clear()
+
+
+class TestGenerateDrcRule:
+    _CODE = 'def _check_led_limit(self, bom_items, positions, netlist):\n    """规则名称：LED 限流"""\n    return []'
+
+    def test_dispatch_with_param_no_crash(self, controller):
+        fake = _FakeLLM(reply=f"```python\n{self._CODE}\n```")
+        controller.agent = fake
+        result = controller._dispatch_operation(
+            "generate_drc_rule", {"rule_description": "检查LED限流电阻"}
+        )
+        assert "python" in result
+        assert "_check_led_limit" in result
+
+    def test_falls_back_to_agent_history(self, controller):
+        fake = _FakeLLM(
+            reply=f"```python\n{self._CODE}\n```",
+            history=[
+                {"role": "user", "content": "帮我生成一个检查LED限流的规则"},
+                {"role": "assistant", "content": "好的"},
+            ],
+        )
+        controller.agent = fake
+        # 不传参数 → 应回落读历史里最后一条用户消息
+        result = controller._dispatch_operation("generate_drc_rule", {})
+        assert "python" in result
+        assert "检查LED限流" in fake.chat_calls[0]
+
+    def test_no_desc_no_history_returns_guidance(self, controller):
+        fake = _FakeLLM(reply=self._CODE, history=[])
+        controller.agent = fake
+        result = controller._dispatch_operation("generate_drc_rule", {})
+        assert "请先描述" in result
+        assert fake.chat_calls == []   # 未调 LLM
+
+    def test_no_llm_returns_guard(self, controller):
+        controller.agent = None
+        result = controller._dispatch_operation(
+            "generate_drc_rule", {"rule_description": "x"}
+        )
+        assert "API Key" in result or "AI 模型" in result

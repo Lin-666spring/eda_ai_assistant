@@ -691,6 +691,10 @@ class AppController:
                 )
             return self.verify_suggestion(suggestion)
 
+        # DRC 规则生成 — 需要传递 rule_description 参数
+        if operation == "generate_drc_rule":
+            return self._generate_drc_rule(params.get("rule_description", ""))
+
         # 从 ToolRegistry 获取 handler 映射（带懒加载降级）
         dispatch = self._build_dispatch_map()
         handler = dispatch.get(operation)
@@ -1415,7 +1419,7 @@ class AppController:
         lines.append("=" * 50)
         return "\n".join(lines)
 
-    def _generate_drc_rule(self) -> str:
+    def _generate_drc_rule(self, rule_desc: str = "") -> str:
         """DRC 规则自动生成 — 根据自然语言描述生成检查规则代码
 
         利用 LLM 将用户对 PCB 设计规则的自然语言描述
@@ -1425,13 +1429,15 @@ class AppController:
         if guard:
             return guard
 
-        # 从用户最后一条输入获取规则描述
-        history = self.context.conversation_history
-        rule_desc = ""
-        for msg in reversed(history):
-            if msg.get("role") == "user":
-                rule_desc = msg.get("content", "")
-                break
+        # 2026-10-06 修复：原实现读 self.context.conversation_history ——
+        # CommandContext 从未有过该字段，本工具被聊天/Agent Loop 触发时必然
+        # AttributeError。现在两级取值：Function Calling 参数（tools.py 已声明
+        # rule_description）优先；为空时回落 LLM 客户端历史里最后一条用户消息。
+        if not rule_desc and self.agent is not None:
+            for msg in reversed(self.agent.get_history()):
+                if msg.get("role") == "user":
+                    rule_desc = msg.get("content", "")
+                    break
 
         if not rule_desc:
             return " 请先描述你想生成的 DRC 规则。例如：'生成一个检查LED限流电阻的规则'"
