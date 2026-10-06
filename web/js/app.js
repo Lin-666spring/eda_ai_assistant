@@ -66,6 +66,88 @@ function createAssistantInstance(typeId, customName) {
   return inst;
 }
 
+// ── 启动流程（配合 index.html 里的 window.boot）──
+// 分工：index.html 的收尾脚本负责「展开窗口 + 淡出遮罩」（它首帧就存在，
+// 必须早于 app.js）；这里负责「报进度 + 等后端就绪」——这些步骤只有 app.js 知道。
+// 两段式启动的完整链路见 main.py 的 _boot_worker / boot_status。
+
+/** 启动界面文案 + 进度（0~1）。进度对应本页真实要做的几步，不是假百分比。 */
+function splashStatus(text, ratio) {
+  if (window.boot && typeof window.boot.step === 'function') window.boot.step(text, ratio);
+}
+
+/** 首屏渲染完成 → 交给 window.boot 展开窗口并淡出遮罩。幂等。 */
+function hideSplash() {
+  if (window.boot && window.boot.hold) return;   // URL 带 #boot-hold：停在启动界面
+  if (window.boot && typeof window.boot.finish === 'function') window.boot.finish();
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/** 启动界面上的品牌信息：版本号 + 可选的自制 logo（后端只在文件存在时给路径）。 */
+function applyBootBranding(st) {
+  if (!st) return;
+  if (window.boot && window.boot.state && st.main_size) {
+    window.boot.state.mainSize = st.main_size;   // 展开尺寸以后端为准
+  }
+  const ver = document.getElementById('appSplashVersion');
+  if (ver && st.app && st.app.version) ver.textContent = 'v' + st.app.version;
+
+  const img = document.getElementById('appSplashLogoImg');
+  if (img && st.logo && !img.getAttribute('src')) {
+    img.addEventListener('load', () => {
+      img.classList.add('is-on');           // 见 style.css：默认 display:none
+      const svg = img.parentNode && img.parentNode.querySelector('svg');
+      if (svg) svg.style.display = 'none';
+    }, { once: true });
+    img.setAttribute('src', st.logo);
+  }
+}
+
+/**
+ * 等后端关键步骤就绪（BootSequencer，见 src/core/boot.py）。
+ *
+ * 不是 main() 启动的场景（UI 冒烟测试 / 调试时直接 eel.start）started 为 false，
+ * 立刻返回 —— 别把「两段式启动」强加给这些场景。
+ * 后端迟迟不就绪也不等死：最多约 9s，之后照样放行。
+ */
+async function waitForBackendBoot() {
+  if (typeof eel === 'undefined' || typeof eel.boot_status !== 'function') return null;
+  let last = null;
+  for (let i = 0; i < 60; i++) {
+    let st = null;
+    try { st = await eel.boot_status()(); } catch (e) { return last; }
+    if (!st || st.started !== true) return null;
+    last = st;
+    applyBootBranding(st);
+    if (st.ready) return st;
+    splashStatus(st.text || '正在启动…', 0.72);
+    await sleep(150);
+  }
+  return last;
+}
+
+/**
+ * 界面展开之后，知识库预热可能还在跑（它不挡界面）。
+ * 用顶栏状态胶囊如实报一句，别让人以为卡住了；报过才收尾成「就绪」。
+ */
+async function watchBackendWarmup() {
+  if (typeof eel === 'undefined' || typeof eel.boot_status !== 'function') return;
+  let announced = false;
+  for (let i = 0; i < 200; i++) {           // 最多约 60s
+    let st = null;
+    try { st = await eel.boot_status()(); } catch (e) { return; }
+    if (!st || st.started !== true) return;
+    if (st.warm) {
+      if (announced) setStatus('就绪');
+      return;
+    }
+    announced = true;
+    setStatus(st.text || '正在预热知识库…');
+    await sleep(300);
+  }
+}
+
 // ── Marked.js configuration ──
 if (typeof marked !== 'undefined') {
   marked.setOptions({
@@ -76,59 +158,75 @@ if (typeof marked !== 'undefined') {
 // ═══════════ Init ═══════════
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await loadPersistedState();
-
-  // 统一工具目录（后端 ToolRegistry 派生）— 子页面与工具箱共用
-  await loadToolCatalog();
-  renderWorkspaces();
-  updateSessionBar();
-  renderConversations();
-  renderAssistantMenu();
-
-  // 主页面默认就是对话：不自动打开任何模式子页面。
-  closeSubPage();
-
-  // Theme — 以 settings 为准，未知值一律回落浅色
   try {
-    const sett = await eel.get_settings()();
-    if (sett && sett.theme) applyTheme(sett.theme);
-    if (sett && sett.font_size) {
-      document.documentElement.style.setProperty('--font-size', sett.font_size + 'px');
-    }
-  } catch(e) {}
+    splashStatus('正在载入工作区…', 0.16);
+    await loadPersistedState();
 
-  // LLM config
-  try {
-    const cfg = await eel.get_llm_config()();
-    updateLLMStatus(cfg);
-  } catch(e) {}
+    // 统一工具目录（后端 ToolRegistry 派生）— 子页面与工具箱共用
+    splashStatus('正在载入工具目录…', 0.42);
+    await loadToolCatalog();
+    renderWorkspaces();
+    updateSessionBar();
+    renderConversations();
+    renderAssistantMenu();
 
-  // Right-panel tab switching
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-  });
+    // 主页面默认就是对话：不自动打开任何模式子页面。
+    closeSubPage();
 
-  // Enter to send, Shift+Enter for newline
-  const input = document.getElementById('chatInput');
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
-  });
-
-  // Paste image
-  document.addEventListener('paste', e => {
-    const items = e.clipboardData && e.clipboardData.items;
-    if (!items) return;
-    for (let item of items) {
-      if (item.type.startsWith('image/')) {
-        e.preventDefault();
-        const blob = item.getAsFile();
-        const reader = new FileReader();
-        reader.onload = ev => { currentImage = ev.target.result; showImagePreview(currentImage); };
-        reader.readAsDataURL(blob);
-        break;
+    // Theme — 以 settings 为准，未知值一律回落浅色
+    splashStatus('正在恢复设置…', 0.62);
+    try {
+      const sett = await eel.get_settings()();
+      if (sett && sett.theme) applyTheme(sett.theme);
+      if (sett && sett.font_size) {
+        document.documentElement.style.setProperty('--font-size', sett.font_size + 'px');
       }
-    }
-  });
+    } catch(e) {}
+
+    // LLM config
+    try {
+      const cfg = await eel.get_llm_config()();
+      updateLLMStatus(cfg);
+    } catch(e) {}
+
+    // Right-panel tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    // Enter to send, Shift+Enter for newline
+    const input = document.getElementById('chatInput');
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+    });
+
+    // Paste image
+    document.addEventListener('paste', e => {
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      for (let item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          const reader = new FileReader();
+          reader.onload = ev => { currentImage = ev.target.result; showImagePreview(currentImage); };
+          reader.readAsDataURL(blob);
+          break;
+        }
+      }
+    });
+
+    // 后端关键步骤（热键/托盘）就绪后，前端才把窗口从小窗展开成正式界面
+    splashStatus('正在等待后台就绪…', 0.8);
+    await waitForBackendBoot();
+  } catch (err) {
+    // 初始化失败也必须收掉启动界面，否则界面永远停在小窗加载页
+    console.error('启动初始化失败:', err);
+    splashStatus('启动遇到问题，已进入界面');
+  } finally {
+    hideSplash();
+    watchBackendWarmup();   // 不 await：预热是后台的事，界面已经能用了
+  }
 });
 
 // ═══════════ Persistence ═══════════
@@ -2028,14 +2126,31 @@ function _syncPanelToggle(collapsed) {
 
 var _currentAccent = '#2565fe';
 
+/**
+ * 应用主题到界面。**不落盘** —— 落盘只发生在用户真的点选主题卡片时
+ * （见 saveThemePreference）。
+ *
+ * 历史坑（2026-10-03 修）：这里以前无条件 `eel.save_theme(theme)`，
+ * 而启动流程本身会调用 applyTheme(已保存的值)，等于每次开机都把当前值
+ * 原样写回 settings.json。于是"把默认主题改成浅色"永远不生效：用户改完
+ * 设置文件、下次启动又被前端按内存里的旧值写回去，只有重启后仍在库里的
+ * 旧值存活。读配置的动作不该有写副作用。
+ */
 function applyTheme(name) {
   var theme = (name === 'dark') ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
   document.body.setAttribute('data-theme', theme);
-  try { eel.save_theme(theme)(); } catch(e) {}
   // update theme radio buttons
   document.querySelectorAll('.theme-card input').forEach(function(r) {
     r.checked = r.value === theme;
   });
+}
+
+/** 用户点选主题时调用：写 localStorage（首屏引导用）+ 后端 settings。 */
+function saveThemePreference(theme) {
+  var t = (theme === 'dark') ? 'dark' : 'light';
+  try { localStorage.setItem('eda-theme', t); } catch (e) {}
+  try { eel.save_theme(t)(); } catch (e) {}
 }
 
 function setAccentColor(color, btn) {

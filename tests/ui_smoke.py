@@ -30,6 +30,9 @@
       顶部进度条、多智能体审查骨架屏、按钮内联 loading
   P15 热力图数据来源：坐标文件（无 PCB）也能出格、网格边长可切换并传给后端、
       空状态按 reason 给不同文案（而不是笼统的"无数据"）
+  P16 两段式启动：480×340 小窗启动界面（不溢出、可停住预览）→ 展开正式界面
+      1300×840 → 遮罩移除；resizeTo 被拒时走「另开正式窗口」兜底。
+      另含：启动遮罩必须收尾、默认外观是浅色、界面文字不含 emoji 图标
 另外附带若干"只报告不失败"的巡检（死 id 引用、视图溢出）。
 """
 
@@ -45,6 +48,15 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+# 控制台安全：检查项名字里带 ✕ / ✓ 这类符号，GBK 终端或 `| tee` 管道下
+# print 会直接 UnicodeEncodeError 把整个巡检打断（Python 3.13 起更严）。
+# 改成 UTF-8 + 不可编码字符替换，宁可显示成 ? 也不要中断测试。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -879,15 +891,169 @@ def check_heatmap_data_path(page, res: Result):
     page.screenshot(path=str(SHOT_DIR / "heatmap_from_positions.png"))
 
 
+def check_startup_splash_theme_and_emoji(page, res: Result):
+    """P16 启动加载动画 / 默认浅色 / 界面无 emoji 字体图标。
+
+    三个回归点：
+      * 启动遮罩必须**已经消失且从 DOM 移除** —— 它盖住整个窗口，
+        若因初始化抛错留在页面上，等于整个应用点不动（比没动画严重得多）。
+      * 默认外观是浅色，且启动流程不得把主题写回后端（以前 applyTheme
+        自带 save_theme，开机即把当前值回写，导致"改默认值"永远不生效）。
+      * 界面文字里不得出现 emoji —— 图标统一走 ICONS 的内联 SVG。
+    """
+    splash = page.evaluate("""() => {
+        const el = document.getElementById('appSplash');
+        return {exists: !!el,
+                hiding: !!(el && el.classList.contains('is-hiding')),
+                status: (document.getElementById('appSplashStatus') || {}).textContent || '',
+                booting: document.body.classList.contains('is-booting')};
+    }""")
+    res.check("P16 启动动画已完成并移除（未永久遮挡界面）",
+              not splash["exists"] and not splash["booting"],
+              f"exists={splash['exists']} hiding={splash['hiding']} booting={splash['booting']}")
+
+    theme = page.evaluate("""() => ({
+        attr: document.body.getAttribute('data-theme'),
+        htmlAttr: document.documentElement.getAttribute('data-theme'),
+        checked: [...document.querySelectorAll('.theme-card input')]
+                   .filter(r => r.checked).map(r => r.value),
+        bg: getComputedStyle(document.body).backgroundColor})""")
+    res.check("P16 默认主题是浅色（含主题卡片单选态同步）",
+              theme["attr"] == "light" and theme["checked"] == ["light"],
+              f"data-theme={theme['attr']} checked={theme['checked']} bg={theme['bg']}")
+
+    icons = page.evaluate("""() => {
+        const txt = document.body.innerText || '';
+        return {wrench: txt.includes('\\u{1F527}'),
+                chart: txt.includes('\\u{1F4CA}'),
+                ok: txt.includes('\\u{2705}'),
+                cross: txt.includes('\\u{274C}'),
+                headIcon: !!document.querySelector('#heatmapTitleIcon svg')};
+    }""")
+    res.check("P16 界面文字不含 emoji 图标（含 ）",
+              not any(icons[k] for k in ("wrench", "chart", "ok", "cross")),
+              json.dumps(icons, ensure_ascii=True))
+    res.check("P16 热力图标题图标走内联 SVG（ICONS 注入）",
+              icons["headIcon"] is True, f"svg={icons['headIcon']}")
+
+    # 主题持久化：只有用户点选才回写后端，启动流程不许写（放最后做，避免影响后续检查）
+    persist = page.evaluate("""async () => {
+        const orig = eel.save_theme;
+        const calls = [];
+        eel.save_theme = (t) => { calls.push(t); return orig(t); };
+        applyTheme('dark');
+        const afterApply = calls.slice();
+        saveThemePreference('dark');
+        const afterSave = calls.slice();
+        applyTheme('light');
+        saveThemePreference('light');
+        eel.save_theme = orig;
+        return {afterApply: afterApply, afterSave: afterSave};
+    }""")
+    res.check("P16 applyTheme 不再隐式写回主题（仅用户点选才落盘）",
+              persist["afterApply"] == [] and persist["afterSave"] == ["dark"],
+              f"applyTheme→{persist['afterApply']} saveThemePreference→{persist['afterSave']}")
+
+
+def check_boot_splash(browser, port: int, res: Result, console: list,
+                     pageerrors: list, failed: list):
+    """P16 两段式启动：小窗启动界面 → 展开正式界面。
+
+    单独开一个 **480×340** 的小页面跑（正式页是 1300×840，尺寸不同）：
+      * URL 带 #boot-hold → 启动界面停住，正好用来核对它与截图；
+      * 解除后必须能收尾：遮罩移除、is-booting 摘掉；
+      * resizeTo 在无头 Playwright 里必然不生效（viewport 是模拟的），
+        正好把「被拒绝 → 走另开正式窗口兜底」这条路径真跑一遍。
+    """
+    page = browser.new_page(viewport={"width": 480, "height": 340})
+    page.on("console", lambda m: console.append(
+        (m.type, m.text[:200], getattr(m, "location", None) or {})))
+    page.on("pageerror", lambda e: pageerrors.append(
+        (str(e)[:200] + " || " + (getattr(e, "stack", "") or "")[:400])))
+    page.on("requestfailed", lambda r: failed.append(r.url[:100]))
+    try:
+        page.goto(f"http://localhost:{port}/index.html#boot-hold", wait_until="networkidle")
+        page.wait_for_timeout(1200)
+        page.screenshot(path=str(SHOT_DIR / "boot_splash_small.png"))
+
+        st = page.evaluate("""() => {
+            const el = document.getElementById('appSplash');
+            const fill = document.getElementById('appSplashFill');
+            return {
+                exists: !!el,
+                title: (document.querySelector('.splash-title') || {}).textContent || '',
+                sub: (document.querySelector('.splash-sub') || {}).textContent || '',
+                status: (document.getElementById('appSplashStatus') || {}).textContent || '',
+                version: (document.getElementById('appSplashVersion') || {}).textContent || '',
+                hasMark: !!document.querySelector('.splash-logo svg'),
+                fillWidth: fill ? Math.round(fill.getBoundingClientRect().width) : 0,
+                hold: !!(window.boot && window.boot.hold),
+                finished: !!(window.boot && window.boot.state.finished),
+                booting: document.body.classList.contains('is-booting'),
+                overflowX: document.documentElement.scrollWidth
+                           - document.documentElement.clientWidth,
+                overflowY: document.documentElement.scrollHeight
+                           - document.documentElement.clientHeight,
+            };
+        }""")
+        res.check("P16 小窗启动界面完整渲染（标记/标题/副标题/进度/状态/版本号）",
+                  st["exists"] and st["hasMark"] and bool(st["title"]) and bool(st["sub"])
+                  and st["fillWidth"] > 4 and bool(st["status"]) and st["version"].startswith("v"),
+                  json.dumps(st, ensure_ascii=False)[:220])
+        res.check("P16 启动界面在 480×340 小窗内不溢出（横向/纵向）",
+                  st["overflowX"] <= 1 and st["overflowY"] <= 1 and st["booting"],
+                  f"溢出 x={st['overflowX']} y={st['overflowY']} booting={st['booting']}")
+        res.check("P16 #boot-hold 停在启动界面（首屏已就绪也不收尾）",
+                  st["hold"] and not st["finished"] and st["exists"],
+                  f"hold={st['hold']} finished={st['finished']} exists={st['exists']}")
+
+        # 深色下的同一块界面（截图存档，顺带确认深色 token 覆盖到启动界面）
+        page.evaluate("""() => {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            document.body.setAttribute('data-theme', 'dark');
+        }""")
+        page.wait_for_timeout(250)
+        page.screenshot(path=str(SHOT_DIR / "boot_splash_small_dark.png"))
+        page.evaluate("""() => {
+            document.documentElement.removeAttribute('data-theme');
+            document.body.setAttribute('data-theme', 'light');
+        }""")
+
+        page.evaluate("() => window.boot.finish()")
+        page.wait_for_timeout(1600)
+        after = page.evaluate("""() => {
+            const el = document.getElementById('appSplash');
+            const s = (window.boot && window.boot.state) || {};
+            return {exists: !!el,
+                    hiding: !!(el && el.classList.contains('is-hiding')),
+                    booting: document.body.classList.contains('is-booting'),
+                    resize: s.resize, fallback: !!s.fallback, expanded: !!s.expanded};
+        }""")
+        res.check("P16 收尾：启动界面移除、首屏可见、窗口尺寸被拒也不卡住",
+                  not after["exists"] and not after["booting"]
+                  and after["resize"] in ("ok", "refused"),
+                  json.dumps(after, ensure_ascii=False))
+        res.check("P16 resizeTo 被拒绝时走「另开正式窗口」兜底",
+                  after["resize"] != "refused" or after["fallback"],
+                  json.dumps(after, ensure_ascii=False))
+    finally:
+        page.close()
+
+
 def scan_warnings(page, res: Result, app_js: Path):
     """只报告、不判失败：死 id 引用 / 视图内容溢出。"""
     ids = sorted(set(re.findall(
         r"""getElementById\(['"]([A-Za-z0-9_-]+)['"]\)""", app_js.read_text(encoding="utf-8"))))
     view_ids = ("bom", "review", "tools", "report", "config")
 
+    # index.html 里静态写死的 id 也算「真实存在」：启动遮罩这类元素在首屏之后就被
+    # 移除了，但 app.js 在启动阶段确实要用它们，不是死代码。
+    html_ids = set(re.findall(
+        r'id="([A-Za-z0-9_-]+)"', (app_js.parent.parent / "index.html").read_text(encoding="utf-8")))
+
     # 某些 id 只在特定视图渲染时才存在（工具箱的搜索框等）→ 取「所有视图都找不到」
     # 的交集才算真死代码。
-    missing_everywhere = set(ids)
+    missing_everywhere = set(ids) - html_ids
     for view in view_ids:
         page.click(f'.nav-item[data-view="{view}"]')
         page.wait_for_timeout(350)
@@ -957,7 +1123,7 @@ def run(port: int, headed: bool) -> int:
     res = Result()
     try:
         if not _wait_port(port):
-            print("❌ Eel 服务未能在 25s 内启动，见 output/ui_smoke/server.log")
+            print("Eel 服务未能在 25s 内启动，见 output/ui_smoke/server.log")
             return 2
 
         console, pageerrors, failed = [], [], []
@@ -1003,6 +1169,8 @@ def run(port: int, headed: bool) -> int:
             check_chat_and_views(page, res)
             check_loading_states(page, res)
             check_heatmap_data_path(page, res)
+            check_startup_splash_theme_and_emoji(page, res)
+            check_boot_splash(browser, port, res, console, pageerrors, failed)
             check_sidebar_conversations(page, res)
             check_workspace(page, res)
             scan_warnings(page, res, ROOT / "web" / "js" / "app.js")
@@ -1041,10 +1209,10 @@ def run(port: int, headed: bool) -> int:
 
     print("\n═══ UI 冒烟测试 ═══")
     for c in res.checks:
-        print(f"  {'✅' if c['ok'] else '❌'} {c['name']}"
+        print(f"  {'' if c['ok'] else ''} {c['name']}"
               + (f"  — {c['detail']}" if c["detail"] else ""))
     if res.warnings:
-        print("\n  ⚠️ 巡检提醒（不影响通过）:")
+        print("\n  巡检提醒（不影响通过）:")
         for w in res.warnings:
             print(f"     - {w}")
     n_fail = len(res.failed)

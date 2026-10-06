@@ -3,8 +3,31 @@
 消除散落在各模块中的魔法数字和硬编码字符串
 """
 
+import os
 from enum import Enum
 from dataclasses import dataclass
+from pathlib import Path
+
+
+# ══════════════════ 存储路径 ══════════════════
+
+def app_home() -> Path:
+    """应用数据目录（settings.json / sessions.db 的所在目录）。
+
+    默认 `~/.eda_ai_assistant`；可用环境变量 `EDA_AI_HOME` 覆盖 —— 测试和
+    受限环境（只读沙箱）靠它把落盘位置改到临时目录，避免 import 期就写用户主目录。
+    """
+    override = os.environ.get("EDA_AI_HOME")
+    return Path(override).expanduser() if override else Path.home() / ".eda_ai_assistant"
+
+
+# ══════════════════ 应用标识 ══════════════════
+# 启动界面 / 标题栏 / 关于信息共用一处，别再各写各的版本号。
+# （web/index.html 的 <title> 是静态 HTML，改版本时记得一起改。）
+
+APP_NAME = "EDA AI 智能助手"
+APP_TAGLINE = "面向立创EDA的智能辅助设计"
+APP_VERSION = "0.8.0"
 
 
 # ══════════════════ 文件格式 ══════════════════
@@ -192,6 +215,14 @@ class GUIConstants:
     DEFAULT_HEIGHT: int = 800
     MIN_WIDTH: int = 960
     MIN_HEIGHT: int = 600
+
+    # 两段式启动：先小窗显示加载态，再展开成正式界面。
+    # SPLASH_* 同时喂给 Chrome 的 --window-size 和 eel 的 size=，
+    # MAIN_* 只在展开时用（前端 resizeTo，见 web/js/app.js）。
+    SPLASH_WIDTH: int = 480
+    SPLASH_HEIGHT: int = 340
+    MAIN_WIDTH: int = 1300
+    MAIN_HEIGHT: int = 840
     SPLITTER_LEFT_RATIO: float = 0.4
     REPORT_TAB_INDEX: int = 2
 
@@ -394,26 +425,3 @@ PCB = PCBConstants()
 SUPPLY = SupplyConstants()
 WATCHER = WatcherConstants()
 CONVERGENCE = ConvergenceConfig()
-import os
-from pathlib import Path
-
-
-# ══════════════════ 存储路径 ══════════════════
-
-def app_home() -> Path:
-    """应用数据目录（settings.json / sessions.db 的所在目录）。
-
-    默认 `~/.eda_ai_assistant`；可用环境变量 `EDA_AI_HOME` 覆盖 —— 测试和
-    受限环境（只读沙箱）靠它把落盘位置改到临时目录，避免 import 期就写用户主目录。
-    """
-    override = os.environ.get("EDA_AI_HOME")
-    return Path(override).expanduser() if override else Path.home() / ".eda_ai_assistant"
-
-
-# ══════════════════ 应用标识 ══════════════════
-# 启动界面 / 标题栏 / 关于信息共用一处，别再各写各的版本号。
-# （web/index.html 的 <title> 是静态 HTML，改版本时记得一起改。）
-
-APP_NAME = "EDA AI 智能助手"
-APP_TAGLINE = "面向立创EDA的智能辅助设计"
-APP_VERSION = "0.8.0"

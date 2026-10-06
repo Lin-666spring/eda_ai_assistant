@@ -1,6 +1,6 @@
 # 记忆索引 (Memory Index)
 
-> 由 context-memory 技能维护 | 最近更新 2026-09-29
+> 由 context-memory 技能维护 | 最近更新 2026-10-03
 > DSH 不会自动加载本目录，`CLAUDE.md` 里有指针。
 
 | 文件 | 内容 |
@@ -8,6 +8,8 @@
 | [epro2-format.md](epro2-format.md) | 立创EDA V3 `.epro2` 格式、解析器实现与 78 工程实测（含四个实现坑） |
 | [experiment-status.md](experiment-status.md) | 真实 PCB 数据集实验结果、指标、复现命令 |
 | [audit-findings.md](audit-findings.md) | 项目"不符合预期"清单与修复状态 |
+| [session/2026-10-03-two-stage-boot.md](session/2026-10-03-two-stage-boot.md) | 会话小结：**两段式启动**——480×340 小窗先出、重活丢后台线程、`BootSequencer` 状态机、`resizeTo` 被拒走兜底；eel 的 `size=` 其实是 `resizeTo`、`hidden` 挡不住 `display:block` 两个坑；UI 冒烟 74→85 |
+| [session/2026-10-02-batch-a.md](session/2026-10-02-batch-a.md) | 会话小结：**口径统一 + 门禁修复**——netlist 契约(dict，从 pcb_data.nets 反推)、check_all 记 rule_errors、EDA_AI_HOME/SessionStore 父目录、endpoints 惰性开库；965 collected、910 passed/0 failed |
 | [session/2026-09-29-heatmap-origin.md](session/2026-09-29-heatmap-origin.md) | 会话小结：**热力图来源修复**——它是违规计数网格（非图像）、位置来源 PCB>坐标文件回落、四种 reason、UI 冒烟 69→74 |
 | [session/2026-09-29-ui-loading.md](session/2026-09-29-ui-loading.md) | 会话小结：**前端加载动效**——setStatus 落地（原来是空实现）、思考气泡三点+计时、审查骨架屏，UI 冒烟 57→68 项 |
 | [session/2026-09-29-summary.md](session/2026-09-29-summary.md) | 会话小结：**按抽查报告把判据修完**——11 处修复 + 判定类口径 B′，违规 4944→3293、耗时 347s→58s |

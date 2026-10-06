@@ -115,10 +115,16 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
   - `createStreamingBubble()` 内建「思考中」块（`.think` = 三点脉冲 + 轮换文案 + 计时器），**首个 token 到达自动让位**给正文 —— 不要在等待期留一个空白气泡；`bubble.think(text)` 可让文案跟随当前动作（如「正在调用工具」）；
   - `_btnLoading(btn, label)` / `_btnLoaded(btn)` → 按钮内联 spinner + 文案替换 + 禁用，可无损还原；`_btnFromEvent()` 在 inline `onclick` 里同步取当前按钮。
   慢的后端调用由 `_BUSY_LABELS` 白名单在 `eel.*` 上统一包一层 `withBusy()`；**轮询类调用（`poll_toggle` 每 500ms）绝不能进白名单**，否则进度条会一直闪。占位骨架用 `.skeleton-card` / `.skeleton-line`，面板占位用 `.panel-loading`；所有动效在 `prefers-reduced-motion` 下降级为静态但仍可见。
+- **两段式启动：小窗先出，正式界面后到**（`main.py` + `src/core/boot.py` + `index.html` 的收尾脚本）。
+  - 顺序：`main()` 先 `boot.start()` + 起 `boot-worker` 线程，然后**立刻**开窗（480×340，`--window-size` 与 eel 的 `size=` 两层都传）；热键/托盘/知识库预热全在后台上跑。等「前端首屏就绪 + `boot_status().ready`」再 `window.resizeTo(1300,840)` 展开，遮罩淡出、`#appShell` 交叉淡入。
+  - **`ready` 只看 critical 步骤**（`BootSequencer`）：知识库预热不是 critical，首启动不再被索引卡住；**failed 也算结束** —— 附属功能失败绝不能把人永远关在小窗里。界面展开后若 `warm` 仍为 false，用 `setStatus` 在顶栏如实报「正在预热知识库…」。
+  - **`resizeTo` 被拒绝时不许硬撑**：`index.html` 观察实际尺寸，没变就调 `request_main_window()`（后端改 `eel._start_args` 后 `eel.show`）另开正式窗口；两条路都不通也照样放行淡出。`window.boot.state`（`resize/fallback/expanded`）是这件事的可观测字段，冒烟测试盯着它。
+  - 启动界面进度分两层：前端步骤（`splashStatus(text, ratio)`：工作区 / 工具目录 / 设置）+ 后端步骤（`boot_status().text`）。**`boot_status().started=false` 表示不是 `main()` 起的**（冒烟测试、调试直接 `eel.start`）→ 前端立刻跳过等待，别把两段式启动强加给这些场景。
+  - URL 加 `#boot-hold` 可停在启动界面（看设计/截图用）。品牌素材（可选 logo）放 `web/img/`，提示词见 `web/img/README.md`；没放文件时用内联 SVG 标记，不会抓 404。
 - 深浅色主题都走 `:root` / `body[data-theme="dark"]` 的 token，不要在规则里硬编码颜色。
 - 图标统一用 `ICONS` 里的内联 SVG（`app.js`），不用 emoji 字体图标；`confirm()` 已由自定义对话框替代。
 
-回归手段：`python tests/ui_smoke.py`（Playwright 真机驱动 + stub LLM，零 API 花费，74 项检查 + 截图到 `output/ui_smoke/`）。覆盖布局回归 P12（主页面默认是对话）/ P13（左侧会话栏 + 工作区隔离）/ P14（生成中的加载动效：思考气泡、顶栏胶囊+进度条、审查骨架屏、按钮 loading）/ P15（热力图数据来源与空状态：坐标文件也能出格、网格边长透传、reason 文案）。
+回归手段：`python tests/ui_smoke.py`（Playwright 真机驱动 + stub LLM，零 API 花费，80 项检查 + 截图到 `output/ui_smoke/`）。覆盖布局回归 P12（主页面默认是对话）/ P13（左侧会话栏 + 工作区隔离）/ P14（生成中的加载动效：思考气泡、顶栏胶囊+进度条、审查骨架屏、按钮 loading）/ P15（热力图数据来源与空状态：坐标文件也能出格、网格边长透传、reason 文案）/ P16（两段式启动：480×340 小窗启动界面不溢出、`#boot-hold` 能停住、展开后遮罩移除、`resizeTo` 被拒走兜底）。
 ⚠️ Playwright 要起自己的驱动子进程（管道 stdio），在受限沙箱里会 `PermissionError` —— 它需要能正常 `spawn` 的权限，不是代码问题。
 文件名不以 `test_` 开头，因此不会被 pytest 收集；配套的 pytest 用例是 `tests/test_heatmap.py`（热力图回落/reason）、`tests/test_tool_catalog.py`（锁前后端工具目录一致性）与 `tests/test_persistence.py`（含 workspaces 用例）。
 
@@ -133,7 +139,7 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 | `src/rag/` | ChromaDB indexer + retriever for Chinese PCB knowledge |
 | `src/html_bom/` | Interactive HTML BOM generator (Jinja2 templates) |
 | `src/interfaces/` | EDA adapter (LCEDAAdapter for 立创EDA JSON), simulator abstraction |
-| `src/core/` | Controller, file watcher, SQLite persistence, system bridge (hotkey/tray) |
+| `src/core/` | Controller, file watcher, SQLite persistence, system bridge (hotkey/tray), boot sequencer (两段式启动) |
 | `src/agent/` | NLU engine, LLM client, router, prompt templates, tool registry |
 
 ## Key design rules

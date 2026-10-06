@@ -9,6 +9,7 @@ import logging
 import os
 import sys
 import tempfile
+import threading
 from pathlib import Path
 
 import eel
@@ -31,7 +32,12 @@ from src.constants import (
     DEFAULT_PROVIDER,
     ProviderPreset,
     get_provider_preset,
+    APP_NAME,
+    APP_TAGLINE,
+    APP_VERSION,
+    GUI,
 )
+from src.core.boot import BootSequencer, BootStep
 
 # ── Init ──
 
@@ -947,35 +953,128 @@ def query_knowledge_base(query: str) -> dict:
 
 
 # ══════════════════════════════════════════
+#  两段式启动（小窗先出 → 展开正式界面）
+# ══════════════════════════════════════════
+#  旧的顺序是「先把重活干完，再开窗口」：RAG 建索引、热键、托盘全跑完，屏幕上
+#  才出现第一个像素，用户双击之后只能盯着桌面。现在改成:
+#     1. 浏览器先开一个 480×340 的小窗（秒开），显示启动界面；
+#     2. 热键 / 托盘 / 知识库预热丢到后台线程（boot worker）；
+#     3. 关键步骤就绪 + 前端首屏渲染完成 → 前端把窗口 resizeTo 成 1300×840。
+#  状态由 BootSequencer 提供，前端轮询 boot_status()。
+
+SPLASH_SIZE = (GUI.SPLASH_WIDTH, GUI.SPLASH_HEIGHT)
+MAIN_SIZE = (GUI.MAIN_WIDTH, GUI.MAIN_HEIGHT)
+
+boot = BootSequencer((
+    BootStep("services", "正在注册全局热键与系统托盘", critical=True),
+    BootStep("knowledge", "正在预热知识库", critical=False),
+))
+
+
+def _centered_position(size: tuple) -> tuple | None:
+    """把小窗摆在屏幕正中（取不到屏幕尺寸就交给系统默认位置）。"""
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32          # 非 Windows 没有 windll → 走 except
+        sw, sh = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+        w, h = size
+        return max(0, (sw - w) // 2), max(0, (sh - h) // 2)
+    except Exception:
+        return None
+
+
+def _window_args(size: tuple) -> list:
+    """浏览器命令行里的窗口尺寸 / 位置。
+
+    eel 的 size= 最终是页面里的 window.resizeTo（见 eel.js 的 _position_window），
+    能不能生效由浏览器策略决定；命令行参数是窗口创建时浏览器自己应用的，属于
+    更可靠的一层。两层都留着，谁先起效都行。
+    """
+    args = ["--disable-http-cache", "--window-size=%d,%d" % size]
+    pos = _centered_position(size)
+    if pos:
+        args.append("--window-position=%d,%d" % pos)
+    return args
+
+
+def _boot_worker() -> None:
+    """后台启动步骤 —— 跑在独立线程里，主线程去开窗口/跑 Eel 主循环。
+
+    放后台的不只是「慢」：它们都不影响对话界面能不能用，没理由让用户等。
+    """
+    with boot.step("services"):
+        start_hotkey_listener()
+        show_cb = lambda: request_toggle()   # 托盘「显示/隐藏」→ 切换模式
+        exit_cb = lambda: None               # 退出回调由 eel 结束后处理
+        start_tray(show_callback=show_cb, exit_callback=exit_cb)
+
+    # 知识库首次索引可能要十几秒 —— 只做预热，不挡界面（前端顶栏会给提示）
+    with boot.step("knowledge"):
+        controller._ensure_rag_indexed()
+
+
+def _run_window(mode: str) -> None:
+    """开小窗并进入 Eel 主循环（阻塞；gevent 的 hub 靠这个阻塞点跑起来）。"""
+    eel.start("index.html", mode=mode, port=0, block=True,
+              size=SPLASH_SIZE, cmdline_args=_window_args(SPLASH_SIZE))
+
+
+@eel.expose
+def boot_status() -> dict:
+    """前端轮询的启动状态（见 src/core/boot.py 的 BootSequencer.status）。
+
+    额外带上界面要用的品牌信息：
+      * started=False 表示不是 main() 起的（例如 UI 冒烟测试直接 eel.start），
+        前端据此直接跳过等待，别把小窗流程强加给测试/调试场景；
+      * logo 只在文件真的存在时给路径，省得浏览器抓一个 404。
+    """
+    status = boot.status()
+    logo = PROJECT_ROOT / "web" / "img" / "logo-mark.png"
+    status["app"] = {"name": APP_NAME, "tagline": APP_TAGLINE, "version": APP_VERSION}
+    status["logo"] = "img/logo-mark.png" if logo.is_file() else ""
+    status["main_size"] = list(MAIN_SIZE)
+    return status
+
+
+@eel.expose
+def request_main_window() -> dict:
+    """小窗兜底：resizeTo 被浏览器拒绝时，按正式尺寸另开一个窗口。
+
+    eel 没有「给某个窗口单独指定尺寸」的公开接口 —— show() 读的是 _start_args
+    （start() 留下的那份），所以这里改完 size/cmdline_args 再 show，新窗口的
+    eel.js 会按 1300×840 摆好自己。
+    """
+    try:
+        if eel._start_args.get("mode") in (None, False, "none"):
+            return {"ok": False, "reason": "no_browser"}   # 无窗口模式（测试/调试）
+        eel._start_args["size"] = MAIN_SIZE
+        eel._start_args["cmdline_args"] = _window_args(MAIN_SIZE)
+        eel.show("index.html")
+        logger.info("小窗无法自行展开，已另开正式窗口 %sx%s", *MAIN_SIZE)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("request_main_window failed")
+        return {"ok": False, "reason": str(e)}
+
+
+# ══════════════════════════════════════════
 #  Entry point
 # ══════════════════════════════════════════
 
 def main():
     setup_logging()
     logger = logging.getLogger(__name__)
-    logger.info("启动 EDA AI 智能助手 (Eel)...")
+    logger.info("启动 %s v%s (Eel)...", APP_NAME, APP_VERSION)
 
-    # 启动时自动索引 RAG 知识库
-    try:
-        controller._ensure_rag_indexed()
-    except Exception as e:
-        logger.warning("RAG auto-index skipped: %s", e)
-
-    # 启动全局热键
-    start_hotkey_listener()
-
-    # 启动系统托盘
-    show_cb = lambda: request_toggle()  # 托盘"显示/隐藏" → 切换模式
-    exit_cb = lambda: None  # 退出回调由 eel 结束后处理
-    start_tray(show_callback=show_cb, exit_callback=exit_cb)
+    # 先把窗口开出来，再让后台线程干重活（顺序反了用户就要多等好几秒）
+    boot.start()
+    threading.Thread(target=_boot_worker, daemon=True, name="boot-worker").start()
 
     try:
-        eel.start("index.html", mode="chrome",
-                  size=(1300, 840), port=0, block=True)
+        _run_window("chrome")
     except EnvironmentError:
         logger.info("Chrome not found, trying Edge...")
-        eel.start("index.html", mode="edge",
-                  size=(1300, 840), port=0, block=True)
+        _run_window("edge")
     finally:
         stop_tray()
 

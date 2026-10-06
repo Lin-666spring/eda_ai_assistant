@@ -7,6 +7,7 @@ so feature parity is guaranteed across interfaces.
 
 import json
 import logging
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
@@ -109,6 +110,8 @@ class AppController:
         self._conversation_active = False
         self._active_assistant: Optional[str] = None  # 当前助手 ID
         self._rag_index_checked = False  # RAG 索引是否已检查/建立
+        # 启动线程（后台预热）和首次查询可能同时进来，双检加锁避免建两遍索引
+        self._rag_index_lock = threading.Lock()
 
     def reconfigure_llm(self, provider: str, api_key: str, base_url: str, model: str):
         """热重载 LLM 客户端 — 用户通过设置面板修改配置后调用。"""
@@ -744,27 +747,31 @@ class AppController:
         if self._rag_index_checked:
             return True
 
-        rag_dir = Path(__file__).parent.parent.parent / "rag_data"
-        if not rag_dir.exists():
-            logger.warning("RAG: rag_data directory not found at %s", rag_dir)
-            self._rag_index_checked = True
-            return False
+        with self._rag_index_lock:
+            if self._rag_index_checked:      # 双检：等锁期间别人可能已经建好了
+                return True
 
-        try:
-            indexer = RAGIndexer()
-            manifest_path = str(rag_dir / ".index_manifest.json")
-            stats = indexer.index_directory(str(rag_dir), manifest_path)
-            logger.info(
-                "RAG auto-index: %d indexed, %d skipped, %d errors, %d total chunks",
-                stats["indexed"], stats["skipped"],
-                len(stats.get("errors", [])), indexer.chunk_count,
-            )
-            self._rag_index_checked = True
-            return True
-        except Exception as e:
-            logger.exception("RAG auto-index failed: %s", e)
-            self._rag_index_checked = True
-            return False
+            rag_dir = Path(__file__).parent.parent.parent / "rag_data"
+            if not rag_dir.exists():
+                logger.warning("RAG: rag_data directory not found at %s", rag_dir)
+                self._rag_index_checked = True
+                return False
+
+            try:
+                indexer = RAGIndexer()
+                manifest_path = str(rag_dir / ".index_manifest.json")
+                stats = indexer.index_directory(str(rag_dir), manifest_path)
+                logger.info(
+                    "RAG auto-index: %d indexed, %d skipped, %d errors, %d total chunks",
+                    stats["indexed"], stats["skipped"],
+                    len(stats.get("errors", [])), indexer.chunk_count,
+                )
+                self._rag_index_checked = True
+                return True
+            except Exception as e:
+                logger.exception("RAG auto-index failed: %s", e)
+                self._rag_index_checked = True
+                return False
 
     def query_knowledge_base(self, query: str = "") -> str:
         """查询 RAG 知识库
