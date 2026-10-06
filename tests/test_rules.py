@@ -313,3 +313,53 @@ class TestReferenceContinuity:
         assert violations[0].severity == RuleSeverity.INFO
         assert "R4→R6" in violations[0].description
 
+
+
+class TestDcdcPrefixUnified:
+    """2026-10-06 回归：裸 "MP"/"XL"/"SY"/"RT" 前缀不再把非稳压器判成 DC-DC。
+
+    误报样本：MPU6500（陀螺仪，startswith "MP"）、CL10A226MP8NUNE（MLCC，
+    "MP" 子串）、XL-1608（LED，startswith "XL"）、RTL8201（PHY，startswith "RT"）。
+    「功率回路面积检查」属 detect 类，误报直接计入抽查精确率。
+    """
+
+    POS = {"U1": {"x": 10.0, "y": 10.0}}   # power_loop_area 要求 positions 非空
+
+    @staticmethod
+    def _bom(pn, desc="", ref="U1", pkg="QFN-16"):
+        return [BOMItem(reference=ref, value="", package=pkg,
+                        part_number=pn, description=desc, quantity=1)]
+
+    def test_mpu6500_not_dcdc(self, checker):
+        bom = self._bom("MPU6500", "六轴陀螺仪")
+        assert checker._check_power_loop_area(bom, self.POS, {}) == []
+        assert checker._check_switching_regulator_layout(bom, {}, {}) == []
+
+    def test_mlcc_part_number_not_dcdc(self, checker):
+        bom = self._bom("CL10A226MP8NUNE", "MLCC", ref="C1", pkg="0805")
+        assert checker._check_power_loop_area(bom, self.POS, {}) == []
+        assert checker._check_switching_regulator_layout(bom, {}, {}) == []
+
+    def test_led_and_phy_not_dcdc(self, checker):
+        led = self._bom("XL-1608GC", "LED", ref="D1", pkg="0603")
+        phy = self._bom("RTL8201F", "以太网PHY", ref="U2")
+        for bom in (led, phy):
+            assert checker._check_power_loop_area(bom, self.POS, {}) == []
+            assert checker._check_switching_regulator_layout(bom, {}, {}) == []
+
+    def test_real_dcdc_still_detected(self, checker):
+        bom = [
+            BOMItem(reference="U1", value="", package="SOT-223",
+                    part_number="MP1584EN", description="降压稳压器", quantity=1),
+            BOMItem(reference="U3", value="", package="SOIC-8",
+                    part_number="TPS5430DDA", description="", quantity=1),
+        ]
+        assert len(checker._check_power_loop_area(bom, self.POS, {})) == 1
+        assert len(checker._check_switching_regulator_layout(bom, {}, {})) == 1
+
+    def test_feedback_network_rule_unchanged(self, checker):
+        """原有修正过的规则（FB 分压）行为不受收编影响：误报仍不报、真稳压器仍报。"""
+        mpu = self._bom("MPU6500", "六轴陀螺仪")
+        assert checker._check_dcdc_feedback_network(mpu, {}, {}) == []
+        buck = self._bom("MP1584EN", "降压模块")   # 无电阻 → 仍应报缺 FB 网络
+        assert len(checker._check_dcdc_feedback_network(buck, {}, {})) == 1

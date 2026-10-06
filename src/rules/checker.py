@@ -252,6 +252,32 @@ _HIGH_SPEED_IF_KW = ("usb", "hdmi", "lvds", "pcie", "eth", "mipi", "sata", "ddr"
                      "rgmii", "sdio", "ss", "can", "rs485", "rf")
 
 
+# ── 开关稳压器（DC-DC）识别口径（多条规则共用，2026-10-06 统一）──
+# ① 料号前缀必须命中明确稳压器系列：裸 "MP"/"XL"/"SY"/"RT" 两字母前缀会命中
+#    MPU6500（陀螺仪）、XL-1608（LED）、RTL8201（以太网 PHY）、CL10A226MP8NUNE
+#    （MLCC 子串）。2026-09-24 在 _check_dcdc_feedback_network 修正过一次，
+#    但同口径的「开关电源布局」「功率回路面积」两条规则漏改，2026-10-06 收编到此。
+_DCDC_PN_PREFIXES: tuple = (
+    "MP1", "MP2", "MP4", "MP8", "TPS", "LM2596", "LM2576", "LM2577", "LM2678",
+    "XL4", "XL6", "SY7", "SY8", "MT3", "RT8", "AP2", "AP3", "LMR", "SGM",
+    "TD1", "TMI", "ETA",
+)
+# ② 描述关键词走 _kw_hit（≤3 字母的 ASCII 短词要求词边界），避免裸子串误命中
+_DCDC_DESC_KW = ("dc-dc", "dc/dc", "buck", "boost", "降压", "升压", "开关稳压",
+                 "开关电源", "稳压器", "regulator", "converter")
+
+
+def _is_dcdc_part(item) -> bool:
+    """按统一口径判定一个 BOM 行是否为开关稳压器（料号前缀或描述关键词）。"""
+    pn = (getattr(item, "part_number", "") or "").strip().upper()
+    if any(pn.startswith(p) for p in _DCDC_PN_PREFIXES):
+        return True
+    desc = (
+        f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}"
+    ).lower()
+    return _kw_hit(desc, _DCDC_DESC_KW)
+
+
 def _is_power_or_ground_net(name: str) -> bool:
     """电源/地网络判定（串扰、阻抗规则先排除它们）。"""
     n = (name or "").upper()
@@ -868,22 +894,16 @@ class DesignRuleChecker:
         violations = []
         # 2026-09-24 抽查修正：原关键词含裸两字母 "MP"/"SY"/"MT"/"XL" 且只做子串匹配，
         # 于是 XL-1608(LED)、MPU6500、磁珠、钽电容都被当成「开关稳压器」去要 FB 分压电阻。
-        # 现在：① 位号必须是 IC 类前缀；② 料号命中明确稳压器系列，或描述含完整词。
-        dcdc_kw = ["dc-dc", "dc/dc", "buck", "boost", "降压", "升压", "开关稳压",
-                   "开关电源", "稳压器", "regulator", "converter"]
-        dcdc_pn_prefixes = ["MP1", "MP2", "MP4", "MP8", "TPS", "LM2596", "LM2576",
-                            "LM2577", "LM2678", "XL4", "XL6", "SY7", "SY8", "MT3",
-                            "RT8", "AP2", "AP3", "LMR", "SGM", "TD1", "TMI", "ETA"]
+        # 现在：① 位号必须是 IC 类前缀；② 料号命中明确稳压器系列，或描述含完整词
+        # （口径统一收编到模块级 _DCDC_PN_PREFIXES / _is_dcdc_part，2026-10-06）。
         for item in bom_items:
             ref = getattr(item, "reference", "").split(",")[0].strip()
             ref_prefix = "".join(c for c in ref if c.isalpha()).upper()
             if ref_prefix not in ("U", "IC", "PU", "PS"):
                 continue
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
-            pn = (getattr(item, "part_number", "") or "").strip().upper()
-            if not (any(kw in desc for kw in dcdc_kw)
-                    or any(pn.startswith(p) for p in dcdc_pn_prefixes)):
+            if not _is_dcdc_part(item):
                 continue
+            pn = (getattr(item, "part_number", "") or "").strip().upper()
             # 检查是否有分压电阻（DC-DC FB 需要两个电阻分压）
             resistors = [r for r in bom_items if any(
                 kw.lower() in (f"{getattr(r, 'part_number', '')} {getattr(r, 'description', '')}").lower()
@@ -1999,24 +2019,23 @@ class DesignRuleChecker:
     def _check_switching_regulator_layout(self, bom_items, positions, netlist):
         """开关电源布局：开关电源应输入回路面积最小化"""
         violations = []
-        dcdc_kw = ["DC-DC", "BUCK", "BOOST", "开关稳压", "MP", "TPS", "XL", "SY", "MT"]
-        found_dcdc = False
+        # 2026-10-06 修正：原判据含裸 "MP"/"XL"/"SY"/"MT"/"RT" 前缀 + desc 子串双路径，
+        # MPU6500 / XL-1608 / RTL8201 被当成 DC-DC。与 _check_dcdc_feedback_network
+        # 同口径（_is_dcdc_part），只对真正的开关稳压器报布局建议。
         for item in bom_items:
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
-            pn = (getattr(item, "part_number", "") or "").strip().upper()
-            if any(kw.lower() in desc for kw in dcdc_kw) or \
-               any(pn.startswith(p) for p in ["MP", "TPS", "XL", "SY", "MT", "RT", "LMR"]):
-                found_dcdc = True
-                ref = getattr(item, "reference", "").split(",")[0].strip()
-                violations.append(RuleViolation(
-                    rule_name="开关电源布局检查",
-                    description=f"DC-DC {ref} 建议优化输入回路布局以降低 EMI",
-                    severity=RuleSeverity.INFO, location=ref,
-                    suggestion="Buck: Cin→SW→L→Cout 的 di/dt 回路面积最小化。输入电容紧靠 IC VIN/GND 引脚。SW 节点铜皮面积最小,避免成为天线。",
-                    theory="Buck 的开关回路(VIN→HS MOSFET→SW→L→Cout→GND→VIN)承载高频脉冲电流,其环路面积与 EMI 强度成正比。SW 节点电压在 0 和 VIN 间高速切换(dv/dt≈数 V/ns),是 PCB 最强 dV/dt 源。",
-                ))
-                break
-        if not found_dcdc:
+            if not _is_dcdc_part(item):
+                continue
+            found_dcdc = True
+            ref = getattr(item, "reference", "").split(",")[0].strip()
+            violations.append(RuleViolation(
+                rule_name="开关电源布局检查",
+                description=f"DC-DC {ref} 建议优化输入回路布局以降低 EMI",
+                severity=RuleSeverity.INFO, location=ref,
+                suggestion="Buck: Cin→SW→L→Cout 的 di/dt 回路面积最小化。输入电容紧靠 IC VIN/GND 引脚。SW 节点铜皮面积最小,避免成为天线。",
+                theory="Buck 的开关回路(VIN→HS MOSFET→SW→L→Cout→GND→VIN)承载高频脉冲电流,其环路面积与 EMI 强度成正比。SW 节点电压在 0 和 VIN 间高速切换(dv/dt≈数 V/ns),是 PCB 最强 dV/dt 源。",
+            ))
+            break
+        if not violations:
             return []
         return violations
 
@@ -2451,9 +2470,11 @@ class DesignRuleChecker:
     def _check_power_loop_area(self, bom_items, positions, netlist):
         """功率回路面积：开关电源的 di/dt 回路应面积最小化"""
         if not positions or not bom_items: return []
-        dcdc_kw = ["DC-DC", "BUCK", "BOOST", "开关", "MP", "TPS", "XL", "SY"]
-        has_dcdc = any(any(kw.upper() in (getattr(i, "part_number", "") or "").upper()
-                           for kw in dcdc_kw) for i in bom_items)
+        # 2026-10-06 修正：原判据拿裸 "MP"/"XL"/"SY" 等两字母词对料号做子串匹配
+        # （"MP" in "CL10A226MP8NUNE" 也中），MPU6500/MLCC 全被当成开关电源。
+        # 统一走 _is_dcdc_part：命中明确稳压器系列前缀或完整关键词才算。
+        # 本规则属 detect 类（不在 ADVISE_RULES），误报直接计入抽查精确率。
+        has_dcdc = any(_is_dcdc_part(i) for i in bom_items)
         if has_dcdc:
             return [RuleViolation(
                 rule_name="功率回路面积检查",
