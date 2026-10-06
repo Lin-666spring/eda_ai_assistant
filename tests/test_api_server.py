@@ -450,3 +450,45 @@ class TestLLMTestEndpoint:
         data = resp.json()
         assert data["ok"] is False
         assert "connection refused" in data["error"]
+
+
+# ═══════════════════════════════════════════════════════════════
+#  server._create_controller（2026-10-06 回归：原读无前缀键
+#  "api_key"/"provider"，而保存方统一写 "llm_*" → 自动配置是死代码）
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestCreateControllerFromSettings:
+    def _write_settings(self, monkeypatch, tmp_path, payload):
+        import src.config as cfg
+        settings_file = tmp_path / "settings.json"
+        settings_file.write_text(json.dumps(payload), encoding="utf-8")
+        monkeypatch.setattr(cfg, "SETTINGS_FILE", settings_file)
+
+    def test_reads_llm_prefixed_keys(self, monkeypatch, tmp_path):
+        self._write_settings(monkeypatch, tmp_path, {
+            "llm_provider": "deepseek",
+            "llm_api_key": "sk-test-123",
+            "llm_base_url": "https://example.com/v1",
+            "llm_model": "deepseek-chat",
+        })
+        from src.api.server import _create_controller
+        ctrl = _create_controller()
+        assert ctrl.agent is not None
+        assert ctrl.agent.api_key == "sk-test-123"
+        assert ctrl.agent.provider_name == "deepseek"
+
+    def test_empty_settings_leaves_agent_none(self, monkeypatch, tmp_path):
+        self._write_settings(monkeypatch, tmp_path, {})
+        from src.api.server import _create_controller
+        ctrl = _create_controller()
+        assert ctrl.agent is None
+
+    def test_legacy_unprefixed_keys_no_longer_match(self, monkeypatch, tmp_path):
+        """旧的无前缀键不应再触发自动配置（它们本来就不是保存方写的）。"""
+        self._write_settings(monkeypatch, tmp_path, {
+            "provider": "deepseek", "api_key": "sk-legacy",
+        })
+        from src.api.server import _create_controller
+        ctrl = _create_controller()
+        assert ctrl.agent is None

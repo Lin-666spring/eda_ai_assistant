@@ -31,18 +31,21 @@ def _create_controller():
     from src.core.controller import AppController
 
     settings = load_settings()
-    api_key = settings.get("api_key", "") or None
+    # 2026-10-06 修复：原读 "api_key"/"provider" 等无前缀键，而所有保存方
+    # （main.py / endpoints.py）统一写 "llm_*" 前缀 → 这里永远取空，
+    # 自动重配置是死代码。键名与保存侧对齐。
+    api_key = settings.get("llm_api_key", "") or None
     ctrl = AppController(api_key=api_key)
 
     # If a saved provider + key exist, auto-configure the LLM client.
-    provider = settings.get("provider", "")
+    provider = settings.get("llm_provider", "")
     if api_key and provider:
         try:
             ctrl.reconfigure_llm(
                 provider=provider,
                 api_key=api_key,
-                base_url=settings.get("base_url", ""),
-                model=settings.get("model", ""),
+                base_url=settings.get("llm_base_url", ""),
+                model=settings.get("llm_model", ""),
             )
         except Exception:
             logger.debug("Could not auto-configure LLM from saved settings", exc_info=True)
