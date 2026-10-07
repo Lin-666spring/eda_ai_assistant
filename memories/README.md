@@ -5,6 +5,7 @@
 
 | 文件 | 内容 |
 |---|---|
+| [session/2026-10-07-frozen-build-and-session-pool.md](session/2026-10-07-frozen-build-and-session-pool.md) | 会话小结：**打包版实测 + 会话级客户端池**——frozen 写盘路径三处缺陷（导出/日志/RAG 落 _MEIPASS 退出即丢）、构建入口统一到 spec、`_llm_session()` 租借（并发 agent_loop 不再互相覆盖/审查轮次不进对话史）、ui_smoke 失败标记不可见的教训；2 提交 1038 passed 85/85 |
 | [session/2026-10-07-client-sweep.md](session/2026-10-07-client-sweep.md) | 会话小结：**客户端缺陷清扫**——Agent 工具标签漂移/审查渲染注入/流式错误不落库等 8 处、generate_html_bom 目录归一、load_all 补 message_count；3 提交 1026 passed、UI 冒烟 85/85 |
 | [session/2026-10-07-code-review-fixes.md](session/2026-10-07-code-review-fixes.md) | 会话小结：**代码级缺陷清扫**——双入口漂移/config.llm 缓存/路径穿越/单例竞态，6 提交 1025 passed |
 | [epro2-format.md](epro2-format.md) | 立创EDA V3 `.epro2` 格式、解析器实现与 78 工程实测（含四个实现坑） |

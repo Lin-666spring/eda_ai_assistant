@@ -89,6 +89,16 @@
 - [ ] frontend/ 去留：原封不动的 Vite React+TS 模板（node_modules 未提交），实际 UI 是 web/
 - [ ] 其他：simulator.py 是占位；convergence.py 基类 evaluate 抛 NotImplementedError；.zcode/config.json 含明文 key（已 gitignore）
 
+## 已处理（2026-10-07）
+
+- [x] ~~spec 打包版一键演示未实测~~（昨日遗留）：dist exe 构建成功；frozen 模式写盘路径
+  三处缺陷已修（导出/日志/RAG 索引落 _MEIPASS 退出即丢 → app_home()），frozen 模拟实测
+  演示加载 14 BOM + 23 坐标；构建入口统一到 spec。exe 双击实测留给用户（本会话环境拒绝
+  拉起 GUI 进程）。
+- [x] ~~controller.agent 共享单客户端，并发 agent_loop 覆盖 tool_executor、混写 history~~
+  （昨日遗留）：_llm_session() 会话级租借（克隆+快照+回流+generation 作废），agent_loop /
+  chat_message_stream / 多智能体审查三处接入；审查轮次不再污染对话历史。
+
 ## 2026-10-06 第二轮抽查确认的判据问题（30 条，未修）
 
 > 报告：[docs/规则抽查_报告_2026-10-06.md](../docs/规则抽查_报告_2026-10-06.md)；
