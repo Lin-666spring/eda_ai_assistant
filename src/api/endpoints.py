@@ -12,6 +12,7 @@ from __future__ import annotations
 import base64
 import logging
 import tempfile
+import threading
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
@@ -622,6 +623,7 @@ def knowledge_query(req: KnowledgeQueryRequest):
 # ═══════════════════════════════════════════════════════════════
 
 _store: "SessionStore | None" = None
+_store_lock = threading.Lock()
 
 
 def _get_store() -> SessionStore:
@@ -629,11 +631,14 @@ def _get_store() -> SessionStore:
 
     模块级 SessionStore() 会在「导入 src.api.endpoints」这一步就去创建
     ~/.eda_ai_assistant/sessions.db（含 WAL 文件），只读/受限环境下 import
-    直接失败，把整包测试的收集都拖垮。改成首次用时才建。
+    直接失败，把整包测试的收集都拖垮。改成首次用时才建 —— 端点跑在线程池
+    线程里，并发首请求会撞车，与 get_controller 一样双检加锁。
     """
     global _store
     if _store is None:
-        _store = SessionStore()
+        with _store_lock:
+            if _store is None:
+                _store = SessionStore()
     return _store
 
 

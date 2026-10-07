@@ -595,3 +595,66 @@ class TestWriteTempSanitizesFilename:
         assert resp.status_code == 200
         # 无论导入成功与否，都不能在临时目录之外落文件
         assert not (tmp_path / "escaped.csv").exists()
+
+
+# ═══════════════════════════════════════════════════════════════
+#  惰性单例线程安全（2026-10-07 回归：同步端点跑在 FastAPI 线程池里，
+#  并发首请求各建一份 controller/store —— 此后 BOM/会话状态分裂）
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestLazySingletonThreadsafe:
+    def _hammer(self, getter, n_threads=12):
+        import threading
+        barrier = threading.Barrier(n_threads)
+        results = []
+
+        def worker():
+            barrier.wait()          # 让所有线程同时起跑，最大化撞车窗口
+            results.append(getter())
+
+        threads = [threading.Thread(target=worker) for _ in range(n_threads)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        return results
+
+    def test_get_controller_created_once(self, monkeypatch):
+        import time
+        import src.api.server as srv
+
+        monkeypatch.setattr(srv, "_controller", None)
+        calls = []
+
+        def slow_create():
+            calls.append(1)
+            time.sleep(0.05)        # 放大竞态窗口
+            return object()
+
+        monkeypatch.setattr(srv, "_create_controller", slow_create)
+        results = self._hammer(srv.get_controller)
+
+        assert len(calls) == 1
+        assert all(r is results[0] for r in results)   # 全线程拿到同一实例
+
+    def test_get_store_created_once(self, monkeypatch):
+        import time
+        import src.api.endpoints as ep
+
+        monkeypatch.setattr(ep, "_store", None)
+        calls = []
+
+        class _FakeStore:
+            pass
+
+        def slow_create():
+            calls.append(1)
+            time.sleep(0.05)
+            return _FakeStore()
+
+        monkeypatch.setattr(ep, "SessionStore", slow_create)
+        results = self._hammer(ep._get_store)
+
+        assert len(calls) == 1
+        assert all(r is results[0] for r in results)

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import threading
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 # ── singleton controller, created lazily ──────────────────────
 _controller = None
+_controller_lock = threading.Lock()
 
 
 def _create_controller():
@@ -54,10 +56,17 @@ def _create_controller():
 
 
 def get_controller():
-    """Return the shared AppController singleton (lazy init)."""
+    """Return the shared AppController singleton (lazy init).
+
+    端点是同步 def，FastAPI 会丢进线程池并发执行 —— 首批并发请求同时
+    看到 _controller is None 会各建一份 controller，此后 BOM/会话状态
+    分裂（与 2026-10-06 SSE 桥接的线程安全问题同族）。双检加锁。
+    """
     global _controller
     if _controller is None:
-        _controller = _create_controller()
+        with _controller_lock:
+            if _controller is None:
+                _controller = _create_controller()
     return _controller
 
 
