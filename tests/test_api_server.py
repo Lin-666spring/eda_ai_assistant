@@ -559,3 +559,39 @@ class TestGenerateHtmlPath:
         data = resp.json()
         assert data["ok"] is True
         assert data["path"] == ""
+
+
+# ═══════════════════════════════════════════════════════════════
+#  _write_temp 文件名消毒（2026-10-07 回归：filename 原样拼接，
+#  带「..\」时可把上传内容写到临时目录之外 —— REST 端 CORS 全开，
+#  浏览器任意页面都能打这个端点）
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestWriteTempSanitizesFilename:
+    def test_traversal_filename_flattened(self, tmp_path, monkeypatch):
+        import base64 as b64mod
+        from pathlib import Path
+        from src.api import endpoints as ep
+
+        monkeypatch.setattr(ep.tempfile, "gettempdir", lambda: str(tmp_path))
+        evil = "..\..\evil.csv"
+        path = ep._write_temp(evil, b64mod.b64encode(b"ref,value\nR1,1k").decode())
+
+        # 落在临时目录内、文件名只剩 evil.csv
+        assert Path(path).parent == tmp_path / "eda_ai_assistant"
+        assert Path(path).name == "evil.csv"
+        # 目录外没有多出文件
+        assert not (tmp_path / "evil.csv").exists()
+
+    def test_import_endpoint_rejects_traversal_without_side_effect(self, monkeypatch, tmp_path):
+        from src.api import endpoints as ep
+
+        monkeypatch.setattr(ep.tempfile, "gettempdir", lambda: str(tmp_path))
+        resp = client.post("/api/v1/bom/import", json={
+            "filename": "..\..\escaped.csv",
+            "content_base64": "cmVmLHZhbHVlCg==",
+        })
+        assert resp.status_code == 200
+        # 无论导入成功与否，都不能在临时目录之外落文件
+        assert not (tmp_path / "escaped.csv").exists()

@@ -73,7 +73,9 @@ def _write_temp(name: str, b64: str) -> str:
     content = base64.b64decode(b64)
     tmp = Path(tempfile.gettempdir()) / "eda_ai_assistant"
     tmp.mkdir(parents=True, exist_ok=True)
-    file_path = tmp / name
+    # 与 src/api/endpoints.py 同步修（2026-10-07）：filename 带路径分隔符时
+    # 原样拼接可写到临时目录之外，这里只保留文件名本身。
+    file_path = tmp / Path(name).name
     file_path.write_bytes(content)
     return str(file_path)
 

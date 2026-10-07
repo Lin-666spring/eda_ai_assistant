@@ -85,7 +85,10 @@ def _write_temp(name: str, b64: str) -> str:
     content = base64.b64decode(b64)
     tmp = Path(tempfile.gettempdir()) / "eda_ai_assistant"
     tmp.mkdir(parents=True, exist_ok=True)
-    file_path = tmp / name
+    # 2026-10-07 修复：filename 原样来自请求体，带「..\\」时可拼出临时目录
+    # 之外的路径（REST 端点 CORS 全开，浏览器里任意页面都能打）。只保留
+    # 文件名本身，非法名让后续按扩展名分发的解析器去拒绝。
+    file_path = tmp / Path(name).name
     file_path.write_bytes(content)
     return str(file_path)
 
