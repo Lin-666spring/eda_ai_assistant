@@ -5,6 +5,7 @@
 
 | 文件 | 内容 |
 |---|---|
+| [session/2026-10-07-client-sweep.md](session/2026-10-07-client-sweep.md) | 会话小结：**客户端缺陷清扫**——Agent 工具标签漂移/审查渲染注入/流式错误不落库等 8 处、generate_html_bom 目录归一、load_all 补 message_count；3 提交 1026 passed、UI 冒烟 85/85 |
 | [session/2026-10-07-code-review-fixes.md](session/2026-10-07-code-review-fixes.md) | 会话小结：**代码级缺陷清扫**——双入口漂移/config.llm 缓存/路径穿越/单例竞态，6 提交 1025 passed |
 | [epro2-format.md](epro2-format.md) | 立创EDA V3 `.epro2` 格式、解析器实现与 78 工程实测（含四个实现坑） |
 | [experiment-status.md](experiment-status.md) | 真实 PCB 数据集实验结果、指标、复现命令 |

@@ -124,7 +124,7 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 - 深浅色主题都走 `:root` / `body[data-theme="dark"]` 的 token，不要在规则里硬编码颜色。
 - 图标统一用 `ICONS` 里的内联 SVG（`app.js`），不用 emoji 字体图标；`confirm()` 已由自定义对话框替代。
 
-回归手段：`python tests/ui_smoke.py`（Playwright 真机驱动 + stub LLM，零 API 花费，80 项检查 + 截图到 `output/ui_smoke/`）。覆盖布局回归 P12（主页面默认是对话）/ P13（左侧会话栏 + 工作区隔离）/ P14（生成中的加载动效：思考气泡、顶栏胶囊+进度条、审查骨架屏、按钮 loading）/ P15（热力图数据来源与空状态：坐标文件也能出格、网格边长透传、reason 文案）/ P16（两段式启动：480×340 小窗启动界面不溢出、`#boot-hold` 能停住、展开后遮罩移除、`resizeTo` 被拒走兜底）。
+回归手段：`python tests/ui_smoke.py`（Playwright 真机驱动 + stub LLM，零 API 花费，85 项检查 + 截图到 `output/ui_smoke/`）。覆盖布局回归 P12（主页面默认是对话）/ P13（左侧会话栏 + 工作区隔离）/ P14（生成中的加载动效：思考气泡、顶栏胶囊+进度条、审查骨架屏、按钮 loading）/ P15（热力图数据来源与空状态：坐标文件也能出格、网格边长透传、reason 文案）/ P16（两段式启动：480×340 小窗启动界面不溢出、`#boot-hold` 能停住、展开后遮罩移除、`resizeTo` 被拒走兜底）。
 ⚠️ Playwright 要起自己的驱动子进程（管道 stdio），在受限沙箱里会 `PermissionError` —— 它需要能正常 `spawn` 的权限，不是代码问题。
 文件名不以 `test_` 开头，因此不会被 pytest 收集；配套的 pytest 用例是 `tests/test_heatmap.py`（热力图回落/reason）、`tests/test_tool_catalog.py`（锁前后端工具目录一致性）与 `tests/test_persistence.py`（含 workspaces 用例）。
 
