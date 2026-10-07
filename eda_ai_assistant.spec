@@ -14,6 +14,10 @@ a = Analysis(
         ('web', 'web'),
         ('src', 'src'),
         ('rag_data', 'rag_data'),
+        # 一键演示的内置样例 —— main.py / src/api/endpoints.py 都按
+        # 「根目录/tests/」找这两个文件，不打包则打包版演示必然失败
+        ('tests/sample_bom_bad.csv', 'tests'),
+        ('tests/sample_positions.csv', 'tests'),
     ],
     hiddenimports=[
         'eel',
