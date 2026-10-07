@@ -337,3 +337,39 @@ class TestGenerateDrcRule:
             "generate_drc_rule", {"rule_description": "x"}
         )
         assert "API Key" in result or "AI 模型" in result
+
+
+# ——— default_output_dir（2026-10-07 回归：endpoints.py 曾用 Path.cwd()
+#      反推输出目录，与 controller 的落盘目录漂移，path 恒为空串）———
+
+class TestDefaultOutputDir:
+    def test_generate_html_bom_writes_into_default_output_dir(self, controller_with_data, monkeypatch):
+        from src.core import controller as ctrl_mod
+
+        captured = {}
+
+        def fake_generate(self, bom_items, positions, output_path):
+            captured["path"] = Path(output_path)
+
+        monkeypatch.setattr(ctrl_mod.HTMLBOMGenerator, "generate", fake_generate)
+        controller_with_data.generate_html_bom()
+
+        assert captured["path"].parent == ctrl_mod.default_output_dir()
+        assert captured["path"].name == "ibom.html"
+
+    def test_export_bom_csv_writes_into_default_output_dir(self, controller_with_data, monkeypatch):
+        from src.core import controller as ctrl_mod
+
+        captured = {}
+
+        def fake_open(file, *a, **k):
+            captured["path"] = Path(file)
+            import io
+            return io.StringIO()
+
+        # load_bom 前置校验已过，直接拦截 open 截获落盘路径
+        monkeypatch.setattr("builtins.open", fake_open)
+        controller_with_data.context.bom_file = "demo.csv"
+        controller_with_data.export_bom_csv()
+
+        assert captured["path"].parent == ctrl_mod.default_output_dir()

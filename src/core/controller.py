@@ -35,6 +35,15 @@ def _is_key_usable(key: Optional[str]) -> bool:
     return bool(key and key not in ("", "your_api_key_here", "sk-"))
 
 
+def default_output_dir() -> Path:
+    """导出文件的输出目录（HTML BOM / BOM CSV）— Eel 与 FastAPI 共用的唯一来源。
+
+    以本文件位置锚定项目根，与调用方 cwd 无关：endpoints.py 曾用
+    ``Path.cwd()`` 反推同一个目录，服务换个目录启动后返回的 path 恒为空串。
+    """
+    return Path(__file__).parent.parent.parent / "output"
+
+
 # ══════════════════════════════════════════════════════
 #  Shared context — single source of truth for session state
 # ══════════════════════════════════════════════════════
@@ -297,7 +306,7 @@ class AppController:
 
     def generate_html_bom(self, output_path: Optional[str] = None) -> str:
         if output_path is None:
-            out_dir = Path(__file__).parent.parent.parent / "output"
+            out_dir = default_output_dir()
             out_dir.mkdir(exist_ok=True)
             output_path = str(out_dir / "ibom.html")
 
@@ -317,7 +326,7 @@ class AppController:
             return " 请先导入 BOM 文件再导出。"
 
         if output_path is None:
-            out_dir = Path(__file__).parent.parent.parent / "output"
+            out_dir = default_output_dir()
             out_dir.mkdir(exist_ok=True)
             # 生成带时间戳的文件名
             from datetime import datetime

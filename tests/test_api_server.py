@@ -521,3 +521,41 @@ class TestSSEThreadsafe:
         assert "全文" in body                      # done.data = 完整文本
         # 顺序保持：第一个 token 在 done 之前
         assert body.index("event: token") < body.index("event: done")
+
+
+# ═══════════════════════════════════════════════════════════════
+#  /bom/generate-html（2026-10-07 回归：原用 Path.cwd() 反推 ibom.html
+#  位置，而 controller 写到项目根 output/ —— 服务不在项目根启动时
+#  返回的 path 恒为空串）
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestGenerateHtmlPath:
+    def test_path_comes_from_controller_output_dir(self, monkeypatch, tmp_path):
+        from src.api import endpoints as ep
+
+        monkeypatch.setattr(ep, "default_output_dir", lambda: tmp_path)
+        monkeypatch.setattr(
+            "src.core.controller.AppController.generate_html_bom",
+            lambda self, output_path=None: " HTML BOM 已生成",
+        )
+        (tmp_path / "ibom.html").write_text("<html></html>", encoding="utf-8")
+
+        resp = client.post("/api/v1/bom/generate-html")
+        data = resp.json()
+        assert data["ok"] is True
+        assert data["path"] == str(tmp_path / "ibom.html")
+
+    def test_missing_file_returns_empty_path(self, monkeypatch, tmp_path):
+        from src.api import endpoints as ep
+
+        monkeypatch.setattr(ep, "default_output_dir", lambda: tmp_path)
+        monkeypatch.setattr(
+            "src.core.controller.AppController.generate_html_bom",
+            lambda self, output_path=None: " HTML BOM 已生成",
+        )
+        # 不写文件 → path 为空串而不是不存在的路径
+        resp = client.post("/api/v1/bom/generate-html")
+        data = resp.json()
+        assert data["ok"] is True
+        assert data["path"] == ""

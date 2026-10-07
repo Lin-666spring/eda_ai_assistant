@@ -48,7 +48,7 @@ from src.api.models import (
     ChatStreamRequest,
 )
 from src.api.server import get_controller
-from src.core.controller import AppController
+from src.core.controller import AppController, default_output_dir
 from src.core.persistence import SessionStore
 from src.bom.parser import BOMItem
 from src.config import SETTINGS_DIR, load_settings, save_settings
@@ -288,7 +288,9 @@ def generate_html_bom():
     ctrl = get_controller()
     try:
         report = ctrl.generate_html_bom()
-        html_path = Path.cwd() / "output" / "ibom.html"
+        # 与 controller.generate_html_bom() 的落盘目录同源（default_output_dir）。
+        # 这里曾用 Path.cwd() 反推 —— 服务不在项目根启动时 path 恒为空串。
+        html_path = default_output_dir() / "ibom.html"
         path_str = str(html_path) if html_path.exists() else ""
         return ReportWithPathResponse(ok=True, report=report, path=path_str)
     except Exception as e:
@@ -302,7 +304,7 @@ def generate_html_bom():
 
 @router.post("/rules/check", response_model=ReportResponse)
 def check_rules():
-    """Run 69-rule DRC check."""
+    """Run 71-rule DRC check."""
     ctrl = get_controller()
     report = ctrl.check_design_rules()
     return ReportResponse(ok=True, report=report)
