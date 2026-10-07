@@ -9,6 +9,7 @@ import json
 import logging
 import sys
 import threading
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
@@ -125,6 +126,11 @@ class AppController:
         self.context = CommandContext()
         self._conversation_active = False
         self._active_assistant: Optional[str] = None  # 当前助手 ID
+        # 会话级客户端租借：并发 agent_loop/对话/审查各自克隆出短生命周期
+        # 客户端（tool_executor、history 私有），退出时把新增轮次合并回
+        # self.agent —— 否则并发请求互相覆盖 tool_executor、交叉混写历史。
+        self._history_lock = threading.Lock()
+        self._history_generation = 0  # 清空/切换助手/重配置时 +1，作废在途租借的合并
         self._rag_index_checked = False  # RAG 索引是否已检查/建立
         # 启动线程（后台预热）和首次查询可能同时进来，双检加锁避免建两遍索引
         self._rag_index_lock = threading.Lock()
@@ -155,6 +161,7 @@ class AppController:
             config.llm.base_url = resolved_url
             config.llm.model = resolved_model
         self._conversation_active = False
+        self._history_generation += 1  # 在途租借的合并作废（历史已清/客户端已换）
         logger.info(
             "LLM reconfigured: provider=%s, model=%s, has_key=%s",
             provider, model or "(default)", bool(self.agent),
@@ -163,6 +170,7 @@ class AppController:
     def clear_conversation(self):
         """清空对话历史与上下文标记"""
         self._conversation_active = False
+        self._history_generation += 1
         if self.agent:
             self.agent.clear_history()
 
@@ -174,9 +182,58 @@ class AppController:
         """
         self._active_assistant = assistant_id
         self._conversation_active = False
+        self._history_generation += 1
         if self.agent:
             self.agent.clear_history()
         logger.info("Active assistant switched to: %s", assistant_id)
+
+    # ── 会话级客户端租借 ──
+
+    @contextmanager
+    def _llm_session(self, tool_executor=None, merge_history: bool = True):
+        """租借一个会话私有的 LLM 客户端（并发安全）。
+
+        self.agent 是共享单例：并发 agent_loop / 流式对话 / 多智能体审查
+        直接用它时，后到者覆盖前者的 tool_executor（on_tool_call 包装丢失），
+        各自的轮次交叉写进同一份 _history（对话上下文串台）。这里按当前
+        配置克隆出短生命周期客户端：继承共享历史快照，退出时只把本次新增
+        轮次合并回共享历史。
+
+        merge_history=False 用于审查这类「不该进对话历史」的调用 —— 多智能体
+        五个 Agent 并发跑在 ThreadPoolExecutor 上，其内部轮次本就不可靠，
+        回流只会污染用户对话上下文。
+
+        若租借期间发生 clear_conversation / 切助手 / reconfigure_llm
+        （generation 变化），合并放弃 —— 用户已明确丢弃该上下文。
+        """
+        shared = self.agent
+        if shared is None:
+            yield None
+            return
+        if not all(hasattr(shared, a) for a in
+                   ("api_key", "base_url", "model", "provider_name")):
+            # 非标准客户端（ui_smoke 的 _StubAgent 等测试替身）没有可克隆的
+            # 配置表面 —— 退回旧语义：直接共享，executor 原地注入。
+            # 别给它们造真客户端：按桩的假配置克隆会真的发网络请求。
+            if tool_executor is not None:
+                shared.tool_executor = tool_executor
+            yield shared
+            return
+        client = self._create_llm_client(
+            shared.api_key, shared.base_url, shared.model,
+            shared.provider_name, tool_executor=tool_executor,
+        )
+        generation = self._history_generation
+        snapshot = shared.get_history()
+        client.seed_history(snapshot)
+        try:
+            yield client
+        finally:
+            turns = client.get_history()
+            if (merge_history and generation == self._history_generation
+                    and len(turns) > len(snapshot)):
+                with self._history_lock:
+                    shared.extend_history(turns[len(snapshot):])
 
     # ══════════════════════════════════════════════════
     #  File I/O
@@ -449,24 +506,26 @@ class AppController:
                 pcb_data=self.context.pcb_data,
             )
 
-            # 多智能体审查（如果 LLM 可用则深度分析，否则基于规则）
+            # 多智能体审查（如果 LLM 可用则深度分析，否则基于规则）。
+            # 审查走会话租借且不回流：五个 Agent 并发跑在 ThreadPoolExecutor
+            # 上，共享 self.agent 时轮次互相穿插还灌进用户对话历史。
             from src.agent.review_agents import MultiAgentReviewer
-            reviewer = MultiAgentReviewer(llm_client=self.agent if self.is_agent_available() else None)
-
-            if self.is_agent_available():
-                report = reviewer.review_with_llm(
-                    violations,
-                    self.context.bom_items,
-                    self.context.positions,
-                    self.context.pcb_data,
-                )
-            else:
-                report = reviewer.review(
-                    violations,
-                    self.context.bom_items,
-                    self.context.positions,
-                    self.context.pcb_data,
-                )
+            with self._llm_session(merge_history=False) as client:
+                reviewer = MultiAgentReviewer(llm_client=client)
+                if client is not None:
+                    report = reviewer.review_with_llm(
+                        violations,
+                        self.context.bom_items,
+                        self.context.positions,
+                        self.context.pcb_data,
+                    )
+                else:
+                    report = reviewer.review(
+                        violations,
+                        self.context.bom_items,
+                        self.context.positions,
+                        self.context.pcb_data,
+                    )
 
             # 构建前端可渲染的 JSON
             result = {
@@ -913,10 +972,13 @@ class AppController:
 
         try:
             system = PromptTemplates.get_system_prompt("general")
-            raw = self.agent.chat_stream(
-                user_input, system_prompt=system,
-                on_token=on_token, use_history=self._conversation_active,
-            )
+            with self._llm_session() as client:
+                if client is None:
+                    return self._local_fallback(user_input)
+                raw = client.chat_stream(
+                    user_input, system_prompt=system,
+                    on_token=on_token, use_history=self._conversation_active,
+                )
             self._conversation_active = True
             return raw
         except Exception:
@@ -961,8 +1023,9 @@ class AppController:
             functions = ToolRegistry.get_function_definitions()
             system = PromptTemplates.get_system_prompt("agent")
 
-            # 注入 tool_executor（确保热重载后仍有效）
-            # 有 on_tool_call 时包一层，让前端能实时看到每次工具调用
+            # 工具执行器是本次会话私有的（有 on_tool_call 时包一层，让前端
+            # 能实时看到每次工具调用）—— 不再改写共享 self.agent 的
+            # tool_executor，并发请求各用各的执行器。
             if on_tool_call is not None:
                 def _executor(name: str, args: dict) -> str:
                     try:
@@ -970,18 +1033,21 @@ class AppController:
                     except Exception:
                         pass
                     return self._dispatch_operation(name, args)
-                self.agent.tool_executor = _executor
+                tool_executor: Optional[Callable] = _executor
             else:
-                self.agent.tool_executor = self._dispatch_operation
+                tool_executor = self._dispatch_operation
 
-            result = self.agent.chat_with_tools(
-                user_message=user_input,
-                functions=functions,
-                system_prompt=system,
-                on_token=on_token,
-                use_history=self._conversation_active,
-                max_iterations=max_iterations,
-            )
+            with self._llm_session(tool_executor=tool_executor) as client:
+                if client is None:  # 可用性检查后被 reconfigure_llm 置空
+                    return " Agent Loop 需要配置 AI 模型。请在设置中配置 API Key。"
+                result = client.chat_with_tools(
+                    user_message=user_input,
+                    functions=functions,
+                    system_prompt=system,
+                    on_token=on_token,
+                    use_history=self._conversation_active,
+                    max_iterations=max_iterations,
+                )
             self._conversation_active = True
             return result
         except RuntimeError as e:

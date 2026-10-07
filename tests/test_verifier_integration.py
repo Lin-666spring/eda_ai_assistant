@@ -55,6 +55,11 @@ class MockLLMClient:
     Configurable per-test: set .chat_response to control what the mock returns.
     """
     def __init__(self):
+        # 客户端配置表面 —— controller._llm_session 租借时要按它克隆
+        self.api_key = "sk-mock"
+        self.base_url = ""
+        self.model = "mock-model"
+        self.provider_name = "mock"
         self.chat_response = ""
         self.chat_history = []  # records (prompt, system_prompt) tuples
         self._history = []
@@ -69,6 +74,16 @@ class MockLLMClient:
 
     def is_available(self):
         return True
+
+    # _llm_session 租借协议（controller 会话级客户端池）
+    def get_history(self):
+        return list(self._history)
+
+    def seed_history(self, turns):
+        self._history = list(turns)
+
+    def extend_history(self, turns):
+        self._history.extend(turns)
 
     def clear_history(self):
         self._history.clear()
@@ -405,6 +420,7 @@ class TestMultiAgentReviewIntegration:
             ]
         })
         ctrl.agent = mock
+        ctrl._create_llm_client = lambda *a, **k: mock  # 会话租借直接借出桩
 
         result_json = ctrl.review_design_multi_agent()
         report = json.loads(result_json)
@@ -419,6 +435,7 @@ class TestMultiAgentReviewIntegration:
         ctrl = controller_with_bom
         mock = FailingMockLLMClient()
         ctrl.agent = mock
+        ctrl._create_llm_client = lambda *a, **k: mock  # 会话租借直接借出桩
 
         # Should not crash, should fall back to rule-based review
         result_json = ctrl.review_design_multi_agent()

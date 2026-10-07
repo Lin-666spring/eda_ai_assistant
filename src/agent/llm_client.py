@@ -439,6 +439,14 @@ class LLMClient:
     def get_history(self) -> list[dict]:
         return self._history.copy()
 
+    def seed_history(self, turns: list[dict]) -> None:
+        """用给定轮次替换本客户端历史（会话租借：继承共享历史快照）"""
+        self._history = list(turns)
+
+    def extend_history(self, turns: list[dict]) -> None:
+        """追加轮次（会话租借：把本次会话的新增轮次合并回共享历史）"""
+        self._history.extend(turns)
+
     # ── 内部：请求准备 ──
 
     def _prepare_request(

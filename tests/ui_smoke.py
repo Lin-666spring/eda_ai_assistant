@@ -1209,7 +1209,8 @@ def run(port: int, headed: bool) -> int:
 
     print("\n═══ UI 冒烟测试 ═══")
     for c in res.checks:
-        print(f"  {'' if c['ok'] else ''} {c['name']}"
+        # 失败项必须可见：此前 ok/失败都打空串，巡检输出里看不出哪项挂了
+        print(f"  {'[FAIL]' if not c['ok'] else '[ok]  '} {c['name']}"
               + (f"  — {c['detail']}" if c["detail"] else ""))
     if res.warnings:
         print("\n  巡检提醒（不影响通过）:")
