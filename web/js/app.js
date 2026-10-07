@@ -261,6 +261,7 @@ async function loadPersistedState() {
     if (inst) currentAssistantInstance = inst.instanceId;
     conversations[currentAssistantInstance] = conversations[currentAssistantInstance] || [];
     updateSessionBar();
+    renderQuickActions();   // 首跑也要有快捷操作按钮（过去只有切助手后才渲染）
     renderWorkspaces();
     _persistState();
     // 首跑落地页就是对话页（不再自动切到 BOM 视图）
@@ -284,6 +285,8 @@ async function loadPersistedState() {
       title: c.title || '新对话',
       workspaceId: c.workspace_id || DEFAULT_WORKSPACE_ID,
       messages: [],
+      // load_all 不带消息正文，但带条数：列表徽标不用再对历史会话恒显 0
+      messageCount: c.message_count || 0,
       _loaded: false,
     }));
   });
@@ -943,7 +946,8 @@ function renderConversations() {
     return;
   }
   container.innerHTML = convs.map(c => {
-    const n = (c.messages || []).length;
+    // 未加载过消息的历史会话用后端给的条数，别一律显示 0
+    const n = (c.messages || []).length || c.messageCount || 0;
     return `
     <div class="session-item ${c.id === activeConvId ? 'active' : ''}"
          onclick="switchConversation('${c.id}')" title="${escapeAttr(c.title)}">
@@ -2033,8 +2037,13 @@ function onFileSelected(type, input) {
   const reader = new FileReader();
   reader.onload = async function(e) {
     const bytes = new Uint8Array(e.target.result);
+    // 分块转二进制串：.epro2 工程动辄几 MB，逐字节 `binary +=` 是 O(n²)，
+    // 导入时会把整个界面卡住
     let binary = '';
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const CHUNK = 0x8000;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+    }
     const b64 = btoa(binary);
     setStatus('加载中...');
     try {
@@ -2510,12 +2519,21 @@ function openDataDir() {
 }
 
 async function clearAllData() {
-  if (!confirm('确定要清除所有本地数据吗？此操作不可撤销。')) return;
-  try {
-    await eel.clear_all_data()();
-    alert('数据已清除。应用将重新加载。');
-    location.reload();
-  } catch(e) { alert('清除失败: ' + e.message); }
+  // confirm()/alert() 在这里是漏网的原生弹窗（项目约定：一律走自定义对话框）
+  showConfirmDialog({
+    title: '清除本地数据',
+    message: '确定要清除所有本地数据吗？\n此操作不可撤销，清除后应用将重新加载。',
+    okText: '清除',
+    onOk: async () => {
+      try {
+        await eel.clear_all_data()();
+        showToast('数据已清除，应用即将重新加载', 'success');
+        setTimeout(() => location.reload(), 600);
+      } catch (e) {
+        showToast('清除失败: ' + (e.message || e), 'error');
+      }
+    },
+  });
 }
 
 // ═══════════ Utils ═══════════
@@ -2768,23 +2786,22 @@ function onPCBChanged(filepath) {
 
 // ── Streaming callbacks (called by Python) ──
 
-// Tool-call map: function name (from LLM Function Calling) → 中文标签
-const TOOL_LABELS = {
-  import_bom: '导入 BOM', merge_bom: '合并 BOM', ai_merge_bom: 'AI 合并 BOM',
-  validate_packages: '校验封装', check_duplicates: '查重',
-  check_rules: '设计规则检查', check_health: 'BOM 健康检查',
-  generate_html_bom: '生成 HTML BOM', analyze_pcb: '分析 PCB',
-  check_traces: '走线检查', query_knowledge_base: '查询知识库',
-  review_design: '设计审查', verify_suggestion: '验证建议',
-  get_bom_summary: 'BOM 摘要',
-};
+// 工具卡片标签 — 一律取 get_tools_catalog()（= ToolRegistry）下发的 label。
+// 过去这里手抄过一份 name→中文 映射，9/14 个键和 ToolRegistry 对不上
+// （validate_packages/check_rules/analyze_pcb…，rag_query 写成
+// query_knowledge_base），Agent 模式的工具卡片一直显示英文原始名。
+// 目录是启动时必载的（loadToolCatalog），只在目录加载失败的极端情况下退回原始名。
+function toolCallLabel(toolName) {
+  const t = getTool(toolName);
+  return (t && t.label) || toolName;
+}
 
 let _activeToolCards = [];
 
 eel.expose(onToolCall, 'on_tool_call');
 function onToolCall(toolName) {
   if (!_activeStreamBubble) return;
-  const label = TOOL_LABELS[toolName] || toolName;
+  const label = toolCallLabel(toolName);
   // Create a card with spinner, inserted before the streaming bubble
   const card = document.createElement('div');
   card.className = 'tool-call-card';
@@ -2870,12 +2887,16 @@ function onStreamError(errorMsg) {
   if (_activeStreamBubble) {
     _activeStreamBubble.finalize(' 流式输出中断: ' + errorMsg);
     const conv = getActiveConversation();
-    conv.messages.push({ role: 'ai', content: _activeStreamBubble.getText() });
+    const text = _activeStreamBubble.getText();
+    conv.messages.push({ role: 'ai', content: text });
+    // 与 onStreamDone 同口径落库：否则重启后这条 AI 回复会凭空消失
+    _persistMessage(activeConvId, 'ai', text);
     _activeStreamBubble = null;
     _streamTokenCount = 0;
   }
   disableInput(false);
   setStatus('错误');
+  renderConversations();
 }
 
 // ══════════════════════════════════════════
@@ -2919,7 +2940,13 @@ function _hideReviewLoading() {
   if (box) { box.style.display = 'none'; box.innerHTML = ''; }
 }
 
+let _reviewRunning = false;
+
 async function runMultiAgentReview() {
+  // 按钮在审查开始后就被藏起来了，但 Ctrl+R 快捷键仍可触发 —— 重入会
+  // 同时跑两轮审查（双倍 LLM 花费 + 渲染互相覆盖），必须挡住
+  if (_reviewRunning) { showToast('审查正在进行中', 'info'); return; }
+  _reviewRunning = true;
   const startBtn = document.querySelector('.review-start-btn');
   const resultDiv = document.getElementById('reviewResult');
   const emptyHint = document.getElementById('reviewEmpty');
@@ -2936,7 +2963,7 @@ async function runMultiAgentReview() {
       _hideReviewLoading(); setStatus('审查失败');
       if (startBtn) { startBtn.disabled = false; startBtn.style.display = ''; }
       if (emptyHint) emptyHint.style.display = '';
-      alert(data.error); return;
+      showToast(data.error, 'error'); return;
     }
     renderReviewResult(data);
     _hideReviewLoading();
@@ -2948,6 +2975,8 @@ async function runMultiAgentReview() {
     _hideReviewLoading(); setStatus('审查失败');
     if (startBtn) { startBtn.disabled = false; startBtn.style.display = ''; }
     if (emptyHint) emptyHint.style.display = '';
+  } finally {
+    _reviewRunning = false;
   }
 }
 
@@ -3031,14 +3060,17 @@ function _renderAgentCards(agents) {
     var fhtml = '';
     if (a.findings && a.findings.length) {
       fhtml = a.findings.map(function(f) {
-        return '<div class="review-finding sev-' + f.severity + '">' + f.title + (f.suggestion ? ' — ' + f.suggestion : '') + '</div>';
+        // findings 来自 LLM 输出（review_with_llm），与聊天气泡同一口径：先转义再进 DOM
+        var sev = String(f.severity || 'info').replace(/[^a-z-]/gi, '');
+        return '<div class="review-finding sev-' + sev + '">' + escapeHtml(f.title)
+          + (f.suggestion ? ' — ' + escapeHtml(f.suggestion) : '') + '</div>';
       }).join('');
     }
     ct.innerHTML += '<div class="review-agent-card ' + cls + '">' +
-      '<div class="review-agent-header"><span>' + (a.emoji || '') + '</span> ' +
-      '<span class="review-agent-name">' + a.name + '</span>' +
+      '<div class="review-agent-header"><span>' + escapeHtml(a.emoji || '') + '</span> ' +
+      '<span class="review-agent-name">' + escapeHtml(a.name) + '</span>' +
       '<span class="review-agent-score">' + (a.score != null ? a.score.toFixed(1) : '?') + ' 分</span></div>' +
-      '<div class="review-agent-summary">' + (a.summary || '') + '</div>' +
+      '<div class="review-agent-summary">' + escapeHtml(a.summary || '') + '</div>' +
       (fhtml ? '<div class="review-agent-findings">' + fhtml + '</div>' : '') + '</div>';
   }
 }
@@ -3046,7 +3078,9 @@ function _renderAgentCards(agents) {
 function _renderRoadmap(items) {
   var ct = document.getElementById('reviewRoadmap');
   if (!ct || !items || !items.length) return;
-  ct.innerHTML = '<h3> 改进路线图</h3>' + items.map(function(i) { return '<div class="review-roadmap-item">' + i + '</div>'; }).join('');
+  ct.innerHTML = '<h3> 改进路线图</h3>' + items.map(function(i) {
+    return '<div class="review-roadmap-item">' + escapeHtml(i) + '</div>';
+  }).join('');
 }
 
 function _gradeColor(score) {
@@ -3060,6 +3094,7 @@ function _gradeColor(score) {
 // ═══════════ DRC Heatmap ═══════════
 
 var drcHeatmapChart = null;
+var _heatmapResizeHandler = null;
 
 // 热力图空状态文案：后端会说明「为什么画不出来」，别一律甩一句"无数据"
 function heatmapEmptyText(payload) {
@@ -3194,7 +3229,10 @@ function renderDrcHeatmap(chartDom, gridData, meta) {
   };
 
   drcHeatmapChart.setOption(option);
-  window.addEventListener('resize', function() { drcHeatmapChart && drcHeatmapChart.resize(); });
+  // 每次重绘先摘掉旧监听再挂新的 —— 否则监听器随重绘次数线性堆积
+  if (_heatmapResizeHandler) window.removeEventListener('resize', _heatmapResizeHandler);
+  _heatmapResizeHandler = function() { drcHeatmapChart && drcHeatmapChart.resize(); };
+  window.addEventListener('resize', _heatmapResizeHandler);
 }
 
 // ═══════════ Toast Notifications ═══════════
