@@ -7,6 +7,7 @@ so feature parity is guaranteed across interfaces.
 
 import json
 import logging
+import sys
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -22,7 +23,7 @@ from src.bom.validator import BOMValidator
 from src.config import config
 from src.html_bom.generator import HTMLBOMConfig, HTMLBOMGenerator
 from src.interfaces.eda_adapter import LCEDAAdapter, PCBData
-from src.rag.indexer import RAGIndexer
+from src.rag.indexer import RAGIndexer, DEFAULT_PERSIST_DIR
 from src.rag.retriever import RAGRetriever
 from src.rules.checker import DesignRuleChecker
 from src.supply.lcsc_client import LcscSearchClient
@@ -38,9 +39,15 @@ def _is_key_usable(key: Optional[str]) -> bool:
 def default_output_dir() -> Path:
     """导出文件的输出目录（HTML BOM / BOM CSV）— Eel 与 FastAPI 共用的唯一来源。
 
-    以本文件位置锚定项目根，与调用方 cwd 无关：endpoints.py 曾用
+    开发模式以本文件位置锚定项目根，与调用方 cwd 无关：endpoints.py 曾用
     ``Path.cwd()`` 反推同一个目录，服务换个目录启动后返回的 path 恒为空串。
+    打包版（PyInstaller frozen）项目根在 _MEIPASS —— onefile 解包临时目录，
+    进程退出即清空，导出文件必须落到用户数据目录 app_home()/output。
     """
+    if getattr(sys, "frozen", False):
+        from src.constants import app_home
+
+        return app_home() / "output"
     return Path(__file__).parent.parent.parent / "output"
 
 
@@ -786,7 +793,10 @@ class AppController:
 
             try:
                 indexer = RAGIndexer()
-                manifest_path = str(rag_dir / ".index_manifest.json")
+                # manifest 跟着索引走（DEFAULT_PERSIST_DIR）：打包版索引在
+                # app_home/rag_index，manifest 放 rag_data（_MEIPASS）里退出
+                # 即丢，增量索引就永远失效、每次启动都全量重索引。
+                manifest_path = str(Path(DEFAULT_PERSIST_DIR) / ".index_manifest.json")
                 stats = indexer.index_directory(str(rag_dir), manifest_path)
                 logger.info(
                     "RAG auto-index: %d indexed, %d skipped, %d errors, %d total chunks",

@@ -374,6 +374,21 @@ class TestDefaultOutputDir:
 
         assert captured["path"].parent == ctrl_mod.default_output_dir()
 
+    def test_frozen_output_dir_goes_to_app_home(self, monkeypatch, tmp_path):
+        """打包版（sys.frozen）：_MEIPASS 是解包临时目录、退出即清空，
+        导出文件必须落到 EDA_AI_HOME（app_home()）/output。"""
+        from src.core import controller as ctrl_mod
+
+        monkeypatch.setattr(sys, "frozen", True, raising=False)
+        monkeypatch.setenv("EDA_AI_HOME", str(tmp_path))
+        assert ctrl_mod.default_output_dir() == tmp_path / "output"
+
+    def test_dev_output_dir_anchors_at_repo_root(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(sys, "frozen", False, raising=False)
+        from src.core import controller as ctrl_mod
+
+        assert ctrl_mod.default_output_dir() == PROJECT_ROOT / "output"
+
 
 # ——— reconfigure_llm 回写 config.llm（2026-10-07 回归：config.llm 是
 #      导入时读一次 settings.json 的缓存，reconfigure 原来只换 controller.agent

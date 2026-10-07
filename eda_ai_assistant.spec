@@ -4,7 +4,8 @@
 import sys
 from pathlib import Path
 
-_PROJECT = Path(__file__).parent
+# 注意：spec 由 PyInstaller exec 执行，没有 __file__；用注入的 SPECPATH。
+_PROJECT = Path(SPECPATH)
 
 a = Analysis(
     ['main.py'],
@@ -33,6 +34,10 @@ a = Analysis(
         'dotenv',
         'chromadb',
         'sentence_transformers',
+        # 托盘/全局热键（system_bridge.py 内的函数级导入，显式声明防漏）
+        'pynput',
+        'pystray',
+        'PIL',
         # v0.7.1: LCEDA 插件 API 服务器
         'fastapi',
         'uvicorn',

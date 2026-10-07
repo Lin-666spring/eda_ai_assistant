@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -14,8 +15,23 @@ import chromadb
 
 logger = logging.getLogger(__name__)
 
+
+def default_persist_dir() -> Path:
+    """向量索引落盘目录。
+
+    开发模式锚定仓库 rag_data/；PyInstaller 打包版的项目根是 _MEIPASS
+    （onefile 解包临时目录，进程退出即清空），索引必须写到用户数据目录
+    app_home()/rag_index，否则每次启动都全量重索引。
+    """
+    if getattr(sys, "frozen", False):
+        from src.constants import app_home
+
+        return app_home() / "rag_index"
+    return Path(__file__).parent.parent.parent / "rag_data"
+
+
 # 默认持久化目录
-DEFAULT_PERSIST_DIR = str(Path(__file__).parent.parent.parent / "rag_data")
+DEFAULT_PERSIST_DIR = str(default_persist_dir())
 
 
 class RAGIndexer:

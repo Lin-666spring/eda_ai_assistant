@@ -36,6 +36,7 @@ from src.constants import (
     APP_TAGLINE,
     APP_VERSION,
     GUI,
+    app_home,
 )
 from src.core.boot import BootSequencer, BootStep
 
@@ -1083,8 +1084,12 @@ def main():
 
 
 def setup_logging(debug: bool = False):
-    log_dir = PROJECT_ROOT / "logs"
-    log_dir.mkdir(exist_ok=True)
+    if getattr(sys, "frozen", False):
+        # 打包版：_MEIPASS 是解包临时目录、退出即删，日志写那里等于不落盘
+        log_dir = app_home() / "logs"
+    else:
+        log_dir = PROJECT_ROOT / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:

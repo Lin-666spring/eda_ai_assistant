@@ -36,11 +36,9 @@ python -m pytest tests/test_tools.py::test_get_keyword_map -q
 # Run tests with verbose output
 python -m pytest tests/ -v
 
-# Package as Windows exe (double-click build.bat or run this)
-pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
-    --add-data "web;web" --add-data "src;src" ^
-    --hidden-import pynput --hidden-import pystray --hidden-import PIL ^
-    main.py
+# Package as Windows exe (唯一构建入口是 eda_ai_assistant.spec：
+# rag_data / 演示 CSV / hiddenimports 全在 spec 维护，勿用裸 pyinstaller 命令)
+pyinstaller --noconfirm --clean eda_ai_assistant.spec
 ```
 
 ## Architecture
