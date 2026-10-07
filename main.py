@@ -23,7 +23,7 @@ else:
     PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.core.controller import AppController
+from src.core.controller import AppController, default_output_dir
 from src.core.file_watcher import FileWatcher
 from src.bom.parser import BOMItem
 from src.config import config, load_settings, save_settings, SETTINGS_DIR
@@ -207,8 +207,9 @@ def check_health() -> dict:
 def generate_html_bom() -> dict:
     try:
         report = controller.generate_html_bom()
-        out_dir = Path(__file__).parent / "output"
-        html_path = out_dir / "ibom.html"
+        # 回查路径用 controller.default_output_dir()（与 REST /bom/generate-html
+        # 同源）。别再 Path(__file__).parent 自行反推 —— 那是 e3459be 修掉的双入口漂移。
+        html_path = default_output_dir() / "ibom.html"
         if html_path.exists():
             import webbrowser
             webbrowser.open(str(html_path))
