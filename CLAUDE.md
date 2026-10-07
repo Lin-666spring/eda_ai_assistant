@@ -97,7 +97,7 @@ pyinstaller --onefile --windowed --name "EDA_AI_Assistant" ^
 
 `src/constants.py` — Frozen dataclasses for all magic numbers/strings: BOM tolerances, PCB trace widths, IPC-2221 current-carrying params, LCSC API endpoints, etc.
 
-存储目录统一由 `constants.app_home()` 给出（settings.json 与 sessions.db 同源），可用环境变量 **`EDA_AI_HOME`** 覆盖 —— 测试/受限环境靠它把落盘位置改到临时目录，不要再各自写 `Path.home() / ".eda_ai_assistant"`。`SessionStore` 支持传入 `db_path`，并按它的父目录建目录。
+存储目录统一由 `constants.app_home()` 给出（settings.json 与 sessions.db 同源），可用环境变量 **`EDA_AI_HOME`** 覆盖 —— 测试/受限环境靠它把落盘位置改到临时目录，不要再各自写 `Path.home() / ".eda_ai_assistant"`。`SessionStore` 支持传入 `db_path`，并按它的父目录建目录。同理，**导出文件目录统一用 `controller.default_output_dir()`**（HTML BOM / BOM CSV 落盘与 REST 端点回查共用），不要再写 `Path.cwd() / "output"` 或按调用方位置反推。
 
 ### Frontend
 
