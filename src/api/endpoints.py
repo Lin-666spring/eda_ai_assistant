@@ -565,6 +565,9 @@ def save_all_settings(req: SettingsRequest):
         saved["llm_temperature"] = req.temperature
         saved["selected_theme"] = req.theme
         saved["selected_accent"] = req.accent
+        # 2026-10-07 修复：请求模型里有 font_size、GET /settings 也返回它，
+        # 这里却从不落盘 —— REST 客户端保存的字号设置静默丢失。
+        saved["font_size"] = req.font_size
         save_settings(saved)
         return OkResponse(ok=True)
     except Exception as e:

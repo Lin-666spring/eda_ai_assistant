@@ -658,3 +658,23 @@ class TestLazySingletonThreadsafe:
 
         assert len(calls) == 1
         assert all(r is results[0] for r in results)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  /settings font_size 落盘（2026-10-07 回归：请求模型有该字段、
+#  GET 也返回它，save_all_settings 却从不写 —— 字号设置静默丢失）
+# ═══════════════════════════════════════════════════════════════
+
+
+class TestSettingsFontSizePersisted:
+    def test_font_size_round_trip(self):
+        resp = client.post("/api/v1/settings", json={
+            "provider": "deepseek", "api_key": "", "base_url": "",
+            "model": "", "temperature": 0.7, "theme": "light",
+            "accent": "#5b8def", "font_size": 15, "data_dir": "",
+        })
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is True
+
+        resp = client.get("/api/v1/settings")
+        assert resp.json()["font_size"] == 15
