@@ -203,6 +203,18 @@ class TestLoadAll:
         assert data["active_assistant"] == "a1"
         assert data["active_conv"] == "c1"
 
+    def test_load_all_includes_message_count(self, store):
+        """会话行带消息条数 —— 前端列表徽标在消息按需加载前不再恒显 0。"""
+        store.save_assistant("a1", "eda-general", "助手", 0)
+        store.save_conversation("c1", "a1", "有消息", 0)
+        store.save_conversation("c2", "a1", "没消息", 1)
+        store.save_message("c1", "user", "你好", seq=0)
+        store.save_message("c1", "ai", "你好！", seq=1)
+
+        convs = {c["conv_id"]: c for c in store.load_all()["conversations"]["a1"]}
+        assert convs["c1"]["message_count"] == 2
+        assert convs["c2"]["message_count"] == 0
+
 
 class TestSaveAll:
     def test_bulk_snapshot(self, store):

@@ -387,10 +387,12 @@ class SessionStore:
                 assistants.append(d)
                 conversations[d["instance_id"]] = []
 
-            # 加载对话（按实例分组）
+            # 加载对话（按实例分组）。顺带取消息条数：前端会话列表的徽标
+            # 在消息按需加载（load_messages）之前就有数可显，不再恒为 0。
             c_rows = conn.execute(
-                "SELECT conv_id, instance_id, workspace_id, title, sort_order "
-                "FROM conversations ORDER BY sort_order"
+                "SELECT c.conv_id, c.instance_id, c.workspace_id, c.title, c.sort_order, "
+                "(SELECT COUNT(*) FROM messages m WHERE m.conv_id = c.conv_id) AS message_count "
+                "FROM conversations c ORDER BY c.sort_order"
             ).fetchall()
             for r in c_rows:
                 d = dict(r)
