@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
 
-from src.agent.llm_client import LLMClient
+from src.agent.llm_client import LLMClient, DEFAULT_PROVIDER, resolve_provider
 from src.agent.prompt_templates import PromptTemplates
 from src.agent.router import LLMRouter, TaskIntent
 from src.bom.checker import BOMDuplicateChecker
@@ -130,9 +130,23 @@ class AppController:
                 self._dispatch_operation,
             )
             self.router = LLMRouter.from_config(api_key)
+            # config.llm 是 src.config 导入时读一次 settings.json 的缓存，
+            # 此后永不更新 —— get_llm_config（Eel）/ GET /llm/config（REST）
+            # 会一直显示进程启动时的旧配置。镜像客户端实际生效的值，
+            # 让 config.llm 始终是「当前生效配置」。
+            config.llm.provider = self.agent.provider_name
+            config.llm.api_key = self.agent.api_key
+            config.llm.base_url = self.agent.base_url
+            config.llm.model = self.agent.model
         else:
             self.agent = None
             self.router = None
+            # 没建客户端也回写：按厂商预设解析空缺，口径与 LLMClient 一致
+            resolved_url, resolved_model = resolve_provider(provider, base_url, model)
+            config.llm.provider = provider or DEFAULT_PROVIDER
+            config.llm.api_key = api_key
+            config.llm.base_url = resolved_url
+            config.llm.model = resolved_model
         self._conversation_active = False
         logger.info(
             "LLM reconfigured: provider=%s, model=%s, has_key=%s",

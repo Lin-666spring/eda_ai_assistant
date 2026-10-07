@@ -373,3 +373,46 @@ class TestDefaultOutputDir:
         controller_with_data.export_bom_csv()
 
         assert captured["path"].parent == ctrl_mod.default_output_dir()
+
+
+# ——— reconfigure_llm 回写 config.llm（2026-10-07 回归：config.llm 是
+#      导入时读一次 settings.json 的缓存，reconfigure 原来只换 controller.agent
+#      → get_llm_config（Eel）/ GET /llm/config（REST）永远显示启动时的旧配置，
+#      改完设置不重启就不刷新）———
+
+class TestReconfigureSyncsGlobalConfig:
+    def test_with_key_mirrors_effective_client(self, controller):
+        from src.config import config
+
+        controller.reconfigure_llm("deepseek", "sk-test-sync",
+                                   "https://example.com/v1", "m-sync")
+        assert config.llm.api_key == "sk-test-sync"
+        assert config.llm.provider == "deepseek"
+        assert config.llm.base_url == "https://example.com/v1"
+        assert config.llm.model == "m-sync"
+        assert config.llm.is_configured is True
+
+    def test_with_key_empty_url_model_resolved_from_preset(self, controller):
+        from src.config import config
+
+        controller.reconfigure_llm("deepseek", "sk-test-sync", "", "")
+        # 客户端按预设解析 —— config.llm 必须与客户端实际生效值一致
+        assert config.llm.base_url == "https://api.deepseek.com/v1"
+        assert config.llm.model == "deepseek-flash"
+
+    def test_without_key_resets_and_falls_back_to_preset(self, controller):
+        from src.config import config
+
+        controller.reconfigure_llm("deepseek", "", "", "")
+        assert config.llm.api_key == ""
+        assert config.llm.is_configured is False
+        assert config.llm.provider == "deepseek"
+        assert config.llm.base_url == "https://api.deepseek.com/v1"
+
+    def test_claude_mirror_matches_preset_messages_url(self, controller):
+        from src.config import config
+
+        controller.reconfigure_llm("claude", "sk-cl", "", "")
+        # AnthropicClient 会补 /messages 后缀；预设本身就是该 URL，两边必须相等
+        assert config.llm.base_url == "https://api.anthropic.com/v1/messages"
+        assert config.llm.provider == "claude"
