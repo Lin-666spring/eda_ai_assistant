@@ -39,16 +39,21 @@ def test_settings_request_model_defaults_to_light():
 
 
 def test_api_get_settings_falls_back_to_light(monkeypatch):
+    # P1-7 后取值口径在 settings_facade.settings_view，接缝跟着实现走
+    import src.settings_facade as facade
+
+    monkeypatch.setattr(facade, "load_settings", lambda: {})
     from src.api import endpoints
 
-    monkeypatch.setattr(endpoints, "load_settings", lambda: {})
     assert endpoints.get_settings()["theme"] == "light"
 
 
 def test_api_get_settings_keeps_saved_theme(monkeypatch):
+    import src.settings_facade as facade
+
+    monkeypatch.setattr(facade, "load_settings", lambda: {"selected_theme": "dark"})
     from src.api import endpoints
 
-    monkeypatch.setattr(endpoints, "load_settings", lambda: {"selected_theme": "dark"})
     assert endpoints.get_settings()["theme"] == "dark"
 
 

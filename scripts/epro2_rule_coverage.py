@@ -53,12 +53,25 @@ CONFIGS = ("C1_old_exports", "C2_pcb_no_copper", "C3_epro2_full")
 
 # ──────────────── 规则守卫抽取 ────────────────
 
+def _rule_checker_source() -> str:
+    """DesignRuleChecker 的完整规则源码。
+
+    P1-6 阶段B 拆包后规则体在三个 RulesMixin 里（bom/geometry/layout），
+    getsource(DesignRuleChecker) 只剩 facade —— 拼上 MRO 里的 mixin 再扫。
+    """
+    parts = [textwrap.dedent(inspect.getsource(DesignRuleChecker))]
+    for base in DesignRuleChecker.__mro__:
+        if base.__name__.endswith("RulesMixin"):
+            parts.append(textwrap.dedent(inspect.getsource(base)))
+    return "\n".join(parts)
+
+
 def extract_guards() -> dict[str, str]:
     """抽出每条规则的「数据不足守卫」条件源码。
 
     取函数体里第一个 `if <cond>: return` / `return []` 语句。
     """
-    src = textwrap.dedent(inspect.getsource(DesignRuleChecker))
+    src = _rule_checker_source()
     tree = ast.parse(src)
 
     guards: dict[str, str] = {}
