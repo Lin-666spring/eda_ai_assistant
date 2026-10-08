@@ -197,6 +197,16 @@ class TestLocalFallback:
         result = controller_with_data._local_fallback("瞎写的内容")
         assert "无法识别指令" in result
 
+    def test_fallback_suggestions_show_chinese_labels(self, controller_with_data, monkeypatch):
+        """P1-13 回归（2026-10-08）：`'ToolRegistry' in dir()` 恒假 —— dir() 无参
+        返回当前局部作用域，而 ToolRegistry 是函数内 import。建议列表一直显示
+        裸 tool_name 而非中文标签。monkeypatch 掉模糊匹配，直击建议渲染路径。"""
+        monkeypatch.setattr(controller_with_data, "_match_keyword", lambda s: None)
+        result = controller_with_data._local_fallback("文并BOM")
+        assert "您是不是想" in result
+        assert "合并BOM" in result           # 中文标签（ToolRegistry.get_label）
+        assert "merge_bom" not in result     # 裸 tool_name 不再泄漏
+
 
 # ——— process_input ———
 

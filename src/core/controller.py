@@ -1457,6 +1457,11 @@ class AppController:
         return unique[:top]
 
     def _local_fallback(self, user_input: str) -> str:
+        # 2026-10-08 修复（P1-13）：原来写 `'ToolRegistry' in dir()` —— dir() 无参
+        # 返回当前局部作用域名字，而 ToolRegistry 在函数内 import，判断恒假，
+        # 建议列表一直显示裸 tool_name。提升到方法入口统一 import。
+        from src.agent.tools import ToolRegistry
+
         handler = self._match_keyword(user_input)
         if handler:
             return handler()
@@ -1467,12 +1472,10 @@ class AppController:
         if suggestions:
             suggestion_text = "\n 您是不是想:\n"
             for tool_name, score in suggestions:
-                label = ToolRegistry.get_label(tool_name) if 'ToolRegistry' in dir() else tool_name
-                suggestion_text += f"  • {label}\n"
+                suggestion_text += f"  • {ToolRegistry.get_label(tool_name)}\n"
 
         # 从 ToolRegistry 生成帮助文本
         try:
-            from src.agent.tools import ToolRegistry
             help_text = ToolRegistry.get_help_text()
         except ImportError:
             help_text = (
