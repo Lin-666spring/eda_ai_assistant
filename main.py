@@ -25,6 +25,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.core.controller import AppController, default_output_dir
 from src.core.file_watcher import FileWatcher
+from src.core.persistence import SessionStore
 from src.bom.parser import BOMItem
 from src.config import config, load_settings, save_settings, SETTINGS_DIR
 from src.constants import (
@@ -44,8 +45,34 @@ from src.core.boot import BootSequencer, BootStep
 
 eel.init(str(PROJECT_ROOT / "web"))
 
-controller = AppController()
 watcher = FileWatcher()
+
+# ── 惰性单例（2026-10-08 P1-10）──
+# 模块级 `controller = AppController()` / `_store = SessionStore()` 会在
+# `import main` 时就建 LLM 客户端/路由、当场创建 sessions.db（打包版子进程
+# 和测试全受牵连）。改为首次 eel 调用才初始化；双检锁与 api/server.py
+# get_controller 的 a13a51b 口径一致。
+_controller: AppController | None = None
+_store: SessionStore | None = None
+_lazy_init_lock = threading.Lock()
+
+
+def get_controller() -> AppController:
+    global _controller
+    if _controller is None:
+        with _lazy_init_lock:
+            if _controller is None:
+                _controller = AppController()
+    return _controller
+
+
+def get_store() -> SessionStore:
+    global _store
+    if _store is None:
+        with _lazy_init_lock:
+            if _store is None:
+                _store = SessionStore()
+    return _store
 
 # ── Helpers ──
 
@@ -62,7 +89,7 @@ def _bom_item_to_dict(item: BOMItem) -> dict:
 
 
 def _bom_items() -> list:
-    return [_bom_item_to_dict(i) for i in controller.context.bom_items]
+    return [_bom_item_to_dict(i) for i in get_controller().context.bom_items]
 
 
 # ══════════════════════════════════════════
@@ -85,7 +112,7 @@ def _write_temp(name: str, b64: str) -> str:
 def import_bom_file(name: str, b64: str) -> dict:
     try:
         path = _write_temp(name, b64)
-        count, msg = controller.load_bom(path)
+        count, msg = get_controller().load_bom(path)
         return {"ok": True, "count": count, "msg": msg, "items": _bom_items()}
     except Exception as e:
         return {"ok": False, "msg": str(e), "items": []}
@@ -95,7 +122,7 @@ def import_bom_file(name: str, b64: str) -> dict:
 def import_pos_file(name: str, b64: str) -> dict:
     try:
         path = _write_temp(name, b64)
-        count, msg = controller.load_positions(path)
+        count, msg = get_controller().load_positions(path)
         return {"ok": True, "count": count, "msg": msg}
     except Exception as e:
         return {"ok": False, "msg": str(e)}
@@ -106,8 +133,8 @@ def import_project_file(name: str, b64: str) -> dict:
     """导入立创 EDA V3 .epro2 工程：一次得到 BOM + PCB"""
     try:
         path = _write_temp(name, b64)
-        count, msg = controller.load_project(path)
-        pcb = controller.context.pcb_data
+        count, msg = get_controller().load_project(path)
+        pcb = get_controller().context.pcb_data
         info = {}
         if pcb:
             info = {
@@ -128,8 +155,8 @@ def import_pcb_file(name: str, b64: str) -> dict:
     """导入 PCB 文件（.json / .epro / .epro2）"""
     try:
         path = _write_temp(name, b64)
-        count, msg = controller.load_pcb(path)
-        pcb = controller.context.pcb_data
+        count, msg = get_controller().load_pcb(path)
+        pcb = get_controller().context.pcb_data
         info = {}
         if pcb:
             info = {
@@ -150,10 +177,10 @@ def load_demo_data() -> dict:
     try:
         bom_path = PROJECT_ROOT / "tests" / "sample_bom_bad.csv"
         pos_path = PROJECT_ROOT / "tests" / "sample_positions.csv"
-        count, msg = controller.load_bom(str(bom_path))
+        count, msg = get_controller().load_bom(str(bom_path))
         pos_count = 0
         if pos_path.exists():
-            pos_count, _ = controller.load_positions(str(pos_path))
+            pos_count, _ = get_controller().load_positions(str(pos_path))
         return {
             "ok": True, "count": count, "pos_count": pos_count,
             "msg": msg, "items": _bom_items(),
@@ -165,7 +192,7 @@ def load_demo_data() -> dict:
 @eel.expose
 def merge_bom() -> dict:
     try:
-        report = controller.merge_bom()
+        report = get_controller().merge_bom()
         return {"ok": True, "report": report}
     except Exception as e:
         return {"ok": False, "report": str(e)}
@@ -174,7 +201,7 @@ def merge_bom() -> dict:
 @eel.expose
 def ai_merge_bom() -> dict:
     try:
-        report = controller.ai_merge_bom()
+        report = get_controller().ai_merge_bom()
         return {"ok": True, "report": report}
     except Exception as e:
         return {"ok": False, "report": str(e)}
@@ -182,33 +209,33 @@ def ai_merge_bom() -> dict:
 
 @eel.expose
 def validate_packages() -> dict:
-    report = controller.validate_packages()
+    report = get_controller().validate_packages()
     return {"ok": True, "report": report}
 
 
 @eel.expose
 def check_duplicates() -> dict:
-    report = controller.check_duplicates()
+    report = get_controller().check_duplicates()
     return {"ok": True, "report": report}
 
 
 @eel.expose
 def check_rules() -> dict:
-    report = controller.check_design_rules()
+    report = get_controller().check_design_rules()
     return {"ok": True, "report": report}
 
 
 @eel.expose
 def check_health() -> dict:
-    report = controller.check_bom_health()
+    report = get_controller().check_bom_health()
     return {"ok": True, "report": report}
 
 
 @eel.expose
 def generate_html_bom() -> dict:
     try:
-        report = controller.generate_html_bom()
-        # 回查路径用 controller.default_output_dir()（与 REST /bom/generate-html
+        report = get_controller().generate_html_bom()
+        # 回查路径用 get_controller().default_output_dir()（与 REST /bom/generate-html
         # 同源）。别再 Path(__file__).parent 自行反推 —— 那是 e3459be 修掉的双入口漂移。
         html_path = default_output_dir() / "ibom.html"
         if html_path.exists():
@@ -222,13 +249,13 @@ def generate_html_bom() -> dict:
 
 @eel.expose
 def bom_summary() -> dict:
-    summary = controller.get_bom_summary()
+    summary = get_controller().get_bom_summary()
     return {"ok": True, "summary": summary}
 
 
 @eel.expose
 def pcb_status() -> dict:
-    pcb = controller.context.pcb_data
+    pcb = get_controller().context.pcb_data
     if not pcb:
         return {"ok": False, "msg": "未加载 PCB 文件"}
     return {"ok": True, "pcb": {
@@ -244,7 +271,7 @@ def pcb_status() -> dict:
 def send_message(text: str) -> dict:
     """Send a chat message. Returns result synchronously."""
     try:
-        result = controller.process_input(text)
+        result = get_controller().process_input(text)
         return {"ok": True, "result": result}
     except Exception as e:
         return {"ok": False, "result": str(e)}
@@ -257,7 +284,7 @@ def send_image(text: str, image_b64: str) -> dict:
     The image is passed directly to a multimodal LLM for visual analysis.
     """
     try:
-        result = controller.process_image_input(text, image_b64)
+        result = get_controller().process_image_input(text, image_b64)
         return {"ok": True, "result": result}
     except Exception as e:
         return {"ok": False, "result": str(e)}
@@ -265,40 +292,40 @@ def send_image(text: str, image_b64: str) -> dict:
 
 @eel.expose
 def clear_chat():
-    controller.clear_conversation()
+    get_controller().clear_conversation()
     return {"ok": True}
 
 
 @eel.expose
 def review_design_multi_agent() -> str:
     """多智能体协同设计审查 — 返回 JSON"""
-    return controller.review_design_multi_agent()
+    return get_controller().review_design_multi_agent()
 
 
 @eel.expose
 def verify_suggestion(suggestion: str) -> str:
     """闭环验证 — LLM 建议经规则引擎验证后反馈修正 (路线三核心)"""
-    return controller.verify_suggestion(suggestion)
+    return get_controller().verify_suggestion(suggestion)
 
 
 @eel.expose
 def run_electrical_health_check() -> str:
     """PCB 电气健康检查 — 真实电路计算 (阻抗/PDN/去耦/电流/热/串扰)"""
-    return controller.run_electrical_health_check()
+    return get_controller().run_electrical_health_check()
 
 
 @eel.expose
 def get_drc_heatmap(grid_size_mm: float = 5.0) -> str:
     """DRC 违规热力图数据 — 返回 JSON {ok, data: [[x,y,count],...], grid_size_mm, source, reason}"""
     import json
-    return json.dumps(controller.get_drc_heatmap(grid_size_mm), ensure_ascii=False)
+    return json.dumps(get_controller().get_drc_heatmap(grid_size_mm), ensure_ascii=False)
 
 
 @eel.expose
 def set_active_assistant(assistant_id: str) -> dict:
     """切换当前助手"""
     try:
-        controller.set_active_assistant(assistant_id)
+        get_controller().set_active_assistant(assistant_id)
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "result": str(e)}
@@ -316,7 +343,7 @@ def get_llm_config() -> dict:
 
 @eel.expose
 def update_llm_config(provider: str, api_key: str, base_url: str, model: str) -> dict:
-    controller.reconfigure_llm(provider, api_key, base_url, model)
+    get_controller().reconfigure_llm(provider, api_key, base_url, model)
     saved = load_settings()
     saved["llm_provider"] = provider
     saved["llm_api_key"] = api_key
@@ -372,7 +399,7 @@ def save_font_size(size: int):
 def save_all_settings(provider: str, api_key: str, base_url: str, model: str,
                       temperature: float, theme: str, accent: str) -> dict:
     try:
-        controller.reconfigure_llm(provider, api_key, base_url, model)
+        get_controller().reconfigure_llm(provider, api_key, base_url, model)
         saved = load_settings()
         saved["llm_provider"] = provider
         saved["llm_api_key"] = api_key
@@ -497,17 +524,17 @@ def clear_all_data() -> dict:
 @eel.expose
 def get_design_suggestions() -> str:
     """设计意图识别：BOM加载后自动调用，返回Markdown格式的主动建议"""
-    return controller.get_design_suggestions()
+    return get_controller().get_design_suggestions()
 
 
 @eel.expose
 def has_bom() -> bool:
-    return controller.context.has_data
+    return get_controller().context.has_data
 
 
 @eel.expose
 def has_pcb() -> bool:
-    return controller.context.pcb_data is not None
+    return get_controller().context.pcb_data is not None
 
 
 # ══════════════════════════════════════════
@@ -532,7 +559,7 @@ def _tool_to_dict(t) -> dict:
     properties = (t.params_schema or {}).get("properties", {})
     ready = True
     blocked_reason = ""
-    if t.requires_data and not controller.context.has_data:
+    if t.requires_data and not get_controller().context.has_data:
         ready = False
         blocked_reason = "需先导入 BOM"
     return {
@@ -576,8 +603,8 @@ def get_tools_catalog() -> dict:
         "ok": True,
         "count": len(tools),
         "ready_count": sum(1 for t in tools if t["ready"]),
-        "has_bom": controller.context.has_data,
-        "has_pcb": controller.context.pcb_data is not None,
+        "has_bom": get_controller().context.has_data,
+        "has_pcb": get_controller().context.pcb_data is not None,
         "categories": categories,
         "tools": tools,
     }
@@ -587,7 +614,7 @@ def get_tools_catalog() -> dict:
 def run_tool(tool_name: str) -> dict:
     """直接从工具箱运行一个无需参数的能力。
 
-    复用 controller._dispatch_operation，因此与聊天路径走的是同一张
+    复用 get_controller()._dispatch_operation，因此与聊天路径走的是同一张
     派发表（ToolRegistry.get_dispatch_map），不存在第二套逻辑。
     """
     try:
@@ -598,13 +625,13 @@ def run_tool(tool_name: str) -> dict:
     tool = ToolRegistry.get_by_name(tool_name)
     if tool is None:
         return {"ok": False, "error": f"未知工具: {tool_name}"}
-    if tool.requires_data and not controller.context.has_data:
+    if tool.requires_data and not get_controller().context.has_data:
         return {"ok": False, "error": f"「{tool.label}」需要先导入 BOM"}
     if tool.name == "analyze_image":
         return {"ok": False, "error": "请在输入框添加图片后发送"}
 
     try:
-        result = controller._dispatch_operation(tool_name, {})
+        result = get_controller()._dispatch_operation(tool_name, {})
     except Exception as e:
         logger.exception("run_tool failed: %s", tool_name)
         return {"ok": False, "error": str(e)}
@@ -632,7 +659,7 @@ def send_message_stream(text: str):
     eel.on_stream_error(err_msg)() on failure.
     """
     try:
-        result = controller.chat_message_stream(
+        result = get_controller().chat_message_stream(
             text,
             on_token=lambda token: eel.on_stream_token(token)()
         )
@@ -652,7 +679,7 @@ def send_message_agent(text: str):
     token-by-token output). Tool execution happens before streaming begins.
     """
     try:
-        result = controller.agent_loop(
+        result = get_controller().agent_loop(
             text,
             on_token=lambda token: eel.on_stream_token(token)(),
             on_tool_call=lambda name, args: eel.on_tool_call(name)(),
@@ -665,16 +692,11 @@ def send_message_agent(text: str):
 #  Persistence API (SQLite session store)
 # ══════════════════════════════════════════
 
-from src.core.persistence import SessionStore
-
-_store = SessionStore()
-
-
 @eel.expose
 def db_load_all() -> dict:
     """启动时加载全部持久化数据"""
     try:
-        data = _store.load_all()
+        data = get_store().load_all()
         logger.info("DB load_all: %d assistants", len(data.get("assistants", [])))
         return {"ok": True, "data": data}
     except Exception as e:
@@ -686,8 +708,8 @@ def db_load_all() -> dict:
 def db_save_assistant(instance_id: str, type_id: str, name: str, sort_order: int = 0):
     """保存新助手"""
     try:
-        _store.save_assistant(instance_id, type_id, name, sort_order)
-        _store.save_state("active_assistant", instance_id)
+        get_store().save_assistant(instance_id, type_id, name, sort_order)
+        get_store().save_state("active_assistant", instance_id)
         return {"ok": True}
     except Exception as e:
         logger.exception("db_save_assistant failed")
@@ -698,7 +720,7 @@ def db_save_assistant(instance_id: str, type_id: str, name: str, sort_order: int
 def db_delete_assistant(instance_id: str):
     """删除助手及其对话"""
     try:
-        _store.delete_assistant(instance_id)
+        get_store().delete_assistant(instance_id)
         return {"ok": True}
     except Exception as e:
         logger.exception("db_delete_assistant failed")
@@ -710,8 +732,8 @@ def db_save_conversation(conv_id: str, instance_id: str, title: str = "新对话
                          workspace_id: str = ""):
     """保存新对话（workspace_id 决定它归属哪个工作区）"""
     try:
-        _store.save_conversation(conv_id, instance_id, title, workspace_id=workspace_id)
-        _store.save_state("active_conv", conv_id)
+        get_store().save_conversation(conv_id, instance_id, title, workspace_id=workspace_id)
+        get_store().save_state("active_conv", conv_id)
         return {"ok": True}
     except Exception as e:
         logger.exception("db_save_conversation failed")
@@ -722,7 +744,7 @@ def db_save_conversation(conv_id: str, instance_id: str, title: str = "新对话
 def db_delete_conversation(conv_id: str):
     """删除对话及其消息"""
     try:
-        _store.delete_conversation(conv_id)
+        get_store().delete_conversation(conv_id)
         return {"ok": True}
     except Exception as e:
         logger.exception("db_delete_conversation failed")
@@ -733,7 +755,7 @@ def db_delete_conversation(conv_id: str):
 def db_save_message(conv_id: str, role: str, content: str, image: str = "", seq: int = 0):
     """保存单条消息"""
     try:
-        _store.save_message(conv_id, role, content, image or None, seq)
+        get_store().save_message(conv_id, role, content, image or None, seq)
         return {"ok": True}
     except Exception as e:
         logger.exception("db_save_message failed")
@@ -744,7 +766,7 @@ def db_save_message(conv_id: str, role: str, content: str, image: str = "", seq:
 def db_load_messages(conv_id: str) -> dict:
     """加载指定对话的历史消息"""
     try:
-        messages = _store.load_messages(conv_id)
+        messages = get_store().load_messages(conv_id)
         return {
             "ok": True,
             "messages": [
@@ -763,11 +785,11 @@ def db_save_active_state(active_assistant: str = "", active_conv: str = "",
     """保存当前活跃的工作区 / 助手 / 对话"""
     try:
         if active_workspace:
-            _store.save_state("active_workspace", active_workspace)
+            get_store().save_state("active_workspace", active_workspace)
         if active_assistant:
-            _store.save_state("active_assistant", active_assistant)
+            get_store().save_state("active_assistant", active_assistant)
         if active_conv:
-            _store.save_state("active_conv", active_conv)
+            get_store().save_state("active_conv", active_conv)
         return {"ok": True}
     except Exception as e:
         logger.exception("db_save_active_state failed")
@@ -784,7 +806,7 @@ def db_save_workspace(workspace_id: str, name: str, path: str = "") -> dict:
     try:
         if not workspace_id:
             return {"ok": False, "error": "缺少 workspace_id"}
-        _store.save_workspace(workspace_id, name or "未命名工作区", path or "")
+        get_store().save_workspace(workspace_id, name or "未命名工作区", path or "")
         return {"ok": True, "workspace": {
             "workspace_id": workspace_id, "name": name, "path": path or "",
         }}
@@ -797,7 +819,7 @@ def db_save_workspace(workspace_id: str, name: str, path: str = "") -> dict:
 def db_delete_workspace(workspace_id: str) -> dict:
     """删除工作区（其对话回落到默认工作区，不丢数据）"""
     try:
-        _store.delete_workspace(workspace_id)
+        get_store().delete_workspace(workspace_id)
         return {"ok": True}
     except ValueError as e:
         return {"ok": False, "error": str(e)}
@@ -810,7 +832,7 @@ def db_delete_workspace(workspace_id: str) -> dict:
 def db_set_active_workspace(workspace_id: str) -> dict:
     """切换当前工作区（持久化，下次启动仍在同一工作区）"""
     try:
-        _store.save_state("active_workspace", workspace_id)
+        get_store().save_state("active_workspace", workspace_id)
         return {"ok": True}
     except Exception as e:
         logger.exception("db_set_active_workspace failed")
@@ -826,7 +848,7 @@ def db_load_workspaces() -> dict:
             "name": w.name,
             "path": w.path,
             "sort_order": w.sort_order,
-        } for w in _store.load_workspaces()]
+        } for w in get_store().load_workspaces()]
         return {"ok": True, "workspaces": ws}
     except Exception as e:
         logger.exception("db_load_workspaces failed")
@@ -949,7 +971,7 @@ def query_knowledge_base(query: str) -> dict:
         {"ok": True, "result": "..."} 或 {"ok": False, "result": "错误信息"}
     """
     try:
-        result = controller.query_knowledge_base(query)
+        result = get_controller().query_knowledge_base(query)
         return {"ok": True, "result": result}
     except Exception as e:
         logger.exception("Eel RAG query failed")
@@ -1014,7 +1036,7 @@ def _boot_worker() -> None:
 
     # 知识库首次索引可能要十几秒 —— 只做预热，不挡界面（前端顶栏会给提示）
     with boot.step("knowledge"):
-        controller._ensure_rag_indexed()
+        get_controller()._ensure_rag_indexed()
 
 
 def _run_window(mode: str) -> None:

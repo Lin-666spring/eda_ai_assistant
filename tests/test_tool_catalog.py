@@ -75,13 +75,13 @@ class TestToolsCatalog:
 
     def test_data_dependent_tools_blocked_without_bom(self, main_mod):
         """没有 BOM 时，requires_data 的能力必须被标成不可用并给出原因。"""
-        main_mod.controller.context.bom_items = []
+        main_mod.get_controller().context.bom_items = []
         blocked = [t for t in main_mod.get_tools_catalog()["tools"] if not t["ready"]]
         assert blocked, "空 BOM 下应当有需要数据的能力被拦住"
         assert all(t["requires_data"] for t in blocked)
 
     def test_no_bom_dependent_tool_is_ever_ready_without_data(self, main_mod):
-        main_mod.controller.context.bom_items = []
+        main_mod.get_controller().context.bom_items = []
         for t in main_mod.get_tools_catalog()["tools"]:
             if t["requires_data"]:
                 assert not t["ready"], t["name"]
@@ -107,7 +107,7 @@ class TestRunTool:
         assert "未知工具" in resp["error"]
 
     def test_data_dependent_tool_requires_bom(self, main_mod):
-        main_mod.controller.context.bom_items = []
+        main_mod.get_controller().context.bom_items = []
         resp = main_mod.run_tool("merge_bom")
         assert resp["ok"] is False
         assert "导入 BOM" in resp["error"]
@@ -119,7 +119,7 @@ class TestRunTool:
 
     def test_runs_tool_that_needs_no_data(self, main_mod):
         """pcb_status 是纯本地查询，不发网络请求。"""
-        main_mod.controller.context.pcb_data = None
+        main_mod.get_controller().context.pcb_data = None
         resp = main_mod.run_tool("pcb_status")
         assert resp["ok"] is True
         assert resp["tool"] == "pcb_status"
@@ -128,7 +128,7 @@ class TestRunTool:
 
     def test_dispatch_goes_through_registry_map(self, main_mod):
         """直跑必须复用 controller 的分发表，不能另起一套逻辑。"""
-        dispatch = main_mod.controller._build_dispatch_map()
+        dispatch = main_mod.get_controller()._build_dispatch_map()
         assert set(ToolRegistry.list_names()) <= set(dispatch)
 
 

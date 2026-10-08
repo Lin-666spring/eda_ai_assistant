@@ -105,7 +105,7 @@ class _StubAgent:
 def serve(port: int) -> None:
     import eel
     import main as app
-    app.controller.agent = _StubAgent()
+    app.get_controller().agent = _StubAgent()
     print(f"[ui_smoke] serving on {port}", flush=True)
     eel.start("index.html", mode=None, port=port, block=True)
 
