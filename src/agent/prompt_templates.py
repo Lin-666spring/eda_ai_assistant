@@ -280,6 +280,50 @@ suggestions 每项包含：
         return cls._SYSTEM_PROMPTS.get(task_type, cls.SYSTEM_ROLE)
 
     @classmethod
+    def drc_rule_gen_prompt(cls, rule_desc: str) -> str:
+        """生成 DRC 规则代码的提示词（P1-6 阶段A：原 controller._generate_drc_rule 内联构建）。
+
+        示例代码里嵌着 f-string（含 {}），会被 .format() 吃掉，
+        所以这里用纯拼接而不用 _TEMPLATES 的 format 通道。
+        """
+        sample_code = '''def _check_example(self, bom_items, positions, netlist):
+    """规则名称：简短描述触发的条件"""
+    violations = []
+    # 遍历 BOM 元件
+    for item in bom_items:
+        ref = getattr(item, "reference", "").split(",")[0].strip()
+        desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
+        part_number = (getattr(item, "part_number", "") or "").strip().upper()
+        pkg = (getattr(item, "package", "") or "").strip().upper()
+        value = (getattr(item, "value", "") or "").strip().upper()
+        # 在此编写检查逻辑
+        # 如果需要位置信息:
+        # if positions and ref in positions:
+        #     pos = positions[ref]
+        #     x = pos.get("x", 0) if isinstance(pos, dict) else (pos[0] if isinstance(pos, (list, tuple)) else 0)
+        # 如果需要PCB数据:
+        # pcb = self._pcb_data
+        # if pcb and pcb.traces: ...
+    return violations'''
+
+        return (
+            "你是一个 PCB 设计规则检查代码生成器。根据用户的自然语言描述，"
+            "生成一个完整的 Python 规则检查方法。\n\n"
+            "## 代码规范\n"
+            f"```python\n{sample_code}\n```\n\n"
+            "## 要求\n"
+            "1. 方法名格式: `_check_<英文简短描述>` (如 _check_led_current_limit)\n"
+            "2. 必须包含完整的文档字符串（规则名称：xxx）\n"
+            "3. 使用 RuleViolation 返回违规项，包含: rule_name, description, severity, location, suggestion, theory\n"
+            "4. severity 取值: RuleSeverity.INFO / WARNING / ERROR\n"
+            "5. 使用 getattr(item, 'field', default) 安全访问 BOMItem 字段\n"
+            "6. 每个违规项必须提供 theory（理论基础）字段\n"
+            "7. 如果所需数据不足，返回空列表\n\n"
+            f"## 用户需求\n{rule_desc}\n\n"
+            "请只输出 Python 代码，不要附带任何解释文字。代码应该可以直接复制到 DesignRuleChecker 类中。"
+        )
+
+    @classmethod
     def get_operation_descriptions(cls) -> str:
         """生成操作列表描述（用于 COMMAND_PARSE 模板）
 

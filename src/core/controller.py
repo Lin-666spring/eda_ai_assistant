@@ -600,136 +600,9 @@ class AppController:
         return json.dumps(report.to_dict(), ensure_ascii=False)
 
     def run_electrical_health_check(self) -> str:
-        """PCB 电气健康检查 — 使用电路计算引擎进行真实工程分析。
-
-        覆盖: 阻抗 · PDN · 去耦 · 电流承载 · 热 · 串扰
-        不依赖 LLM，纯数学计算。
-
-        Returns:
-            JSON 格式的 PCBHealthReport
-        """
-        from src.pcb.calculator import (
-            PCBHealthReport,
-            microstrip_impedance,
-            ipc2221_current_capacity,
-            analyze_decoupling_capacitor,
-            crosstalk_3w_rule_check,
-            estimate_junction_temp,
-        )
-
-        report = PCBHealthReport()
-        pcb = self.context.pcb_data
-        bom = self.context.bom_items
-        if not bom:
-            return json.dumps({"error": "请先导入 BOM 文件"}, ensure_ascii=False)
-
-        # 1. 电流承载检查
-        for trace in (pcb.traces if pcb else []):
-            if trace.width_mm > 0 and trace.net_name:
-                # 估算电流需求（简化为根据网络名猜测）
-                is_power = any(kw in trace.net_name.upper() for kw in ("VCC", "VDD", "VIN", "+5", "+3", "POWER", "VBAT"))
-                if is_power:
-                    capacity = ipc2221_current_capacity(trace.width_mm)
-                    # 检查常见电源电流等级
-                    if capacity < 1.0:
-                        report.current_issues.append(
-                            f"电源网络 {trace.net_name}: 走线宽 {trace.width_mm}mm "
-                            f"仅承载 {capacity:.2f}A，建议加宽至 ≥0.5mm"
-                        )
-                elif trace.width_mm < 0.15:
-                    report.current_issues.append(
-                        f"信号线 {trace.net_name}: 线宽仅 {trace.width_mm}mm，"
-                        f"接近制造极限(0.1mm)，建议加宽"
-                    )
-
-        # 2. 去耦电容检查
-        voltage_guess = "3.3"  # 从 BOM 推断工作电压
-        for item in bom:
-            desc_upper = (item.description or "").upper() + (item.value or "").upper()
-            if any(kw in desc_upper for kw in ("STM32", "MCU", "FPGA", "CPLD", "ARM", "单片机")):
-                # 微控制器需要去耦
-                has_decoupling = False
-                for other in bom:
-                    other_desc = (other.description or "").upper() + (other.value or "").upper()
-                    if any(kw in other_desc for kw in ("0.1UF", "100NF", "104", "0.1ΜF")):
-                        has_decoupling = True
-                        break
-                if not has_decoupling:
-                    report.decoupling_issues.append(
-                        f"{item.reference} ({item.value}) 缺少 100nF 去耦电容。"
-                        f"每个数字 IC 至少需要 1 个 100nF 电容靠近 VDD 引脚。"
-                    )
-
-        # 3. 热估算
-        for item in bom:
-            pkg = (item.package or "").upper()
-            if pkg and any(kw in (item.description or "").upper()
-                          for kw in ("LDO", "REGULATOR", "稳压", "AMS1117", "LM1117")):
-                # 估算 LDO 功耗
-                power_w = 0.5  # 粗略估计
-                t = estimate_junction_temp(power_w, pkg)
-                if not t.is_safe:
-                    report.thermal_issues.append(
-                        f"{item.reference} ({item.value}, {pkg}): "
-                        f"估计结温 {t.junction_temp_c}°C 超过安全限 {125}°C。"
-                        f"建议改用散热更好的封装或添加散热器。"
-                    )
-                elif t.junction_temp_c > 85:
-                    report.thermal_issues.append(
-                        f"{item.reference} ({item.value}, {pkg}): "
-                        f"估计结温 {t.junction_temp_c}°C 偏高，建议关注散热。"
-                    )
-
-        # 4. 串扰/EMC
-        if pcb and pcb.traces:
-            # 检查走线间距
-            for i in range(min(20, len(pcb.traces))):
-                for j in range(i + 1, min(20, len(pcb.traces))):
-                    t1, t2 = pcb.traces[i], pcb.traces[j]
-                    # 简化为检查同一层的相邻走线
-                    if t1.layer == t2.layer and t1.width_mm > 0 and t2.width_mm > 0:
-                        span = min(t1.width_mm, t2.width_mm)
-                        ok, ratio, msg = crosstalk_3w_rule_check(span * 2, span)
-                        if not ok:
-                            report.crosstalk_issues.append(
-                                f"{t1.net_name} ↔ {t2.net_name}: {msg}"
-                            )
-                            break
-
-        # 5. 阻抗估计
-        if pcb and pcb.traces:
-            for trace in pcb.traces[:10]:
-                if trace.width_mm > 0:
-                    z0 = microstrip_impedance(trace.width_mm, 0.2)  # 假设 4层板 0.2mm 介质
-                    if 45 <= z0 <= 55:
-                        pass  # 50Ω 附近，正常
-                    elif z0 < 30 or z0 > 80:
-                        report.impedance_issues.append(
-                            f"网络 {trace.net_name or '?'}: 线宽 {trace.width_mm}mm → "
-                            f"Z₀≈{z0}Ω (目标 50Ω)。建议调整为差分或加宽走线。"
-                        )
-
-        # 综合评分
-        total = len(report.impedance_issues) + len(report.pdn_issues) + \
-                len(report.decoupling_issues) + len(report.current_issues) + \
-                len(report.thermal_issues) + len(report.crosstalk_issues)
-        report.overall_score = max(50, 100 - total * 8)
-
-        logger.info("Electrical health check: score=%.0f, issues=%d", report.overall_score, total)
-        return json.dumps({
-            "ok": True,
-            "markdown": report.to_markdown(),
-            "score": report.overall_score,
-            "issues": report.total_issues,
-            "details": {
-                "impedance": report.impedance_issues,
-                "pdn": report.pdn_issues,
-                "decoupling": report.decoupling_issues,
-                "current": report.current_issues,
-                "thermal": report.thermal_issues,
-                "crosstalk": report.crosstalk_issues,
-            },
-        }, ensure_ascii=False)
+        """PCB 电气健康检查 — 实现在 src/core/electrical_check.py（P1-6 阶段A 迁出）。"""
+        from src.core.electrical_check import run_electrical_health_check as _run
+        return _run(self.context.pcb_data, self.context.bom_items)
 
     def check_bom_health(self) -> str:
         """BOM 健康检查 — 库存 / 生命周期 / 替代料 / 成本。"""
@@ -1563,43 +1436,8 @@ class AppController:
         if not rule_desc:
             return " 请先描述你想生成的 DRC 规则。例如：'生成一个检查LED限流电阻的规则'"
 
-        # 构建生成提示
-        sample_code = '''def _check_example(self, bom_items, positions, netlist):
-    """规则名称：简短描述触发的条件"""
-    violations = []
-    # 遍历 BOM 元件
-    for item in bom_items:
-        ref = getattr(item, "reference", "").split(",")[0].strip()
-        desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
-        part_number = (getattr(item, "part_number", "") or "").strip().upper()
-        pkg = (getattr(item, "package", "") or "").strip().upper()
-        value = (getattr(item, "value", "") or "").strip().upper()
-        # 在此编写检查逻辑
-        # 如果需要位置信息:
-        # if positions and ref in positions:
-        #     pos = positions[ref]
-        #     x = pos.get("x", 0) if isinstance(pos, dict) else (pos[0] if isinstance(pos, (list, tuple)) else 0)
-        # 如果需要PCB数据:
-        # pcb = self._pcb_data
-        # if pcb and pcb.traces: ...
-    return violations'''
-
-        prompt = (
-            "你是一个 PCB 设计规则检查代码生成器。根据用户的自然语言描述，"
-            "生成一个完整的 Python 规则检查方法。\n\n"
-            "## 代码规范\n"
-            f"```python\n{sample_code}\n```\n\n"
-            "## 要求\n"
-            "1. 方法名格式: `_check_<英文简短描述>` (如 _check_led_current_limit)\n"
-            "2. 必须包含完整的文档字符串（规则名称：xxx）\n"
-            "3. 使用 RuleViolation 返回违规项，包含: rule_name, description, severity, location, suggestion, theory\n"
-            "4. severity 取值: RuleSeverity.INFO / WARNING / ERROR\n"
-            "5. 使用 getattr(item, 'field', default) 安全访问 BOMItem 字段\n"
-            "6. 每个违规项必须提供 theory（理论基础）字段\n"
-            "7. 如果所需数据不足，返回空列表\n\n"
-            f"## 用户需求\n{rule_desc}\n\n"
-            "请只输出 Python 代码，不要附带任何解释文字。代码应该可以直接复制到 DesignRuleChecker 类中。"
-        )
+        # 构建生成提示（P1-6 阶段A：迁至 PromptTemplates.drc_rule_gen_prompt）
+        prompt = PromptTemplates.drc_rule_gen_prompt(rule_desc)
 
         try:
             llm = self.agent
