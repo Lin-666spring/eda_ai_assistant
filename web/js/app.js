@@ -1840,11 +1840,16 @@ function renderMarkdown(text) {
   if (!text) return '';
   // Strip raw HTML to prevent XSS, then parse markdown
   const safe = String(text).replace(/<[^>]*>/g, '');
+  let html;
   try {
-    return marked.parse(safe);
+    html = marked.parse(safe);
   } catch (e) {
     return escapeHtml(safe);
   }
+  // 2026-10-08（P1-12）：剥裸 HTML 挡不住 markdown 链接 —— [x](javascript:…)
+  // 不含尖括号，marked v15 实测原样产出 href="javascript:…"。parse 后按协议
+  // 中和为 '#'，http(s) 等正常链接不受影响。
+  return html.replace(/href\s*=\s*["']?\s*(javascript|data):[^"'\s>]*/gi, 'href="#"');
 }
 
 function appendBubbleWithImage(type, text, imageDataUrl) {

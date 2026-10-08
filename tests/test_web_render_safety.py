@@ -1,0 +1,66 @@
+"""P1-12 回归（2026-10-08）：renderMarkdown 必须中和 javascript:/data: 链接。
+
+剥裸 HTML（`replace(/<[^>]*>/g,'')`）挡不住 markdown 链接 —— `[x](javascript:…)`
+不含尖括号，marked v15 实测原样产出 href="javascript:…"。本测试用本机 node
+加载 vendored marked + 从 app.js 抽取真实 renderMarkdown 执行，行为级断言。
+"""
+
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+WEB = Path(__file__).resolve().parent.parent / "web"
+APP_JS = WEB / "js" / "app.js"
+
+NODE_PROBE = r"""
+const fs = require('fs');
+const {marked} = require(process.argv[1]);
+
+function extract(name) {
+  const src = fs.readFileSync(process.argv[2], 'utf8');
+  const re = new RegExp('^function ' + name + '\\([^)]*\\) \\{[\\s\\S]*?^\\}', 'm');
+  const m = src.match(re);
+  if (!m) { console.error('extract failed: ' + name); process.exit(3); }
+  return m[0];
+}
+
+// app.js 里若有现成 escapeHtml 就用真的，否则用等价桩
+let escapeHtmlSrc;
+try { escapeHtmlSrc = extract('escapeHtml'); } catch (e) {
+  escapeHtmlSrc = 'function escapeHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}';
+}
+const renderMarkdown = new Function(
+  'marked', 'escapeHtml',
+  extract('renderMarkdown') + '\nreturn renderMarkdown;'
+)(marked, new Function('return ' + escapeHtmlSrc)());
+
+const fails = [];
+function check(name, cond, detail) { if (!cond) fails.push(name + ': ' + detail); }
+
+const jsOut = renderMarkdown('[a](javascript:alert(1))');
+check('js_href_neutralized', !/javascript:/i.test(jsOut), jsOut);
+
+const dataOut = renderMarkdown('[b](data:text/html,<b>x</b>)');
+check('data_href_neutralized', !/href=["']?data:/i.test(dataOut), dataOut);
+
+const normal = renderMarkdown('**bold** [ok](https://x.y)\n\n    code block\n\n| a | b |\n| - | - |\n| 1 | 2 |');
+check('bold_kept', normal.includes('<strong>bold</strong>'), normal);
+check('https_kept', normal.includes('href="https://x.y"'), normal);
+check('codeblock_kept', normal.includes('<code'), normal);
+check('table_kept', normal.includes('<table'), normal);
+
+if (fails.length) { console.error(fails.join('\n')); process.exit(1); }
+console.log('ALL_OK');
+"""
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="需要 node 执行前端渲染逻辑")
+def test_rendermarkdown_neutralizes_dangerous_hrefs():
+    r = subprocess.run(
+        ["node", "-e", NODE_PROBE, str(WEB / "js" / "marked.min.js"), str(APP_JS)],
+        capture_output=True, text=True, timeout=60,
+    )
+    assert r.returncode == 0, f"stdout={r.stdout}\nstderr={r.stderr}"
+    assert "ALL_OK" in r.stdout
