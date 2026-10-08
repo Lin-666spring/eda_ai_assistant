@@ -8,6 +8,7 @@
 
 import json
 import logging
+import threading
 from dataclasses import dataclass, field
 from typing import Optional, Generator, Callable
 
@@ -17,23 +18,28 @@ from ..constants import LLM_PROVIDER_PRESETS, DEFAULT_PROVIDER
 
 logger = logging.getLogger(__name__)
 
-# 进程级 LLM token 用量累计（供实验脚本读取；线程/进程内简单累加）
+# 进程级 LLM token 用量累计（供实验脚本读取）。
+# 2026-10-08（P1-11）：多智能体审查 5 线程并发调用同一客户端，+= 不是原子
+# 操作会丢计数 —— 用量读写统一走这把锁。
+_USAGE_LOCK = threading.Lock()
 _LLM_USAGE = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "calls": 0}
 
 
 def _record_usage(usage) -> None:
     if not isinstance(usage, dict):
         return
-    _LLM_USAGE["calls"] += 1
-    for k in ("prompt_tokens", "completion_tokens", "total_tokens"):
-        v = usage.get(k)
-        if isinstance(v, (int, float)):
-            _LLM_USAGE[k] += int(v)
+    with _USAGE_LOCK:
+        _LLM_USAGE["calls"] += 1
+        for k in ("prompt_tokens", "completion_tokens", "total_tokens"):
+            v = usage.get(k)
+            if isinstance(v, (int, float)):
+                _LLM_USAGE[k] += int(v)
 
 
 def get_total_usage() -> dict:
     """返回累计 token 用量与调用次数（副本）。"""
-    return dict(_LLM_USAGE)
+    with _USAGE_LOCK:
+        return dict(_LLM_USAGE)
 
 
 def reset_total_usage() -> None:
@@ -187,6 +193,9 @@ class LLMClient:
         self.provider_name = provider or DEFAULT_PROVIDER
         self._history: list[dict] = []
         self.tool_executor = tool_executor
+        # P1-11（2026-10-08）：_history 并发保护 —— 多智能体审查 5 线程
+        # 共享同一租借客户端（33f8daa），历史读写需要互斥。
+        self._history_lock = threading.Lock()
 
     @property
     def provider_label(self) -> str:
@@ -350,7 +359,8 @@ class LLMClient:
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         if use_history:
-            messages.extend(self._history[-self.HISTORY_MAX_TURNS * 2:])
+            with self._history_lock:
+                messages.extend(self._history[-self.HISTORY_MAX_TURNS * 2:])
         messages.append({"role": "user", "content": user_message})
 
         iteration = 0
@@ -434,18 +444,22 @@ class LLMClient:
         }
 
     def clear_history(self):
-        self._history.clear()
+        with self._history_lock:
+            self._history.clear()
 
     def get_history(self) -> list[dict]:
-        return self._history.copy()
+        with self._history_lock:
+            return self._history.copy()
 
     def seed_history(self, turns: list[dict]) -> None:
         """用给定轮次替换本客户端历史（会话租借：继承共享历史快照）"""
-        self._history = list(turns)
+        with self._history_lock:
+            self._history = list(turns)
 
     def extend_history(self, turns: list[dict]) -> None:
         """追加轮次（会话租借：把本次会话的新增轮次合并回共享历史）"""
-        self._history.extend(turns)
+        with self._history_lock:
+            self._history.extend(turns)
 
     # ── 内部：请求准备 ──
 
@@ -462,7 +476,8 @@ class LLMClient:
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         if use_history:
-            messages.extend(self._history[-self.HISTORY_MAX_TURNS * 2:])
+            with self._history_lock:
+                messages.extend(self._history[-self.HISTORY_MAX_TURNS * 2:])
         messages.append({"role": "user", "content": user_message})
 
         return ChatRequest(
@@ -558,6 +573,15 @@ class LLMClient:
         }
 
     def _record_turn(self, user_message: str, assistant_reply: str):
-        """记录一轮对话到历史"""
-        self._history.append({"role": "user", "content": user_message})
-        self._history.append({"role": "assistant", "content": assistant_reply})
+        """记录一轮对话到历史。
+
+        2026-10-08（P1-11）：加锁 + 封顶 —— 原来只 append 不裁剪，存储端
+        无界增长（读取端本就只取最后 HISTORY_MAX_TURNS*2 条，封顶不改变
+        任何会被发送的内容）。
+        """
+        with self._history_lock:
+            self._history.append({"role": "user", "content": user_message})
+            self._history.append({"role": "assistant", "content": assistant_reply})
+            cap = self.HISTORY_MAX_TURNS * 2
+            if len(self._history) > cap:
+                del self._history[:-cap]

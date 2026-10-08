@@ -251,3 +251,70 @@ class TestMultimodalRequest:
         c = LLMClient(api_key="sk-xxx", base_url="https://my.api/v1", model="my-model")
         assert c.base_url == "https://my.api/v1"
         assert c.model == "my-model"
+
+
+# ── P1-11 线程安全（2026-10-08）：_history 加锁 + 用量原子计数 ──
+# 场景：多智能体审查 5 线程共享同一租借客户端并发 chat（33f8daa 会话级
+# 租借挡住了向用户历史的回流，但租借客户端自身的 _history 仍被并发写）。
+
+def _threaded_client():
+    import src.agent.llm_client as llm_mod
+    client = LLMClient(api_key="sk-test")
+    usage = {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}
+
+    def fake_execute(request):
+        llm_mod._record_usage(usage)   # 走真实计数路径（含锁后应为零丢失）
+        return "ok"
+
+    client._execute = fake_execute
+    return client
+
+
+def test_history_capped_and_intact_under_concurrent_chats():
+    """8 线程 × 50 次 use_history=True：_history 恒为上限 40 条、无异常。
+
+    修复前 _record_turn 只 append 不裁剪（400 轮 = 800 条无界增长），
+    读取端其实只取 [-40:]，存储端同样封顶不改变任何被发送的内容。
+    """
+    import threading
+    client = _threaded_client()
+    errors = []
+
+    def worker():
+        try:
+            for _ in range(50):
+                client.chat("hi", use_history=True)
+        except Exception as e:  # pragma: no cover
+            errors.append(e)
+
+    threads = [threading.Thread(target=worker) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not errors
+    assert len(client.get_history()) == LLMClient.HISTORY_MAX_TURNS * 2
+    # 每轮恰好 user+assistant 成对出现
+    hist = client.get_history()
+    assert all(h["role"] == ("user" if i % 2 == 0 else "assistant")
+               for i, h in enumerate(hist))
+
+
+def test_usage_calls_survive_concurrency():
+    """400 次并发 chat 后 calls 精确等于 400（+= 竞态会丢计数）。"""
+    import threading
+    from src.agent.llm_client import get_total_usage, reset_total_usage
+    reset_total_usage()
+    client = _threaded_client()
+
+    def worker():
+        for _ in range(50):
+            client.chat("hi")
+
+    threads = [threading.Thread(target=worker) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert get_total_usage()["calls"] == 400
+    assert get_total_usage()["total_tokens"] == 800
