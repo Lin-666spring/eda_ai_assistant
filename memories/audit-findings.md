@@ -89,6 +89,46 @@
 - [ ] frontend/ 去留：原封不动的 Vite React+TS 模板（node_modules 未提交），实际 UI 是 web/
 - [ ] 其他：simulator.py 是占位；convergence.py 基类 evaluate 抛 NotImplementedError；.zcode/config.json 含明文 key（已 gitignore）
 
+## 已处理（2026-10-08）：修复计划第二批 P1 全量落地（除阶段C）
+
+> 依据外审《修复计划与验收标准》第二批执行；P0 五项此前已修（96eaada /
+> f3a27e4 / 579ee44 / c954204 / 6c76bf0）。本轮 9 个 commit，终版
+> 1049 passed（基线 1038 + 新增回归 11）。
+
+- [x] **P1-9 电源走线判空顺序**（b59aa81）：checker 列表推导把 `if t.net_name`
+  放最后，None 走线先在 `.upper()` 上炸、被 check_all 吞掉 → 整条载流规则
+  静默失效。判空提前；回归 test_power_traces_skips_null_net_name 等两例。
+- [x] **P1-13 `'ToolRegistry' in dir()` 恒假**（a8992c9）：dir() 无参是当前
+  局部作用域 → 回退建议一直显示裸 tool_name。import 提升后无条件走
+  `get_label`；回归断言「合并BOM」出现、merge_bam 不出现。
+- [x] **P1-10 main.py 惰性初始化**（64b99d3）：模块级 `AppController()`/
+  `SessionStore()` 使 import 期就建客户端/落 sessions.db。改
+  get_controller()/get_store() 双检锁惰性单例；回归 test_main_lazy.py
+  （EDA_AI_HOME→临时目录，子进程 import 后 DB 不存在）。
+- [x] **P1-12 markdown 链接协议过滤**（433996d）：剥裸 HTML 挡不住
+  `[x](javascript:…)`（无尖括号，marked v15 实测原样输出）。parse 后按协议
+  中和 href；回归 test_web_render_safety.py 用 node 实跑 renderMarkdown。
+- [x] **P1-7 settings_facade**（7924dd9）：get_settings / save_all_settings /
+  test_llm_connection / _bom_item_to_dict 收编为单一实现（此前三次双实现
+  漂移：f3a27e4、446a0db、错误文案中英不一）。
+- [x] **P1-8 entity_extract 懒触发**（5948588）：两阶段固定 2 次 LLM 调用
+  → 先直接 command_parse，JSON 坏/操作不认识才补实体重试；高置信路径 1 次。
+- [x] **P1-11 LLMClient 加固**（5a37fd8）：33f8daa 会话级租借后仍残留
+  —— _history 并发读写无互斥、_LLM_USAGE 的 += 丢计数、_record_turn 只增
+  不裁。加 _history_lock + _USAGE_LOCK + 按上限封顶；8 线程×50 压力回归。
+- [x] **P1-6 阶段A**（631ebb7）：run_electrical_health_check 迁到
+  src/core/electrical_check.py；DRC prompt 构建迁入
+  PromptTemplates.drc_rule_gen_prompt（样例代码含 f-string 花括号，
+  不能走 .format() 通道，做纯拼接构建器）。
+- [x] **P1-6 阶段B checker 拆包**（ca5b9ec）：base.py（30 个模块级名）+
+  bom_rules(43)/geometry_rules(22)/layout_rules(10) 三 mixin +
+  checker.py facade（246 行）。**金样对比：拆包前后 78 个 .epro2 全量
+  check_all 输出逐字节一致**（71 规则/3519 违规/rule_errors=0）；
+  覆盖率脚本 getsource 接缝跟进（拼 MRO mixin）。一次性对比脚本按计划删除。
+- [ ] **P1-6 阶段C（app.js 模块化）暂缓**：按计划可单独排期、不阻塞 A/B；
+  验收需要手工 GUI 冒烟（发消息/切会话/热力图/设置），本环境无法执行，
+  留给用户双击实测时一起做。
+
 ## 已处理（2026-10-07）
 
 - [x] ~~spec 打包版一键演示未实测~~（昨日遗留）：dist exe 构建成功；frozen 模式写盘路径
@@ -118,7 +158,9 @@
 - [ ] `_check_crosstalk_spacing` 把工程声明的差分对**自身两半**当串扰（5/5 样本）；且仍有名字猜配对
 - [ ] `_check_diff_pair_spacing` 缺高速接口门控、缺平行重叠前置条件（重叠 0.0mm 也报「耦合过松」）
 - [ ] `_check_pullup_pulldown`/`_check_dcdc_feedback_network`/`_check_led_current_limit`/`_check_decoupling_cap_per_pin`/`_check_i2c_pullups` 用「描述含『电阻/电容』」代替网表 → BOM 描述为空即恒报
-- [ ] `_check_antenna_keepout` 裸 `"rf"`；`_check_power_loop_area`/`_check_switching_regulator_layout` 裸 `MP/XL/SY/MT`；`_check_ferrite_bead_isolation` 裸 `'op'`（ESOP8/MSOP8）
+- [ ] `_check_antenna_keepout` 裸 `"rf"`；`_check_ferrite_bead_isolation` 裸 `'op'`（ESOP8/MSOP8）
+  （本条中 `_check_power_loop_area`/`_check_switching_regulator_layout` 裸 MP/XL/SY/MT 已修 —— 579ee44，
+  统一收编 `_is_dcdc_part`/`_DCDC_PN_PREFIXES`，2026-10-08 核对时补记）
 - [ ] `_check_net_antenna` 的 `len(pins)<=1` 把零引脚网络算作单端网络（该板 orphan_pad_nets=77）
 - [ ] `_check_via_density` 裸 `SW` 命中 `…BUZZER_SWITCH`；`_check_stub_length` 把 USB_GND 地网当高速网
 - [ ] `_check_esd_protection`/`_check_emi_filter`/`_check_reverse_polarity_protection` 靠描述子串认接口与保护器件
