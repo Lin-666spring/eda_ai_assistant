@@ -34,6 +34,8 @@ class _BomItem:
         self.part_number = ""
         self.value = ""
         self.reference = ""
+        # check_all 全量跑时会经过 _check_decoupling_caps，桩补齐它读的字段
+        self.reference_list = []
 
 
 def _bom():
@@ -114,3 +116,34 @@ def test_non_e24_value_is_flagged():
 def test_value_parser_skips_package_codes():
     """三位数封装/编码（0603/103）不参与 E24 判定。"""
     assert _e24_hits([("R8", "0603"), ("R7", "103")]) == []
+
+
+# ── 3. 电源载流：net_name=None 的走线（2026-10-08 P1-9）──
+
+def test_power_traces_skips_null_net_name():
+    """修复前：推导式先算 `t.net_name.upper()` 再 `if t.net_name`，None 走线
+    直接 AttributeError → 被 check_all 吞掉 → 整条载流规则静默失效。
+    修复后：None-net 走线被跳过，正常电源线照常判定。"""
+    traces = [
+        _power_trace("VCC5V", 0.1, "Top Layer"),   # 0.1mm 外层容量≈0.46A < 需求0.78A：该报
+        PCBTrace(net_name=None, layer="Top Layer", width_mm=0.2,
+                 segments=[(0.0, 0.0, 5.0, 0.0)]),  # 孤立铜皮：net 未知
+    ]
+    checker = DesignRuleChecker()
+    checker._pcb_data = PCBData(
+        format="lceda_epro2",
+        nets={"VCC5V": PCBNet(name="VCC5V", pins=["U1.1", "U1.2"])},
+        traces=traces,
+    )
+    violations = checker._check_power_traces(_bom(), {}, {})  # 修复前这里抛 AttributeError
+    assert [v.location for v in violations] == ["VCC5V"]
+
+
+def test_check_all_survives_null_net_trace():
+    """check_all 层面：None-net 走线不产生 rule_errors（规则没有被异常打断）。"""
+    traces = [PCBTrace(net_name=None, layer="Top Layer", width_mm=0.2,
+                       segments=[(0.0, 0.0, 5.0, 0.0)])]
+    checker = DesignRuleChecker()
+    checker._pcb_data = PCBData(format="lceda_epro2", nets={}, traces=traces)
+    checker.check_all(_bom(), {}, {})
+    assert checker.rule_errors == []

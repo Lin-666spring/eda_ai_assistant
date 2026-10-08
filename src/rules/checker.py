@@ -1316,8 +1316,9 @@ class DesignRuleChecker:
         if not pcb or not pcb.traces: return []
         violations = []
         pw_traces = [t for t in pcb.traces
-                     if t.width_mm > 0 and any(kw.upper() in t.net_name.upper()
-                     for kw in PCB.POWER_NET_KEYWORDS) if t.net_name]
+                     if t.net_name and t.width_mm > 0 and any(
+                     kw.upper() in t.net_name.upper()
+                     for kw in PCB.POWER_NET_KEYWORDS)]
         if not pw_traces: return violations
 
         # 从 BOM 估算电源电流
