@@ -1213,32 +1213,51 @@ class AppController:
     def _execute_with_intent(self, user_input: str, intent: TaskIntent) -> Optional[str]:
         """Stage 2: 基于已确认意图的精准命令解析
 
-        先用 entity_extract 模板提取实体，将实体上下文注入 command_parse，
-        让 LLM 在已有意图方向的前提下做更精准的解析。
+        2026-10-08（P1-8）：原实现「entity_extract → command_parse」固定两段
+        串行，每条高置信指令都烧两次 LLM 调用。改为懒触发 —— 先直接
+        command_parse（command_parse 模板的 entity_context 本就是可选段），
+        仅当 JSON 解析失败或 operation 无法识别时，才补一次实体抽取 + 带实体
+        上下文的重试。高置信路径 1 次调用，意图结论不变。
         """
         system_type = self._intent_to_system_type(intent)
         system = PromptTemplates.get_system_prompt(system_type)
 
-        try:
-            # Step 2a: 实体抽取（best-effort）
-            entity_prompt = PromptTemplates.get("entity_extract", user_command=user_input)
-            entity_raw = self.agent.chat(entity_prompt, system_prompt=system)
-            entities = self._extract_json(entity_raw)
-            entity_context = ""
-            if entities and entities.get("entities"):
-                entity_context = "\n已提取的实体上下文：\n" + json.dumps(
-                    entities["entities"], ensure_ascii=False, indent=2
-                )
-
-            # Step 2b: 精准命令解析
+        def _parse(entity_context: str) -> Optional[str]:
             cmd_prompt = PromptTemplates.get(
                 "command_parse",
                 user_command=user_input,
                 entity_context=entity_context,
             )
-            cmd_raw = self.agent.chat(cmd_prompt, system_prompt=system)
+            return self._ai_to_operation(
+                self.agent.chat(cmd_prompt, system_prompt=system)
+            )
 
-            result = self._ai_to_operation(cmd_raw)
+        def _needs_retry(result: Optional[str]) -> bool:
+            if result is None:  # JSON 解析失败
+                return True
+            return "无法识别操作「" in result  # _dispatch_operation 的未知操作文案
+
+        try:
+            result = _parse("")
+            if not _needs_retry(result):
+                self._conversation_active = True
+                return result
+
+            # 首次解析失败 → best-effort 补实体再重试一次；实体抽取自身
+            # 失败不阻塞（空实体上下文重试，等同原口径）。
+            entity_context = ""
+            try:
+                entity_prompt = PromptTemplates.get("entity_extract", user_command=user_input)
+                entity_raw = self.agent.chat(entity_prompt, system_prompt=system)
+                entities = self._extract_json(entity_raw)
+                if entities and entities.get("entities"):
+                    entity_context = "\n已提取的实体上下文：\n" + json.dumps(
+                        entities["entities"], ensure_ascii=False, indent=2
+                    )
+            except Exception:
+                logger.warning("entity_extract (retry path) failed", exc_info=True)
+
+            result = _parse(entity_context)
             if result is not None:
                 self._conversation_active = True
             return result

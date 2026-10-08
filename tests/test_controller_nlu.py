@@ -282,3 +282,86 @@ class TestMethodLabel:
 
     def test_unknown_falls_back(self):
         assert AppController._method_label("nonexistent") == "nonexistent"
+
+
+# ——— _execute_with_intent：entity_extract 懒触发（2026-10-08 P1-8）———
+
+class _ScriptedAgent:
+    """按提示词特征回放响应并记录调用序列的假 agent。"""
+
+    ENTITY_MARK = "从用户指令中提取 EDA 相关实体"
+    RETRY_MARK = "已提取的实体上下文"
+
+    def __init__(self, reply_for):
+        self.reply_for = reply_for   # callable(prompt) -> str
+        self.prompts = []
+
+    def chat(self, prompt, system_prompt=None, **kw):
+        self.prompts.append(prompt)
+        return self.reply_for(self, prompt)
+
+    def count(self, mark):
+        return sum(1 for p in self.prompts if mark in p)
+
+
+@pytest.fixture
+def intent():
+    from src.agent.router import TaskIntent
+    return TaskIntent.BOM_ANALYSIS
+
+
+class TestExecuteWithIntentLazyEntity:
+    """原实现每条指令固定烧两次 LLM 调用（entity_extract → command_parse）；
+    懒触发后高置信路径 1 次，仅解析失败（JSON 坏 / operation 不认识）才补实体重试。"""
+
+    def test_direct_parse_succeeds_with_single_call(self, controller, intent):
+        """首次 command_parse 就成功 → 不做实体抽取，总共 1 次调用。"""
+        agent = _ScriptedAgent(lambda self, p: (
+            '{"operation": "check_duplicates", "params": {}, "explanation": "检查重复"}'
+        ))
+        controller.agent = agent
+        result = controller._execute_with_intent("检查位号重复", intent)
+        assert len(agent.prompts) == 1
+        assert agent.count(_ScriptedAgent.ENTITY_MARK) == 0
+        assert "check_duplicates" in (agent.prompts[0])
+        assert "位号" in result  # 分发结果透传
+
+    def test_garbage_first_parse_retries_with_entities(self, controller, intent):
+        """首次解析 JSON 坏 → 补一次实体抽取 + 带实体上下文重试。"""
+        def reply(self, prompt):
+            if _ScriptedAgent.ENTITY_MARK in prompt:
+                return '{"entities": {"operation_target": "BOM"}}'
+            if _ScriptedAgent.RETRY_MARK in prompt:
+                return '{"operation": "check_duplicates", "params": {}}'
+            return '这不是 JSON'
+        agent = _ScriptedAgent(reply)
+        controller.agent = agent
+        result = controller._execute_with_intent("检查位号重复", intent)
+        assert agent.count(_ScriptedAgent.ENTITY_MARK) == 1
+        assert agent.count(_ScriptedAgent.RETRY_MARK) == 1
+        assert "位号" in result
+
+    def test_unknown_operation_retries_with_entities(self, controller, intent):
+        """首次 operation 无法识别 → 同样触发实体重试。"""
+        def reply(self, prompt):
+            if _ScriptedAgent.ENTITY_MARK in prompt:
+                return '{"entities": {"operation_target": "位号"}}'
+            if _ScriptedAgent.RETRY_MARK in prompt:
+                return '{"operation": "check_duplicates", "params": {}}'
+            return '{"operation": "no_such_op", "params": {}}'
+        agent = _ScriptedAgent(reply)
+        controller.agent = agent
+        result = controller._execute_with_intent("随便说", intent)
+        assert agent.count(_ScriptedAgent.RETRY_MARK) == 1
+        assert "位号" in result
+
+    def test_total_failure_still_returns_none_for_caller(self, controller, intent):
+        """两次解析都失败 → 返回 None（与原行为一致，由调用方走兜底）。"""
+        def reply(self, prompt):
+            if _ScriptedAgent.ENTITY_MARK in prompt:
+                return '{"entities": {"operation_target": "位号"}}'
+            return 'garbage'
+        agent = _ScriptedAgent(reply)
+        controller.agent = agent
+        assert controller._execute_with_intent("瞎写的", intent) is None
+        assert agent.count(_ScriptedAgent.RETRY_MARK) == 1
