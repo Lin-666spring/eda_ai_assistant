@@ -40,6 +40,7 @@ from src.constants import (
     app_home,
 )
 from src.core.boot import BootSequencer, BootStep
+from src import settings_facade as facade
 
 # ── Init ──
 
@@ -77,15 +78,8 @@ def get_store() -> SessionStore:
 # ── Helpers ──
 
 def _bom_item_to_dict(item: BOMItem) -> dict:
-    return {
-        "reference": item.reference,
-        "value": item.value,
-        "package": item.package,
-        "part_number": item.part_number,
-        "description": item.description,
-        "quantity": item.quantity,
-        "manufacturer": item.manufacturer,
-    }
+    """薄委托：实现在 src/settings_facade.py（P1-7 双入口收编，曾与 REST 各写一份）。"""
+    return facade.bom_item_to_dict(item)
 
 
 def _bom_items() -> list:
@@ -355,20 +349,8 @@ def update_llm_config(provider: str, api_key: str, base_url: str, model: str) ->
 
 @eel.expose
 def get_settings() -> dict:
-    saved = load_settings()
-    return {
-        "provider": saved.get("llm_provider", "deepseek"),
-        "api_key": saved.get("llm_api_key", ""),
-        "base_url": saved.get("llm_base_url", ""),
-        "model": saved.get("llm_model", ""),
-        "temperature": saved.get("llm_temperature", 0.7),
-        # 默认浅色：过去默认 "dark" 但前端只有浅色一套 CSS，会造成
-        # data-theme="dark" 与真实渲染不一致（2026-09-10 修正）。
-        "theme": saved.get("selected_theme", "light"),
-        "accent": saved.get("selected_accent", "#5b8def"),
-        "font_size": saved.get("font_size", 13),
-        "data_dir": str(SETTINGS_DIR),
-    }
+    """薄委托：取值口径在 facade.settings_view（曾与 REST /settings 各写一份）。"""
+    return facade.settings_view()
 
 
 @eel.expose
@@ -399,17 +381,8 @@ def save_font_size(size: int):
 def save_all_settings(provider: str, api_key: str, base_url: str, model: str,
                       temperature: float, theme: str, accent: str) -> dict:
     try:
-        get_controller().reconfigure_llm(provider, api_key, base_url, model)
-        saved = load_settings()
-        saved["llm_provider"] = provider
-        saved["llm_api_key"] = api_key
-        saved["llm_base_url"] = base_url
-        saved["llm_model"] = model
-        saved["llm_temperature"] = temperature
-        saved["selected_theme"] = theme
-        saved["selected_accent"] = accent
-        save_settings(saved)
-        logger.info("All settings saved: provider=%s, theme=%s", provider, theme)
+        facade.persist_all_settings(get_controller(), provider, api_key, base_url,
+                                    model, temperature, theme, accent)
         return {"ok": True}
     except Exception as e:
         logger.exception("Failed to save settings")
@@ -418,45 +391,12 @@ def save_all_settings(provider: str, api_key: str, base_url: str, model: str,
 
 @eel.expose
 def test_llm_connection(provider: str, api_key: str, base_url: str, model: str) -> dict:
-    """测试连通性 — 用项目自己的客户端，按厂商协议发一次最小请求。
+    """薄委托：实现（含 openai SDK 时代的历史注释）在 facade.test_llm_connection。
 
-    ⚠️ 过去这里 `from openai import OpenAI` 直接建客户端，有两个坑：
-      1. `openai` 根本不在 requirements.txt 里（干净环境必 ImportError）；
-      2. Claude 的 base_url 是 `.../v1/messages`（原生 Messages API，非
-         OpenAI 兼容），套给 OpenAI SDK 会 POST 到
-         `.../v1/messages/chat/completions` → 必然 404。
-    现在统一走 AppController._create_llm_client()，协议分支只有一处。
+    f3a27e4 的教训：这个函数曾与 REST /llm/test 各写一份，REST 侧漏改
+    仍依赖 openai SDK —— 现在逻辑只剩 facade 一处。
     """
-    import time
-    try:
-        preset = get_provider_preset(provider)
-        url = base_url or preset.base_url
-        if not url:
-            return {"ok": False, "error": "未配置 API 地址"}
-        if not api_key:
-            return {"ok": False, "error": "未配置 API Key"}
-
-        client = AppController._create_llm_client(
-            api_key, url, model or preset.default_model, preset.name,
-        )
-        if client is None:
-            return {"ok": False, "error": "无法创建客户端"}
-
-        start = time.time()
-        reply = client.chat("Hi", max_tokens=5, temperature=0)
-        latency = round((time.time() - start) * 1000)
-        return {
-            "ok": True,
-            "latency": latency,
-            "model_used": getattr(client, "model", model),
-            "protocol": preset.protocol,
-            "reply_preview": (reply or "")[:40],
-        }
-    except Exception as e:
-        msg = str(e)
-        if len(msg) > 200:
-            msg = msg[:200] + "..."
-        return {"ok": False, "error": msg}
+    return facade.test_llm_connection(provider, api_key, base_url, model)
 
 
 @eel.expose

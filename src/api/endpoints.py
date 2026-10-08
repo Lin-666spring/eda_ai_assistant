@@ -54,6 +54,7 @@ from src.core.persistence import SessionStore
 from src.bom.parser import BOMItem
 from src.config import SETTINGS_DIR, load_settings, save_settings
 from src.constants import get_provider_preset
+from src import settings_facade as facade
 
 logger = logging.getLogger(__name__)
 
@@ -65,20 +66,12 @@ router = APIRouter()
 
 
 def _bom_item_to_dict(item: BOMItem) -> dict:
-    return {
-        "reference": item.reference,
-        "value": item.value,
-        "package": item.package,
-        "part_number": item.part_number,
-        "description": item.description,
-        "quantity": item.quantity,
-        "manufacturer": item.manufacturer,
-    }
+    """薄委托：实现在 src/settings_facade.py（P1-7 双入口收编）。"""
+    return facade.bom_item_to_dict(item)
 
 
 def _bom_items() -> list[dict]:
-    ctrl = get_controller()
-    return [_bom_item_to_dict(i) for i in ctrl.context.bom_items]
+    return facade.bom_items(get_controller())
 
 
 def _write_temp(name: str, b64: str) -> str:
@@ -489,43 +482,11 @@ def update_llm_config(req: LLMConfigRequest):
 def test_llm_connection(req: LLMTestRequest):
     """Test LLM connection with a minimal chat request.
 
-    2026-10-06 修复：这里曾 `from openai import OpenAI` 直接建客户端，有两个坑
-    （Eel 侧 main.py 同名函数已修，REST 侧漏改）：
-      1. `openai` 不在 requirements.txt（干净环境必 ImportError）；
-      2. Claude 的 base_url 是原生 Messages API，套给 OpenAI SDK 必 404。
-    现在统一走 AppController._create_llm_client()，协议分支只有一处。
+    薄委托：实现在 facade.test_llm_connection（含 openai SDK 时代的历史注释）。
+    2026-10-08（P1-7）收编：此函数曾与 Eel 侧 main.py 各写一份并发生漂移
+    （f3a27e4：REST 侧漏改仍依赖 openai SDK；错误文案也一度中英不一）。
     """
-    import time
-
-    try:
-        preset = get_provider_preset(req.provider)
-        url = req.base_url or preset.base_url
-        if not url:
-            return {"ok": False, "error": "No API base URL configured"}
-        if not req.api_key:
-            return {"ok": False, "error": "API key required"}
-
-        client = AppController._create_llm_client(
-            req.api_key, url, req.model or preset.default_model, preset.name,
-        )
-        if client is None:
-            return {"ok": False, "error": "无法创建客户端"}
-
-        start = time.time()
-        reply = client.chat("Hi", max_tokens=5, temperature=0)
-        latency = round((time.time() - start) * 1000)
-        return {
-            "ok": True,
-            "latency": latency,
-            "model_used": getattr(client, "model", req.model),
-            "protocol": preset.protocol,
-            "reply_preview": (reply or "")[:40],
-        }
-    except Exception as e:
-        msg = str(e)
-        if len(msg) > 200:
-            msg = msg[:200] + "..."
-        return {"ok": False, "error": msg}
+    return facade.test_llm_connection(req.provider, req.api_key, req.base_url, req.model)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -535,40 +496,19 @@ def test_llm_connection(req: LLMTestRequest):
 
 @router.get("/settings")
 def get_settings():
-    """Read all persisted settings."""
-    saved = load_settings()
-    return {
-        "ok": True,
-        "provider": saved.get("llm_provider", "deepseek"),
-        "api_key": saved.get("llm_api_key", ""),
-        "base_url": saved.get("llm_base_url", ""),
-        "model": saved.get("llm_model", ""),
-        "temperature": saved.get("llm_temperature", 0.7),
-        "theme": saved.get("selected_theme", "light"),
-        "accent": saved.get("selected_accent", "#5b8def"),
-        "font_size": saved.get("font_size", 13),
-        "data_dir": str(SETTINGS_DIR),
-    }
+    """薄委托：取值口径在 facade.settings_view（曾与 Eel 侧各写一份）。"""
+    return {"ok": True, **facade.settings_view()}
 
 
 @router.post("/settings", response_model=OkResponse)
 def save_all_settings(req: SettingsRequest):
-    """Save all settings and reconfigure LLM."""
+    """Save all settings and reconfigure LLM（薄委托 facade.persist_all_settings）。"""
     ctrl = get_controller()
     try:
-        ctrl.reconfigure_llm(req.provider, req.api_key, req.base_url, req.model)
-        saved = load_settings()
-        saved["llm_provider"] = req.provider
-        saved["llm_api_key"] = req.api_key
-        saved["llm_base_url"] = req.base_url
-        saved["llm_model"] = req.model
-        saved["llm_temperature"] = req.temperature
-        saved["selected_theme"] = req.theme
-        saved["selected_accent"] = req.accent
-        # 2026-10-07 修复：请求模型里有 font_size、GET /settings 也返回它，
-        # 这里却从不落盘 —— REST 客户端保存的字号设置静默丢失。
-        saved["font_size"] = req.font_size
-        save_settings(saved)
+        facade.persist_all_settings(
+            ctrl, req.provider, req.api_key, req.base_url, req.model,
+            req.temperature, req.theme, req.accent, font_size=req.font_size,
+        )
         return OkResponse(ok=True)
     except Exception as e:
         return OkResponse(ok=False, msg=str(e))
