@@ -385,7 +385,7 @@ class WatcherConstants:
     """文件监听常量"""
 
     DEBOUNCE_SEC: float = 2.0
-    PCB_EXTENSIONS: tuple = (".json", ".epro")
+    PCB_EXTENSIONS: tuple = (".json", ".epro", ".epro2")
     # 立创 EDA 默认项目路径候选
     DEFAULT_WATCH_DIRS: tuple = (
         "Documents/LCEDA",

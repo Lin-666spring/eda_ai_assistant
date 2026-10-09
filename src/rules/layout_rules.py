@@ -33,6 +33,7 @@ from .base import (
     _parse_component_value,
     _pt_seg_dist,
     _seg_seg_dist,
+    _xy,
     group_violations_by_component,
     rule_kind,
 )
@@ -59,9 +60,7 @@ class LayoutRulesMixin:
             ref = getattr(item, "reference", "")
             fr = ref.split(",")[0].strip() if ref else ""
             if fr and fr in positions:
-                pos = positions[fr]
-                x = pos.get("x", 0) if isinstance(pos, dict) else (pos[0] if isinstance(pos, (list, tuple)) else 0)
-                y = pos.get("y", 0) if isinstance(pos, dict) else (pos[1] if isinstance(pos, (list, tuple)) and len(pos) > 1 else 0)
+                x, y = _xy(positions[fr])
                 if is_a: acoords.append((x, y, fr))
                 elif is_d: dcoords.append((x, y, fr))
         if not acoords or not dcoords: return violations
@@ -87,25 +86,34 @@ class LayoutRulesMixin:
 
 
     def _check_component_edge_clearance(self, bom_items, positions, netlist):
-        """板边间距：元件距 PCB 板边应 ≥3mm"""
+        """板边间距：元件距 PCB 板边应 ≥3mm（按板框包围盒算真实边距）
+
+        2026-10-09 修正：旧判据拿绝对坐标比 `x<3 or y<3`，不减板框原点——
+        原点偏移的板上恒不响，原点在 0 附近的板只判了左/下两条边。
+        板框退回「铜包围盒」(source=copper) 时边距恒为 0、无判定意义，
+        直接跳过（与走线板边规则同一守卫）。
+        """
         if not positions: return []
-        violations = []
+        pcb = self._pcb_data
+        bo = (pcb.board_outline or {}) if pcb else {}
+        if bo.get("source") != "outline":
+            return []
         mc = 3.0
+        minx, miny = bo["min_x_mm"], bo["min_y_mm"]
+        maxx, maxy = bo["max_x_mm"], bo["max_y_mm"]
         near = []
         for item in bom_items:
             ref = getattr(item, "reference", "")
             if ref and ref in positions:
-                pos = positions[ref]
-                x = pos.get("x", 0) if isinstance(pos, dict) else (pos[0] if isinstance(pos, (list, tuple)) else 0)
-                y = pos.get("y", 0) if isinstance(pos, dict) else (pos[1] if isinstance(pos, (list, tuple)) and len(pos) > 1 else 0)
-                if x < mc or y < mc: near.append(ref)
+                x, y = _xy(positions[ref])
+                if min(x - minx, maxx - x, y - miny, maxy - y) < mc: near.append(ref)
         if near:
-            violations.append(RuleViolation(
+            return [RuleViolation(
                 rule_name="板边间距检查", description=f"{len(near)} 个元件距板边 <{mc}mm: {', '.join(near[:5])}",
                 severity=RuleSeverity.WARNING,
                 suggestion=f"元件距板边 ≥{int(mc)}mm，高元件需更大间距",
-                theory="PCB 板边在拼板分离、波峰焊夹持、机壳装配中承受最大机械应力。IPC-2222 §8.2 建议元件体距板边 ≥2.5mm，高元件≥5mm。传送边禁布区≥3mm。"))
-        return violations
+                theory="PCB 板边在拼板分离、波峰焊夹持、机壳装配中承受最大机械应力。IPC-2222 §8.2 建议元件体距板边 ≥2.5mm，高元件≥5mm。传送边禁布区≥3mm。")]
+        return []
 
 
     def _check_decoupling_proximity(self, bom_items, positions, netlist):
@@ -129,12 +137,10 @@ class LayoutRulesMixin:
         md = 15.0
         far = []
         for cr, cp in caps:
-            cx = cp.get("x", 0) if isinstance(cp, dict) else (cp[0] if isinstance(cp, (list, tuple)) else 0)
-            cy = cp.get("y", 0) if isinstance(cp, dict) else (cp[1] if isinstance(cp, (list, tuple)) and len(cp) > 1 else 0)
+            cx, cy = _xy(cp)
             nearest = None      # (距离, IC 位号)：按「到最近 IC」判定
             for ir, ip in ics:
-                ix = ip.get("x", 0) if isinstance(ip, dict) else (ip[0] if isinstance(ip, (list, tuple)) else 0)
-                iy = ip.get("y", 0) if isinstance(ip, dict) else (ip[1] if isinstance(ip, (list, tuple)) and len(ip) > 1 else 0)
+                ix, iy = _xy(ip)
                 dist = ((cx - ix) ** 2 + (cy - iy) ** 2) ** 0.5
                 if nearest is None or dist < nearest[0]:
                     nearest = (dist, ir)
@@ -168,8 +174,7 @@ class LayoutRulesMixin:
             if ref not in positions:
                 continue
             pos = positions[ref]
-            x = pos.get("x", 0) if isinstance(pos, dict) else (pos[0] if isinstance(pos, (list, tuple)) else 0)
-            y = pos.get("y", 0) if isinstance(pos, dict) else (pos[1] if isinstance(pos, (list, tuple)) and len(pos) > 1 else 0)
+            x, y = _xy(pos)
             if any(kw.lower() in desc for kw in crystal_kw):
                 crystal_positions.append((ref, x, y))
             if any(kw.lower() in desc for kw in mcu_kw):
@@ -319,25 +324,36 @@ class LayoutRulesMixin:
 
 
     def _check_connector_edge_placement(self, bom_items, positions, netlist):
-        """连接器边沿布局：连接器/接口应置于 PCB 边沿"""
+        """连接器边沿布局：连接器/接口应置于 PCB 边沿（按板框包围盒算真实边距）
+
+        2026-10-09 修正：旧判据 `x>10 and y>10` 拿绝对坐标当边距，不减板框
+        原点——原点偏移的板上连接器全被误判「距板边较远」。板框无真实轮廓
+        (source != outline) 时无法算边距，跳过。
+        """
+        if not positions: return []
+        pcb = self._pcb_data
+        bo = (pcb.board_outline or {}) if pcb else {}
+        if bo.get("source") != "outline":
+            return []
         violations = []
         conn_kw = ["USB", "RJ45", "HDMI", "DB9", "排针", "端子", "CONNECTOR", "HEADER", "JACK",
                    "DC", "电源插座", "SD卡", "TF卡", "SIM卡", "FPC", "FFC"]
+        max_board_edge = 10.0
+        minx, miny = bo["min_x_mm"], bo["min_y_mm"]
+        maxx, maxy = bo["max_x_mm"], bo["max_y_mm"]
         for item in bom_items:
             desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
             if not any(kw.lower() in desc for kw in conn_kw):
                 continue
             ref = getattr(item, "reference", "").split(",")[0].strip()
-            if not positions or ref not in positions:
+            if ref not in positions:
                 continue
-            pos = positions[ref]
-            x = pos.get("x", 0) if isinstance(pos, dict) else (pos[0] if isinstance(pos, (list, tuple)) else 0)
-            y = pos.get("y", 0) if isinstance(pos, dict) else (pos[1] if isinstance(pos, (list, tuple)) and len(pos) > 1 else 0)
-            max_board_edge = 10.0
-            if x > max_board_edge and y > max_board_edge:
+            x, y = _xy(positions[ref])
+            clearance = min(x - minx, maxx - x, y - miny, maxy - y)
+            if clearance > max_board_edge:
                 violations.append(RuleViolation(
                     rule_name="连接器边沿布局检查",
-                    description=f"连接器 {ref} 距板边较远({x:.0f},{y:.0f})，可能影响插拔操作",
+                    description=f"连接器 {ref} 距最近板边 {clearance:.0f}mm（>{int(max_board_edge)}mm），可能影响插拔操作",
                     severity=RuleSeverity.INFO, location=ref,
                     suggestion="连接器/接口紧贴 PCB 边沿，开口朝外。机壳开孔位置与连接器对准，预留插头空间(如 USB 插头长度 ≈15mm)。",
                     theory="连接器置于板中心→机壳内部需延长开孔通道,增加机械设计难度且插拔力会使 PCB 弯曲。板边布局插拔力直接由机壳/固定柱承受。",
@@ -346,7 +362,7 @@ class LayoutRulesMixin:
 
 
     def _check_component_spacing(self, bom_items, positions, netlist):
-        """元件间距：相邻元件应有足够间距"""
+        """元件间距：按导入顺序抽样比较相邻元件对（非空间最近邻全量检索）"""
         if not positions: return []
         min_spacing = 1.0
         close_pairs = 0
@@ -355,16 +371,15 @@ class LayoutRulesMixin:
             for j in range(i + 1, min(i + 5, len(pos_items))):
                 p1 = pos_items[i][1]
                 p2 = pos_items[j][1]
-                x1 = p1.get("x", 0) if isinstance(p1, dict) else (p1[0] if isinstance(p1, (list, tuple)) else 0)
-                y1 = p1.get("y", 0) if isinstance(p1, dict) else (p1[1] if isinstance(p1, (list, tuple)) and len(p1) > 1 else 0)
-                x2 = p2.get("x", 0) if isinstance(p2, dict) else (p2[0] if isinstance(p2, (list, tuple)) else 0)
-                y2 = p2.get("y", 0) if isinstance(p2, dict) else (p2[1] if isinstance(p2, (list, tuple)) and len(p2) > 1 else 0)
+                x1, y1 = _xy(p1)
+                x2, y2 = _xy(p2)
                 if ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5 < min_spacing:
                     close_pairs += 1
         if close_pairs > 3:
             return [RuleViolation(
                 rule_name="元件间距检查",
-                description=f"约 {close_pairs} 对元件间距 <{min_spacing}mm，可能影响 SMT 贴片和返修",
+                description=(f"抽样比较发现约 {close_pairs} 对元件间距 <{min_spacing}mm"
+                             f"（按导入顺序取相邻对，非空间最近邻），可能影响 SMT 贴片和返修"),
                 severity=RuleSeverity.INFO,
                 suggestion="SMT 元件间≥0.5mm(0603), ≥0.8mm(0805)。高元件间≥1.5mm。连接器周围预留插拔空间。",
                 theory="元件间距过小→SMT 钢网印刷桥连、回流焊阴影效应、烙铁无法伸入返修。IPC-7351 为每种封装定义了标准焊盘和间距。",

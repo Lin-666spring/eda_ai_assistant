@@ -12,7 +12,11 @@ import tempfile
 import threading
 from pathlib import Path
 
-import eel
+try:
+    import eel
+except ImportError:
+    print("缺少依赖 eel，请先安装：pip install -r requirements.txt", file=sys.stderr)
+    sys.exit(1)
 
 logger = logging.getLogger(__name__)
 

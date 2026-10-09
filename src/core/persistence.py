@@ -167,9 +167,9 @@ class SessionStore:
                 (DEFAULT_WORKSPACE_ID,),
             )
             conn.commit()
-        # 限制文件权限
+        # 0o600 = 仅 owner 读写；Windows 只影响只读位（对含对话记录的库同样成立）
         try:
-            os.chmod(self._db_path, stat.S_IREAD | stat.S_IWRITE)
+            os.chmod(self._db_path, stat.S_IRUSR | stat.S_IWUSR)
         except OSError:
             pass
 

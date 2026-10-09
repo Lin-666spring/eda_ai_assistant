@@ -49,11 +49,15 @@ def save_settings(data: dict) -> bool:
         SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-        # 设置仅 owner 可读写权限
-        os.chmod(SETTINGS_FILE, stat.S_IREAD | stat.S_IWRITE)
-        return True
     except OSError:
         return False
+    # 0o600 = 仅 owner 读写（含 API key）；Windows 只影响只读位、保持可写。
+    # 收紧失败不算保存失败（文件已落盘）。
+    try:
+        os.chmod(SETTINGS_FILE, stat.S_IRUSR | stat.S_IWUSR)
+    except OSError:
+        pass
+    return True
 
 
 def _env(key: str, default: str = "") -> str:

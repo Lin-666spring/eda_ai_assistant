@@ -151,7 +151,7 @@ def import_positions(req: FileImportRequest):
 
 @router.post("/pcb/import", response_model=PCBImportResponse)
 def import_pcb(req: FileImportRequest):
-    """Import PCB layout from a base64-encoded JSON/.epro file."""
+    """Import PCB layout from a base64-encoded JSON/.epro/.epro2 file."""
     try:
         ctrl = get_controller()
         path = _write_temp(req.filename, req.content_base64)

@@ -752,6 +752,8 @@ class AppController:
             格式化的知识库检索结果（Markdown 格式）
         """
         if not query or not query.strip():
+            rag_dir = Path(__file__).parent.parent.parent / "rag_data"
+            doc_count = len(list(rag_dir.glob("*.md"))) if rag_dir.is_dir() else 0
             return (
                 "**知识库查询**\n\n"
                 "请指定要查询的内容，例如：\n"
@@ -761,7 +763,7 @@ class AppController:
                 "  • PDN 目标阻抗如何计算\n"
                 "  • GaN 散热设计要点\n"
                 "  • 华为 PCB 设计规范有哪些\n\n"
-                f"当前知识库包含 {11} 个专业文档，覆盖 "
+                f"当前知识库包含 {doc_count} 个专业文档，覆盖 "
                 "IPC 标准、高速数字设计、信号完整性、EMC、DFM、热管理、"
                 "混合信号/RF、BGA 封装、先进材料、中国行业实践等领域。"
             )

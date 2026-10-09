@@ -118,5 +118,5 @@ class LCEDAAdapter(EDAAdapter):
         return {
             "tool": self.tool_name,
             "project_path": project_path,
-            "supported_formats": [".csv", ".xlsx", ".xls", ".json", ".epro"],
+            "supported_formats": [".csv", ".xlsx", ".xls", ".json", ".epro", ".epro2"],
         }

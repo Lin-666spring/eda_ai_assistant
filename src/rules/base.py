@@ -233,6 +233,18 @@ def _kw_hit(text: str, keywords) -> bool:
     return False
 
 
+def _xy(pos) -> tuple:
+    """位置取 (x, y)：dict 优先，兼容 (list, tuple)；其它形态一律 (0, 0)。
+
+    值不做 float 包装，保持各规则原内联写法的返回类型与缺省语义。
+    """
+    if isinstance(pos, dict):
+        return pos.get("x", 0), pos.get("y", 0)
+    if isinstance(pos, (list, tuple)):
+        return pos[0], (pos[1] if len(pos) > 1 else 0)
+    return 0, 0
+
+
 # ── 网络类别判定（串扰 / 阻抗等高速类规则共用） ──
 
 _POWER_OR_GROUND_KW = ("gnd", "agnd", "dgnd", "pgnd", "vss", "vcc", "vdd", "vbus",

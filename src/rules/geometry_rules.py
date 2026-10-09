@@ -766,7 +766,6 @@ class GeometryRulesMixin:
             suggestion="关键信号(时钟/高频)下方保证完整 GND 平面。信号跨分割区需加stitching电容(10nF)桥接回流。",
             theory="高速信号的回流电流沿最小阻抗路径(紧邻信号线下方)流回源端。地平面割裂→回流绕行→环路面积↑→EMI↑。>50MHz 信号必须保证连续参考平面。",
         )]
-        return []
 
 
     def _check_via_thermal_relief(self, bom_items, positions, netlist):

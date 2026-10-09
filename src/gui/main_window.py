@@ -622,7 +622,7 @@ class MainWindow(QMainWindow):
     def _on_import_pcb(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "选择 PCB 文件", "",
-            "PCB 文件 (*.json *.epro);;所有文件 (*.*)",
+            "PCB 文件 (*.json *.epro *.epro2);;所有文件 (*.*)",
         )
         if not path:
             return

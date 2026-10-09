@@ -1,7 +1,7 @@
 """
 PCB 文件监听器 — 立创 EDA 项目目录自动同步。
 
-监听用户指定的目录，检测 .json / .epro 文件变化，
+监听用户指定的目录，检测 .json / .epro / .epro2 文件变化，
 自动触发 PCB 重新加载和规则检查。
 """
 
@@ -14,6 +14,8 @@ from typing import Callable, Optional
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+from ..constants import WatcherConstants
+
 logger = logging.getLogger(__name__)
 
 # 立创 EDA 默认项目目录候选
@@ -23,7 +25,7 @@ DEFAULT_WATCH_PATHS = [
     Path.home() / "LCEDA",
 ]
 
-PCB_EXTENSIONS = (".json", ".epro")
+PCB_EXTENSIONS = WatcherConstants.PCB_EXTENSIONS
 
 
 class PCBFileHandler(FileSystemEventHandler):
