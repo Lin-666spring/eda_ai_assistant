@@ -263,16 +263,40 @@
 - [x] `_check_component_edge_clearance`/`_check_connector_edge_placement` 拿绝对坐标比门限，**不减板框原点**（2026-10-09 P2 批次已修）
 
 **阈值/公式/硬编码**
+- [x] **2026-10-09 噪声清扫批**（78 板金样 3202 → 2048，均值 41.1 → 26.3 条/板，
+  详见 experiment_results/violation_noise_2026-10-09/README.md）：
+  - 走线锐角 439 → 9：四族伪影逐一豁免——覆铜网格/焊盘 void 弦线短桩
+    （`TRACE_CORNER_MIN_LEG_MM` 0.05 → 0.25）、闭合环（`Corner.is_closed`，铺铜
+    外框/void 轮廓）、过孔圆心结合点（`TRACE_CORNER_VIA_SNAP_MM=0.3`，金样 341 个
+    剩余尖角 110 个顶点与过孔圆心重合）、45° 栅格端点相接/折返
+    （`TRACE_CORNER_GRID_EPS_DEG=0.3`，45° 折线布线真拐角内角只会是 135°/90°）、
+    <1° 链跳伪影 + (net,layer) 注册覆铜区整组跳过；自由角度真尖角保留
+    （金样残 9 条含 RA6E2 的 7.6° 真针尖）；同函数的直角 158 → 88 同口径豁免
+  - 时钟包地 249 → 134：调试/RTC 网排除（SWCLK/TCK/32K/OSC32）+ 15mm 长度门
+    （`CLOCK_GUARD_MIN_LENGTH_MM`，被标时钟网 <10mm 占 31%——晶振短线无包地价值）
+  - 位号连续性 189 → 61：跳号是正常实践，合并每板至多 1 条 + 移入 ADVISE_RULES
+  - 丝印可读性/丝印焊盘间距 78×2 → 0：加 `metadata['silk_elements']` 守卫
+    （解析器无丝印几何，落地后自动启用，判据代码保留）
+  - 地平面连续性 78 → 2：copper_pours 有 GND 族铺铜则静默（残 2 板=真无铺铜）
+  - 光学定位点 78 → 76：封装名找 MARK-POINT/FIDUCIAL 器件，找到静默、找不到改
+    「未检测到」（可证伪）
+  - PDN 78 条不变但板面积改实测 + 「估算」标注（见上方勾销条目）
 - [ ] `calculator.microstrip_impedance` 窄线分支（w/h<1）偏低约 2×（40.9Ω vs IPC-2141 72.7Ω）→ 阻抗结论方向反；另硬编码 h=0.2mm 且无层数/长度门控
   （2026-10-09 备注：公式部分已修，见上方 10-06 代码 bug 第 4 条；h=0.2 兜底
   经阻抗判读证实「表内告警换真实叠层仍越界」，暂保留并在文案中指引厂商叠层
   复核——拿到真实叠层数据后应替换 h/er）
-- [ ] `_check_pdn_target_impedance` 无条件 append + 板面积/层间距/平面电阻全硬编码
+- [ ] `_check_pdn_target_impedance` 板面积已改 board_outline 实测（无板框则静默）+ 文案标注
+  「估算」、无条件 append 就此收口（2026-10-09 噪声清扫批）；**层间距/平面电阻仍硬编码**
 - [ ] `_check_power_traces` 需求电流靠 BOM 关键词（"电机控制" 给 MCU 加 1.5A）
-- [ ] `_check_signal_traces` 线宽「混用」无容差（0.102 vs 0.1041mm）；0.09mm 下限注释换算错（=3.54mil）
+- [x] `_check_signal_traces`：60% 主流线宽「混用」相对条款整条删除（焊盘颈口是标准做法，
+  金样 129 条全是这类）；≥4 层下限 0.09 → 0.088mm（3.5mil=0.0889 标准多层工艺，原值
+  把整板 3.5mil 布线的万兆软路由板误报 79 条）；0.127mm 下限也否决（≤2 层板 438 网在
+  [0.1,0.127)、一板 149 网）。绝对下限 <4 层 0.1mm 维持（2026-10-09 噪声清扫批）
 - [ ] `_check_diff_pair_length` 描述 0.5mm vs 实现 ≥2mm/≥10%；长度取全网线段和
 - [ ] `_check_power_filtering` 白名单漏 330µF；`_check_bom_value_range` 只认 E24（E96 值被判非标）
-- [ ] `_check_component_spacing` 只比字典相邻 4 项且不分层；`_check_package_consistency` 封装名无别名归一
+- [x] `_check_component_spacing` 只比字典相邻 4 项且不分层；~~`_check_package_consistency`
+  封装名无别名归一~~ → 封装一致性已加 `_norm_fp` 单字母前缀归一（C0603/R0402/L3216 →
+  0603/0402/3216，金样 150 条里 55 条是这类）（2026-10-09 噪声清扫批；间距规则另议）
 - [ ] `_check_copper_pour_connectivity` 只认 `POUR` 元素，`.epru` 的 `POLY`+`FILL` 覆铜读不到 → 恒报缺数据
 - [ ] `_check_trace_edge_clearance` 用包围盒而非板框多边形（误差 ±0.06mm）
 
