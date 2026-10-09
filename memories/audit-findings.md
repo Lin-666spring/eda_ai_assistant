@@ -86,6 +86,12 @@
 
 ## 待处理
 
+- [ ] `_check_power_rail_decoupling` 判据是「part_number 含『电容/capacitor』」（2026-10-09 批次发现，
+  同属 §4B 病但不在台账清单内未动）：pn 字段永不含有这两个词 → `cap_vals` 恒空 → 规则恒不触发（静默 FN）。
+  若要激活，判据应对齐 `_is_cap_row`（位号前缀 C），并先判读会新增多少「缺中频滤波」类输出
+- [ ] 串扰残留（2026-10-09 批次观察，未动）：差分豁免后部分层的最严重对是 `GND/PCIE20_TXN`
+  这类「走线贴地/贴铜」——3W 串扰语义是线对线，线对平面耦合属另一口径，量出来的
+  数值成立但规则名不符；判读时注意
 - [ ] 实验指标可信度：幻觉消除率 100%、多智能体均分 94（min 88.7）无区分度；需重新定义 + 评分校准
 - [ ] frontend/ 去留：原封不动的 Vite React+TS 模板（node_modules 未提交），实际 UI 是 web/
 - [ ] 其他：simulator.py 是占位；convergence.py 基类 evaluate 抛 NotImplementedError；.zcode/config.json 含明文 key（已 gitignore）
@@ -232,16 +238,29 @@
 - [x] ~~`_is_pad_entry` 与注释不符~~ → **复查撤销**：常量注释即「两腿均短」，代码与之一致（judge 误判）
 
 **判据用「存在性/子串」代替网表与几何（FP 主体）**
-- [ ] `_check_crosstalk_spacing` 把工程声明的差分对**自身两半**当串扰（5/5 样本）；且仍有名字猜配对
-- [ ] `_check_diff_pair_spacing` 缺高速接口门控、缺平行重叠前置条件（重叠 0.0mm 也报「耦合过松」）
-- [ ] `_check_pullup_pulldown`/`_check_dcdc_feedback_network`/`_check_led_current_limit`/`_check_decoupling_cap_per_pin`/`_check_i2c_pullups` 用「描述含『电阻/电容』」代替网表 → BOM 描述为空即恒报
-- [ ] `_check_antenna_keepout` 裸 `"rf"`；`_check_ferrite_bead_isolation` 裸 `'op'`（ESOP8/MSOP8）
-  （本条中 `_check_power_loop_area`/`_check_switching_regulator_layout` 裸 MP/XL/SY/MT 已修 —— 579ee44，
-  统一收编 `_is_dcdc_part`/`_DCDC_PN_PREFIXES`，2026-10-08 核对时补记）
-- [ ] `_check_net_antenna` 的 `len(pins)<=1` 把零引脚网络算作单端网络（该板 orphan_pad_nets=77）
-- [ ] `_check_via_density` 裸 `SW` 命中 `…BUZZER_SWITCH`；`_check_stub_length` 把 USB_GND 地网当高速网
-- [ ] `_check_esd_protection`/`_check_emi_filter`/`_check_reverse_polarity_protection` 靠描述子串认接口与保护器件
-- [ ] `_check_component_edge_clearance`/`_check_connector_edge_placement` 拿绝对坐标比门限，**不减板框原点**
+（2026-10-09 下午全批收口，金样 3301 → 3202、无关规则零变化，证据
+[experiment_results/substring_criteria_2026-10-09/](../experiment_results/substring_criteria_2026-10-09/)，
+回归 tests/test_substring_criteria.py 31 例）
+- [x] `_check_crosstalk_spacing` 把工程声明的差分对**自身两半**当串扰（5/5 样本）；且仍有名字猜配对
+  （两半互判豁免扩到猜测配对；「diff」类别只认工程声明；残留层最严重对换成真实相邻信号，127 → 105）
+- [x] `_check_diff_pair_spacing` 缺高速接口门控、缺平行重叠前置条件（重叠 0.0mm 也报「耦合过松」）
+  （`_HIGH_SPEED_IF_KW` 门控 + 最长平行段 ≥5mm 前置；6 → 0）
+- [x] `_check_pullup_pulldown`/`_check_dcdc_feedback_network`/`_check_led_current_limit`/`_check_decoupling_cap_per_pin`/`_check_i2c_pullups` 用「描述含『电阻/电容』」代替网表 → BOM 描述为空即恒报
+  （统一改位号前缀 R/C；I2C 进一步网表化为「总线网上有没有 R 引脚」，网表非空且
+  无 SDA/SCL 网时描述词不再扩权；13+11+3 → 0、13 → 2、2 → 15——I2C 变多是
+  总线判据网表化后报出的真无上拉板，见实验 README 判读节）
+- [x] `_check_antenna_keepout` 裸 `"rf"`；`_check_ferrite_bead_isolation` 裸 `'op'`（ESOP8/MSOP8）
+  （词边界 + 模块/ESD 家族料号前缀双轨；天线净空 34 → 29、磁珠 4 → 8——变多部分
+  为器件识别变对，抽样 ESP-Hi 触发行是真运放 LMV321）
+- [x] `_check_net_antenna` 的 `len(pins)<=1` 把零引脚网络算作单端网络（该板 orphan_pad_nets=77）
+  （改 `==1`；语料中零引脚网不进 pcb.nets，金样零变化，保留防解析变体）
+- [x] `_check_via_density` 裸 `SW` 命中 `…BUZZER_SWITCH`；`_check_stub_length` 把 USB_GND 地网当高速网
+  （网络名词边界：右侧放行数字后缀 SW1/CLK2、拒绝 SWITCH 内嵌 + 电源/地网排除；27 → 14、25 → 24）
+- [x] `_check_esd_protection`/`_check_emi_filter`/`_check_reverse_polarity_protection` 靠描述子串认接口与保护器件
+  （入口改 `_has_power_entry`：入口网挂连接器/电池引脚、USB 不算入口；保护器件
+  位号前缀 D/Q/F + value 纳入文本 + GESD/LESD 家族前缀；反接 36 → 2（残留=全板
+  无保护器件的真检出）、EMI 7 → 12（真电池/适配器入口板）、ESD 45 → 44）
+- [x] `_check_component_edge_clearance`/`_check_connector_edge_placement` 拿绝对坐标比门限，**不减板框原点**（2026-10-09 P2 批次已修）
 
 **阈值/公式/硬编码**
 - [ ] `calculator.microstrip_impedance` 窄线分支（w/h<1）偏低约 2×（40.9Ω vs IPC-2141 72.7Ω）→ 阻抗结论方向反；另硬编码 h=0.2mm 且无层数/长度门控

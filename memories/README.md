@@ -5,6 +5,7 @@
 
 | 文件 | 内容 |
 |---|---|
+| [session/2026-10-09-substring-criteria.md](session/2026-10-09-substring-criteria.md) | 会话小结：**子串/存在性判据主体收口（§4B）**——差分对两半不判串扰、差分间距高速门控+重叠前置、BOM 五规则改位号前缀、ESD/EMI/反接入口号表化、裸 rf/op/SW 词边界+家族料号前缀；金样 3301→3202、无关规则零变化；磁珠/EMI/I2C「变多」判读=识别变对暴露新触发集；1100 passed |
 | [session/2026-10-07-frozen-build-and-session-pool.md](session/2026-10-07-frozen-build-and-session-pool.md) | 会话小结：**打包版实测 + 会话级客户端池**——frozen 写盘路径三处缺陷（导出/日志/RAG 落 _MEIPASS 退出即丢）、构建入口统一到 spec、`_llm_session()` 租借（并发 agent_loop 不再互相覆盖/审查轮次不进对话史）、ui_smoke 失败标记不可见的教训；2 提交 1038 passed 85/85 |
 | [session/2026-10-07-client-sweep.md](session/2026-10-07-client-sweep.md) | 会话小结：**客户端缺陷清扫**——Agent 工具标签漂移/审查渲染注入/流式错误不落库等 8 处、generate_html_bom 目录归一、load_all 补 message_count；3 提交 1026 passed、UI 冒烟 85/85 |
 | [session/2026-10-07-code-review-fixes.md](session/2026-10-07-code-review-fixes.md) | 会话小结：**代码级缺陷清扫**——双入口漂移/config.llm 缓存/路径穿越/单例竞态，6 提交 1025 passed |
