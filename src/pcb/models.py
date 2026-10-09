@@ -45,6 +45,8 @@ class PCBData:
     vias: list[PCBVia] = field(default_factory=list)
     copper_pours: list = field(default_factory=list)        # 预留 M2
     differential_pairs: list = field(default_factory=list)  # 预留 M3
+    # 元件焊盘绝对坐标（.epro2 可重建）：{ref, num, net, x, y, layer_id, thru}
+    pads: list = field(default_factory=list)
     board_outline: dict = field(default_factory=dict)       # {width_mm, height_mm, shape}
     component_positions: dict = field(default_factory=dict)  # ref → {x, y, rotation, layer}
     bom_items: list = field(default_factory=list)           # BOM 行（dict，.epro2 可重建）

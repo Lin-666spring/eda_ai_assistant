@@ -74,7 +74,7 @@ _FALLBACK_LAYERS: dict[int, str] = {
 #: 需要保留原子的元素类型（其余只计数，避免解析开销）
 _KEEP_PCB = frozenset({
     "CANVAS", "LAYER", "NET", "LINE", "VIA", "PAD", "PAD_NET", "POUR",
-    "COMPONENT", "ATTR", "POLY",
+    "COMPONENT", "ATTR", "POLY", "FILL",
 })
 
 
@@ -106,7 +106,17 @@ class Epro2Parser(PCBParseStrategy):
 
         try:
             with zipfile.ZipFile(path) as zf:
-                raw = self._scan(zf)
+                names = zf.namelist()
+                epru = next((n for n in names if n.endswith(".epru")), None)
+                if not epru:
+                    raise PCBParseError(
+                        f"epro2 包中未找到 .epru 工程日志，包内容: {names}"
+                    )
+                # 工程日志是追加式历史：38% 金样含 2~12 个 PCB 文档快照，
+                # 全部合并会把不同版本的元件/走线/覆铜混在一起（实测 QU1
+                # 同时落在新旧两个坐标上）。只解析最后一个 PCB 文档=最新快照
+                target = _last_pcb_doc_uuid(zf, epru)
+                raw = self._scan(zf, epru, target)
         except zipfile.BadZipFile as e:
             raise PCBParseError(f"epro2 文件无法作为 ZIP 打开: {e}")
 
@@ -114,14 +124,9 @@ class Epro2Parser(PCBParseStrategy):
 
     # ──────────────── 扫描 .epru ────────────────
 
-    def _scan(self, zf: zipfile.ZipFile) -> dict:
+    def _scan(self, zf: zipfile.ZipFile, epru: str,
+              target_uuid: Optional[str] = None) -> dict:
         names = zf.namelist()
-        epru_names = [n for n in names if n.endswith(".epru")]
-        if not epru_names:
-            raise PCBParseError(
-                f"epro2 包中未找到 .epru 工程日志，包内容: {names}"
-            )
-        epru = epru_names[0]
 
         raw: dict = {
             "epru": epru,
@@ -136,15 +141,19 @@ class Epro2Parser(PCBParseStrategy):
             "line_elements": 0,
             "vias": [],
             "pad_nets": [],           # (component_id, pad_number, net, pad_elem_id)
+            "orphan_nets": set(),     # 有 orphan 焊盘记录的网络（几何不完整）
             "pcb_pads": [],
             "pours": [],
+            "net_fills": [],          # 带网络的 FILL 实体铜形（补丁铜/手绘铜皮）
+            "net_polys": [],          # 带网络的 POLY 多段线铜形
             "polygons": [],           # BOARD_OUTLINE
             "components": {},         # component_id → 位置/层
             "comp_attrs": {},         # component_id → {key: value}
             "devices": {},            # device uuid → DEVICE META.attributes
             "device_titles": {},      # device uuid → META.title
             "footprint_names": {},    # footprint uuid → FOOTPRINT META.title（封装名）
-            "footprint_pads": {},     # (footprint uuid, pad 元素 id) → 焊盘号
+            "footprint_pads": {},     # (footprint uuid, pad 元素 id) → 焊盘信息
+            "pcb_target": target_uuid,  # 只解析的最新 PCB 文档 uuid
             "type_counts": {},
         }
 
@@ -177,6 +186,10 @@ class Epro2Parser(PCBParseStrategy):
         doc = raw.get("cur_doc")
         mid = meta.get("id")
 
+        if doc == "PCB" and raw.get("pcb_target") and \
+                raw.get("cur_doc_uuid") != raw["pcb_target"]:
+            return  # 历史 PCB 快照，跳过（只解析最新一个）
+
         if doc == "DEVICE":
             if t == "META":
                 uuid = raw.get("cur_doc_uuid")
@@ -195,8 +208,15 @@ class Epro2Parser(PCBParseStrategy):
                     raw["footprint_names"].setdefault(uuid, atom.get("title") or "")
             elif t == "PAD" and mid and uuid:
                 # 焊盘号：BGA 等是 A1/B2 这种字母数字，PAD_NET 的第 3 段可能
-                # 退化成元素 id，需要用这里建立 (封装, 元素id) → 焊盘号 映射
-                raw["footprint_pads"][(uuid, str(mid))] = str(atom.get("num") or "")
+                # 退化成元素 id，需要用这里建立 (封装, 元素id) → 焊盘 映射；
+                # 相对坐标一并保留（孤岛判定等几何规则要用绝对焊盘位置）
+                raw["footprint_pads"][(uuid, str(mid))] = {
+                    "num": str(atom.get("num") or ""),
+                    "x": _num(atom.get("centerX")),
+                    "y": _num(atom.get("centerY")),
+                    "layer_id": atom.get("layerId"),
+                    "thru": atom.get("hole") is not None,
+                }
             return
 
         if doc != "PCB" or t not in _KEEP_PCB:
@@ -260,10 +280,27 @@ class Epro2Parser(PCBParseStrategy):
                 "layer_id": atom.get("layerId"),
                 "name": atom.get("name") or "",
                 "rings": _ring_count(atom.get("path")),
+                "path": atom.get("path") or [],
             })
         elif t == "POLY":
             if atom.get("polyType") == "BOARD_OUTLINE":
                 raw["polygons"].append(atom.get("path") or [])
+            elif atom.get("netName"):
+                # 手绘多段线铜皮（带网络名才会导电；10/78 板共 155 条）
+                raw["net_polys"].append({
+                    "net": atom["netName"],
+                    "layer_id": atom.get("layerId"),
+                    "path": atom.get("path") or [],
+                })
+        elif t == "FILL":
+            if atom.get("netName"):
+                # 实体填充铜形（补丁铜）。不带网络的 FILL 是图形不是导体；
+                # 层归属在组装时按「本文件铜层集合」过滤
+                raw["net_fills"].append({
+                    "net": atom["netName"],
+                    "layer_id": atom.get("layerId"),
+                    "path": atom.get("path") or [],
+                })
         elif t == "COMPONENT":
             raw["components"][mid] = {
                 "x": _num(atom.get("x")),
@@ -314,17 +351,44 @@ class Epro2Parser(PCBParseStrategy):
                 net_name=v["net"],
             ))
 
-        # ---- 覆铜 ----
-        pcb.copper_pours = [
-            {
+        # ---- 覆铜（POUR 环几何 + 带网络的 FILL/POLY 铜形）----
+        # 铜层集合 = 走线所在层 ∪ 覆铜所在层 ∪ {1,2}（顶/底层）；
+        # FILL/POLY 落在文档层/丝印层的不算铜
+        copper_layer_ids = {lid for (_n, lid) in grouped}
+        copper_layer_ids.update(p["layer_id"] for p in raw["pours"])
+        copper_layer_ids.update((1, 2))
+
+        copper_pours = []
+        for p in raw["pours"]:
+            outer, voids = _split_rings(p.get("path"))
+            copper_pours.append({
                 "net_name": p["net"],
                 "layer": layers.get(p["layer_id"], f"Layer{p['layer_id']}"),
                 "layer_id": p["layer_id"],
                 "name": p["name"],
-                "rings": p["rings"],
-            }
-            for p in raw["pours"]
-        ]
+                "rings": 1 + len(voids) if outer else p["rings"],
+                "source": "POUR",
+                "outer": _mm_points(outer, scale),
+                "voids": [_mm_points(v, scale) for v in voids],
+            })
+        for kind, rows in (("FILL", raw["net_fills"]), ("POLY", raw["net_polys"])):
+            for r in rows:
+                if r["layer_id"] not in copper_layer_ids:
+                    continue
+                outer, voids = _split_rings(r["path"])
+                if not outer:
+                    continue
+                copper_pours.append({
+                    "net_name": r["net"],
+                    "layer": layers.get(r["layer_id"], f"Layer{r['layer_id']}"),
+                    "layer_id": r["layer_id"],
+                    "name": "",
+                    "rings": 1 + len(voids),
+                    "source": kind,
+                    "outer": _mm_points(outer, scale),
+                    "voids": [_mm_points(v, scale) for v in voids],
+                })
+        pcb.copper_pours = copper_pours
 
         # ---- 实际用到哪些层（.epru 会声明全部 90+ 层，绝大多数未使用）----
         used_layer_ids = {lid for (_n, lid) in grouped}
@@ -358,6 +422,35 @@ class Epro2Parser(PCBParseStrategy):
             entry["footprint_name"] = raw["footprint_names"].get(entry["footprint"], "")
             entry["in_bom"] = _in_bom(pos.get("attrs"), dev_attrs)
             pcb.component_positions[ref] = entry
+
+        # ---- 元件焊盘绝对坐标：封装相对坐标 + 元件位置/旋转 ----
+        # 证据源：PAD_NET 给网络归属，FOOTPRINT PAD 给相对坐标。双层板铜皮
+        # 主要靠元件焊盘接入（金样扩展板 0 个 GND 过孔却有 288 片 GND 补丁
+        # 铜），孤岛判定等几何规则必须有焊盘几何才不误报。
+        for cid, pad_num, net_name, pad_elem in raw["pad_nets"]:
+            if not net_name:
+                continue
+            attrs = raw["comp_attrs"].get(cid) or {}
+            comp = raw["components"].get(cid)
+            fp_uuid = attrs.get("Footprint")
+            fp_pad = (
+                raw["footprint_pads"].get((fp_uuid, pad_elem))
+                if pad_elem else None
+            )
+            if comp is None or not fp_pad:
+                continue
+            rad = math.radians(_num(comp.get("rotation")) or 0.0)
+            cs, sn = math.cos(rad), math.sin(rad)
+            rx, ry = fp_pad["x"], fp_pad["y"]
+            pcb.pads.append({
+                "ref": attrs.get("Designator") or cid,
+                "num": fp_pad["num"] or pad_num,
+                "net": net_name,
+                "x": round((comp["x"] + rx * cs - ry * sn) * scale, 4),
+                "y": round((comp["y"] + rx * sn + ry * cs) * scale, 4),
+                "layer_id": fp_pad["layer_id"],
+                "thru": fp_pad["thru"],
+            })
 
         # ---- 网络：NET 定义 ∪ 走线/过孔/焊盘引用到的网络（空网络名丢弃）----
         ordered_nets: list[str] = []
@@ -401,20 +494,27 @@ class Epro2Parser(PCBParseStrategy):
             ref = attrs.get("Designator") or cid
             fp_uuid = attrs.get("Footprint")
             fp_known = bool(fp_uuid) and fp_uuid in raw["footprint_names"]
-            resolved = (
+            fp_pad = (
                 raw["footprint_pads"].get((fp_uuid, pad_elem))
                 if pad_elem else None
             )
-            if resolved is not None:
+            if fp_pad is not None:
+                resolved = fp_pad["num"]
                 if resolved == "":
                     # 焊盘本身没有编号（散热盘等）→ 官方网表同样不列出
                     continue
                 pad_num = resolved
             elif fp_known and pad_elem:
-                # 封装文档里找不到这个焊盘元素 → 日志里的陈旧记录（实测立创
-                # BOM/网表导出也会丢弃它），不再挂到这个位号上
+                # 封装文档里找不到这个焊盘元素 → 日志里的陈旧记录（立创官方
+                # 导出同样丢弃它）。但焊盘在板上真实存在：金样实测 JP1/JP2
+                # 的两脚网络因此只剩 1 针、被当单端浮空网，天线规则误报
+                # （memories/audit-findings.md orphan 丢针条）。保留记录里的
+                # 焊盘号；字母焊盘号退化成元素 id 时用元素 id 兜底——引脚
+                # 计数的真实性优先于编号美观。
                 orphan += 1
-                continue
+                raw["orphan_nets"].add(net_name)
+                if not pad_num:
+                    pad_num = pad_elem
             # 封装文档不存在时保守保留原焊盘号
             net = pcb.nets.get(net_name)
             if net is None:
@@ -516,6 +616,9 @@ class Epro2Parser(PCBParseStrategy):
             "footprint_docs": len(raw["footprint_names"]),
             "pad_nets": len(raw["pad_nets"]),
             "orphan_pad_nets": orphan,
+            "orphan_nets": sorted(raw["orphan_nets"]),
+            "net_fills": len(raw["net_fills"]),
+            "net_polys": len(raw["net_polys"]),
             "elements": raw["type_counts"],
         }
 
@@ -631,13 +734,82 @@ def _ring_count(path) -> int:
     return 1
 
 
+def _copper_ring_points(sub: list) -> list[tuple[float, float]]:
+    """覆铜子路径 → 环顶点（存储单位，mm 缩放由调用方处理）。
+
+    FILL/POLY 的子路径是 R/CIRCLE 独立模式或点列模式。CIRCLE 取 24 边形
+    近似——孤岛判定只需「点在多边形内」，板级尺度下弦差远小于 0.1mm；
+    不能直接用 _polygon_points，它对 CIRCLE 只回包围盒对角点。
+    """
+    if not sub:
+        return []
+    head = sub[0]
+    if isinstance(head, str):
+        cmd = head.upper()
+        nums = [v for v in sub[1:] if isinstance(v, (int, float))]
+        if cmd == "CIRCLE" and len(nums) >= 3:
+            cx, cy, r = float(nums[0]), float(nums[1]), float(nums[2])
+            return [
+                (cx + r * math.cos(2 * math.pi * k / 24),
+                 cy + r * math.sin(2 * math.pi * k / 24))
+                for k in range(24)
+            ]
+    return _polygon_points(sub)
+
+
+def _split_rings(path) -> tuple[list, list]:
+    """覆铜 path → (外环顶点, 内洞顶点列表)。
+
+    环列表形式（首环外框、其余内洞）与扁平点列（整体当外环）都支持。
+    """
+    if not path:
+        return [], []
+    rings = path if isinstance(path[0], list) else [path]
+    outer = _copper_ring_points(rings[0])
+    voids = [v for v in (_copper_ring_points(r) for r in rings[1:]) if v]
+    return outer, voids
+
+
+def _mm_points(pts, scale) -> list[tuple[float, float]]:
+    """环顶点按工程缩放系数转 mm"""
+    return [(round(x * scale, 4), round(y * scale, 4)) for x, y in pts]
+
+
+def _last_pcb_doc_uuid(zf: zipfile.ZipFile, epru: str) -> Optional[str]:
+    """预扫工程日志，返回最后一个 PCB 文档的 uuid（=最新板快照）。
+
+    只解析 DOCHEAD 行（子串快筛 + JSON），整条日志过一遍的开销远小于
+    把历史快照全并进结果的代价。单 PCB 文档的工程返回其 uuid，语义不变。
+    """
+    last = None
+    with zf.open(epru) as fh:
+        for raw_line in fh:
+            line = raw_line.decode("utf-8", "replace").strip()
+            if '"DOCHEAD"' not in line[:80] or "||" not in line:
+                continue
+            meta_s, atom_s = line.split("||", 1)
+            try:
+                atom = json.loads(atom_s.rstrip("|"))
+            except json.JSONDecodeError:
+                continue
+            if atom.get("docType") == "PCB":
+                last = atom.get("uuid") or last
+    return last
+
+
 def _rect_corners(x: float, y: float, w: float, h: float, rot: float) -> list[tuple[float, float]]:
-    """``R`` 矩形模式：``R X Y width height rot round``，绕 (X,Y) 旋转"""
+    """``R`` 矩形模式：``R X Y width height rot round``，绕 (X,Y) 旋转。
+
+    规范明确 X/Y 是**左上角**、高度向 Y 减小方向延伸（矩形跨
+    y ∈ [Y−h, Y]）。按左下角向上延伸会把整块矩形抬一个高度——万兆板
+    整版 GND 覆铜落到板外 170~340mm、台账里「泰山派 R 板框 Y 偏一个
+    板高」都是这一处病根。
+    """
     rad = math.radians(rot or 0.0)
     c, s = math.cos(rad), math.sin(rad)
     return [
         (x + dx * c - dy * s, y + dx * s + dy * c)
-        for dx, dy in ((0, 0), (w, 0), (w, h), (0, h))
+        for dx, dy in ((0, 0), (w, 0), (w, -h), (0, -h))
     ]
 
 

@@ -5,7 +5,7 @@ import math
 import re
 from collections import Counter
 from ..constants import PCB
-from ..pcb.geometry import trace_corners
+from ..pcb.geometry import point_in_polygon, segment_touches_polygon, trace_corners
 
 from .base import (
     RuleSeverity,
@@ -42,6 +42,32 @@ from .base import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _shape_touches(sa: dict, sb: dict) -> bool:
+    """铜形 A 的外环是否触及铜形 B（A 的环边采样点落入 B 内/边上）。
+
+    孤岛判定的连通传递用：网格填充铜互触即导通。采样步长 0.5mm，
+    对板级尺度的贴合判定足够。
+    """
+    outer_b = sb.get("outer") or []
+    if len(outer_b) < 3:
+        return False
+    voids_b = sb.get("voids") or []
+    outer_a = sa.get("outer") or []
+    n_a = len(outer_a)
+    for i in range(n_a):
+        x1, y1 = outer_a[i]
+        x2, y2 = outer_a[(i + 1) % n_a]
+        length = math.hypot(x2 - x1, y2 - y1)
+        n = max(1, int(length / 0.5))
+        for k in range(n + 1):
+            t = k / n
+            if point_in_polygon((x1 + (x2 - x1) * t, y1 + (y2 - y1) * t),
+                                outer_b, voids_b):
+                return True
+    return False
+
 
 class GeometryRulesMixin:
     """方法集由 facade DesignRuleChecker 组合；此处无状态、无 __init__。"""
@@ -198,6 +224,9 @@ class GeometryRulesMixin:
         pour_keys: set = {
             (str(p.get("net_name")), str(p.get("layer")))
             for p in (getattr(pcb, "copper_pours", None) or [])
+            # 只认真铺铜：FILL/POLY 补丁铜（2026-10-09 起入表）不该扩大
+            # 覆铜区豁免面，否则其同名网络的走线拐角会被整组吞掉
+            if str(p.get("source") or "POUR") == "POUR"
         }
         via_pts: list = []
         anchor_grid: dict = {}
@@ -691,21 +720,125 @@ class GeometryRulesMixin:
 
 
     def _check_copper_pour_connectivity(self, bom_items, positions, netlist):
-        """铜皮连接：大面积铜皮应避免孤岛"""
+        """铜皮连接：大面积铜皮应避免孤岛
+
+        2026-10-09 数据补全后激活：解析器现读取 POUR 环几何，并把带网络的
+        FILL/POLY 铜形入表（此前 copper_pours 只有网络名和环数，两块电赛板
+        整片 GND 补丁铜被恒报「未包含铜皮数据」）。判定口径与数据能力边界：
+        整片铜区边界内找不到任何同网络过孔、同层同网络走线端点 → 孤岛嫌疑；
+        铜区内部因避让切成的小分片需要填充结果做布尔运算，.epru 不含填充
+        几何，不判。
+        """
         pcb = self._pcb_data
         if not pcb: return []
-        violations = []
-        pours = getattr(pcb, "copper_pours", None) or []
-        if not pours:
-            violations.append(RuleViolation(
+        shapes = [p for p in (getattr(pcb, "copper_pours", None) or [])
+                  if p.get("net_name") and p.get("outer")]
+        if not shapes:
+            return [RuleViolation(
                 rule_name="铜皮连接检查",
                 description="PCB 文件未包含铜皮数据，请确认覆铜无孤岛",
                 severity=RuleSeverity.INFO,
                 suggestion="覆铜后执行 DRC 检查孤岛铜皮(Dead Copper/Islands)。孤岛铜皮应删除或添加过孔接地。",
                 theory="孤岛铜皮既不接地也不接任何网络，相当于悬浮的天线→接收/辐射 EMI。GHz 频段时长度=λ/4 即可成为有效天线。删除或接地均可解决。",
-            ))
-            return violations
-        return violations
+            )]
+        via_pts: dict = {}
+        for v in (pcb.vias or []):
+            if v.net_name:
+                via_pts.setdefault(v.net_name, []).append(tuple(v.position))
+        # 元件焊盘：双层板铜皮的主要接入方式（金样扩展板 0 个 GND 过孔、
+        # 288 片 GND 补丁铜全靠焊盘桥接），没有它孤岛判定会整板误报
+        pad_rows: dict = {}
+        for p in (getattr(pcb, "pads", None) or []):
+            if p.get("net"):
+                pad_rows.setdefault(p["net"], []).append(p)
+        trace_segs: dict = {}
+        for t in (pcb.traces or []):
+            if not t.net_name:
+                continue
+            trace_segs.setdefault((t.net_name, t.layer), []).extend(t.segments)
+        # 有 orphan 焊盘记录的网络：焊盘几何缺失，铜片「无附件」不能作为
+        # 孤岛证据（接入者恰好可能是那颗丢失的焊盘）——无法验证不判
+        orphan_nets = set((getattr(pcb, "metadata", None) or {}).get("orphan_nets") or ())
+        # 每片铜的直接接入证据。过孔/焊盘只对铜片外环判内点：热焊盘的清距
+        # void 环会圈住焊盘中心，但物理上经辐条连接，void 不构成「未接入」
+        # 证据。过孔贯通各层不看层；金属化焊盘（thru）任意层接入，表贴焊盘
+        # 看层号；走线允许「穿过」铜片接入，且须与铜皮同层
+        bboxes: list = []
+        direct: list = []
+        judged: list = []
+        for sh in shapes:
+            net = sh["net_name"]
+            outer = sh["outer"]
+            voids = sh.get("voids") or []
+            xs = [p[0] for p in outer]
+            ys = [p[1] for p in outer]
+            bboxes.append((min(xs), min(ys), max(xs), max(ys)))
+            if len(outer) < 3 or net in orphan_nets:
+                direct.append(True)      # 不判的片视作已接入（不出孤岛报告）
+                judged.append(False)
+                continue
+            judged.append(True)
+            layer_id = sh.get("layer_id")
+            attached = any(point_in_polygon(pt, outer)
+                           for pt in via_pts.get(net, ()))
+            if not attached:
+                attached = any(
+                    (pd.get("thru") or pd.get("layer_id") == layer_id)
+                    and point_in_polygon((pd["x"], pd["y"]), outer)
+                    for pd in pad_rows.get(net, ())
+                )
+            if not attached:
+                for sx1, sy1, sx2, sy2 in trace_segs.get((net, sh.get("layer")), ()):
+                    if (max(sx1, sx2) < xs[0] or min(sx1, sx2) > xs[2]
+                            or max(sy1, sy2) < ys[0] or min(sy1, sy2) > ys[2]):
+                        continue
+                    if segment_touches_polygon((sx1, sy1), (sx2, sy2), outer, voids):
+                        attached = True
+                        break
+            direct.append(attached)
+        # 同网络铜形连通并查集：网格填充铜由大量互触小矩形组成，接入证据
+        # 经「相邻铜形」传递（A 触 B、B 上有过孔 ⇒ A 也接入）
+        parent = list(range(len(shapes)))
+
+        def _find(i: int) -> int:
+            while parent[i] != i:
+                parent[i] = parent[parent[i]]
+                i = parent[i]
+            return i
+
+        by_net: dict = {}
+        for idx, sh in enumerate(shapes):
+            by_net.setdefault(sh["net_name"], []).append(idx)
+        for _net, idxs in by_net.items():
+            for a in range(len(idxs)):
+                ia = idxs[a]
+                ax1, ay1, ax2, ay2 = bboxes[ia]
+                for b in range(a + 1, len(idxs)):
+                    ib = idxs[b]
+                    bx1, by1, bx2, by2 = bboxes[ib]
+                    if ax2 < bx1 or bx2 < ax1 or ay2 < by1 or by2 < ay1:
+                        continue
+                    if _shape_touches(shapes[ia], shapes[ib]) or \
+                            _shape_touches(shapes[ib], shapes[ia]):
+                        parent[_find(ia)] = _find(ib)
+        root_ok: dict = {}
+        for idx in range(len(shapes)):
+            r = _find(idx)
+            root_ok[r] = root_ok.get(r, False) or direct[idx]
+        islands = [shapes[i] for i in range(len(shapes))
+                   if judged[i] and not root_ok[_find(i)]]
+        if not islands:
+            return []
+        detail = "、".join(
+            f"{s['net_name']}@{s.get('layer')}" for s in islands[:5])
+        return [RuleViolation(
+            rule_name="铜皮连接检查",
+            description=(f"{len(islands)} 片铜区没有任何同网络过孔/焊盘/走线"
+                         f"接入（含经相邻铜形传递），孤岛嫌疑: {detail}"),
+            severity=RuleSeverity.INFO,
+            suggestion="孤岛铜皮删除，或添加过孔接到同名网络；覆铜后重灌铺铜使孤岛消除。",
+            theory="孤岛铜皮既不接地也不接任何网络，相当于悬浮的天线→接收/辐射 EMI。GHz 频段时长度=λ/4 即可成为有效天线。删除或接地均可解决。",
+        )]
 
 
     def _check_testpoint_coverage(self, bom_items, positions, netlist):

@@ -210,3 +210,69 @@ def trace_corners(
         for c in polyline_corners(line, min_leg_mm=min_leg_mm):
             corners.append(replace(c, is_closed=closed) if closed else c)
     return corners
+
+
+def _pt_seg_dist2(px: float, py: float,
+                  x1: float, y1: float, x2: float, y2: float) -> float:
+    """点到线段距离的平方（本文件内点判定专用，避免依赖规则层工具）"""
+    dx, dy = x2 - x1, y2 - y1
+    l2 = dx * dx + dy * dy
+    if l2 <= 0.0:
+        ex, ey = px - x1, py - y1
+        return ex * ex + ey * ey
+    t = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / l2))
+    ex, ey = px - (x1 + t * dx), py - (y1 + t * dy)
+    return ex * ex + ey * ey
+
+
+def point_in_polygon(
+    pt, ring, voids=(), eps: float = 0.02
+) -> bool:
+    """点是否在铜皮多边形内（射线法；落在边界 eps 邻域内也算内）。
+
+    覆铜孤岛判定用：过孔/走线端点压在铜皮边缘在电气上确实连接，视为
+    接入。voids 是内洞环列表，点落在洞内 = 不在铜上。eps 单位 mm。
+    """
+    x, y = float(pt[0]), float(pt[1])
+    eps2 = eps * eps
+
+    def _inside(ring_pts) -> bool:
+        n = len(ring_pts)
+        if n < 3:
+            return False
+        cross = False
+        for i in range(n):
+            x1, y1 = ring_pts[i]
+            x2, y2 = ring_pts[(i + 1) % n]
+            if _pt_seg_dist2(x, y, x1, y1, x2, y2) <= eps2:
+                return True
+            if (y1 > y) != (y2 > y):
+                xin = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+                if x < xin:
+                    cross = not cross
+        return cross
+
+    if not _inside(ring):
+        return False
+    return not any(_inside(v) for v in voids)
+
+
+def segment_touches_polygon(
+    p1, p2, ring, voids=(), eps: float = 0.02, step: float = 0.5
+) -> bool:
+    """线段是否与铜皮多边形相交/触及（等步长采样，含两端点）。
+
+    覆铜接入判定用：同网络走线「穿过」铜片即接入，不需要端点恰好落在
+    铜内。step 单位 mm，采样密度对板级尺度足够；调用方应先用包围盒
+    预筛线段。
+    """
+    x1, y1 = float(p1[0]), float(p1[1])
+    x2, y2 = float(p2[0]), float(p2[1])
+    length = math.hypot(x2 - x1, y2 - y1)
+    n = max(1, int(length / step))
+    for i in range(n + 1):
+        t = i / n
+        if point_in_polygon((x1 + (x2 - x1) * t, y1 + (y2 - y1) * t),
+                            ring, voids, eps):
+            return True
+    return False

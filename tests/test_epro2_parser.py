@@ -165,10 +165,12 @@ def build_epru(*, unit="mm", via_hole=11.811, via_pad=19.685, pad_num="A1",
 
     # 板框
     if outline == "rect_ok":
-        # R X Y width height rot round —— 从 (0,0) 起，能装下全部铜
-        path = ["R", 0, 0, 200, 400, 0, 0]
+        # R X Y width height rot round —— X/Y 是左上角、高度向下延伸
+        # （规范口径），顶边 y=400、向下 400 → 覆盖 y∈[0,400]，能装下全部铜
+        path = ["R", 0, 400, 200, 400, 0, 0]
     elif outline == "rect_far":
-        # 同样的尺寸，但落点整体偏出 y ∈ [0,100] 的铜范围
+        # 同样的尺寸，但顶边 y=5000，矩形整体落在 y∈[4600,5000]，
+        # 偏出 y ∈ [0,100] 的铜范围
         path = ["R", 0, 5000, 200, 400, 0, 0]
     else:
         path = [0, 0, "L", 200, 0, 200, 400, 0, 400, 0, 0]
