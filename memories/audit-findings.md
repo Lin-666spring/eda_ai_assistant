@@ -89,7 +89,34 @@
 - [ ] frontend/ 去留：原封不动的 Vite React+TS 模板（node_modules 未提交），实际 UI 是 web/
 - [ ] 其他：simulator.py 是占位；convergence.py 基类 evaluate 抛 NotImplementedError；.zcode/config.json 含明文 key（已 gitignore）
 
-## 已处理（2026-10-08）：修复计划第二批 P1 全量落地（除阶段C）
+## 已处理（2026-10-09）：P1-6 阶段C（app.js 模块化）
+
+- [x] `web/js/app.js`（3320 行）拆为 `web/js/` 下 13 个经典 script 模块
+  （state / persistence / assistants / conversations / tools / chat / imports /
+  settings / utils / stream / review / heatmap / misc），index.html 按
+  「原单文件的区块顺序」加载。**刻意不用 ES modules**：index.html 有 66 处
+  内联 onclick、动态生成 HTML 里的处理器也走全局作用域，ES modules 需手工
+  导出几十个 window 绑定而本环境当时认为无法 GUI 验收；改为保序字节级切割。
+- [x] **等价硬证据**：13 个模块去掉 7 行头注释后按序拼接，与
+  `git show HEAD:web/js/app.js` 逐字节一致（136393 B）；node --check 全过；
+  index.html 内联处理器引用的 37 个全局名全部仍存在。
+- [x] **验收未等手工**：`tests/ui_smoke.py`（Playwright 真机 + stub LLM，
+  零 API 花费）**85/85 通过** —— 覆盖发消息/切会话/工作区/热力图/设置/
+  两段式启动，0 控制台错误、0 未捕获异常、0 失败请求。（此前「需手工 GUI
+  冒烟」的判断过时了，该脚本 2026-10 前后已具备验收能力。）
+- [x] 接缝 6 处跟进：index.html 脚本标签；test_web_render_safety /
+  test_tool_catalog / test_no_emoji_in_ui / test_provider_catalog /
+  ui_smoke.scan_warnings 五处静态断言改为「读模块拼接源」（拼接 ≡ 原 app.js，
+  正则行为不变）；constants.py 注释 / scan_emoji / strip_ui_emoji 扫描清单；
+  README 架构图 + CLAUDE.md 两处口径。
+- **坑位记录**：(1) **顶层可执行语句不许被切缝劈开** —— 首刀把
+  `eel.expose(onPCBChanged)`（原 2787 行）留在 utils.js 末尾而函数在
+  stream.js，加载即 ReferenceError；node --check 只查语法、字节拼接只证内容，
+  只有 ui_smoke 抓得住。(2) 缝上修补用 `Path.write_text` 会做 LF→CRLF 翻译，
+  Python 侧动 JS 文件一律 binary read/write。(3) 拆分等价脚本惯例用完即删，
+  思路保留在本节与 commit message。
+
+## 已处理（2026-10-08）：修复计划第二批 P1 全量落地
 
 > 依据外审《修复计划与验收标准》第二批执行；P0 五项此前已修（96eaada /
 > f3a27e4 / 579ee44 / c954204 / 6c76bf0）。本轮 9 个 commit，终版
@@ -125,9 +152,7 @@
   checker.py facade（246 行）。**金样对比：拆包前后 78 个 .epro2 全量
   check_all 输出逐字节一致**（71 规则/3519 违规/rule_errors=0）；
   覆盖率脚本 getsource 接缝跟进（拼 MRO mixin）。一次性对比脚本按计划删除。
-- [ ] **P1-6 阶段C（app.js 模块化）暂缓**：按计划可单独排期、不阻塞 A/B；
-  验收需要手工 GUI 冒烟（发消息/切会话/热力图/设置），本环境无法执行，
-  留给用户双击实测时一起做。
+- [x] **P1-6 阶段C（app.js 模块化）**（2026-10-09 落地，详见下方「已处理（2026-10-09）」）
 
 ## 已处理（2026-10-07）
 
