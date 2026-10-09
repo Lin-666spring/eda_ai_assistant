@@ -36,7 +36,14 @@ from src.constants import (  # noqa: E402
     get_provider_preset,
 )
 
-APP_JS = ROOT / "web" / "js" / "app.js"
+# P1-6 阶段C 后 app.js 拆为 web/js/*.js 多模块；断言改对模块拼接源做
+# （各模块按序拼接 ≡ 原 app.js）。
+def _frontend_js() -> str:
+    return "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted((ROOT / "web" / "js").glob("*.js"))
+        if p.name != "marked.min.js"
+    )
 
 
 # ══════════════════════════════════════════════════════
@@ -497,7 +504,7 @@ class TestFetchProviderModelsEndpoint:
 class TestFrontendProviderSource:
     @pytest.fixture(scope="class")
     def app_js(self) -> str:
-        return APP_JS.read_text(encoding="utf-8")
+        return _frontend_js()
 
     def test_providers_start_empty_and_load_from_backend(self, app_js):
         assert re.search(r"var PROVIDERS = \{\};", app_js), \

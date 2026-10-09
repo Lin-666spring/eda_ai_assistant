@@ -218,7 +218,7 @@ class GUIConstants:
 
     # 两段式启动：先小窗显示加载态，再展开成正式界面。
     # SPLASH_* 同时喂给 Chrome 的 --window-size 和 eel 的 size=，
-    # MAIN_* 只在展开时用（前端 resizeTo，见 web/js/app.js）。
+    # MAIN_* 只在展开时用（前端 resizeTo，见 web/index.html 内联 boot 脚本）。
     SPLASH_WIDTH: int = 480
     SPLASH_HEIGHT: int = 340
     MAIN_WIDTH: int = 1300

@@ -77,7 +77,7 @@ pyinstaller --noconfirm --clean eda_ai_assistant.spec
 
 ### Persistence
 
-`src/core/persistence.py` — `SessionStore` SQLite persistence layer. 5 tables: `workspaces`, `assistants`, `conversations`, `messages`, `app_state`. Foreign key cascades ensure referential integrity. Database stored at `~/.eda_ai_assistant/sessions.db`. Eel endpoints in `main.py` (`db_load_all`, `db_save/delete_assistant/conversation/message`, `db_save/delete_workspace`, `db_set_active_workspace`, `create_workspace_dir`, `pick_workspace_dir`, etc.). JS persistence helpers in `app.js` are fire-and-forget (no `await`, best-effort).
+`src/core/persistence.py` — `SessionStore` SQLite persistence layer. 5 tables: `workspaces`, `assistants`, `conversations`, `messages`, `app_state`. Foreign key cascades ensure referential integrity. Database stored at `~/.eda_ai_assistant/sessions.db`. Eel endpoints in `main.py` (`db_load_all`, `db_save/delete_assistant/conversation/message`, `db_save/delete_workspace`, `db_set_active_workspace`, `create_workspace_dir`, `pick_workspace_dir`, etc.). JS persistence helpers in `web/js/persistence.js` are fire-and-forget (no `await`, best-effort).
 
 **Workspaces (工作区)** scope conversations: every conversation carries `workspace_id`, and the left sidebar shows only the current workspace's conversations. `DEFAULT_WORKSPACE_ID = "ws_default"` is created on init and cannot be deleted; deleting another workspace migrates its conversations back to the default. Renaming a conversation must not pass an empty `workspace_id`, or it would silently move to the default workspace — so `save_conversation()` keeps the existing value when the argument is empty. Legacy DBs are migrated inside `_ensure_db()` (adds the `workspace_id` column, backfills `''` → default).
 
@@ -120,7 +120,8 @@ pyinstaller --noconfirm --clean eda_ai_assistant.spec
   - 启动界面进度分两层：前端步骤（`splashStatus(text, ratio)`：工作区 / 工具目录 / 设置）+ 后端步骤（`boot_status().text`）。**`boot_status().started=false` 表示不是 `main()` 起的**（冒烟测试、调试直接 `eel.start`）→ 前端立刻跳过等待，别把两段式启动强加给这些场景。
   - URL 加 `#boot-hold` 可停在启动界面（看设计/截图用）。品牌素材（可选 logo）放 `web/img/`，提示词见 `web/img/README.md`；没放文件时用内联 SVG 标记，不会抓 404。
 - 深浅色主题都走 `:root` / `body[data-theme="dark"]` 的 token，不要在规则里硬编码颜色。
-- 图标统一用 `ICONS` 里的内联 SVG（`app.js`），不用 emoji 字体图标；`confirm()` 已由自定义对话框替代。
+- 图标统一用 `ICONS` 里的内联 SVG（`web/js/tools.js`），不用 emoji 字体图标；`confirm()` 已由自定义对话框替代。
+- 前端 JS 是 13 个经典 script 模块（P1-6 阶段C 拆分，`web/js/`），index.html 按「原单文件的区块顺序」加载——顺序不可调换，模块间靠顶层 `function`/`const` 共享全局作用域；内联 `onclick` 引用的函数必须声明在这些文件顶层。
 
 回归手段：`python tests/ui_smoke.py`（Playwright 真机驱动 + stub LLM，零 API 花费，85 项检查 + 截图到 `output/ui_smoke/`）。覆盖布局回归 P12（主页面默认是对话）/ P13（左侧会话栏 + 工作区隔离）/ P14（生成中的加载动效：思考气泡、顶栏胶囊+进度条、审查骨架屏、按钮 loading）/ P15（热力图数据来源与空状态：坐标文件也能出格、网格边长透传、reason 文案）/ P16（两段式启动：480×340 小窗启动界面不溢出、`#boot-hold` 能停住、展开后遮罩移除、`resizeTo` 被拒走兜底）。
 ⚠️ Playwright 要起自己的驱动子进程（管道 stdio），在受限沙箱里会 `PermissionError` —— 它需要能正常 `spawn` 的权限，不是代码问题。

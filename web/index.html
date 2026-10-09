@@ -570,7 +570,21 @@
 </div>
 
 <script src="js/marked.min.js"></script>
-<script src="js/app.js"></script>
+<!-- P1-6 阶段C：app.js 拆为 13 个模块。顺序 = 原单文件内的区块顺序，不可调换
+     （经典 script 共享全局作用域，模块间靠顶层 function/const 互相引用）。 -->
+<script src="js/state.js"></script>
+<script src="js/persistence.js"></script>
+<script src="js/assistants.js"></script>
+<script src="js/conversations.js"></script>
+<script src="js/tools.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/imports.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/stream.js"></script>
+<script src="js/review.js"></script>
+<script src="js/heatmap.js"></script>
+<script src="js/misc.js"></script>
 <script>
 // ── 启动收尾（两段式启动的第二段）──
 // 只干两件事：把窗口从小窗展开成正式界面，然后淡出启动遮罩。

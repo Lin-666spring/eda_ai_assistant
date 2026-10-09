@@ -1040,16 +1040,22 @@ def check_boot_splash(browser, port: int, res: Result, console: list,
         page.close()
 
 
-def scan_warnings(page, res: Result, app_js: Path):
-    """只报告、不判失败：死 id 引用 / 视图内容溢出。"""
+def scan_warnings(page, res: Result, js_dir: Path):
+    """只报告、不判失败：死 id 引用 / 视图内容溢出。
+
+    P1-6 阶段C 后前端 JS 拆为 js_dir 下多模块，扫描对象是模块拼接源。
+    """
+    js_src = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted(js_dir.glob("*.js")) if p.name != "marked.min.js")
     ids = sorted(set(re.findall(
-        r"""getElementById\(['"]([A-Za-z0-9_-]+)['"]\)""", app_js.read_text(encoding="utf-8"))))
+        r"""getElementById\(['"]([A-Za-z0-9_-]+)['"]\)""", js_src)))
     view_ids = ("bom", "review", "tools", "report", "config")
 
     # index.html 里静态写死的 id 也算「真实存在」：启动遮罩这类元素在首屏之后就被
-    # 移除了，但 app.js 在启动阶段确实要用它们，不是死代码。
+    # 移除了，但前端 JS 在启动阶段确实要用它们，不是死代码。
     html_ids = set(re.findall(
-        r'id="([A-Za-z0-9_-]+)"', (app_js.parent.parent / "index.html").read_text(encoding="utf-8")))
+        r'id="([A-Za-z0-9_-]+)"', (js_dir.parent / "index.html").read_text(encoding="utf-8")))
 
     # 某些 id 只在特定视图渲染时才存在（工具箱的搜索框等）→ 取「所有视图都找不到」
     # 的交集才算真死代码。
@@ -1060,7 +1066,7 @@ def scan_warnings(page, res: Result, app_js: Path):
         missing_everywhere &= set(page.evaluate(
             """(ids) => ids.filter(i => !document.getElementById(i))""", ids))
     if missing_everywhere:
-        res.warn("app.js 里引用了任何视图下都不存在的 DOM id（死代码）: "
+        res.warn("前端 JS 里引用了任何视图下都不存在的 DOM id（死代码）: "
                  + ", ".join(sorted(missing_everywhere)))
 
     for view in view_ids:
@@ -1173,7 +1179,7 @@ def run(port: int, headed: bool) -> int:
             check_boot_splash(browser, port, res, console, pageerrors, failed)
             check_sidebar_conversations(page, res)
             check_workspace(page, res)
-            scan_warnings(page, res, ROOT / "web" / "js" / "app.js")
+            scan_warnings(page, res, ROOT / "web" / "js")
 
             # 第三方 CDN（字体 / ECharts）不通不算本地回归失败：离线跑时它们是
             # 预期内的降级（图表空、字体回落系统字体），但本地资源必须全绿。

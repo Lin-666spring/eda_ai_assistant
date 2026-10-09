@@ -25,7 +25,8 @@ ROOT = Path(__file__).resolve().parent.parent
 TARGETS = [
     ROOT / "web" / "index.html",
     ROOT / "web" / "css" / "style.css",
-    ROOT / "web" / "js" / "app.js",
+    *[p for p in sorted((ROOT / "web" / "js").glob("*.js"))
+      if p.name != "marked.min.js"],  # P1-6 阶段C：app.js 拆为多模块
     ROOT / "src" / "supply" / "bom_health.py",
     ROOT / "src" / "rules" / "checker.py",
     ROOT / "src" / "bom" / "checker.py",

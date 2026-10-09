@@ -48,7 +48,10 @@ python main.py
 ```
 web/                          # Eel 前端（Cherry Studio 设计系统）
 ├── index.html                # 三栏布局 + 设置面板 + 审查面板 + 图片粘贴
-└── js/app.js                 # 雷达图 Canvas + 多Agent卡片 + 键盘快捷键
+└── js/                       # 前端 JS（P1-6 阶段C 自 app.js 拆为 13 模块，按原序加载）
+    ├── state.js              # 状态与两段式启动；persistence/assistants/conversations/tools/chat/
+    │                         # imports/settings/utils/stream/review/heatmap/misc 共 13 个
+    └── review.js             # 多Agent卡片 + 雷达图 Canvas（misc.js 键盘快捷键）
 
 src/
 ├── agent/                    # AI 引擎

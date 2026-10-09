@@ -36,10 +36,12 @@ ALLOWED = set("✓✗✕✗→←↑↓•—═─●■□◆★☆")
 
 # 用户可见的产品代码。tests/ 下的实验脚本往终端打 emoji 不在此列——
 # 那些不是产品界面文案。
+# （P1-6 阶段C 后 app.js 拆为 web/js/*.js 多模块，扫描对象跟随模块全集。）
 SCAN_FILES = [
     ROOT / "web" / "index.html",
     ROOT / "web" / "css" / "style.css",
-    ROOT / "web" / "js" / "app.js",
+    *[p for p in sorted((ROOT / "web" / "js").glob("*.js"))
+      if p.name != "marked.min.js"],
     ROOT / "src" / "html_bom" / "templates" / "ibom.html",
     ROOT / "src" / "html_bom" / "templates" / "verification_map.html",
 ]
@@ -47,6 +49,15 @@ SCAN_FILES = [
 SCAN_GLOBS = [
     ("src/**/*.py", "src"),
 ]
+
+
+def _frontend_js() -> str:
+    """前端 JS 模块拼接源（各模块按序拼接 ≡ 原 app.js）。"""
+    return "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in sorted((ROOT / "web" / "js").glob("*.js"))
+        if p.name != "marked.min.js"
+    )
 
 
 def _emoji_in(text: str) -> list[tuple[int, int, str]]:
@@ -88,9 +99,9 @@ def test_no_emoji_in_user_facing_code():
 
 def test_app_js_icons_use_semantic_keys():
     """ICONS 的键必须是语义名，不许再退回 emoji 当键。"""
-    app_js = (ROOT / "web" / "js" / "app.js").read_text(encoding="utf-8")
+    app_js = _frontend_js()
     block = re.search(r"const ICONS = \{(.*?)\n\};", app_js, re.S)
-    assert block, "没解析到 app.js 的 ICONS 表（结构变了？）"
+    assert block, "没解析到前端 JS 的 ICONS 表（结构变了？）"
     keys = re.findall(r"'([^']+)':\s*'<svg", block.group(1))
     assert keys, "ICONS 表里一个图标都没解析到"
     bad = [k for k in keys if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", k)]
@@ -99,7 +110,7 @@ def test_app_js_icons_use_semantic_keys():
 
 def test_tool_icons_point_at_existing_keys():
     """TOOL_ICONS 的每个值都要在 ICONS 里真实存在，否则卡片图标为空。"""
-    app_js = (ROOT / "web" / "js" / "app.js").read_text(encoding="utf-8")
+    app_js = _frontend_js()
     icons_block = re.search(r"const ICONS = \{(.*?)\n\};", app_js, re.S).group(1)
     available = set(re.findall(r"'([^']+)':\s*'<svg", icons_block))
     tool_block = re.search(r"const TOOL_ICONS = \{(.*?)\n\};", app_js, re.S).group(1)

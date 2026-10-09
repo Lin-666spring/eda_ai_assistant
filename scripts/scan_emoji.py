@@ -4,7 +4,7 @@
 而不是靠 grep 出来的片段猜。改完再跑一次，输出应为空。
 
 用法：
-    python scripts/scan_emoji.py web/js/app.js
+    python scripts/scan_emoji.py web/js
     python scripts/scan_emoji.py web src        # 目录递归
 """
 

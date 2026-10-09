@@ -2,7 +2,9 @@
 
 剥裸 HTML（`replace(/<[^>]*>/g,'')`）挡不住 markdown 链接 —— `[x](javascript:…)`
 不含尖括号，marked v15 实测原样产出 href="javascript:…"。本测试用本机 node
-加载 vendored marked + 从 app.js 抽取真实 renderMarkdown 执行，行为级断言。
+加载 vendored marked + 从前端 js 模块抽取真实 renderMarkdown 执行，行为级断言。
+（P1-6 阶段C 后 app.js 拆为 web/js/*.js 多模块，这里对模块全集做名字抽取，
+不再依赖具体文件，后续模块内搬迁无需改本测试。）
 """
 
 import shutil
@@ -12,21 +14,22 @@ from pathlib import Path
 import pytest
 
 WEB = Path(__file__).resolve().parent.parent / "web"
-APP_JS = WEB / "js" / "app.js"
+JS_DIR = WEB / "js"
+FRONTEND_JS = sorted(p for p in JS_DIR.glob("*.js") if p.name != "marked.min.js")
 
 NODE_PROBE = r"""
 const fs = require('fs');
 const {marked} = require(process.argv[1]);
 
 function extract(name) {
-  const src = fs.readFileSync(process.argv[2], 'utf8');
+  const src = fs.readFileSync(process.argv[2], 'utf8');  // 模块拼接源（临时文件）
   const re = new RegExp('^function ' + name + '\\([^)]*\\) \\{[\\s\\S]*?^\\}', 'm');
   const m = src.match(re);
   if (!m) { console.error('extract failed: ' + name); process.exit(3); }
   return m[0];
 }
 
-// app.js 里若有现成 escapeHtml 就用真的，否则用等价桩
+// 从前端 js 模块全集里若有现成 escapeHtml 就用真的，否则用等价桩
 let escapeHtmlSrc;
 try { escapeHtmlSrc = extract('escapeHtml'); } catch (e) {
   escapeHtmlSrc = 'function escapeHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}';
@@ -57,9 +60,12 @@ console.log('ALL_OK');
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="需要 node 执行前端渲染逻辑")
-def test_rendermarkdown_neutralizes_dangerous_hrefs():
+def test_rendermarkdown_neutralizes_dangerous_hrefs(tmp_path):
+    combined = "\n".join(p.read_text(encoding="utf-8") for p in FRONTEND_JS)
+    src_file = tmp_path / "_frontend_combined.js"
+    src_file.write_text(combined, encoding="utf-8")
     r = subprocess.run(
-        ["node", "-e", NODE_PROBE, str(WEB / "js" / "marked.min.js"), str(APP_JS)],
+        ["node", "-e", NODE_PROBE, str(WEB / "js" / "marked.min.js"), str(src_file)],
         capture_output=True, text=True, timeout=60,
     )
     assert r.returncode == 0, f"stdout={r.stdout}\nstderr={r.stderr}"

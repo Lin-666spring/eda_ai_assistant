@@ -24,7 +24,11 @@ sys.path.insert(0, str(ROOT))
 
 from src.agent.tools import ToolRegistry  # noqa: E402
 
-APP_JS = ROOT / "web" / "js" / "app.js"
+# P1-6 阶段C 后 app.js 拆为 web/js/*.js 多模块；静态断言改对模块拼接源做
+# （各模块按序拼接 ≡ 原 app.js，块级正则的匹配结果不变）。
+FRONTEND_JS = sorted(
+    p for p in (ROOT / "web" / "js").glob("*.js") if p.name != "marked.min.js"
+)
 
 
 @pytest.fixture(scope="module")
@@ -36,7 +40,7 @@ def main_mod():
 
 @pytest.fixture(scope="module")
 def app_js() -> str:
-    return APP_JS.read_text(encoding="utf-8")
+    return "\n".join(p.read_text(encoding="utf-8") for p in FRONTEND_JS)
 
 
 # ══════════════════════════════════════════════════════
