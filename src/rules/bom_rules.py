@@ -16,22 +16,28 @@ from .base import (
     _ML_CONFIDENCE_THRESHOLD,
     _POWER_OR_GROUND_KW,
     _VOLTAGE_TOKEN_RE,
+    _any_ref_prefix,
     _classify_component,
     _classify_component_fine,
     _component_count,
     _component_model_attempted,
     _component_predictor,
     _extract_voltage_rating,
+    _has_power_entry,
     _init_component_model,
+    _is_cap_row,
     _is_dcdc_part,
     _is_inner_layer,
     _is_power_or_ground_net,
+    _is_resistor_row,
     _kw_hit,
     _net_class,
+    _net_kw_hit,
     _parallel_overlap_len,
     _parse_capacitance,
     _parse_component_value,
     _pt_seg_dist,
+    _row_text,
     _seg_seg_dist,
     group_violations_by_component,
     rule_kind,
@@ -227,18 +233,39 @@ class BomRulesMixin:
 
 
     def _check_i2c_pullups(self, bom_items, positions, netlist):
-        """I2C 上拉电阻：SDA/SCL 需上拉电阻(典型 4.7kΩ)"""
+        """I2C 上拉电阻：SDA/SCL 需上拉电阻(典型 4.7kΩ)
+
+        2026-10-09 抽查修正：① 总线存在性以网表网络名为准——网表非空但没有
+        SDA/SCL 网时，BOM 描述词（如 hub 芯片描述「带 I2C」）不再扩权，那是
+        器件能力不是板上总线；② 上拉电阻识别从「描述含电阻」改为位号前缀 R
+        （真实 BOM 描述是「22uF ±20%」式参数文本或整行为空，子串判据双向
+        失效，有上拉的板恒报）；③ 网表可用时判「总线网上有没有挂 R 引脚」，
+        比全 BOM 找典型值更可证伪——上拉不在总线上等于没有。
+        """
         violations = []
-        i2c_kw = ["I2C", "I²C", "SDA", "SCL", "TWI", "IIC"]
-        pullup_vals = {"4.7k", "4K7", "4700", "10k", "10K", "10000", "2.2k", "2K2", "3.3k", "3K3"}
-        has_i2c = any(kw.lower() in f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}".lower()
-                      for i in bom_items for kw in i2c_kw)
-        if not has_i2c:
-            return violations
-        has_pullup = any(
-            any(v in getattr(i, "value", "").replace(" ", "") for v in pullup_vals)
-            and any(kw in f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}".lower() for kw in ["电阻", "resistor"])
-            for i in bom_items)
+        i2c_net_kw = ("i2c", "i²c", "sda", "scl", "twi", "iic")
+        if netlist:
+            i2c_nets = [name for name in netlist if _net_kw_hit(str(name), i2c_net_kw)]
+            if not i2c_nets:
+                return violations
+            bus_refs = {
+                str(p).split(".")[0].strip().upper()
+                for n in i2c_nets for p in (netlist.get(n) or [])
+            }
+            has_pullup = any(
+                _is_resistor_row(i)
+                and bus_refs.intersection(
+                    t.upper() for t in re.split(r"[,，\s]+", (getattr(i, "reference", "") or "").strip()) if t)
+                for i in bom_items)
+        else:
+            # 无网表数据：退回 BOM 文本 + 典型上拉值
+            pullup_vals = ("4.7k", "4k7", "4700", "10k", "10000", "2.2k", "2k2", "3.3k", "3k3")
+            if not any(_kw_hit(_row_text(i), i2c_net_kw) for i in bom_items):
+                return violations
+            has_pullup = any(
+                _is_resistor_row(i)
+                and any(v in (getattr(i, "value", "") or "").lower().replace(" ", "") for v in pullup_vals)
+                for i in bom_items)
         if not has_pullup:
             violations.append(RuleViolation(
                 rule_name="I2C 上拉电阻检查",
@@ -364,22 +391,31 @@ class BomRulesMixin:
     def _check_esd_protection(self, bom_items, positions, netlist):
         """ESD 保护：外部接口应有 TVS/ESD 保护器件"""
         violations = []
-        conn_kw = ["USB", "HDMI", "RJ45", "DB9", "FPC", "排针", "端子", "CONNECTOR", "connector", "HEADER", "header", "JACK", "jack"]
-        esd_kw = ["TVS", "ESD", "SRV05", "USBLC6", "RCLAMP", "PESD", "SMAJ", "SMBJ", "压敏", "防静电", "保护管", "BDFN"]
+        # 2026-10-09 抽查修正：连接器/保护器件识别统一走位号前缀 + 词边界
+        # （_kw_hit），并把 value 纳入搜索文本——真实 BOM 常只把型号写在 value
+        # （P6SMBJ6.0CA 这类真 TVS 因此漏认）。
+        conn_kw = ["USB", "HDMI", "RJ45", "DB9", "FPC", "排针", "端子", "连接器",
+                   "connector", "header", "jack", "插座", "卡座"]
+        esd_kw = ["TVS", "ESD", "SRV05", "USBLC6", "RCLAMP", "PESD", "SMAJ", "SMBJ",
+                  "压敏", "防静电", "保护管", "BDFN"]
+        # ESD 器件家族名常被「上一个字母」内嵌（GESD0501BU / LESD5Z5…），
+        # 词边界拒内嵌会漏认真 TVS——料号按家族前缀补一层。
+        esd_pn_prefixes = ("ESD", "GESD", "LESD", "TVS", "PESD", "SRV05", "USBLC",
+                           "RCLAMP", "PGB", "SMF", "SMAJ", "SMBJ")
         # Connector reference prefixes (common for headers, FPC, USB, etc.)
         conn_ref_prefixes = {"J", "P", "H", "CN", "USB", "FPC"}
         # Check for connectors by keyword OR reference prefix
         has_conn = any(
-            any(kw.lower() in (getattr(i, "part_number", "") + " " + getattr(i, "description", "")).lower()
-                for kw in conn_kw)
-            or any("".join(c for c in r if c.isalpha()).upper() in conn_ref_prefixes
-                   for r in getattr(i, "reference", "").split(","))
+            _any_ref_prefix(i, conn_ref_prefixes)
+            or _kw_hit(_row_text(i), conn_kw)
             for i in bom_items
         )
         if not has_conn:
             return violations
-        has_esd = any(any(kw.lower() in (getattr(i, "part_number", "") + " " + getattr(i, "description", "")).lower()
-                          for kw in esd_kw) for i in bom_items)
+        has_esd = any(
+            (getattr(i, "part_number", "") or "").strip().upper().startswith(esd_pn_prefixes)
+            or _kw_hit(_row_text(i), esd_kw)
+            for i in bom_items)
         if not has_esd:
             violations.append(RuleViolation(
                 rule_name="ESD 保护检查", description="存在外部连接器但未检测到 TVS/ESD 保护器件",
@@ -481,17 +517,15 @@ class BomRulesMixin:
         """LED 限流电阻：每个 LED 应有匹配的限流电阻"""
         violations = []
         led_kw = ["LED", "发光", "light", "指示", "照明", "灯珠"]
+        # 2026-10-09 抽查修正：「描述含电阻」判据在真实 BOM 上恒假（描述是
+        # 参数文本或为空）→ 每个 LED 行都报。改位号前缀 R 判电阻存在
+        # （电阻行前缀 R/RN，与 LED 行前缀天然不同，无需再排除自身）。
+        has_resistor = any(_is_resistor_row(r) for r in bom_items)
         for item in bom_items:
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
-            if not any(kw.lower() in desc for kw in led_kw):
+            desc = _row_text(item)
+            if not _kw_hit(desc, led_kw):
                 continue
             ref = getattr(item, "reference", "").split(",")[0].strip()
-            # 检查是否有任意电阻（LED 亮需限流电阻）
-            has_resistor = any(
-                any(kw.lower() in (f"{getattr(r, 'part_number', '')} {getattr(r, 'description', '')}").lower()
-                    for kw in ["电阻", "resistor"])
-                for r in bom_items if r is not item
-            )
             if not has_resistor:
                 violations.append(RuleViolation(
                     rule_name="LED 限流电阻检查",
@@ -532,19 +566,21 @@ class BomRulesMixin:
     def _check_reverse_polarity_protection(self, bom_items, positions, netlist):
         """电源极性保护：直流电源输入应具有反接保护"""
         violations = []
-        pwr_in_kw = ["电源", "power", "DC-IN", "VIN", "VBUS", "PWR", "输入"]
+        # 2026-10-09 抽查修正：电源入口识别从「任意行描述含 power/VIN/PWR」改为
+        # _has_power_entry（网表入口网络挂连接器/电池引脚 + 连接器行入口词）——
+        # 旧判据下 SN74HC125PWR 的封装后缀、LDO 描述「Vin=18V」都成了入口。
+        # 保护器件识别加位号前缀 D/Q/F（二极管/MOS/保险丝）——SS54/AO3401 的
+        # 描述是「40V 3A」「P沟道 30V」，旧关键词全漏。USB 供电不算入口
+        # （键控连接器不存在反接）。
         protection_kw = ["MOSFET", "PMOS", "NMOS", "二极管", "diode", "肖特基", "schottky",
-                         "保险丝", "fuse", "PTC", "TVS", "稳压管"]
-        has_pwr_in = any(
-            any(kw.lower() in (f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}").lower()
-                for kw in pwr_in_kw) or any(kw.lower() in (getattr(i, 'part_number', '') or "").lower() for kw in ["电源", "DC"])
-            for i in bom_items
-        )
+                         "保险丝", "fuse", "PTC", "TVS", "稳压管", "efuse", "e-fuse",
+                         "热插拔", "自恢复"]
+        has_pwr_in = _has_power_entry(bom_items, netlist, include_usb=False)
         if not has_pwr_in:
             return violations
         has_protection = any(
-            any(kw.lower() in (f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}").lower()
-                for kw in protection_kw)
+            _any_ref_prefix(i, {"D", "Q", "F"})
+            or _kw_hit(_row_text(i), protection_kw)
             for i in bom_items
         )
         if not has_protection:
@@ -573,10 +609,10 @@ class BomRulesMixin:
             if not _is_dcdc_part(item):
                 continue
             pn = (getattr(item, "part_number", "") or "").strip().upper()
-            # 检查是否有分压电阻（DC-DC FB 需要两个电阻分压）
-            resistors = [r for r in bom_items if any(
-                kw.lower() in (f"{getattr(r, 'part_number', '')} {getattr(r, 'description', '')}").lower()
-                for kw in ["电阻", "resistor"]) and r is not item]
+            # 检查是否有分压电阻（DC-DC FB 需要两个电阻分压）。
+            # 2026-10-09 抽查修正：「描述含电阻」在真实 BOM 上恒假 → 有反馈
+            # 网络的板也恒报。改位号前缀 R 判电阻行。
+            resistors = [r for r in bom_items if _is_resistor_row(r) and r is not item]
             has_fb_r = len(resistors) >= 2
             if not has_fb_r:
                 violations.append(RuleViolation(
@@ -866,21 +902,16 @@ class BomRulesMixin:
     def _check_emi_filter(self, bom_items, positions, netlist):
         """EMI 滤波：电源入口应有共模电感/EMI 滤波"""
         violations = []
-        pwr_kw = ["电源", "power", "VIN", "VBUS", "DC-IN", "PWR"]
+        # 2026-10-09 抽查修正：电源入口识别改 _has_power_entry（网表 + 连接器
+        # 位号行），「PWR」料号后缀不再触发；滤波器件关键词走词边界并把 value
+        # 纳入文本。
         emi_kw = ["共模", "common mode", "CMC", "EMI", "滤波器", "filter", "扼流圈", "choke",
                   "X电容", "Y电容", "X2", "Y2"]
-        has_pwr_in = any(
-            any(kw.lower() in (f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}").lower()
-                for kw in pwr_kw)
-            for i in bom_items
-        )
+        # USB 供电设备不算入口（VBUS 加共模电感非常规做法）
+        has_pwr_in = _has_power_entry(bom_items, netlist, include_usb=False)
         if not has_pwr_in:
             return violations
-        has_emi = any(
-            any(kw.lower() in (f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}").lower()
-                for kw in emi_kw)
-            for i in bom_items
-        )
+        has_emi = any(_kw_hit(_row_text(i), emi_kw) for i in bom_items)
         if not has_emi:
             violations.append(RuleViolation(
                 rule_name="EMI 滤波检查",
@@ -895,25 +926,32 @@ class BomRulesMixin:
     def _check_ferrite_bead_isolation(self, bom_items, positions, netlist):
         """磁珠隔离：模拟/数字电源域应有磁珠隔离"""
         violations = []
-        analog_kw = ["运放", "OP", "ADC", "DAC", "模拟", "analog", "传感器", "sensor",
-                     "LM358", "LM324", "OPA", "MCP6", "TL07", "AD8", "ADS"]
-        bead_kw = ["磁珠", "ferrite", "bead", "FB", "BLM", "MPZ", "FBM", "MMZ"]
-        digital_kw = ["MCU", "STM32", "ESP32", "FPGA", "ARM", "单片机", "数字", "digital"]
+        # 2026-10-09 抽查修正：裸 'op' 子串命中 ESOP8/MSOP8 封装名（TP4056-42-ESOP8、
+        # NS4150B MSOP-8 被当运放）。改为两层：明确器件家族走料号前缀（pn startswith，
+        # 与 _DCDC_PN_PREFIXES 同口径），描述词走 _kw_hit 词边界。
+        analog_pn_prefixes = ("OPA", "LM358", "LM324", "LMV3", "MCP6", "TL07", "AD8", "ADS",
+                              "ADC", "DAC")
+        analog_desc_kw = ("运放", "op", "模拟", "analog", "传感器", "sensor", "adc", "dac",
+                          "放大器")
+        digital_pn_prefixes = ("STM32", "ESP32", "ESP8266", "GD32", "CH32", "AT32", "NRF", "CC25")
+        digital_desc_kw = ("mcu", "fpga", "arm", "单片机", "数字", "digital")
+        bead_pn_prefixes = ("BLM", "MPZ", "FBM", "MMZ")
         has_digital = any(
-            any(kw.lower() in (f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}").lower()
-                for kw in digital_kw)
+            (getattr(i, "part_number", "") or "").strip().upper().startswith(digital_pn_prefixes)
+            or _kw_hit(_row_text(i), digital_desc_kw)
             for i in bom_items
         )
         has_analog = any(
-            any(kw.lower() in (f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}").lower()
-                for kw in analog_kw)
+            (getattr(i, "part_number", "") or "").strip().upper().startswith(analog_pn_prefixes)
+            or _kw_hit(_row_text(i), analog_desc_kw)
             for i in bom_items
         )
         if not (has_digital and has_analog):
             return violations
         has_bead = any(
-            any(kw.lower() in (f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}").lower()
-                for kw in bead_kw)
+            _any_ref_prefix(i, {"FB", "BE"})
+            or (getattr(i, "part_number", "") or "").strip().upper().startswith(bead_pn_prefixes)
+            or _kw_hit(_row_text(i), ("磁珠", "ferrite", "bead"))
             for i in bom_items
         )
         if not has_bead:
@@ -1006,13 +1044,18 @@ class BomRulesMixin:
     def _check_antenna_keepout(self, bom_items, positions, netlist):
         """天线净空区：无线模块天线周围应有净空区"""
         violations = []
-        wireless_kw = ["蓝牙", "WiFi", "BLE", "ZigBee", "LoRa", "NFC", "RF", "无线",
-                       "ESP32", "NRF", "CC25", "HC-05", "ESP8266"]
+        # 2026-10-09 抽查修正：裸 "rf" 子串命中 IRFZ44N/IRF9540（MOSFET 料号内嵌）。
+        # 描述词走 _kw_hit 词边界（esp32 等长词仍可子串命中「立创·ESP32S3R8N8」
+        # 这类开发板描述）；模块家族走料号前缀（NRF24L01 这类带数字后缀的
+        # 词边界会漏，前缀不漏；与 _DCDC_PN_PREFIXES 同口径）。
+        wireless_desc_kw = ("蓝牙", "wifi", "ble", "zigbee", "lora", "nfc", "rf",
+                            "无线", "esp32", "esp8266", "cc25", "hc-05", "hc-06")
+        wireless_pn_prefixes = ("ESP32", "ESP8266", "NRF", "CC25")
         for item in bom_items:
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
+            desc = _row_text(item)
             pn = (getattr(item, "part_number", "") or "").strip().upper()
-            if any(kw.lower() in desc for kw in wireless_kw) or \
-               any(pn.startswith(p) for p in ["ESP32", "NRF", "CC25", "ESP8266"]):
+            if _kw_hit(desc, wireless_desc_kw) or \
+               pn.startswith(wireless_pn_prefixes):
                 ref = getattr(item, "reference", "").split(",")[0].strip()
                 violations.append(RuleViolation(
                     rule_name="天线净空区检查",
@@ -1101,10 +1144,10 @@ class BomRulesMixin:
             if p in pkg:
                 pin_count = n
                 break
-        # 统计总电容数量
-        cap_count = sum(1 for i in bom_items
-                       if any(kw.lower() in (f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}").lower()
-                              for kw in ["电容", "capacitor"]))
+        # 统计总电容数量（2026-10-09 抽查修正：「描述含电容」在真实 BOM 上恒假
+        # → 有去耦的板也报不足。改位号前缀 C 计数，并按位号数量而非行数——
+        # 真实 BOM 一行常含多个位号）。
+        cap_count = sum(_component_count(i) for i in bom_items if _is_cap_row(i))
         # 规则：每 16 个引脚至少 1 个 0.1μF 电容
         if pin_count > 0 and cap_count < pin_count / 20:
             ref = getattr(found_mcu, "reference", "").split(",")[0].strip()
@@ -1191,22 +1234,22 @@ class BomRulesMixin:
         return []
 
 
+    # 控制信号网络名：词段级匹配（^/_ 限定左侧、$/_/数字 限定右侧）——
+    # "EN" 不再命中 TOKEN/LENGTH 这类内嵌，"NRST"/"BOOT0"/"RST_N" 正常命中
+    _CONTROL_NET_RE = re.compile(
+        r"(?:^|_)(NR?ST|RESET|EN(?:ABLE)?|BOOT\d*|INT|NMI|CONFIG)(?:$|_|\d)", re.IGNORECASE)
+
     def _check_pullup_pulldown(self, bom_items, positions, netlist):
         """上拉/下拉电阻：关键信号(RST/EN/BOOT/INT)应有明确上下拉"""
-        control_pins = {"RST", "RESET", "EN", "ENABLE", "BOOT", "INT", "NMI", "CONFIG"}
-        control_net = None
-        if netlist:
-            for name in netlist:
-                upper = name.upper()
-                if any(pin in upper for pin in control_pins):
-                    control_net = name
-                    break
-        # 检查是否有 1k~100k 电阻
+        control_net = next(
+            (name for name in (netlist or {}) if self._CONTROL_NET_RE.search(str(name))),
+            None)
+        # 2026-10-09 抽查修正：上拉电阻识别从「描述含电阻」改为位号前缀 R
+        # （同 _check_i2c_pullups：描述是参数文本或为空，子串判据双向失效）。
         has_pull_r = any(
-            any(kw.lower() in (f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}").lower()
-                for kw in ["电阻", "resistor"])
+            _is_resistor_row(i)
             and any(v in (getattr(i, "value", "") or "").upper().replace(" ", "")
-                   for v in ["1K", "4.7K", "10K", "47K", "100K", "4K7"])
+                    for v in ["1K", "4.7K", "10K", "47K", "100K", "4K7"])
             for i in bom_items
         )
         if control_net and not has_pull_r:

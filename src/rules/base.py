@@ -221,7 +221,7 @@ def _kw_hit(text: str, keywords) -> bool:
 
     2026-09-24 抽查修正：裸子串匹配是 8 条 BOM 规则系统性误报的根因——
     "AD" 命中 PicoBlade（FPC 连接器被当模拟器件）、"SI" 命中 inmp441（麦克风被当
-    MOSFET）、"MP" 命中 CL10A226MP8NUNE（MLCC 被当 DC-DC）。短词一律要求词边界。
+    MOSFET）、"MP" 命中 CL10A226MP8NUNE（MLCC 子串）。短词一律要求词边界。
     """
     for kw in keywords:
         k = str(kw).lower()
@@ -229,6 +229,106 @@ def _kw_hit(text: str, keywords) -> bool:
             if re.search(rf"(?<![a-z0-9]){re.escape(k)}(?![a-z0-9])", text):
                 return True
         elif k in text:
+            return True
+    return False
+
+
+def _net_kw_hit(name: str, keywords) -> bool:
+    """网络名关键词命中：短词右侧放行数字后缀（CLK2/PWM3/SW1），仍拒绝内嵌。
+
+    2026-10-09 抽查修正：网络名普遍带数字编号（CLK2/PWM3），_kw_hit 的双侧
+    词边界会把它们整体漏掉；但纯子串又把 "SW" 命中 …BUZZER_SWITCH（拨码开关
+    网络被当高速网）。折中：左侧拒字母数字、右侧只拒字母——内嵌词（SWITCH）
+    不中、带编号（SW1）命中。
+    """
+    n = (name or "").lower()
+    for kw in keywords:
+        k = str(kw).lower()
+        if len(k) <= 4 and k.isascii() and k.isalpha():
+            if re.search(rf"(?<![a-z0-9]){re.escape(k)}[0-9]*(?![a-z])", n):
+                return True
+        elif k in n:
+            return True
+    return False
+
+
+def _row_text(item) -> str:
+    """BOM 行关键词匹配文本：料号 + 描述 + 值（小写）。
+
+    2026-10-09 抽查修正：真实立创 BOM 常把型号只写在 value（或 description
+    整行为空），旧规则只搜 pn+description 双向漏——P6SMBJ6.0CA 这类真 TVS
+    写在 value 里就漏认。统一从这里取文本。
+    """
+    return (
+        f"{getattr(item, 'part_number', '')} "
+        f"{getattr(item, 'description', '')} "
+        f"{getattr(item, 'value', '')}"
+    ).lower()
+
+
+def _any_ref_prefix(item, prefixes) -> bool:
+    """任一位号的字母前缀命中（一行可含逗号分隔多位号）。"""
+    for token in re.split(r"[,，\s]+", (getattr(item, "reference", "") or "").strip()):
+        if not token:
+            continue
+        prefix = "".join(c for c in token if c.isalpha()).upper()
+        if prefix in prefixes:
+            return True
+    return False
+
+
+def _is_resistor_row(item) -> bool:
+    """电阻行判定：位号前缀优先（R/RN/RP 排阻），描述词仅回退。
+
+    2026-10-09 抽查修正：LCSC 描述是「22uF ±20% 10V」式参数文本、不含
+    「电阻」二字，大量行 description 为空——「描述含电阻」判据双向下失效，
+    上拉/FB 分压/LED 限流五条规则恒报。位号前缀是唯一稳定信号。
+    """
+    if _any_ref_prefix(item, {"R", "RN", "RNC", "NR", "RP"}):
+        return True
+    return _kw_hit(_row_text(item), ("电阻", "resistor"))
+
+
+def _is_cap_row(item) -> bool:
+    """电容行判定：位号前缀优先（C），描述词仅回退（口径同 _is_resistor_row）。"""
+    if _any_ref_prefix(item, {"C", "CV", "CE"}):
+        return True
+    return _kw_hit(_row_text(item), ("电容", "capacitor"))
+
+
+# ── 电源入口识别（EMI 滤波 / 电源极性保护共用，2026-10-09 统一口径）──
+# 旧判据对任意 BOM 行做裸子串（pwr_kw 含 "PWR"/"VIN"/"VBUS"）：SN74HC125PWR
+# 的封装后缀、LDO 描述里的「Vin=18V」都成了「电源入口」。入口是物理端口——
+# ① 网表：入口语义的电源网络挂在连接器/电池引脚上（最可靠）；
+# ② BOM 回退：连接器/电池位号行 + 明确入口词（不含裸 VIN/PWR/power）。
+_PWR_ENTRY_NET_RE = re.compile(
+    r"(VIN|VBUS|VBAT|VDC|DCIN|DC_IN|DC-IN|VMAIN|PWR_IN|POWER_IN|\d+V_?IN|VCC_?\d{2}V)",
+    re.IGNORECASE)
+_PWR_ENTRY_DESC_KW = ("电源插座", "电源接口", "电源输入", "电源座", "电源口",
+                      "dc-in", "dcin", "dc005", "dc-005", "电池座", "电池盒")
+_ENTRY_CONN_PREFIXES = {"J", "P", "CN", "DC", "BT", "BAT", "CON", "USB", "FPC"}
+
+
+def _has_power_entry(bom_items, netlist, include_usb: bool = True) -> bool:
+    """板上有直流电源入口（电源座/电池/USB 供电），供 EMI/反接保护规则门控。
+
+    include_usb=False 时不把 USB VBUS 当入口——USB 座有键控、反接不成立，
+    VBUS 上加共模电感也非常规做法（2026-10-09 金样：USB 小设备 17 板因此
+    误报「缺 EMI 滤波」）。
+    """
+    prefixes = _ENTRY_CONN_PREFIXES if include_usb else _ENTRY_CONN_PREFIXES - {"USB"}
+    for name, pins in (netlist or {}).items():
+        if not _PWR_ENTRY_NET_RE.search(str(name)):
+            continue
+        for p in (pins if isinstance(pins, (list, tuple, set)) else getattr(pins, "pins", None) or ()):
+            ref = str(p).split(".")[0]
+            prefix = "".join(c for c in ref if c.isalpha()).upper()
+            if prefix in prefixes:
+                return True
+    for item in bom_items:
+        if not _any_ref_prefix(item, prefixes):
+            continue
+        if _kw_hit(_row_text(item), _PWR_ENTRY_DESC_KW):
             return True
     return False
 

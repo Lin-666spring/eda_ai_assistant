@@ -13,6 +13,7 @@ from .base import (
     _COMPONENT_MODEL_PATH,
     _COMPONENT_VOCAB_PATH,
     _DCDC_DESC_KW,
+    _HIGH_SPEED_IF_KW,
     _HIGH_SPEED_NET_KW,
     _LOW_SPEED_NET_KW,
     _ML_CONFIDENCE_THRESHOLD,
@@ -30,6 +31,7 @@ from .base import (
     _is_power_or_ground_net,
     _kw_hit,
     _net_class,
+    _net_kw_hit,
     _parallel_overlap_len,
     _parse_capacitance,
     _parse_component_value,
@@ -276,13 +278,18 @@ class GeometryRulesMixin:
         if not pcb or not pcb.vias: return []
         violations = []
         limit = PCB.VIA_DENSITY_MAX_PER_NET
-        kws = PCB.VIA_DENSITY_NET_KEYWORDS
+        # 2026-10-09 抽查修正：裸子串 "SW" 命中 …BUZZER_SWITCH/GUN_SWITCH（拨码/
+        # 轻触开关网络被当高速网）。改用网络名词边界匹配（右侧放行数字后缀
+        # SW1/CLK2），并把电源/地网整体排除——缝合孔再多也属正常。
+        kws = [k.lower() for k in PCB.VIA_DENSITY_NET_KEYWORDS]
         via_per_net: dict[str, int] = {}
         for v in (pcb.vias or []):
             net = getattr(v, "net_name", "") or getattr(v, "net", "")
             if not net:
                 continue
-            if not any(kw.upper() in net.upper() for kw in kws):
+            if _is_power_or_ground_net(net):
+                continue
+            if not _net_kw_hit(net, kws):
                 continue
             via_per_net[net] = via_per_net.get(net, 0) + 1
         for net, count in via_per_net.items():
@@ -362,6 +369,35 @@ class GeometryRulesMixin:
         return best
 
 
+    @staticmethod
+    def _pair_parallel_overlap(pcb, pair, cap: int = 20000) -> float:
+        """差分对两条网络在同层走线间的最大平行重叠长度 (mm)；无同层走线返回 0。"""
+        first: dict[str, list] = {}
+        for t in pcb.traces:
+            if t.net_name == pair[0]:
+                first.setdefault(t.layer, []).extend(
+                    (s[0], s[1], s[2], s[3]) for s in (t.segments or [])
+                )
+        best = 0.0
+        n = 0
+        for t in pcb.traces:
+            if t.net_name != pair[1]:
+                continue
+            other = first.get(t.layer)
+            if not other:
+                continue
+            for s in (t.segments or []):
+                a, b = (s[0], s[1]), (s[2], s[3])
+                for s0 in other:
+                    n += 1
+                    if n > cap:
+                        return best
+                    ov = _parallel_overlap_len(a, b, (s0[0], s0[1]), (s0[2], s0[3]))
+                    if ov > best:
+                        best = ov
+        return best
+
+
     def _check_diff_pair_spacing(self, bom_items, positions, netlist):
         """差分对间距：成对走线应紧耦合（对内最小间距不应远大于线宽）。
 
@@ -369,6 +405,11 @@ class GeometryRulesMixin:
         P/N、+/- 后缀猜出来的配对（D1_P/D1-、IN_D+/IN_D-）不是差分信号，一律跳过；
         ② 门限取「明显松耦合」（4W）：抽样判读里 3.0~4.5W 属阈值边界，
         按 3W 一刀切会把正常设计报成缺陷。
+        2026-10-09 抽查修正：③ 高速接口门控——设计者给音频/UART/RC 节点标
+        differentialName 不等于差分阻抗受控，只对 USB/HDMI/LVDS 等接口组判间距；
+        ④ 平行重叠前置——两网没有实质平行走线（最长平行段 <5mm）时，「最小间距」
+        量到的是交叉/换层泄漏距离，报「耦合过松」没有意义（抽样里重叠 0.0mm
+        相距 2.8mm 也报 11.2W）。
         """
         pcb = self._pcb_data
         if not pcb or not pcb.traces: return []
@@ -378,6 +419,10 @@ class GeometryRulesMixin:
             if source != "engine":      # 名字猜测的配对不作为差分对判间距
                 continue
             if len(nets) != 2:   # 等长总线（≥3 条）不判间距
+                continue
+            if not _kw_hit(f"{label} {' '.join(nets)}".lower(), _HIGH_SPEED_IF_KW):
+                continue
+            if self._pair_parallel_overlap(pcb, (nets[0], nets[1])) < PCB.CROSSTALK_MIN_PARALLEL_MM:
                 continue
             gap = self._pair_min_gap(pcb, (nets[0], nets[1]))
             if gap is None:
@@ -473,13 +518,23 @@ class GeometryRulesMixin:
         因此额外要求平行重叠长度 ≥ CROSSTALK_MIN_PARALLEL_MM 才算风险。
         2026-09-24 抽查修正：加网络类别门控——电源/地线对与按键/蜂鸣器/32kHz/GPIO
         等低速网络不再套 3W 准则（抽样里报出的线对 5/5 都是这类）。
+        2026-10-09 抽查修正：差分对自身两半豁免——P/N 两半本来就要 2W 紧耦合
+        平行全程，套 3W 必然整组误报（10-06 抽查 5/5 串扰样本全是这一类，
+        AirLink 21 对里 17 对、Mini-LinuxPC 17 对里 11 对）。同一差分组（工程
+        声明或名字猜测配对）的两网不再互判串扰；「diff」类别只认工程声明，
+        猜测配对的成员退回按名字分类。
         """
         pcb = self._pcb_data
         if not pcb or not pcb.traces: return []
         violations = []
-        diff_members: set = set()
-        for _label, nets, _src in self._diff_groups_src(pcb):
-            diff_members.update(str(n).upper() for n in nets)
+        diff_members: set = set()   # 仅工程声明 →「diff」类别（按接口名猜的不算）
+        exempt_pairs: set = set()   # 同一差分组两半 → 对内豁免（含名字猜测配对）
+        for label, nets, src in self._diff_groups_src(pcb):
+            ups = sorted({str(n).upper() for n in nets})
+            if src == "engine":
+                diff_members.update(ups)
+            if len(ups) == 2:
+                exempt_pairs.add((ups[0], ups[1]))
         factor = PCB.CROSSTALK_SPACING_FACTOR
         min_par = PCB.CROSSTALK_MIN_PARALLEL_MM
         by_layer: dict[str, list] = {}
@@ -500,17 +555,18 @@ class GeometryRulesMixin:
                 # 网络类别在这里只算一次（内层循环里逐对重算会把 3W 判定拖慢一个量级）
                 cls = ("power" if _is_power_or_ground_net(t.net_name)
                        else _net_class(t.net_name, diff_members))
+                net_u = (t.net_name or "").upper()
                 for s in t.segments:
                     idx = len(segs)
                     a, b = (s[0], s[1]), (s[2], s[3])
                     x0, x1 = (a[0], b[0]) if a[0] <= b[0] else (b[0], a[0])
                     y0, y1 = (a[1], b[1]) if a[1] <= b[1] else (b[1], a[1])
-                    segs.append((t.net_name, w, a, b, x0, x1, y0, y1, cls))
+                    segs.append((t.net_name, net_u, w, a, b, x0, x1, y0, y1, cls))
                     for ci in range(int((x0 - radius) // cell), int((x1 + radius) // cell) + 1):
                         for cj in range(int((y0 - radius) // cell), int((y1 + radius) // cell) + 1):
                             grid.setdefault((ci, cj), []).append(idx)
             contested: dict = {}
-            for i, (net, w, a, b, x0, x1, y0, y1, cls) in enumerate(segs):
+            for i, (net, net_u, w, a, b, x0, x1, y0, y1, cls) in enumerate(segs):
                 seen = set()
                 for ci in range(int((x0 - radius) // cell), int((x1 + radius) // cell) + 1):
                     for cj in range(int((y0 - radius) // cell), int((y1 + radius) // cell) + 1):
@@ -518,8 +574,12 @@ class GeometryRulesMixin:
                             if j <= i or j in seen:
                                 continue
                             seen.add(j)
-                            n2, w2, c, d, cx0, cx1, cy0, cy1, cls2 = segs[j]
+                            n2, n2_u, w2, c, d, cx0, cx1, cy0, cy1, cls2 = segs[j]
                             if n2 == net:
+                                continue
+                            # 差分对自身两半：紧耦合是设计意图，不构成串扰风险
+                            pk = (net_u, n2_u) if net_u <= n2_u else (n2_u, net_u)
+                            if pk in exempt_pairs:
                                 continue
                             # 电源/地线对、低速网络对不构成 3W 串扰风险：
                             # 至少要有一侧是高速/时钟/差分网络才继续算几何
@@ -718,9 +778,12 @@ class GeometryRulesMixin:
             net = getattr(v, "net_name", "") or getattr(v, "net", "") or ""
             if net:
                 via_count[net] = via_count.get(net, 0) + 1
+        # 2026-10-09 抽查修正：排除电源/地网——USB_GND 这类名字同时命中「usb」
+        # 关键词和地网语义，地网上成串的缝合过孔不是 stub。
         stub_nets = sorted(
             net for net, cnt in via_count.items()
-            if cnt >= 2 and any(kw.upper() in net.upper() for kw in high_speed_kw)
+            if cnt >= 2 and not _is_power_or_ground_net(net)
+            and any(kw.upper() in net.upper() for kw in high_speed_kw)
         )
         if stub_nets:
             return [RuleViolation(
@@ -741,7 +804,10 @@ class GeometryRulesMixin:
         unconnected = 0
         for name, net in pcb.nets.items():
             pins = getattr(net, "pins", []) or []
-            if len(pins) <= 1 and name and not name.upper().startswith("GND"):
+            # 2026-10-09 抽查修正：零引脚网络是解析丢针的产物（该板
+            # orphan_pad_nets=77），不是「只接了一端的单端网络」；`<=1` 会把它们
+            # 全数计入天线嫌疑。真正的单端网络恰好 1 个引脚。
+            if len(pins) == 1 and name and not name.upper().startswith("GND"):
                 unconnected += 1
         if unconnected > 2:
             return [RuleViolation(
