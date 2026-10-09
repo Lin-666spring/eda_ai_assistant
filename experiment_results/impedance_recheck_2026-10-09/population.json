@@ -1,0 +1,2972 @@
+[
+ {
+  "design": "ProPrj_#星火计划#ESP32墨水屏MP3收音机阅读器_2026-09-14.epro2",
+  "layers": 3,
+  "net": "USB_D+",
+  "kind": "diff",
+  "gap": "0.500",
+  "w": 0.2,
+  "z": 114.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_#星火计划#ESP32墨水屏MP3收音机阅读器_2026-09-14.epro2",
+  "layers": 3,
+  "net": "USB_D-",
+  "kind": "diff",
+  "gap": "0.500",
+  "w": 0.203,
+  "z": 113.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "DP_XTAL_OUT",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_CKD_N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_CKD_P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_CKN",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_CKP",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_D0D_N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_D0D_P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_D0N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_D0P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_D1D_N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_D1D_P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_D1N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_D1P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_D2D_N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_D2D_P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_D2N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "HDMI_D2P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "RC_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.158,
+  "z": 72.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "SD0_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.158,
+  "z": 72.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "SD1_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_AirLink（无线！USB HUB）_2026-09-14.epro2",
+  "layers": 5,
+  "net": "XTAL_XOUT",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_AI智能相框_2026-09-14.epro2",
+  "layers": 4,
+  "net": "SD-CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.157,
+  "z": 72.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_EDA-Pager寻呼机_2026-09-14.epro2",
+  "layers": 3,
+  "net": "4G_USB_D+",
+  "kind": "diff",
+  "gap": "0.279",
+  "w": 0.127,
+  "z": 136.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_EDA-Pager寻呼机_2026-09-14.epro2",
+  "layers": 3,
+  "net": "4G_USB_D-",
+  "kind": "diff",
+  "gap": "0.279",
+  "w": 0.127,
+  "z": 136.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_EDA-Pager寻呼机_2026-09-14.epro2",
+  "layers": 3,
+  "net": "USIM0_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.127,
+  "z": 78.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "I_MIPI_CLK+",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "I_MIPI_CLK-",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "I_MIPI_D0+",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "I_MIPI_D0-",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "I_MIPI_D1+",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "I_MIPI_D1-",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_CLK+",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_CLK-",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D0+",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D0-",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D1+",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D1-",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D2+",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D2-",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D3+",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D3-",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "XTALI",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_ESP-HDMI-Bridge_2026-09-14.epro2",
+  "layers": 4,
+  "net": "XTALO",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_Excam基于openmv的多功能机器视觉小相机_2026-09-14.epro2",
+  "layers": 4,
+  "net": "DCMI_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_Excam基于openmv的多功能机器视觉小相机_2026-09-14.epro2",
+  "layers": 4,
+  "net": "OSC_IN",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_Excam基于openmv的多功能机器视觉小相机_2026-09-14.epro2",
+  "layers": 4,
+  "net": "OSC_OUT",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_LW焊台_2026-09-14.epro2",
+  "layers": 5,
+  "net": "USB_N",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_LW焊台_2026-09-14.epro2",
+  "layers": 5,
+  "net": "USB_P",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.152,
+  "z": 129.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_Mini FOC无刷平衡车 V2.0版本_2026-09-14.epro2",
+  "layers": 5,
+  "net": "MPU_SPI3_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_Mini FOC无刷平衡车 V2.0版本_2026-09-14.epro2",
+  "layers": 5,
+  "net": "M_TLE5012_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_HTX0N",
+  "kind": "diff",
+  "gap": "0.327",
+  "w": 0.124,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_HTX0P",
+  "kind": "diff",
+  "gap": "0.327",
+  "w": 0.124,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_HTX1N",
+  "kind": "diff",
+  "gap": "0.327",
+  "w": 0.124,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_HTX1P",
+  "kind": "diff",
+  "gap": "0.327",
+  "w": 0.124,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_HTX2N",
+  "kind": "diff",
+  "gap": "0.327",
+  "w": 0.124,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_HTX2P",
+  "kind": "diff",
+  "gap": "0.327",
+  "w": 0.124,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_HTXCN",
+  "kind": "diff",
+  "gap": "0.327",
+  "w": 0.124,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_HTXCP",
+  "kind": "diff",
+  "gap": "0.327",
+  "w": 0.124,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.epro2",
+  "layers": 4,
+  "net": "SPI1_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.127,
+  "z": 78.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.epro2",
+  "layers": 4,
+  "net": "WL-SDIO-CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.127,
+  "z": 78.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.epro2",
+  "layers": 4,
+  "net": "WL-SDIO-CMD",
+  "kind": "diff",
+  "gap": "0.279",
+  "w": 0.127,
+  "z": 136.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.epro2",
+  "layers": 4,
+  "net": "WL-SDIO-D0",
+  "kind": "diff",
+  "gap": "0.279",
+  "w": 0.127,
+  "z": 136.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.epro2",
+  "layers": 4,
+  "net": "WL-SDIO-D1",
+  "kind": "diff",
+  "gap": "0.279",
+  "w": 0.127,
+  "z": 136.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14.epro2",
+  "layers": 4,
+  "net": "WL-SDIO-D2",
+  "kind": "diff",
+  "gap": "0.279",
+  "w": 0.127,
+  "z": 136.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_MoCM0 树莓派CM0迷你电脑主机_2026-09-14.epro2",
+  "layers": 5,
+  "net": "USB_N",
+  "kind": "diff",
+  "gap": "0.295",
+  "w": 0.142,
+  "z": 132.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_MoCM0 树莓派CM0迷你电脑主机_2026-09-14.epro2",
+  "layers": 5,
+  "net": "USB_P",
+  "kind": "diff",
+  "gap": "0.295",
+  "w": 0.142,
+  "z": 132.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_TuyaOpen 多模态 AI 口袋机_2026-09-14.epro2",
+  "layers": 4,
+  "net": "NSIM_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_TuyaOpen 多模态 AI 口袋机_2026-09-14.epro2",
+  "layers": 4,
+  "net": "USIM_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_【立创·泰山派】全键盘掌上终端,MeXcon_Tai_2026-09-14.epro2",
+  "layers": 5,
+  "net": "USB3_HOST1_SSRXN/SATA1_RXN",
+  "kind": "diff",
+  "gap": "0.361",
+  "w": 0.158,
+  "z": 131.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_【立创·泰山派】全键盘掌上终端,MeXcon_Tai_2026-09-14.epro2",
+  "layers": 5,
+  "net": "USB3_HOST1_SSRXP/SATA1_RXP",
+  "kind": "diff",
+  "gap": "0.361",
+  "w": 0.158,
+  "z": 131.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_【立创·泰山派】全键盘掌上终端,MeXcon_Tai_2026-09-14.epro2",
+  "layers": 5,
+  "net": "USB3_HOST1_SSTXN/SATA1_TXN",
+  "kind": "diff",
+  "gap": "0.361",
+  "w": 0.158,
+  "z": 131.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_【立创·泰山派】全键盘掌上终端,MeXcon_Tai_2026-09-14.epro2",
+  "layers": 5,
+  "net": "USB3_HOST1_SSTXP/SATA1_TXP",
+  "kind": "diff",
+  "gap": "0.361",
+  "w": 0.158,
+  "z": 131.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_【立创·泰山派】全键盘掌上终端,MeXcon_Tai_2026-09-14.epro2",
+  "layers": 5,
+  "net": "USB_DN",
+  "kind": "diff",
+  "gap": "0.361",
+  "w": 0.158,
+  "z": 131.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_【立创·泰山派】全键盘掌上终端,MeXcon_Tai_2026-09-14.epro2",
+  "layers": 5,
+  "net": "USB_DP",
+  "kind": "diff",
+  "gap": "0.361",
+  "w": 0.158,
+  "z": 131.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_【立创·泰山派】全键盘掌上终端,MeXcon_Tai_2026-09-14.epro2",
+  "layers": 5,
+  "net": "XTAL_IN",
+  "kind": "single",
+  "gap": null,
+  "w": 0.158,
+  "z": 72.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_【立创·泰山派】全键盘掌上终端,MeXcon_Tai_2026-09-14.epro2",
+  "layers": 5,
+  "net": "XTAL_OUT",
+  "kind": "single",
+  "gap": null,
+  "w": 0.158,
+  "z": 72.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_专业级全键盘电子钢琴_2026-09-14.epro2",
+  "layers": 4,
+  "net": "USB_DM",
+  "kind": "diff",
+  "gap": "0.361",
+  "w": 0.158,
+  "z": 131.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_专业级全键盘电子钢琴_2026-09-14.epro2",
+  "layers": 4,
+  "net": "USB_DP",
+  "kind": "diff",
+  "gap": "0.361",
+  "w": 0.158,
+  "z": 131.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_基于ESP32C3+PT6315的VFD显示模组_2026-09-14.epro2",
+  "layers": 2,
+  "net": "PT6315_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.178,
+  "z": 68.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_小智Moon带氛围灯的圆屏Ai聊天机器人_2026-09-14.epro2",
+  "layers": 4,
+  "net": "USB_N",
+  "kind": "diff",
+  "gap": "0.294",
+  "w": 0.142,
+  "z": 132.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_小智Moon带氛围灯的圆屏Ai聊天机器人_2026-09-14.epro2",
+  "layers": 4,
+  "net": "USB_P",
+  "kind": "diff",
+  "gap": "0.294",
+  "w": 0.142,
+  "z": 132.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_承载我所有幻想的键盘_2026-09-14 (1).epro2",
+  "layers": 5,
+  "net": "AS5047P_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.127,
+  "z": 78.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_承载我所有幻想的键盘_2026-09-14 (1).epro2",
+  "layers": 5,
+  "net": "SPI_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.127,
+  "z": 78.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_承载我所有幻想的键盘_2026-09-14.epro2",
+  "layers": 5,
+  "net": "AS5047P_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.127,
+  "z": 78.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_承载我所有幻想的键盘_2026-09-14.epro2",
+  "layers": 5,
+  "net": "SPI_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.127,
+  "z": 78.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创DAPLINK调试工具_2026-09-14.epro2",
+  "layers": 2,
+  "net": "RS485_A",
+  "kind": "diff",
+  "gap": "0.279",
+  "w": 0.152,
+  "z": 127.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创DAPLINK调试工具_2026-09-14.epro2",
+  "layers": 2,
+  "net": "RS485_B",
+  "kind": "diff",
+  "gap": "0.279",
+  "w": 0.152,
+  "z": 127.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·3.1寸MIPI屏幕扩展板_2026-09-14.epro2",
+  "layers": 2,
+  "net": "MIPI_DSI_0N",
+  "kind": "diff",
+  "gap": "0.269",
+  "w": 0.117,
+  "z": 139.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·3.1寸MIPI屏幕扩展板_2026-09-14.epro2",
+  "layers": 2,
+  "net": "MIPI_DSI_0P",
+  "kind": "diff",
+  "gap": "0.269",
+  "w": 0.117,
+  "z": 139.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·3.1寸MIPI屏幕扩展板_2026-09-14.epro2",
+  "layers": 2,
+  "net": "MIPI_DSI_1N",
+  "kind": "diff",
+  "gap": "0.269",
+  "w": 0.117,
+  "z": 139.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·3.1寸MIPI屏幕扩展板_2026-09-14.epro2",
+  "layers": 2,
+  "net": "MIPI_DSI_1P",
+  "kind": "diff",
+  "gap": "0.269",
+  "w": 0.117,
+  "z": 139.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·3.1寸MIPI屏幕扩展板_2026-09-14.epro2",
+  "layers": 2,
+  "net": "MIPI_DSI_CLKN",
+  "kind": "diff",
+  "gap": "0.269",
+  "w": 0.117,
+  "z": 139.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·3.1寸MIPI屏幕扩展板_2026-09-14.epro2",
+  "layers": 2,
+  "net": "MIPI_DSI_CLKP",
+  "kind": "diff",
+  "gap": "0.269",
+  "w": 0.117,
+  "z": 139.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·地奇星RA6E2开发板_2026-09-14.epro2",
+  "layers": 2,
+  "net": "P814_USB_DP",
+  "kind": "diff",
+  "gap": "0.290",
+  "w": 0.188,
+  "z": 117.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_立创·地奇星RA6E2开发板_2026-09-14.epro2",
+  "layers": 2,
+  "net": "P815_USB_DM",
+  "kind": "diff",
+  "gap": "0.290",
+  "w": 0.188,
+  "z": 117.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_立创·梁山派开发板_2026-09-14.epro2",
+  "layers": 2,
+  "net": "LCD_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMITX_HPDIN/HDMITX_SBDN",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMITX_SBDP",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX0N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX0P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX1N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX1P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX2N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX2P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX3N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX3P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX_D0N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX_D0P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX_D1N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.089,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX_D1P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX_D2N",
+  "kind": "diff",
+  "gap": "0.241",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX_D2P",
+  "kind": "diff",
+  "gap": "0.241",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX_D3N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.089,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX_D3P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.089,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX_SBDN",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "HDMI_TX_SBDP",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.089,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI0_RX_CLKN",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI0_RX_CLKP",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI0_RX_D0N",
+  "kind": "diff",
+  "gap": "0.243",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI0_RX_D0P",
+  "kind": "diff",
+  "gap": "0.243",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI0_RX_D1N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI0_RX_D1P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI0_RX_D2N",
+  "kind": "diff",
+  "gap": "0.241",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI0_RX_D2P",
+  "kind": "diff",
+  "gap": "0.241",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI0_RX_D3N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI0_RX_D3P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI1_RX_CLKN",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI1_RX_CLKP",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI1_RX_D0N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI1_RX_D0P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI1_RX_D1N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI1_RX_D1P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI1_RX_D2N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI1_RX_D2P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI1_RX_D3N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI1_RX_D3P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.091,
+  "z": 146.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI3_RX_CLKN",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.089,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI3_RX_CLKP",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.089,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI3_RX_D0N",
+  "kind": "diff",
+  "gap": "0.243",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI3_RX_D0P",
+  "kind": "diff",
+  "gap": "0.243",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI3_RX_D1N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.089,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI3_RX_D1P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.089,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI3_RX_D2N",
+  "kind": "diff",
+  "gap": "0.241",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI3_RX_D2P",
+  "kind": "diff",
+  "gap": "0.241",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI3_RX_D3N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.089,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_CSI3_RX_D3P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.089,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_DSI_TX_CLKN",
+  "kind": "diff",
+  "gap": "0.241",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_DSI_TX_CLKP",
+  "kind": "diff",
+  "gap": "0.241",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_DSI_TX_D0N",
+  "kind": "diff",
+  "gap": "0.241",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_DSI_TX_D0P",
+  "kind": "diff",
+  "gap": "0.241",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_DSI_TX_D1N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.089,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_DSI_TX_D1P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.089,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_DSI_TX_D2N",
+  "kind": "diff",
+  "gap": "0.241",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_DSI_TX_D2P",
+  "kind": "diff",
+  "gap": "0.241",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_DSI_TX_D3N",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.089,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "MIPI_DPHY_DSI_TX_D3P",
+  "kind": "diff",
+  "gap": "0.244",
+  "w": 0.089,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "PCIE0_REFCLKN",
+  "kind": "diff",
+  "gap": "0.241",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "PCIE0_REFCLKP",
+  "kind": "diff",
+  "gap": "0.241",
+  "w": 0.089,
+  "z": 147.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "PCIE0_RXN",
+  "kind": "diff",
+  "gap": "0.211",
+  "w": 0.109,
+  "z": 135.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "PCIE0_RXP",
+  "kind": "diff",
+  "gap": "0.211",
+  "w": 0.109,
+  "z": 135.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "PCIE0_TXN",
+  "kind": "diff",
+  "gap": "0.211",
+  "w": 0.102,
+  "z": 138.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "PCIE0_TXP",
+  "kind": "diff",
+  "gap": "0.211",
+  "w": 0.109,
+  "z": 135.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "SDMMC0_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.122,
+  "z": 79.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "SPI1_CLK_M1",
+  "kind": "single",
+  "gap": null,
+  "w": 0.102,
+  "z": 83.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "UIM_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.122,
+  "z": 79.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14.epro2",
+  "layers": 10,
+  "net": "WIFI1T1R_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.119,
+  "z": 79.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "FSPI_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.127,
+  "z": 78.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "G_LVDS_A_CLKN",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "G_LVDS_A_CLKP",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "G_LVDS_A_Y0N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "G_LVDS_A_Y0P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "G_LVDS_A_Y1N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "G_LVDS_A_Y1P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "G_LVDS_A_Y2N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "G_LVDS_A_Y2P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "G_LVDS_A_Y3N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "G_LVDS_A_Y3P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_TX0N_PORT",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_TX0P_PORT",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_TX1N_PORT",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_TX1P_PORT",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_TX2N_PORT",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_TX2P_PORT",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_TXCLKN_PORT",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "HDMI_TXCLKP_PORT",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_A_CLKN",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_A_CLKP",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_A_Y0N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_A_Y0P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_A_Y1N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_A_Y1P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_A_Y2N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_A_Y2P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_A_Y3N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_A_Y3P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_B_CLKN",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_B_CLKP",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_B_Y0N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_B_Y0P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_B_Y1N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_B_Y1P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_B_Y2N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_B_Y2P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_B_Y3N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_B_Y3P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_CLKN",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_CLKP",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D0N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D0P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D1N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D1P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D2N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D2P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D3N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "LVDS_D3P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI0_DN2",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI0_DN3",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI0_DP2",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI0_DP3",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI1_DN0",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI1_DN1",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI1_DP0",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI1_DP1",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI_DN0",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI_DN1",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI_DN2",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI_DN3",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI_DP0",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI_DP1",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI_DP2",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI_DP3",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI_MC0N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI_MC0P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI_MC1N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_CSI_MC1P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX0_CLKN",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX0_CLKP",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX0_D0N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX0_D0P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX0_D1N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX0_D1P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX0_D2N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX0_D2P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX0_D3N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX0_D3P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX1_CLKN",
+  "kind": "diff",
+  "gap": "0.261",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX1_CLKP",
+  "kind": "diff",
+  "gap": "0.261",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX1_D0N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX1_D0P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX1_D1N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX1_D1P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX1_D2N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX1_D2P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX1_D3N",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "MIPI_DSI_TX1_D3P",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "PCIE20_CLKN",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "PCIE20_CLKP",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "PCIE20_RXN",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "PCIE20_RXP",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "PCIE20_TXN",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "PCIE20_TXP",
+  "kind": "diff",
+  "gap": "0.262",
+  "w": 0.109,
+  "z": 141.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "SDMMC0_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.158,
+  "z": 72.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "SDMMC1_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.127,
+  "z": 78.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "SPI3_CLK_M1",
+  "kind": "single",
+  "gap": null,
+  "w": 0.127,
+  "z": 78.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "UIM_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.158,
+  "z": 72.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "USB3_HOST1_SSRXN/SATA1_RXN",
+  "kind": "diff",
+  "gap": "0.295",
+  "w": 0.142,
+  "z": 132.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "USB3_HOST1_SSRXP/SATA1_RXP",
+  "kind": "diff",
+  "gap": "0.295",
+  "w": 0.142,
+  "z": 132.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "USB3_HOST1_SSTXN/SATA1_TXN",
+  "kind": "diff",
+  "gap": "0.295",
+  "w": 0.142,
+  "z": 132.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "USB3_HOST1_SSTXP/SATA1_TXP",
+  "kind": "diff",
+  "gap": "0.295",
+  "w": 0.142,
+  "z": 132.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "USB_OTG0_DM",
+  "kind": "diff",
+  "gap": "0.295",
+  "w": 0.142,
+  "z": 132.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "USB_OTG0_DP",
+  "kind": "diff",
+  "gap": "0.295",
+  "w": 0.142,
+  "z": 132.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "WIFI_XTAL_IN",
+  "kind": "single",
+  "gap": null,
+  "w": 0.127,
+  "z": 78.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "WIFI_XTAL_OUT",
+  "kind": "single",
+  "gap": null,
+  "w": 0.127,
+  "z": 78.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "XTAL_IN",
+  "kind": "single",
+  "gap": null,
+  "w": 0.127,
+  "z": 78.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14.epro2",
+  "layers": 4,
+  "net": "XTAL_OUT",
+  "kind": "single",
+  "gap": null,
+  "w": 0.127,
+  "z": 78.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·衡山派D133EBS开发板_2026-09-14.epro2",
+  "layers": 4,
+  "net": "SPI0_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.156,
+  "z": 72.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·衡山派D133EBS开发板_2026-09-14.epro2",
+  "layers": 4,
+  "net": "USB_DM",
+  "kind": "diff",
+  "gap": "0.361",
+  "w": 0.158,
+  "z": 131.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_立创·衡山派D133EBS开发板_2026-09-14.epro2",
+  "layers": 4,
+  "net": "USB_DP",
+  "kind": "diff",
+  "gap": "0.361",
+  "w": 0.158,
+  "z": 131.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_立创·逻辑派FPGA-G1开发板_2026-09-14.epro2",
+  "layers": 6,
+  "net": "HDMI_CLK_N",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.102,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·逻辑派FPGA-G1开发板_2026-09-14.epro2",
+  "layers": 6,
+  "net": "HDMI_CLK_P",
+  "kind": "diff",
+  "gap": "0.305",
+  "w": 0.102,
+  "z": 148.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·逻辑派FPGA-G1开发板_2026-09-14.epro2",
+  "layers": 6,
+  "net": "L10_IOR34B_FLASH_SPI_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.102,
+  "z": 83.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_立创·逻辑派FPGA-G1开发板_2026-09-14.epro2",
+  "layers": 6,
+  "net": "LVDS_IOR11_N",
+  "kind": "diff",
+  "gap": "0.229",
+  "w": 0.102,
+  "z": 140.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·逻辑派FPGA-G1开发板_2026-09-14.epro2",
+  "layers": 6,
+  "net": "LVDS_IOR11_P",
+  "kind": "diff",
+  "gap": "0.229",
+  "w": 0.102,
+  "z": 140.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·逻辑派FPGA-G1开发板_2026-09-14.epro2",
+  "layers": 6,
+  "net": "LVDS_IOR17_N",
+  "kind": "diff",
+  "gap": "0.230",
+  "w": 0.102,
+  "z": 140.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·逻辑派FPGA-G1开发板_2026-09-14.epro2",
+  "layers": 6,
+  "net": "LVDS_IOR17_P",
+  "kind": "diff",
+  "gap": "0.230",
+  "w": 0.102,
+  "z": 140.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·逻辑派FPGA-G1开发板_2026-09-14.epro2",
+  "layers": 6,
+  "net": "LVDS_IOR20_N",
+  "kind": "diff",
+  "gap": "0.229",
+  "w": 0.102,
+  "z": 140.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·逻辑派FPGA-G1开发板_2026-09-14.epro2",
+  "layers": 6,
+  "net": "LVDS_IOR20_P",
+  "kind": "diff",
+  "gap": "0.229",
+  "w": 0.102,
+  "z": 140.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·逻辑派FPGA-G1开发板_2026-09-14.epro2",
+  "layers": 6,
+  "net": "LVDS_IOR22_N",
+  "kind": "diff",
+  "gap": "0.229",
+  "w": 0.102,
+  "z": 140.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·逻辑派FPGA-G1开发板_2026-09-14.epro2",
+  "layers": 6,
+  "net": "LVDS_IOR22_P",
+  "kind": "diff",
+  "gap": "0.229",
+  "w": 0.102,
+  "z": 140.0,
+  "target": 100.0
+ },
+ {
+  "design": "ProPrj_立创·逻辑派FPGA-Z1开发板_2026-09-14.epro2",
+  "layers": 2,
+  "net": "USB_DM",
+  "kind": "diff",
+  "gap": "0.254",
+  "w": 0.127,
+  "z": 133.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_立创·逻辑派FPGA-Z1开发板_2026-09-14.epro2",
+  "layers": 2,
+  "net": "USB_DP",
+  "kind": "diff",
+  "gap": "0.254",
+  "w": 0.127,
+  "z": 133.0,
+  "target": 90.0
+ },
+ {
+  "design": "ProPrj_迷你数字可调电源_数控电源--Xuemeng V6_2026-09-14.epro2",
+  "layers": 4,
+  "net": "FLA_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_迷你数字可调电源_数控电源--Xuemeng V6_2026-09-14.epro2",
+  "layers": 4,
+  "net": "OSC_IN",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_迷你数字可调电源_数控电源--Xuemeng V6_2026-09-14.epro2",
+  "layers": 4,
+  "net": "OSC_OUT",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ },
+ {
+  "design": "ProPrj_迷你数字可调电源_数控电源--Xuemeng V6_2026-09-14.epro2",
+  "layers": 4,
+  "net": "SW_CLK",
+  "kind": "single",
+  "gap": null,
+  "w": 0.152,
+  "z": 73.0,
+  "target": 50.0
+ }
+]

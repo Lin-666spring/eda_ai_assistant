@@ -13,7 +13,6 @@ from .base import (
     _COMPONENT_MODEL_PATH,
     _COMPONENT_VOCAB_PATH,
     _DCDC_DESC_KW,
-    _HIGH_SPEED_IF_KW,
     _HIGH_SPEED_NET_KW,
     _LOW_SPEED_NET_KW,
     _ML_CONFIDENCE_THRESHOLD,
@@ -803,15 +802,26 @@ class GeometryRulesMixin:
 
 
     def _check_impedance_matching(self, bom_items, positions, netlist):
-        """特征阻抗匹配 — 单端网络用微带公式，差分网络用差分公式与差分目标。
+        """特征阻抗匹配 — 只判「目标表」命中的高速接口差分对，按对聚合一次。
 
         2026-09-24 抽查修正（原判据三处硬伤）：
         ① 目标表本身就是差分值（USB 90Ω / HDMI·LVDS·ETH 100Ω），却拿单端
            microstrip_impedance 去比 → 结构性偏差，USB 网络必报；
         ② 按网络名子串命中即报 ERROR，USB_VBUS / HDMI_HCEC / HDMI_TX_SDA 全中；
         ③ traces[:50] 截断且按折线逐条报，同一网络重复计数。
-        现在：按网络聚合、先排除电源/地、差分网络用 differential_impedance +
-        差分目标，非差分网络只对 RF/时钟按单端 50Ω 判定。
+
+        2026-10-09 判读修正（78 板全量 297 条逐条复核，
+        experiment_results/impedance_recheck_2026-10-09/）：
+        ④ 单端半区 45 条全是 SPI/SIM/SDIO/晶振类时钟名——「时钟按 50Ω」并非
+           任何板子的设计要求，语料里真 RF 为 0——单端缩到 RF/天线（词边界）；
+        ⑤ 差分对 P/N 两条各报一次 → 按对聚合，一条违规带双网名；
+        ⑥ 目标表未命中的对（RS485、WL-SDIO 等工程声明的「差分组」）此前默认
+           套 100Ω——这些接口没有受控阻抗要求，改为表外不判；表补
+           MIPI/DSI/CSI、PCIE、SATA（均 100Ω 差分，语料 47 对按真实标准保留）。
+
+        叠层仍按 4 层典型 h=0.2mm/εr=4.5 兜底（.epro2 不含叠层数据）；4 层板
+        LVDS/USB 样本换 JLC 真实叠层（PP 0.21mm/εr≈4.6）复算同样越界——
+        保留的差分告警是真检出，不是 h 假设的产物。
         """
         from src.pcb.calculator import (
             microstrip_impedance, trace_width_for_impedance, differential_impedance,
@@ -823,17 +833,14 @@ class GeometryRulesMixin:
 
         h_mm, er = 0.2, 4.5   # 工程未提供叠层参数时的 4 层板典型兜底值
 
-        diff_pair_of: dict[str, tuple] = {}
-        diff_if_of: dict[str, bool] = {}
+        # 差分组（工程声明优先，退化后缀配对）：upper 排序键去重 → 原名对
+        pairs: dict[tuple, tuple] = {}
         for _label, nets, _src in self._diff_groups_src(pcb):
             if len(nets) != 2:
                 continue
-            is_if = any(_kw_hit(str(n).lower(), _HIGH_SPEED_IF_KW) for n in nets)
-            for n in nets:
-                key = str(n).upper()
-                diff_pair_of[key] = tuple(nets)
-                diff_if_of[key] = is_if
-        diff_members = set(diff_pair_of)
+            key = tuple(sorted(str(n).upper() for n in nets))
+            pairs.setdefault(key, tuple(str(n) for n in nets))
+        diff_members = {n for key in pairs for n in key}
 
         # 每个网络只取最小线宽判一次（原来按折线条数逐条报，同一网络重复计数）
         widths: dict[str, float] = {}
@@ -843,59 +850,72 @@ class GeometryRulesMixin:
                 if prev is None or t.width_mm < prev:
                     widths[t.net_name] = t.width_mm
 
-        diff_targets = {"USB": 90.0, "HDMI": 100.0, "LVDS": 100.0, "ETH": 100.0}
-        single_kw = ("rf", "clk", "clock", "osc", "xtal")
+        # 高速接口差分目标（Ω）。表外接口（RS485/CAN/SDIO 等声明的「差分组」）
+        # 没有受控阻抗要求，不套默认值硬判。
+        diff_targets = {"USB": 90.0, "HDMI": 100.0, "LVDS": 100.0, "ETH": 100.0,
+                        "MIPI": 100.0, "PCIE": 100.0, "SATA": 100.0}
+        single_kw = ("rf", "ant", "antenna")
 
         violations = []
         gap_cache: dict = {}
-        for name, w in sorted(widths.items()):
-            if _is_power_or_ground_net(name):
+        for key in sorted(pairs):
+            z_target = next((z for kw, z in diff_targets.items()
+                             if any(kw in n for n in key)), None)
+            if z_target is None:
                 continue
-            upper = name.upper()
-            z0_single = microstrip_impedance(w, h_mm, er=er)
-
-            if upper in diff_members:
-                # 只判高速接口的差分组：工程 NET 规则里的音频功放、直流输入 ±
-                # 这类「差分组」不适用 USB/HDMI 那套差分阻抗目标
-                if not diff_if_of.get(upper):
-                    continue
-                z_target = next((z for kw, z in diff_targets.items() if kw in upper), 100.0)
-                pair = diff_pair_of.get(upper) or ()
-                if pair not in gap_cache:      # 每对只算一次对内间距（几何很贵）
-                    gap_cache[pair] = self._pair_min_gap(pcb, pair) if pair else None
-                s_mm = gap_cache[pair]
-                if not s_mm or s_mm <= 0:
-                    s_mm = 2 * w
-                z_actual = differential_impedance(z0_single, s_mm, h_mm, er=er)
-                kind = f"差分（对内间距 {s_mm:.3f}mm）"
-            else:
-                if not _kw_hit(name.lower(), single_kw):
-                    continue
-                z_target = 50.0
-                z_actual = z0_single
-                kind = "单端"
-
+            orig = pairs[key]
+            if not all(n in widths for n in orig):
+                continue          # 有成员未布线，无法判定
+            w = min(widths[n] for n in orig)
+            if key not in gap_cache:      # 每对只算一次对内间距（几何很贵）
+                gap_cache[key] = self._pair_min_gap(pcb, list(orig))
+            s_mm = gap_cache[key]
+            if not s_mm or s_mm <= 0:
+                s_mm = 2 * w
+            z_actual = differential_impedance(
+                microstrip_impedance(w, h_mm, er=er), s_mm, h_mm, er=er)
             if abs(z_actual - z_target) <= z_target * 0.25:
                 continue
-
-            if upper in diff_members:
-                advice = (f"调整线宽 {w:.3f}mm 与对内间距 {s_mm:.3f}mm 的组合，"
-                          f"使差分阻抗 ≈{z_target:.0f}Ω（当前 {z_actual:.0f}Ω）")
-            else:
-                w_target = trace_width_for_impedance(z_target, h_mm, er=er)
-                advice = (f"调整线宽至 {w_target:.3f}mm 使 Z₀≈{z_target:.0f}Ω"
-                          f"（当前 {w:.3f}mm → {z_actual:.0f}Ω）")
             violations.append(RuleViolation(
                 rule_name="特征阻抗匹配检查",
-                description=(f"网络 [{name}] {kind}: 线宽 {w:.3f}mm → Z≈{z_actual:.0f}Ω，"
+                description=(f"差分对 [{'/'.join(orig)}]: 线宽 {w:.3f}mm / "
+                             f"对内间距 {s_mm:.3f}mm → Z≈{z_actual:.0f}Ω，"
                              f"偏离目标 {z_target:.0f}Ω 超过 ±25%"),
                 severity=RuleSeverity.ERROR,
-                location=name,
-                suggestion=(advice + f"。介质厚度/介电常数按 4 层板典型值 {h_mm}mm / εr={er} "
+                location="/".join(orig),
+                suggestion=(f"调整线宽 {w:.3f}mm 与对内间距 {s_mm:.3f}mm 的组合，"
+                            f"使差分阻抗 ≈{z_target:.0f}Ω（当前 {z_actual:.0f}Ω）"
+                            f"。介质厚度/介电常数按 4 层板典型值 {h_mm}mm / εr={er} "
                             "估算；精确控制请用 PCB 厂商提供的叠层参数（Polar Si9000）。"),
                 theory="微带线 Z₀=(87/√(εr+1.41))·ln(5.98h/(0.8w+t))；差分线 "
                        "Zdiff≈2·Z₀·(1-0.48·exp(-0.96·s/h))——差分网络必须用差分公式与差分"
                        "目标比对，拿单端公式去比差分目标会结构性地差近一倍。"
+                       "阻抗不匹配→反射(Γ=(ZL-Z₀)/(ZL+Z₀))→过冲/振铃/EMI↑。",
+            ))
+
+        # 单端只判 RF/天线（50Ω）：时钟/SPI/晶振类网络没有受控阻抗要求
+        for name, w in sorted(widths.items()):
+            if _is_power_or_ground_net(name):
+                continue
+            if name.upper() in diff_members:
+                continue
+            if not _kw_hit(name.lower(), single_kw):
+                continue
+            z0_single = microstrip_impedance(w, h_mm, er=er)
+            if abs(z0_single - 50.0) <= 50.0 * 0.25:
+                continue
+            w_target = trace_width_for_impedance(50.0, h_mm, er=er)
+            violations.append(RuleViolation(
+                rule_name="特征阻抗匹配检查",
+                description=(f"网络 [{name}] 单端: 线宽 {w:.3f}mm → Z≈{z0_single:.0f}Ω，"
+                             f"偏离目标 50Ω 超过 ±25%"),
+                severity=RuleSeverity.ERROR,
+                location=name,
+                suggestion=(f"调整线宽至 {w_target:.3f}mm 使 Z₀≈50Ω"
+                            f"（当前 {w:.3f}mm → {z0_single:.0f}Ω）。"
+                            f"介质厚度/介电常数按 4 层板典型值 {h_mm}mm / εr={er} "
+                            "估算；精确控制请用 PCB 厂商提供的叠层参数（Polar Si9000）。"),
+                theory="微带线 Z₀=(87/√(εr+1.41))·ln(5.98h/(0.8w+t))。"
                        "阻抗不匹配→反射(Γ=(ZL-Z₀)/(ZL+Z₀))→过冲/振铃/EMI↑。",
             ))
         return violations
