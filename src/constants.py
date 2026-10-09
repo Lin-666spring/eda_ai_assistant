@@ -258,12 +258,14 @@ class PCBConstants:
     #   experiment_results/trace_threshold_calibration/report.txt
     # 信号线宽不用单一下限，按「绝对工艺下限 + 本板主流线宽」两级判定：
     #   - ABS：细于 0.1mm(≈4mil，一般厂最小) → 可能做不出来
-    #   - REL：细于本板信号线宽众数的 0.6 倍 → 明显偏离本板设计意图（疑似误用细线）
-    #   固定 0.127mm 会命中 1347 网络 / 13 设计（立创泰山派3M 一块就 501 条，因为
-    #   整板用的是 4.8mil 主流宽）；改成两级判据后命中 268 网络 / 8 设计，
-    #   且「整板统一用细线」的专业设计不再被误报。
+    #   2026-10-09 噪声清扫：删除「细于本板主流线宽 0.6 倍」相对条款——焊盘颈口
+    #   是标准做法，金样 129 条全是这一类。0.127mm 下限也否决：≤2 层板有 438 个
+    #   网落在 [0.1,0.127)、一板 149 网，会重演「一板 500 条」误报。
     SIGNAL_TRACE_ABS_MIN_WIDTH_MM: float = 0.1
-    SIGNAL_TRACE_REL_MIN_RATIO: float = 0.6
+    # 时钟包地长度门（2026-10-09 校准）：包地防的是长距离耦合，金样被标时钟网
+    #   长度 <10mm 占 31%、<15mm 占 14%（晶振/SPI 短跑线包地没有意义），
+    #   ≥15mm 才提示，249 → ~140 条。
+    CLOCK_GUARD_MIN_LENGTH_MM: float = 15.0
     SIGNAL_NET_KEYWORDS: tuple = (              # 低速信号网络关键词
         "SCK", "SCL", "SDA", "MISO", "MOSI", "SS",
         "TX", "RX", "SPI", "I2C", "UART",
@@ -297,7 +299,14 @@ class PCBConstants:
     TRACE_ACUTE_ANGLE_MAX_DEG: float = 89.0    # 内角 < 此值 → 锐角（酸陷阱）
     TRACE_RIGHT_ANGLE_MIN_DEG: float = 89.0    # 内角落在 [min,max] → 直角
     TRACE_RIGHT_ANGLE_MAX_DEG: float = 91.0
-    TRACE_CORNER_MIN_LEG_MM: float = 0.05      # 拐角任一侧腿短于此值视为退化
+    # 2026-10-09 噪声清扫校准（78 板金样，experiment_results/violation_noise_2026-10-09）：
+    #   0.05 挡不住覆铜网格/焊盘 void 的弦线短桩（0.016~0.07mm），金样 439 条
+    #   锐角里 369 条「最尖 45.0°」全是网格画法（45° 折线布线内角只会是 135°/90°）。
+    #   另见闭合环豁免（Corner.is_closed，铺铜外框/void 轮廓）。
+    TRACE_CORNER_MIN_LEG_MM: float = 0.25      # 拐角任一侧腿短于此值视为退化
+    TRACE_CORNER_ARTIFACT_ANGLE_FLOOR_DEG: float = 1.0  # <此值 = 折返/链跳数值伪影，非可制造缺陷
+    TRACE_CORNER_VIA_SNAP_MM: float = 0.3      # 顶点吸附过孔圆心 → 结合点几何，非布线拐角
+    TRACE_CORNER_GRID_EPS_DEG: float = 0.3     # 内角与 45° 栅格角偏差小于此值 → 端点相接/折返
     TRACE_CORNER_PAD_LEG_MM: float = 0.5       # 两腿均短于此值且贴近焊盘/过孔 → 焊盘入口几何
     TRACE_CORNER_PAD_CLEAR_MM: float = 1.0     # 「贴近焊盘/过孔」的判定半径 (mm)
 

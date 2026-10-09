@@ -604,9 +604,9 @@ class TestCalibratedTraceRules:
         v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "信号线宽度" in x.rule_name]
         assert len(v) == 1
 
-    def test_signal_width_mixed_within_net_fires(self, checker):
-        # 本板主流 10mil(0.254)，某条网络内部混用了 5mil(0.127) 细段：
-        # 高于工艺下限、明显偏离本板主流，且不是整网统一选细 → 判为误设
+    def test_signal_width_neckdown_within_net_ok(self, checker):
+        # 2026-10-09 噪声清扫：删除 60% 主流线宽相对条款——焊盘颈口是标准做法。
+        # 本板主流 10mil(0.254)，某条网络内部混用 5mil(0.127) 细段 = 颈口，不报
         pcb = PCBData(
             format="lceda_epro2", layers=["TopLayer"],
             traces=[
@@ -621,8 +621,7 @@ class TestCalibratedTraceRules:
             ],
         )
         v = [x for x in checker.check_all([], {}, pcb_data=pcb) if "信号线宽度" in x.rule_name]
-        assert len(v) == 1
-        assert "N2" in v[0].description
+        assert v == []
 
     def test_signal_width_uniformly_thin_net_ok(self, checker):
         # 2026-09-24：整条网络统一选细（如阻抗控制网络）属设计意图，不判误设

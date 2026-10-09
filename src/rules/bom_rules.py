@@ -45,6 +45,17 @@ from .base import (
 
 logger = logging.getLogger(__name__)
 
+
+def _norm_fp(fp: str) -> str:
+    """封装名归一：剥离单字母类别前缀（C0603/R0402/L3216 → 0603/0402/3216）。
+
+    立创封装库用首字母区分类别（C=电容/R=电阻），同一物理封装在电容行和
+    电阻行会分别记成 C0603/R0603，字符串直比会误报「多种封装」——金样
+    150 条封装一致性里 55 条是这类前缀差异。
+    """
+    return re.sub(r"^[A-Za-z](?=\d{3})", "", fp.strip())
+
+
 class BomRulesMixin:
     """方法集由 facade DesignRuleChecker 组合；此处无状态、无 __init__。"""
 
@@ -426,8 +437,12 @@ class BomRulesMixin:
 
 
     def _check_reference_continuity(self, bom_items, positions, netlist):
-        """位号连续性：同类元件位号应连续"""
-        violations = []
+        """位号连续性：同类元件位号应连续
+
+        2026-10-09 噪声清扫：跳号在真实设计里是正常实践（预留位、删除元件、
+        功能分区编号），金样 61/78 板都有、189 条里 106 条是「跳 1 号」。
+        改为每板至多 1 条汇总提示（设计卫生口径，建议类），不再逐前缀报。
+        """
         rc_prefixes = {"R", "C", "L", "D", "U", "Q", "J", "P"}
         prefix_map: dict[str, list[int]] = {}
         for item in bom_items:
@@ -441,30 +456,32 @@ class BomRulesMixin:
                 if prefix in rc_prefixes:
                     nums = "".join(c for c in token if c.isdigit())
                     if nums: prefix_map.setdefault(prefix, []).append(int(nums))
-        for prefix, nums in prefix_map.items():
-            nums.sort()
-            gaps = []
+        gap_bits: list[str] = []
+        for prefix in sorted(prefix_map):
+            nums = sorted(prefix_map[prefix])
             for i in range(len(nums) - 1):
                 gap = nums[i + 1] - nums[i]
-                if gap > 1: gaps.append(f"{prefix}{nums[i]}→{prefix}{nums[i+1]}(跳{gap-1}号)")
-            if gaps:
-                violations.append(RuleViolation(
-                    rule_name="位号连续性检查", description=f"{prefix} 类位号不连续: {gaps[0]}{' ...' if len(gaps)>1 else ''}",
-                    severity=RuleSeverity.INFO,
-                    suggestion="位号不连续通常因删除元件后未重排。确认是否为预留空位。",
-                    theory="规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。"))
-        return violations
+                if gap > 1:
+                    gap_bits.append(f"{prefix}{nums[i]}→{prefix}{nums[i+1]}(跳{gap-1}号)")
+        if gap_bits:
+            shown = ", ".join(gap_bits[:4]) + (" …" if len(gap_bits) > 4 else "")
+            return [RuleViolation(
+                rule_name="位号连续性检查", description=f"位号存在跳号: {shown}",
+                severity=RuleSeverity.INFO,
+                suggestion="跳号常见于预留空位/删除元件/功能分区编号，不是缺陷；批量生产前可用位号重排统一。",
+                theory="规范化 BOM 中同类元件位号应连续(R1,R2,R3...)。PCB 设计工具均提供自动重排位号功能。")]
+        return []
 
 
     def _check_package_consistency(self, bom_items, positions, netlist):
-        """封装一致性：同型号不同封装可能为误选"""
+        """封装一致性：同型号不同封装可能为误选（封装名先做前缀归一）"""
         violations = []
         pn_pkgs: dict[str, set] = {}
         for item in bom_items:
             pn = (getattr(item, "part_number", "") or "").strip()
             pkg = (getattr(item, "package", "") or "").strip()
             if not pn or not pkg or pn == "N/A": continue
-            pn_pkgs.setdefault(pn, set()).add(pkg)
+            pn_pkgs.setdefault(pn, set()).add(_norm_fp(pkg))
         for pn, pkgs in pn_pkgs.items():
             if len(pkgs) > 1:
                 refs = [getattr(i, "reference", "") for i in bom_items if (getattr(i, "part_number", "") or "").strip() == pn]
@@ -1351,9 +1368,19 @@ class BomRulesMixin:
 
 
     def _check_pdn_target_impedance(self, bom_items, positions, netlist):
-        """PDN 目标阻抗 — 检查电源分配网络是否满足目标阻抗"""
+        """PDN 目标阻抗 — 检查电源分配网络是否满足目标阻抗
+
+        2026-10-09 噪声清扫：板面积原硬编码 5000mm²，现取 board_outline 实测
+        宽×高（无板框数据则跳过——没有几何就没法算平面电容/IR 压降）；电压与
+        电流是推断值，文案标注「估算」。
+        """
         from src.pcb.calculator import analyze_pdn, pdn_target_impedance
 
+        pcb = self._pcb_data
+        bo = (pcb.board_outline or {}) if pcb else {}
+        area = (bo.get("width_mm") or 0) * (bo.get("height_mm") or 0)
+        if area <= 0:
+            return []
         violations = []
         # 从 BOM 推断电压和电流
         voltage = 3.3
@@ -1365,12 +1392,13 @@ class BomRulesMixin:
                 voltage = 5.0
                 break
 
-        pdn = analyze_pdn(voltage, current, board_area_mm2=5000, ripple_percent=5.0)
+        pdn = analyze_pdn(voltage, current, board_area_mm2=area, ripple_percent=5.0)
 
         violations.append(RuleViolation(
             rule_name="PDN 目标阻抗分析",
             description=(
-                f"{voltage}V/{current:.2f}A 电源: 目标阻抗 Z_target={pdn.target_impedance_ohm*1000:.0f}mΩ，"
+                f"{voltage}V/{current:.2f}A 电源(估算，板面积 {area:.0f}mm²): "
+                f"目标阻抗 Z_target={pdn.target_impedance_ohm*1000:.0f}mΩ，"
                 f"平面电容 {pdn.plane_capacitance_f*1e9:.2f}nF，"
                 f"建议 ≥{pdn.decoupling_count} 个去耦电容，IR压降≈{pdn.voltage_drop_mv:.1f}mV"
             ),

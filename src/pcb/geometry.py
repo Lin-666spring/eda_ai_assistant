@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 #: 端点视为同一点的容差 (mm)。立创坐标精度 1e-4 mm 量级，0.01mm 足以吸收
 #: 浮点/取整误差，又远小于任何真实走线拐点间距。
@@ -30,12 +30,15 @@ class Corner:
 
     angle_deg 是**内角**：180° = 直线（不是拐角），90° = 直角，
     <90° = 锐角（45° 布线产生的拐角是 135°）。
+    is_closed=True 表示拐角来自**闭合折线**（铺铜外框、焊盘 void 轮廓、
+    网格铺铜的单元环）——这些是覆铜几何，不是走线路径，规则应豁免。
     """
 
     angle_deg: float
     vertex: tuple[float, float]
     leg_in_mm: float
     leg_out_mm: float
+    is_closed: bool = False
 
 
 def _cluster_endpoints(points: list[tuple[float, float]], tol: float) -> list[int]:
@@ -195,8 +198,15 @@ def polyline_corners(
 def trace_corners(
     segments, tol: float = DEFAULT_TOL_MM, min_leg_mm: float = 0.0
 ) -> list[Corner]:
-    """一组无序线段 -> 折线 -> 全部拐角（含 180° 直行点）。"""
+    """一组无序线段 -> 折线 -> 全部拐角（含 180° 直行点）。
+
+    首尾重合的闭合折线（覆铜外框/void 轮廓/网格单元）上的拐角带
+    is_closed=True —— 覆铜几何不是走线路径，其上的"锐角"是 45° 网格画法，
+    由调用方豁免。
+    """
     corners: list[Corner] = []
     for line in chain_segments(segments, tol=tol):
-        corners.extend(polyline_corners(line, min_leg_mm=min_leg_mm))
+        closed = len(line) >= 4 and line[0] == line[-1]
+        for c in polyline_corners(line, min_leg_mm=min_leg_mm):
+            corners.append(replace(c, is_closed=closed) if closed else c)
     return corners

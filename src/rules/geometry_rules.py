@@ -50,24 +50,27 @@ class GeometryRulesMixin:
     # ═══ PCB-data rules ═══
 
     def _check_signal_traces(self, bom_items, positions, netlist):
-        """信号线宽度：按「本板实际线宽」判定，而不是一条固定下限。
+        """信号线宽度：绝对工艺下限（按层数区分），相对条款已删。
 
-        1) 绝对硬下限：细于 SIGNAL_TRACE_ABS_MIN_WIDTH_MM（≈4mil，一般厂最小）→ 可能做不出来
-        2) 相对异常：细于本板信号线宽众数的 SIGNAL_TRACE_REL_MIN_RATIO 倍 →
-           明显偏离本板设计意图，多半误用了细线；整板统一用细线的设计不会误报
+        绝对硬下限：≥4 层 0.088mm（标准多层工艺 3.5mil=0.0889mm 以内），<4 层
+        0.1mm（一般厂最小 4mil）→ 细于下限可能做不出来。
+        2026-10-09 噪声清扫：删除「细于本板主流线宽 60% 且混用线宽」相对条款——
+        焊盘入口颈口(neck-down)是标准做法，金样 129 条警告全是这一类（RK3576
+        一板 73 条：0.127mm 颈口 vs 0.254mm 主流）。0.127mm(5mil) 下限也曾校准
+        过：金样 ≤2 层板有 438 个网落在 [0.1,0.127)、一板 149 网，会重演
+        「一板 500 条」误报（constants 2026-09-24 注），故下限维持 0.1mm。
         """
         pcb = self._pcb_data
         if not pcb or not pcb.traces: return []
         violations = []
-        # 2026-09-24 抽查修正：① 绝对下限按层数区分（≥4 层常规工艺能力 0.09mm，
-        # 原实现对所有板一律取 0.1mm）；② 相对判据只对「同一网络内混用多种线宽」
-        # 生效——整条网络统一选细则多半是有意的设计（如阻抗控制的 3.5mil 网络），
-        # 抽样里 5/5 误报都是这一类。
+        # 2026-09-24 抽查修正：绝对下限按层数区分。
+        # 2026-10-09 再校准：≥4 层下限 0.09 → 0.088——3.5mil = 0.0889mm 是标准
+        # 多层工艺，原 0.09 比它大 1µm，把金样里整板按 3.5mil 布线的万兆软路由
+        # 板误报 79 条。
         layer_count = len({t.layer for t in pcb.traces if t.layer}) or len(
             getattr(pcb, "layers", None) or []
         )
-        abs_min = 0.09 if layer_count >= 4 else PCB.SIGNAL_TRACE_ABS_MIN_WIDTH_MM
-        ratio = PCB.SIGNAL_TRACE_REL_MIN_RATIO
+        abs_min = 0.088 if layer_count >= 4 else PCB.SIGNAL_TRACE_ABS_MIN_WIDTH_MM
         sig_traces = [
             t for t in pcb.traces
             if t.net_name and t.width_mm > 0
@@ -80,31 +83,20 @@ class GeometryRulesMixin:
                 net_min[t.net_name] = t.width_mm
         if not net_min:
             return []
-        # 本板信号线宽众数（按折线条数）—— 代表设计者实际选用的工艺线宽
+        # 本板信号线宽众数（按折线条数）——只用于建议文案里给出对照
         dom_w = Counter(t.width_mm for t in sig_traces).most_common(1)[0][0]
-        rel_floor = dom_w * ratio
-        widths_by_net: dict[str, set] = {}
-        for t in sig_traces:
-            widths_by_net.setdefault(t.net_name, set()).add(round(t.width_mm, 4))
         for name, w in net_min.items():
-            if w >= abs_min and w >= rel_floor:
+            if w >= abs_min:
                 continue
-            if w < abs_min:
-                why = f"细于工艺下限 {abs_min}mm"
-            else:
-                if len(widths_by_net.get(name, ())) < 2:
-                    continue   # 整网统一细线 = 设计意图，不判误设
-                why = (f"仅本板主流线宽 {dom_w:.3f}mm 的 {ratio:.0%}"
-                       f"（{rel_floor:.3f}mm），且该网络内混用了多种线宽")
             violations.append(RuleViolation(
                 rule_name="信号线宽度检查",
-                description=f"网络 [{name}] 最小线宽 {w:.3f}mm，{why}",
+                description=f"网络 [{name}] 最小线宽 {w:.3f}mm，细于工艺下限 {abs_min}mm",
                 severity=RuleSeverity.WARNING, location=name,
-                suggestion=(f"确认该网络线宽是否有意为之：工艺下限约 {abs_min}mm(4mil)，"
-                            f"本板其余走线多用 {dom_w:.3f}mm。高速信号还需确认阻抗匹配。"),
-                theory="走线宽度由 PCB 工艺能力和信号完整性共同决定。一般厂最小 4mil(0.1mm)。"
-                       "同一块板通常有意选用一套线宽，明显偏离本板主流的网络更可能是误设，"
-                       "因此判据取「绝对下限」与「本板主流线宽」两者较宽者。"))
+                suggestion=(f"确认该网络线宽是否有意为之：工艺下限约 {abs_min}mm"
+                            f"({3.5 if abs_min < 0.1 else 4}mil)，本板其余走线多用 {dom_w:.3f}mm。"
+                            "高速信号还需确认阻抗匹配。"),
+                theory="走线宽度由 PCB 工艺能力和信号完整性共同决定。一般厂最小 4mil(0.1mm)，"
+                       "多层板常规能力 3.5mil(0.09mm)。细于下限的走线可能蚀刻不良/过电流能力不足。"))
         return violations
 
 
@@ -180,6 +172,7 @@ class GeometryRulesMixin:
         if not pcb or not pcb.traces:
             return []
         acute_max = PCB.TRACE_ACUTE_ANGLE_MAX_DEG
+        artifact_floor = PCB.TRACE_CORNER_ARTIFACT_ANGLE_FLOOR_DEG
         right_min = PCB.TRACE_RIGHT_ANGLE_MIN_DEG
         right_max = PCB.TRACE_RIGHT_ANGLE_MAX_DEG
         # 2026-09-24 抽查修正：
@@ -187,9 +180,26 @@ class GeometryRulesMixin:
         #    一律 INFO 的结果是 75/76 块板都响；
         # ② 锐角增加「焊盘入口几何」二次过滤——抽样里 2/3 的锐角其实是元件焊盘/过孔
         #    入口的短拐角（腿长 0.2mm、距元件 0.4mm），不是布线拐角。
+        # 2026-10-09 噪声清扫（78 板金样，439 条里 369 条「最尖 45.0°」）：
+        # ③ 闭合折线（铺铜外框/void 轮廓/网格单元）豁免——覆铜几何里的 45° 是画法
+        #    不是酸陷阱（45° 折线布线的内角只会是 135°/90°）；
+        # ④ 内角 <1° 的折返点跳过——端点串联在近重合节点上产生的数值伪影（零宽缝隙）。
+        # ⑤ 顶点吸附在过孔圆心（±VIA_SNAP）的尖角跳过——那是两条路径经同一过孔
+        #    相接的结合点，不是布线拐角（金样 341 个剩余尖角里 110 个顶点与过孔
+        #    圆心完全重合）；
+        # ⑥ 内角恰为 45°（±GRID_EPS）的栅格楔形跳过——45° 栅格布线的真拐角内角
+        #    只会是 135°/90°，内角 45.0° 全部来自「独立路径端点相接」或蛇形/绕障
+        #    折返（金样 199/341），均非布线失误；自由角度的楔形仍照报；
+        # ⑦ (net,layer) 已注册覆铜区的 trace 整组跳过——GND 覆铜 thermal/void 的
+        #    弧弦模板角（如 RK3576 的 82.4°×N）是覆铜几何，不是走线。
         diff_members: set = set()
         for _label, nets, _src in self._diff_groups_src(pcb):
             diff_members.update(str(n).upper() for n in nets)
+        pour_keys: set = {
+            (str(p.get("net_name")), str(p.get("layer")))
+            for p in (getattr(pcb, "copper_pours", None) or [])
+        }
+        via_pts: list = []
         anchor_grid: dict = {}
         for v in (pcb.vias or []):
             # 2026-10-06 修复：PCBVia 只有 position 元组、没有 x/y 属性，
@@ -203,6 +213,7 @@ class GeometryRulesMixin:
                 if vx is None or vy is None:
                     continue
                 ax, ay = float(vx), float(vy)
+            via_pts.append((ax, ay))
             anchor_grid.setdefault((math.floor(ax), math.floor(ay)), []).append((ax, ay))
         for pos in (getattr(pcb, "component_positions", None) or {}).values():
             if isinstance(pos, dict) and "x" in pos and "y" in pos:
@@ -210,6 +221,8 @@ class GeometryRulesMixin:
                 anchor_grid.setdefault((math.floor(ax), math.floor(ay)), []).append((ax, ay))
         clear_r = PCB.TRACE_CORNER_PAD_CLEAR_MM
         pad_leg = PCB.TRACE_CORNER_PAD_LEG_MM
+        via_snap = PCB.TRACE_CORNER_VIA_SNAP_MM
+        grid_eps = PCB.TRACE_CORNER_GRID_EPS_DEG
 
         def _is_pad_entry(c) -> bool:
             """两腿都短、且顶点贴着焊盘/过孔 → 焊盘入口几何，不是走线拐角。"""
@@ -223,17 +236,30 @@ class GeometryRulesMixin:
                             return True
             return False
 
+        def _at_via_join(c) -> bool:
+            """顶点吸附过孔圆心 → 两条路径经同一过孔相接的结合点。"""
+            x, y = c.vertex[0], c.vertex[1]
+            return any(math.hypot(x - vx, y - vy) <= via_snap for vx, vy in via_pts)
+
         acute_violations = []
         right_violations = []
         for t in pcb.traces:
             if not t.net_name:
                 continue
+            if (t.net_name, t.layer) in pour_keys:
+                continue        # ⑦ 覆铜网格/thermal 弦线混入的「走线」
             corners = trace_corners(t.segments, min_leg_mm=PCB.TRACE_CORNER_MIN_LEG_MM)
             if not corners:
                 continue
             acute = [c for c in corners
-                     if c.angle_deg < acute_max and not _is_pad_entry(c)]
-            right = [c for c in corners if right_min <= c.angle_deg <= right_max]
+                     if artifact_floor <= c.angle_deg < acute_max
+                     and not c.is_closed
+                     and abs(c.angle_deg - 45.0) > grid_eps
+                     and not _at_via_join(c)
+                     and not _is_pad_entry(c)]
+            right = [c for c in corners if right_min <= c.angle_deg <= right_max
+                     and not c.is_closed
+                     and not _at_via_join(c)]
             if right and _net_class(t.net_name, diff_members) not in ("diff", "high"):
                 right = []      # 低速网络的直角可接受，不再逐块板提示
             if acute:
@@ -486,16 +512,42 @@ class GeometryRulesMixin:
         return violations
 
 
+    # 调试/RTC 时钟网：包地建议对它们没有意义（SWD/JTAG 调试时钟速率低且
+    # 短；32.768kHz RTC 晶振波长以公里计）。
+    _CLOCK_GUARD_EXCLUDE_RE = re.compile(
+        r"SWCLK|SWDCLK|SWD_CLK|\bTCK\b|\bTMS\b|\bTDO\b|\bTDI\b|32K|OSC32|32768")
+
     def _check_clock_guard_trace(self, bom_items, positions, netlist):
-        """时钟信号包地：高频时钟应有包地走线"""
+        """时钟信号包地：高频时钟应有包地走线
+
+        2026-10-09 噪声清扫：原实现网络名含 CLK/OSC… 即报，金样 50 板 249 条
+        （SWCLK 调试时钟、32.768kHz RTC 晶振也响）。加两道门：
+        ① 调试/RTC 网排除（_CLOCK_GUARD_EXCLUDE_RE）；
+        ② 长度门 CLOCK_GUARD_MIN_LENGTH_MM——包地防的是长距离耦合，晶振到 MCU
+          的短线（金样分布：<10mm 占 31%、<15mm 占 14%）没有包地价值；≥15mm
+          的长时钟跑线才提示（金样剩 ~140 条）。
+        """
         pcb = self._pcb_data
         if not pcb or not pcb.traces: return []
         violations = []
         clk_kw = ["CLK", "CLOCK", "OSC", "XTAL", "MCLK", "SCLK", "HCLK"]
+        min_len = PCB.CLOCK_GUARD_MIN_LENGTH_MM
+        net_len: dict[str, float] = {}
+        for t in pcb.traces:
+            if not t.net_name:
+                continue
+            acc = net_len.setdefault(t.net_name, 0.0)
+            for s in t.segments:
+                acc += math.dist((s[0], s[1]), (s[2], s[3]))
+            net_len[t.net_name] = acc
         seen: set = set()
         for t in pcb.traces:
             name = (t.net_name or "").upper()
             if not any(kw.upper() in name for kw in clk_kw):
+                continue
+            if self._CLOCK_GUARD_EXCLUDE_RE.search(name):
+                continue
+            if net_len.get(t.net_name, 0.0) < min_len:
                 continue
             # traces 按 (网络, 层) 聚合，同一时钟网络跨层会出现多次，按网络去重
             if t.net_name in seen:
@@ -503,7 +555,7 @@ class GeometryRulesMixin:
             seen.add(t.net_name)
             violations.append(RuleViolation(
                 rule_name="时钟信号包地检查",
-                description=f"时钟网络 [{t.net_name}] 建议添加包地走线",
+                description=f"时钟网络 [{t.net_name}] 走线长约 {net_len[t.net_name]:.0f}mm，建议添加包地走线",
                 severity=RuleSeverity.INFO, location=t.net_name,
                 suggestion="时钟走线两侧加接地护线(GND guard trace)，每隔 λ/20 打过孔接地。护线距时钟线 ≥3W。",
                 theory="时钟是 PCB 上最强 EMI 源—高幅值、固定频率、陡峭边沿(tr<1ns 含数百 MHz 谐波)。包地走线将电场约束在信号-护线间,降低对邻线的串扰。接地过孔间距≤λ/20(如 100MHz→FR4 λ≈1.5m→λ/20≈7.5mm)。",
@@ -679,11 +731,20 @@ class GeometryRulesMixin:
 
 
     def _check_silkscreen_readability(self, bom_items, positions, netlist):
-        """丝印可读性：丝印应与焊盘/过孔有足够间距"""
+        """丝印可读性：丝印应与焊盘/过孔有足够间距
+
+        2026-10-09 噪声清扫：丝印几何（TEXT 坐标）尚未解析（.epro2 里 TEXT
+        原子只有计数、无坐标，见 epro2_parser），没有数据就没有真实判定，
+        原「含 N 个元件，建议检查丝印」是每板必响的模板（金样 78/78）。
+        守卫读 metadata['silk_elements']（解析器落地丝印解析后填此键），当前
+        恒缺 → 永不触发；数据可用后无需改判据即可启用。
+        """
         pcb = self._pcb_data
-        if not pcb: return []
+        if not pcb:
+            return []
+        if not (getattr(pcb, "metadata", None) or {}).get("silk_elements"):
+            return []
         violations = []
-        # 丝印数据通常不在轻量解析中，给出通用建议
         comp_count = len(pcb.component_positions or {})
         if comp_count > 10:
             violations.append(RuleViolation(
@@ -697,9 +758,15 @@ class GeometryRulesMixin:
 
 
     def _check_silkscreen_pad_clearance(self, bom_items, positions, netlist):
-        """丝印与焊盘间距：丝印文字不应覆盖焊盘"""
+        """丝印与焊盘间距：丝印文字不应覆盖焊盘
+
+        2026-10-09 噪声清扫：同丝印可读性——丝印几何未解析，守卫
+        metadata['silk_elements'] 落地前永不触发（原模板每板必响）。
+        """
         pcb = self._pcb_data
         if not pcb or not pcb.component_positions:
+            return []
+        if not (getattr(pcb, "metadata", None) or {}).get("silk_elements"):
             return []
         comp_count = len(pcb.component_positions)
         if comp_count > 5:
@@ -821,12 +888,23 @@ class GeometryRulesMixin:
 
 
     def _check_ground_plane_continuity(self, bom_items, positions, netlist):
-        """地平面连续性：GND 铺地应避免割裂"""
+        """地平面连续性：GND 铺地应避免割裂
+
+        2026-10-09 噪声清扫：原实现只要 pcb 存在就报一条通用科普（78/78 板全响）。
+        改为看 copper_pours 证据：已有 GND 族铺铜 → 静默（连续性没有几何数据
+        可算，不空喊）；完全没有 GND 铺铜（常见于简单双面板）→ 才提示。
+        """
         pcb = self._pcb_data
-        if not pcb: return []
+        if not pcb:
+            return []
+        gnd_kw = ("GND", "AGND", "DGND", "PGND", "VSS", "EARTH")
+        for p in (getattr(pcb, "copper_pours", None) or []):
+            net = str(p.get("net_name") or "").upper()
+            if any(kw in net for kw in gnd_kw):
+                return []
         return [RuleViolation(
             rule_name="地平面连续性检查",
-            description="高速信号需要连续的地平面作为回流路径。割裂的地平面增加环路面积和EMI。",
+            description="未检测到 GND 族铺铜，建议整板铺地",
             severity=RuleSeverity.INFO,
             suggestion="关键信号(时钟/高频)下方保证完整 GND 平面。信号跨分割区需加stitching电容(10nF)桥接回流。",
             theory="高速信号的回流电流沿最小阻抗路径(紧邻信号线下方)流回源端。地平面割裂→回流绕行→环路面积↑→EMI↑。>50MHz 信号必须保证连续参考平面。",

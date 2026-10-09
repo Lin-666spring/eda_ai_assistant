@@ -147,7 +147,8 @@ def _ev_width(checker, pcb, positions, bom_items, v) -> dict:
     prof, minw = _width_profile(traces)
     all_w = [t.width_mm for t in pcb.traces if t.width_mm > 0]
     dom = Counter(round(w, 4) for w in all_w).most_common(1)[0][0] if all_w else 0.0
-    floor = max(PCB.SIGNAL_TRACE_ABS_MIN_WIDTH_MM, dom * PCB.SIGNAL_TRACE_REL_MIN_RATIO)
+    # 2026-10-09 起判据只剩绝对下限（60% 主流线宽相对条款已删）
+    floor = PCB.SIGNAL_TRACE_ABS_MIN_WIDTH_MM
     total = sum(prof.values()) or 1.0
     narrow = sum(L for w, L in prof.items() if w < floor)
     near = []

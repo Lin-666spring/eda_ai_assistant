@@ -388,13 +388,30 @@ class LayoutRulesMixin:
 
 
     def _check_fiducial_mark(self, bom_items, positions, netlist):
-        """Mark点检查：批量生产PCB应有光学定位Mark点"""
-        if positions and len(positions) > 10:
-            return [RuleViolation(
-                rule_name="光学定位点检查",
-                description="PCB 含较多元件但未确认是否有光学定位(Mark)点",
-                severity=RuleSeverity.INFO,
-                suggestion="PCB 对角放置≥2个全局 Mark 点(Φ1.0mm 铜箔+Φ3.0mm 阻焊开窗)。细间距IC(QFP/BGA)局部加Mark点。",
-                theory="SMT 贴片机通过识别 Mark 点校正 PCB 位置偏差。全局 Mark 用于整板定位，局部 Mark 用于精细间距元件定位。无 Mark 点→贴片精度不足→立碑/偏移。",
-            )]
-        return []
+        """Mark点检查：批量生产PCB应有光学定位Mark点
+
+        2026-10-09 噪声清扫：原实现 len(positions)>10 即报「未确认是否有 Mark」
+        （78/78 板全响）。改为在 component_positions 的封装名/值/料号里找
+        FIDUCIAL / MARK-POINT 类器件（金样 1/78 板有，footprint_name=
+        'MARK-POINT'）：找到 → 静默；找不到 → 文案改为「未检测到」，可证伪。
+        位号不参与匹配（M4 也可能是安装孔）。
+        """
+        if not positions or len(positions) <= 10:
+            return []
+        fiducial_kw = ("fiducial", "mark", "基准", "定位")
+        for pos in positions.values():
+            if not isinstance(pos, dict):
+                continue
+            blob = " ".join(
+                str(pos.get(k) or "") for k in
+                ("footprint_name", "footprint", "device", "value", "part_number")
+            ).lower()
+            if any(kw in blob for kw in fiducial_kw):
+                return []
+        return [RuleViolation(
+            rule_name="光学定位点检查",
+            description="未检测到光学定位(Mark)点器件，SMT 批量贴片前需确认",
+            severity=RuleSeverity.INFO,
+            suggestion="PCB 对角放置≥2个全局 Mark 点(Φ1.0mm 铜箔+Φ3.0mm 阻焊开窗)。细间距IC(QFP/BGA)局部加Mark点。",
+            theory="SMT 贴片机通过识别 Mark 点校正 PCB 位置偏差。全局 Mark 用于整板定位，局部 Mark 用于精细间距元件定位。无 Mark 点→贴片精度不足→立碑/偏移。",
+        )]
