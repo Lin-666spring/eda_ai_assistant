@@ -78,6 +78,7 @@
   建议给规则加 kind: detect|advise，覆盖率只报 detect
 - [ ] **P2 铜皮连接检查**（1496-1509）：只有缺铜皮数据时才报，有铜皮恒空 → 属数据缺失不是缺陷
 - [ ] **P2 元件间距检查**：只比较位置字典相邻 4 个元件（非空间最近邻），结论不可复现
+  （2026-10-09 描述口径已对齐实现并注明抽样性；算法本身未动）
 - [x] **P2 未连接引脚检查**（2026-10-02 修）：改为按「位号.」前缀数**真实引脚**（旧写法 values() 是引脚列表、getattr(list,"pins") 恒为 []，connected 恒 0 = 有 IC 就报）；
   并把 ctx.netlist 从「永远为空的 list」改成 dict，check_all 在 netlist 为空时从 pcb_data.nets 反推 → 该规则**首次在软件里生效**（也修掉了「实验有输出、产品不触发」的口径分裂）
 - [ ] **P2 解析器 orphan 丢针**（epro2_parser.py:413-417）：轮廓仪 20 条 JP1/JP2 焊盘记录被丢弃，
@@ -115,6 +116,36 @@
   只有 ui_smoke 抓得住。(2) 缝上修补用 `Path.write_text` 会做 LF→CRLF 翻译，
   Python 侧动 JS 文件一律 binary read/write。(3) 拆分等价脚本惯例用完即删，
   思路保留在本节与 commit message。
+
+## 已处理（2026-10-09）：P2 小项批次（外审 P2 余下 8 项，P2-9 双口径此前已清）
+
+- [x] **板边间距/连接器边沿两规则减板框原点**：绝对坐标比门限 → 板框包围盒
+  真实边距（`board_outline` source=outline 守卫，铜包围盒退回时跳过——
+  与走线板边规则同一口径）。金样 78 板：板边 **62 → 24**、连接器 **57 → 31**，
+  其余 56 规则逐字节不变（总 3519 → 3455，rule_errors 双侧 0）；
+  证据 `experiment_results/p2_small_fixes_2026-10-09/`
+- [x] **元件间距检查描述对齐实现**：描述/文档串写明「按导入顺序抽样、非空间
+  最近邻」。**算法未动**——「只比字典相邻 4 项、结论不可复现」仍列
+  2026-10-06 抽查待修项
+- [x] **死代码 return**：geometry_rules 地平面连续性规则 unconditional
+  return 后的 `return []`
+- [x] **_xy helper**：layout_rules 7 处内联「dict 优先兼容 list/tuple」坐标
+  解析收编 `base._xy`（金样证实零行为变化）；新增「src/ 不允许 return/raise
+  后跟死语句」AST tripwire
+- [x] **.epro2 后缀缺失**：`WatcherConstants.PCB_EXTENSIONS` 补 `.epro2`；
+  file_watcher 删私藏副本改引常量（防漂移）；eda_adapter supported_formats、
+  main_window 文件对话框、endpoints docstring 同步。web 端与解析器分发
+  此前已支持，缺口全在 Python 侧常量/过滤
+- [x] **{11} 硬编码**：query_knowledge_base 帮助文案的文档数改为按
+  `rag_data/*.md` 实时计数（恰为 11，纯巧合）
+- [x] **chmod 注释失实**：config/persistence 注释如实（0o600 仅 POSIX 全义，
+  Windows 只影响只读位）；config 的 chmod 挪出主 try——收紧失败不再吞掉
+  已成功的保存
+- [x] **eel 裸 import**：main.py try/except ImportError → 中文安装提示后退出
+- 回归 `tests/test_p2_small_fixes.py`（11 例）；终版 **1060 passed**
+- **坑位**：金样脚手架必须 `check_all(..., pcb_data=pcb)` —— check_all 首行
+  无条件 `self._pcb_data = pcb_data`，只设 `checker._pcb_data` 不传参会让
+  全部走线/板框类规则静默跳过（第一版快照 1312 条 vs 正确 3519 的根因）
 
 ## 已处理（2026-10-08）：修复计划第二批 P1 全量落地
 
