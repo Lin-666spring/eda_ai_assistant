@@ -21,7 +21,7 @@ pip install -r requirements.txt
 # Run the app (Eel Web UI, opens Chrome/Edge)
 python main.py
 
-# Run all tests (965 collected)
+# Run all tests (1179 collected)
 python -m pytest tests/ -q
 
 # Run a single test module

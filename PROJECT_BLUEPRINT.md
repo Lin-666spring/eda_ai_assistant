@@ -3,7 +3,7 @@
 > **核心方向：多 LLM 协同路由网关 + RAG 增强的中文 PCB 知识检索**  
 > 面向立创EDA的AI智能辅助设计软件 — 内置Agent的BOM管理与PCB设计助手  
 > 吉林大学 · 测控技术与仪器专业 · 创新训练项目  
-> 版本 v0.4.0-dev | 2026-05-27 更新
+> 版本 v0.8.0 | 2026-10-10 更新（文档批：全篇对齐 Eel Web 现状，替换 2026-05-27 的 PyQt5 旧版）
 
 ---
 
@@ -16,19 +16,20 @@
 本项目：         多 LLM 智能网关 + RAG 知识检索 + 闭环验证
 
           ┌──────────────────────────────────────┐
-          │         PyQt5 统一对话界面            │
+          │      Web 统一对话界面 (Eel)           │
+          │   Chat-first：主页面=对话，功能进子页面 │
           ├──────────────────────────────────────┤
 用户输入 →│         多 LLM 协同路由网关            │
           │  ┌──────────┬──────────┬──────────┐  │
           │  │ Kimi     │ GPT-4V   │ DeepSeek │  │
           │  │ 中文RAG  │ PCB视觉   │ 规则生成  │  │
           │  ├──────────┼──────────┼──────────┤  │
-          │  │ Qwen-VL  │ 本地模型  │ ...扩展   │  │
-          │  │ 原理图   │ 离线快速   │          │  │
+          │  │ Qwen-VL  │ Claude   │ ...扩展   │  │
+          │  │ 原理图   │ 原生协议  │          │  │
           │  └──────────┴──────────┴──────────┘  │
           ├──────────────────────────────────────┤
           │         闭环验证引擎                  │
-          │   LLM 建议 → 规则引擎 → 反馈纠正     │
+          │  LLM 建议 → 71条规则 → 收敛状态机反馈  │
           ├──────────────────────────────────────┤
           │     RAG 知识库（立创EDA中文文档）      │
           └──────────────────────────────────────┘
@@ -40,7 +41,7 @@
 |--------|------|---------|
 | **I. 多 LLM 协同路由** | 按任务类型（中文问答/视觉分析/规则生成/离线）自动分派到最优 LLM，统一界面调度 | 立创EDA 单 Kimi；Cadence 单模型内嵌。学术空白 |
 | **II. RAG 增强中文 PCB 知识检索** | 索引立创EDA中文文档 + 封装数据库 + DRC 规则，支持带引用的精确问答 | ChipMind KG 是 IC 级英文；PCB 级中文 RAG 空白 |
-| **III. 闭环验证** | LLM 生成设计建议 → 规则引擎实时验证 → 不一致自动反馈纠正，解决硬件领域幻觉问题 | DRC-Coder 是 IC 级；PCB 级闭环验证无报道 |
+| **III. 闭环验证** | LLM 生成设计建议 → 规则引擎实时验证 → 收敛状态机判定（停滞/震荡/发散检测），解决硬件领域幻觉问题 | DRC-Coder 是 IC 级；PCB 级闭环验证无报道 |
 
 ### 论文选题
 
@@ -48,7 +49,7 @@
 
 **子方向**：
 - RAG 增强的中文 PCB 设计知识检索系统
-- 基于大语言模型的 DRC 规则自动生成与闭环验证
+- 基于大语言模型的 DRC 规则自动生成与闭环验证（EI 主攻：迭代收敛引擎，见 `src/core/convergence.py`）
 - 面向 PCB 的 BOM 健康评估与智能替代推荐
 
 ### 差异化护城河
@@ -56,7 +57,7 @@
 ```
 竞品                             本项目
 ──────────────────────────────────────────────────
-立创EDA AI     单LLM(Kimi)     → 多LLM路由(6→按需扩展)
+立创EDA AI     单LLM(Kimi)     → 多LLM路由(10家，含Claude原生协议)
 Cadence AI     布局布线专精     → BOM+DRC知识推理（错位竞争）
 KiCad MCP      操作KiCad       → 立创EDA生态（国内唯一）
 ChipMind KG    IC级知识图谱    → PCB级中文知识图谱（空白）
@@ -70,315 +71,226 @@ Synopsys DSO   芯片设计优化     → 高校/个人用户（市场空白）
 
 ```
 eda_ai_assistant/
-├── main.py                          # 应用入口
+├── main.py                          # 应用入口（Eel，60+ 个 @eel.expose 薄封装）
+├── eda_ai_assistant.spec            # PyInstaller 打包（唯一构建入口）
 ├── requirements.txt                 # Python 依赖
 ├── .env                             # LLM API Key 配置（不入 git）
+├── web/                             # Eel 前端（Cherry Studio 设计系统）
+│   ├── index.html                   # Chat-first 布局：主页面=对话，功能收进子页面
+│   ├── css/                         # 深浅双主题 token（:root / body[data-theme]）
+│   └── js/                          # 13 个经典 script 模块（保序加载，P1-6 阶段C 拆分）
+│       （state / persistence / assistants / conversations / tools / chat /
+│        imports / settings / utils / stream / review / heatmap / misc）
 ├── src/
-│   ├── config.py                    # 配置管理（.env + settings.json）
-│   ├── constants.py                 # 常量（厂商预设、GUI默认值）
+│   ├── config.py                    # 配置管理（环境变量 > settings.json > 预设）
+│   ├── constants.py                 # 冻结 dataclass：厂商预设/IPC 参数/收敛配置等
 │   ├── exceptions.py                # 统一异常体系
+│   ├── settings_facade.py           # 设置读写单一实现
 │   │
-│   ├── core/
-│   │   └── controller.py            # AppController — 业务编排层（UI无关）
+│   ├── agent/                       # AI 引擎
+│   │   ├── nlu_engine.py            # 两段式 NLU（embedding + 关键词，10 意图）
+│   │   ├── router.py                # 多 LLM 路由（TaskIntent 分类）
+│   │   ├── llm_client.py            # OpenAI 兼容客户端（流式/多模态/Function Calling）
+│   │   ├── anthropic_client.py      # Claude 原生 Messages API 客户端
+│   │   ├── prompt_templates.py      # Prompt 模板库（BOM/Rule/DRC/Command…）
+│   │   ├── tools.py                 # 24 工具注册表（ToolRegistry，全系统 SSOT）
+│   │   ├── review_agents.py         # 5 Agent 并行审查（电源/信号/热/EMC/DFM）
+│   │   ├── design_templates.py      # 12 电路模板 + 设计意图识别
+│   │   └── model_catalog.py         # 模型目录
 │   │
-│   ├── agent/
-│   │   ├── llm_client.py            # LLM 客户端（6厂商、流式、Function Calling、对话历史）
-│   │   └── prompt_templates.py      # Prompt 模板（BOM/Rule/Command/AI Merge）
+│   ├── core/                        # 编排与基础设施
+│   │   ├── controller.py            # AppController — UI 无关业务编排（the brain）
+│   │   ├── verifier.py              # 闭环验证引擎（LLM→DRC→反馈→迭代）
+│   │   ├── convergence.py           # 迭代收敛状态机（停滞/震荡/发散检测，论文 4.3）
+│   │   ├── design_scorer.py         # 6 维度设计质量评分
+│   │   ├── persistence.py           # SQLite 持久化（工作区/助手/会话/消息/app_state）
+│   │   ├── system_bridge.py         # 全局热键(Ctrl+Shift+E) + 系统托盘 + 伴生模式
+│   │   ├── file_watcher.py          # 立创EDA文件监听（.epro2）
+│   │   ├── boot.py                  # 两段式启动（480×340 小窗 → 1300×840 展开）
+│   │   └── electrical_check.py      # 电气健康检查
 │   │
-│   ├── bom/
-│   │   ├── parser.py                # BOM 解析器（CSV/Excel、编码探测、列名映射）
-│   │   ├── merger.py                # BOM 合并引擎（规则合并 + AI辅助合并）
-│   │   ├── validator.py             # 封装校验器（31条规则+别名系统）
-│   │   ├── checker.py               # 位号查重器（含跨文件）
-│   │   └── normalizer.py            # 参数归一化（R/C/L单位统一）
-│   │
-│   ├── html_bom/
-│   │   ├── generator.py             # HTML BOM 生成器
-│   │   └── templates/ibom.html      # Jinja2 模板（Canvas点阵图+封装轮廓）
-│   │
-│   ├── rules/
-│   │   └── checker.py               # 设计规则检查器（去耦电容✅ + 3空桩）
-│   │
-│   ├── interfaces/
-│   │   ├── eda_adapter.py           # EDA适配器接口 + 立创EDA适配器
-│   │   └── simulator.py             # 仿真器抽象接口 + DummySimulator占位
-│   │
-│   └── gui/
-│       ├── eda_theme.py             # 4主题系统 + 语义色彩 + QSS编译器
-│       ├── main_window.py           # 主窗口（导航栏、卡片布局、主题切换、清空对话）
-│       ├── chat_panel.py            # AI对话面板（气泡消息、流式响应、欢迎页、清空信号）
-│       ├── bom_table.py             # BOM表格视图（行号列、7数据列）
-│       └── settings_panel.py        # LLM设置表单（厂商/Key/模型配置）
+│   ├── bom/                         # BOM 解析/合并/校验/查重/归一化
+│   ├── pcb/                         # .epro2 解析器 + 数据模型 + geometry.py（锐角串联）
+│   ├── rules/                       # 71 条设计规则（base + bom/geometry/layout 三 mixin）
+│   ├── supply/                      # 立创商城 API + BOM 健康（库存/生命周期/替代料/成本）
+│   ├── rag/                         # ChromaDB 本地中文知识库
+│   ├── html_bom/                    # 交互式 HTML BOM（Jinja2 模板）
+│   ├── interfaces/                  # EDA 适配器（立创EDA JSON）+ simulator 抽象（占位）
+│   ├── api/                         # FastAPI 服务（Eel 之外的 REST 通道）
+│   └── ml/                          # NLU/元件分类模型训练脚本（语料在 rag_data/）
 │
-└── tests/
-    ├── test_bom.py                  # BOM模块测试
-    ├── test_controller.py           # Controller 测试
-    ├── test_eda_adapter.py          # EDA适配器测试
-    ├── test_llm_client.py           # LLM客户端测试
-    └── test_rules.py                # 规则检查测试
+├── rag_data/                        # 中文 PCB 知识库语料（11 篇 markdown）
+└── tests/                           # 49 个测试文件，1179 条 pytest 用例
 ```
+
+> 注：`src/gui/`（PyQt5 原型）已由 `web/` 取代，仓库内无 import 引用，作为历史遗留保留。
 
 ### 架构分层
 
 ```
 ┌─────────────────────────────────────┐
-│            GUI 层 (PyQt5)           │  ← 用户交互
-│  main_window / chat_panel / bom_table │
+│        Web 层 (Eel + 原生 JS)        │  ← 用户交互
+│  index.html + 13 个 JS 模块          │     Chat-first 两级导航
 ├─────────────────────────────────────┤
 │         Controller 编排层           │  ← 业务逻辑中枢
-│         AppController               │
+│    AppController（UI 无关，零 UI import）
 ├─────────────────────────────────────┤
-│  Agent 层    │  BOM 层  │ Rules 层  │  ← 核心业务
-│  llm_client  │  parser  │ checker  │
-│  prompts     │  merger  │          │
-│              │ validator│          │
+│  Agent 层 │ Rules 层 │ BOM/PCB 层   │  ← 核心业务
+│  nlu/router │ checker │ parser      │
+│  tools(24)  │ 71规则  │ geometry     │
+│  review(5)  │ verifier│ merger       │
 ├─────────────────────────────────────┤
-│          Interfaces 接口层          │  ← 外部系统适配
-│     eda_adapter / simulator         │
+│  Supply 层 │ RAG 层 │ Interfaces 层 │  ← 外部系统适配
+│  立创商城API │ ChromaDB │ eda_adapter/simulator
 ├─────────────────────────────────────┤
-│  Config / Constants / Exceptions    │  ← 基础设施
+│  Config / Constants / Persistence   │  ← 基础设施
+│  （SQLite / settings.json / .env）   │
 └─────────────────────────────────────┘
 ```
 
 ---
 
-## 二、已实现功能清单
+## 二、已实现功能清单（2026-10-10 现状）
 
-### 2.1 AI Agent 核心模块
+### 2.1 AI 引擎
 | 功能 | 文件 | 状态 |
 |------|------|------|
-| 6家LLM厂商适配（DeepSeek/OpenAI/通义千问/智谱/Kimi/硅基流动） | `agent/llm_client.py` | ✅ |
-| OpenAI 兼容协议（Function Calling 格式） | `agent/llm_client.py` | ✅ |
-| 流式响应（token-by-token 实时显示） | `agent/llm_client.py:chat_stream()` | ✅ |
-| 对话记忆上下文（history 管理 + use_history 参数 + 清空对话） | `agent/llm_client.py` | ✅ **new** |
-| Prompt 模板体系（BOM/Rule/Command/AI Merge 四类） | `agent/prompt_templates.py` | ✅ |
-| 自然语言→JSON操作指令解析 | `core/controller.py:_extract_json()` | ✅ |
-| 本地关键词路由 fallback（7条路由） | `core/controller.py:_KEYWORD_ROUTES` | ✅ |
-| LLM 热切换（GUI设置面板实时生效） | `gui/settings_panel.py` | ✅ |
-| 对话清空（工具菜单 + 加载新BOM自动清空） | `gui/main_window.py`, `gui/chat_panel.py` | ✅ **new** |
+| 10 家 LLM 厂商适配（DeepSeek/OpenAI/Gemini/Claude/通义/智谱/Kimi/豆包/MiniMax/硅基流动） | `agent/llm_client.py` `agent/anthropic_client.py` | ✅ |
+| Claude 原生 Messages API（非 OpenAI 兼容） | `agent/anthropic_client.py` | ✅ |
+| Function Calling Agent Loop（24 工具自主调用，≤5 轮） | `agent/llm_client.py` `core/controller.py:agent_loop()` | ✅ |
+| 两段式 NLU（embedding + 关键词，低置信才补实体重试） | `agent/nlu_engine.py` | ✅ |
+| 多 LLM 路由（TaskIntent 分类，架构支持按意图绑厂商） | `agent/router.py` | ✅ |
+| VLM 多模态图片分析（粘贴/上传 PCB 截图） | `agent/llm_client.py:chat_multimodal()` | ✅ |
+| 5 Agent 并行审查 + 辩论合成 + 6 维雷达图 | `agent/review_agents.py` `core/design_scorer.py` | ✅ |
+| 12 电路模板 + 设计意图识别 + 缺失元件建议 | `agent/design_templates.py` | ✅ |
+| 工具注册表 SSOT（派发表/关键词/FC schema 全部派生） | `agent/tools.py` | ✅ |
 
-### 2.2 BOM 智能处理引擎
+### 2.2 BOM 智能处理
 | 功能 | 文件 | 状态 |
 |------|------|------|
-| CSV/Excel BOM 解析（编码自动探测） | `bom/parser.py` | ✅ |
-| 同类元件规则合并（型号+封装+参数归一化） | `bom/merger.py:merge()` | ✅ |
-| AI辅助BOM合并（AI识别规则漏并，如 "10kΩ" vs "10K"） | `bom/merger.py:merge_with_ai_suggestion()` | ✅ **new** |
-| Controller AI合并入口（规则→AI分析→建议→合并→报告） | `core/controller.py:ai_merge_bom()` | ✅ **new** |
-| 封装-型号一致性校验（31条规则） | `bom/validator.py` | ✅ |
+| CSV/Excel 解析（编码探测、中英文列名映射） | `bom/parser.py` | ✅ |
+| 规则合并 + AI 辅助合并全链路 | `bom/merger.py` `core/controller.py:ai_merge_bom()` | ✅ |
+| 封装-型号一致性校验（31 条内置规则 + 别名） | `bom/validator.py` | ✅ |
 | 位号查重（含跨文件） | `bom/checker.py` | ✅ |
-| 参数归一化（R/C/L单位统一） | `bom/normalizer.py` | ✅ |
-| 列名自动映射（中英文列名兼容） | `bom/parser.py` | ✅ |
+| 参数归一化（R/C/L 单位统一） | `bom/normalizer.py` | ✅ |
+| CSV 导出（UTF-8-BOM，Excel 中文兼容）+ HTML BOM | `core/controller.py` `html_bom/` | ✅ |
 
-### 2.3 交互式 HTML BOM 生成器
+### 2.3 PCB 解析与规则引擎
 | 功能 | 文件 | 状态 |
 |------|------|------|
-| PCB坐标数据解析 | `interfaces/eda_adapter.py` | ✅ |
-| Canvas 元件位置点阵图 | `html_bom/templates/ibom.html` | ✅ |
-| 封装轮廓绘制 | `html_bom/templates/ibom.html` | ✅ |
-| 全字段搜索+匹配高亮 | `html_bom/templates/ibom.html` | ✅ |
-| 浏览器一键打开 | `main_window.py:_on_generate_html_bom()` | ✅ |
+| 立创EDA `.epro2` 解析（ZIP→JSON Lines，只取最新快照） | `pcb/` | ✅ |
+| 71 条设计规则（走线/间距/载流/阻抗/去耦/晶振/ESD…） | `rules/`（base + 3 mixin） | ✅ |
+| 78 板真实金样校准（3301 → 1602 条，rule_errors=0） | 五批真实化，见第四章 | ✅ |
+| DRC 违规热力图（违规计数网格，非图像解析） | `rules/checker.py:build_heatmap()` | ✅ |
+| 闭环验证 + 迭代收敛状态机（停滞/震荡/发散检测） | `core/verifier.py` `core/convergence.py` | ✅ |
+| 覆铜连接真孤岛判定（并查集）+ 锐角图论串联 | `rules/` `pcb/geometry.py` | ✅ |
 
-### 2.4 自然语言交互界面（GUI）
+### 2.4 生态与系统集成
 | 功能 | 文件 | 状态 |
 |------|------|------|
-| 卡片式面板布局（左聊天+右标签页） | `gui/main_window.py` | ✅ |
-| 聊天气泡消息（用户/AI/系统/配置提示） | `gui/chat_panel.py` | ✅ |
-| 流式响应实时显示 | `gui/chat_panel.py:append_stream_token()` | ✅ |
-| BOM表格（行号列+7数据列） | `gui/bom_table.py` | ✅ |
-| 4主题切换（深海/冷白/石墨/青森） | `gui/eda_theme.py` | ✅ |
-| 主题持久化（settings.json） | `gui/eda_theme.py` | ✅ |
-| 语义化色彩系统（info/success/warning/error） | `gui/eda_theme.py:SEMANTIC` | ✅ |
-| LLM设置面板（厂商/Key/模型配置） | `gui/settings_panel.py` | ✅ |
-| 配置持久化（~/.eda_ai_assistant/settings.json） | `config.py` | ✅ |
-| 欢迎页（左对齐、分隔线、功能列表） | `gui/chat_panel.py:_show_welcome()` | ✅ |
-
-### 2.5 设计规则检查
-| 功能 | 文件 | 状态 |
-|------|------|------|
-| 去耦电容检查（每个IC需0.1μF去耦电容） | `rules/checker.py:_check_decoupling_caps()` | ✅ |
-
-### 2.6 基础设施
-| 功能 | 文件 | 状态 |
-|------|------|------|
-| 统一异常体系 | `exceptions.py` | ✅ |
-| 配置管理（.env + settings.json 双源） | `config.py` | ✅ |
-| 厂商预设常量化 | `constants.py` | ✅ |
-| 日志系统 | `main.py:setup_logging()` | ✅ |
-| 98条测试用例 | `tests/` | ✅ |
+| 立创商城供应链（库存/生命周期/替代料/成本估算） | `supply/` | ✅ |
+| ChromaDB 本地中文 RAG 知识库（rag_data/ 11 篇语料） | `rag/` | ✅ |
+| SQLite 全量持久化（5 表，工作区隔离会话） | `core/persistence.py` | ✅ |
+| 全局热键 + 系统托盘 + 伴生模式（380×540） | `core/system_bridge.py` | ✅ |
+| 立创EDA 文件监听（.epro2 落盘自动导入） | `core/file_watcher.py` | ✅ |
+| 两段式启动（小窗先出，预热后台跑） | `main.py` `core/boot.py` | ✅ |
+| Chat-first Web UI（13 模块、深浅主题、工具箱、多助手实例） | `web/` | ✅ |
+| PyInstaller 打包（spec 统一入口，exe 构建成功） | `eda_ai_assistant.spec` | ✅ |
+| 1179 条 pytest + 85 项 Playwright UI 冒烟 | `tests/` | ✅ |
 
 ---
 
-## 三、未实现功能清单（按优先级排列）
+## 三、未实现/待收敛清单（按优先级）
 
-### P0 — 申报书承诺、答辩必问（1/3 完成）
+> 判据类条目均来自 2026-10-10 真实性审计（金样 1602 条逐档分型），详见 `memories/audit-findings.md`。
 
-| # | 功能 | 技术路径 | 涉及文件 | 难度 | 状态 |
-|---|------|---------|---------|------|------|
-| 1 | **对话记忆上下文** | ~~LLMClient 维护 _history → use_history 参数 → 清空对话~~ | `agent/llm_client.py` `core/controller.py` `gui/chat_panel.py` `gui/main_window.py` | ⭐⭐ | ✅ 已完成 |
-| 2 | **AI辅助BOM合并** | ~~规则合并→AI分析差异→应用建议→报告~~ | `bom/merger.py` `agent/prompt_templates.py` `core/controller.py` | ⭐⭐ | ✅ 已完成 |
-| 3 | **3个空规则检查** | 信号线宽 / 电源线宽 / 模数分离 — **全部依赖 #7 PCB网表解析器** | `rules/checker.py` `interfaces/eda_adapter.py` | ⭐⭐⭐ | ❌ 待做 |
+### 判据档位收敛（真实检出，级别/口径待定）
+| # | 项 | 现状 | 讨论点 |
+|---|----|------|--------|
+| 1 | 阻抗匹配 128 条 ERROR | 未控阻板是设计选择，规则按目标表硬判 | 降级/加「控阻声明」门控 |
+| 2 | 去耦电容 43 条 ERROR | 「每 IC 一颗 100nF」惯例，级别偏重 | 改 WARNING 或分档 |
+| 3 | ESD 47 条 | 「有连接器就得有 TVS」强假设 | 按接口类型门控 |
 
-### P1 — PCB 解析 + BOM 完善
+### 产品口径问题（模板恒真族——每板必响，非判据错误）
+- PDN 目标阻抗 78/78 板、功率回路 33、开关电源布局 33、电感饱和 35、checklist advise 族 — 需定产品口径（保留为建议 or 加门控）
 
-| # | 功能 | 技术路径 | 涉及文件 | 难度 |
-|---|------|---------|---------|------|
-| 4 | **BOM导出bug修复** | `merge_bom()` 返回格式化文本但部分场景需 DataFrame → 新增 `_merged_to_dataframe()` | `core/controller.py` `gui/main_window.py` | ⭐ |
-| 5 | **BOM专用Prompt接线** | Controller 中根据意图路由到 `BOM_MERGE`/`BOM_VALIDATE`/`BOM_AI_MERGE` 专用 Prompt | `core/controller.py` `agent/prompt_templates.py` | ⭐⭐ |
-| 6 | **封装规则扩充（31→50+）** | 追加 TO-252/TO-263/QFN/BGA/MSOP/SOT-23-5 等规则，达到申报书 ≥50 种 | `bom/validator.py` | ⭐ |
-| 7 | **PCB 网表解析器** | **关键前置依赖** — 详见下方 PCB 三路线规划 | 新增 `src/pcb/` | ⭐⭐⭐⭐ |
-
-### P2 — 增强功能
-
-| # | 功能 | 技术路径 | 涉及文件 | 难度 |
-|---|------|---------|---------|------|
-| 8 | **ECharts 热力图** | 替换 Canvas → 在 ibom.html 引入 ECharts CDN → 热力图展示元件密度 | `html_bom/templates/ibom.html` | ⭐⭐ |
-| 9 | **跨文件BOM对比** | Controller 暴露 `compare_bom()` → GUI 添加对比按钮 → 双文件差异表 | `core/controller.py` `gui/main_window.py` | ⭐ |
-| 10 | **模糊指令处理** | 关键词匹配 → LLM 语义理解优先，利用已有 `COMMAND_PARSE` 做意图路由 | `core/controller.py` | ⭐⭐ |
-| 11 | **KiCad 适配器** | 实现 `KiCadAdapter` → 解析 `.kicad_pcb` S-expression → 坐标/封装/网络 | `interfaces/eda_adapter.py` | ⭐⭐ |
-
-### P3 — 远期/交付
-
-| # | 功能 | 技术路径 | 涉及文件 | 难度 |
-|---|------|---------|---------|------|
-| 12 | **PyInstaller 打包** | `.spec` 文件 → 包含 Jinja2 模板 → 测试 exe < 100MB | 新增 `eda_ai_assistant.spec` | ⭐ |
-| 13 | **真仿真引擎** | `LTspiceSimulator(Simulator)` → 生成 SPICE netlist → 调命令行 → 解析输出 | `interfaces/simulator.py` | ⭐⭐⭐⭐ |
-| 14 | **3D 元件视图** | Three.js 渲染 3D 模型 → 需要 STEP/VRML 模型库 | `html_bom/` | ⭐⭐⭐ |
-| 15 | **使用手册** | `docs/` → 安装配置/功能操作/常见问题 → Markdown + 截图 | 新增 `docs/` | ⭐ |
-| 16 | **演示视频** | 录制 ≥3 分钟 → Agent 对话 → BOM 处理 → HTML BOM → 主题切换 | 无代码改动 | ⭐ |
+### 其余待办
+| # | 项 | 说明 |
+|---|----|------|
+| 4 | 电源需求电流粗估 | 仍是 BOM 关键词（"电机控制"→MCU +1.5A）；台账 #12 后半：频率→CL 表不看器件规格 |
+| 5 | 实验指标可信度 | 幻觉消除率 100%、多智能体均分 94（min 88.7）无区分度，需重新定义 + 评分校准 |
+| 6 | simulator.py 占位 | `LTspiceSimulator` 真仿真（生成 SPICE netlist → 命令行 → 解析输出）属远期 |
+| 7 | frontend/ 去留 | 原封不动的 Vite React+TS 模板（node_modules 未提交），实际 UI 是 web/ |
+| 8 | 封装规则 31 → 50+ | 申报书指标差 19 条；调研建议改「LLM 从数据手册自动生成」路线 |
+| 9 | 安装包体积 | 实测 205MB，超申报书 <100MB 指标（TODO：裁剪依赖/UPX） |
+| 10 | 论文/软著 | EI 论文（闭环验证方向）、软著申请未提交 |
 
 ---
 
-## 四、PCB 网表解析器 — 详细实施计划
+## 四、PCB 解析与规则引擎 — 落地纪实
 
-> 这是当前最关键的前置依赖。3 个空规则检查 + PCB AI 分析都依赖它。
+> 原第四章「PCB 网表解析器实施计划」已全部落地（2026-09 ~ 10），本节改为纪实，供论文与答辩引用。
 
-### 立创 EDA 文件格式速查
+### 解析器能力（`src/pcb/`）
+- `.epro2`（ZIP → `.epcb` JSON Lines）全量解析：走线/过孔/焊盘/网络/板框/铜皮/元件坐标
+- **两个解析器真 bug 修复**：R 矩形模式 X/Y 是左上角（万兆板整版 GND 铜落板外、泰山派板框偏移同根）；`.epru` 是追加日志，历史快照曾全并（30/78 板混算），改只解析最后一个 PCB 文档
+- orphan 焊盘保留 + `pcb.pads` 绝对坐标重建；POUR 环几何 + 带网 FILL/POLY 入 `copper_pours`
+- BOARD_OUTLINE 多段描边 + ARC 10° 离散化 → `outline_rings_mm`（72/78 板真板框）
+- 锐角检测的图论串联（`pcb/geometry.py`：空间哈希 + 并查集 + 度数切折线）
 
-| 版本 | 文件 | 内部结构 | 包含数据 |
-|------|------|---------|---------|
-| 标准版 | `.json` | 单文件 JSON，图元属性用 `~` 分隔压缩 | TRACK/PAD/VIA/TEXT/COPPERAREA/net/层/板框 |
-| 专业版 | `.epro` | ZIP 包，内含 `.epcb` JSON Lines | 同上 + project.json 清单 |
+### 规则真实化五批（78 板金样，3301 → 1602 条，rule_errors=0）
+| 批次 | 提交 | 金样 | 要点 |
+|------|------|------|------|
+| 噪声清扫 | 6503342 | 3202 | 锐角四族伪影豁免、时钟包地 15mm 门、位号跳号合并、丝印守卫 |
+| 解析器数据补全 | 747992a | 1611 | orphan 焊盘/覆铜几何/两真 bug（见上） |
+| 标准表批 | 29b9766 | 1640 | 叠层预设、PDN 平面参数、电源树载流、E24∪E96、差分等长分档 |
+| 几何批 | 87ad9b3 | 1663 | 板框轮廓环真距离、元件间距旋转矩形、差分链路径树直径 |
+| 判据批 + 批5假阳清扫 | 01daadc / 540954e | **1602** | 去耦真容值分档、串扰排除 GND 族、晶振三证据、封装归一、悬空网表化 |
 
-**可提取的关键数据**：走线（宽度/坐标/层/网络）、过孔（位置/孔径/网络）、焊盘（形状/引脚号/层）、板框（层10图元）、铜皮（多边形区域/间隙）、网络连接（同 netname 图元构成一个逻辑网络）。
-
-### 三路线规划
-
-#### 路线一：文本解析（当前方向，P1 — 优先实施）
-
-**目标**：解析立创 EDA PCB 文件 → 结构化数据 → 文本描述 → LLM 分析
-
-**具体步骤**：
-
-1. **扩展 `PCBData` 数据类**（`src/interfaces/eda_adapter.py`）
-   - 新增字段：`traces: list` / `vias: list` / `pads: list` / `nets: dict` / `copper_areas: list` / `board_outline: dict`
-   - 新增 `@dataclass`：`Trace` / `Via` / `Pad` / `Net` / `CopperArea`
-
-2. **新增 `src/pcb/parser.py`** — PCB 文件解析器
-   - `parse_json(file_path)` — 立创EDA标准版 .json
-   - `parse_epro(file_path)` — 立创EDA专业版 .epro (ZIP→.epcb JSON Lines)
-   - 自动探测文件格式，统一返回 `PCBData`
-
-3. **新增 `src/pcb/describer.py`** — PCB→文本描述转换器
-   - 将 `PCBData` 转为 LLM 可读的文本摘要
-   - 包含：板层信息 / 走线统计 / 网络列表 / 电源网络 / 关键尺寸
-
-4. **新增 PCB 专用 Prompt**（`src/agent/prompt_templates.py`）
-   - 走线宽度检查 / 差分对验证 / 电源完整性 / 模数分离 / 过孔类型检查
-
-5. **补齐三个空规则**（`src/rules/checker.py`）
-   - `_check_signal_traces()` — 信号线宽 ≥ 规则要求
-   - `_check_power_traces()` — 电源线载流能力校验
-   - `_check_analog_digital_separation()` — 模数区域分离检查
-
-6. **Controller 扩展**（`src/core/controller.py`）
-   - 新增 `load_pcb()` 操作
-   - 新增 `check_design_rules_pcb()` — 带 PCB 数据的完整规则检查
-
-7. **GUI 扩展**（`src/gui/main_window.py`）
-   - 新增"导入PCB"按钮
-   - BOM 表格侧新增"PCB概览"标签页
-
-**新增文件**：
-- `src/pcb/__init__.py`
-- `src/pcb/parser.py` — 立创EDA JSON/EPRO 解析
-- `src/pcb/describer.py` — PCB→文本描述转换
-- `tests/test_pcb.py` — PCB 模块测试
-
-**改动文件**：
-- `src/interfaces/eda_adapter.py` — 扩展 PCBData + 新增数据类 + parse_pcb()
-- `src/agent/prompt_templates.py` — 新增 PCB 专用 prompt（5个）
-- `src/rules/checker.py` — 三个空规则接入真实数据
-- `src/core/controller.py` — 新增 load_pcb()/check_design_rules_pcb()
-- `src/gui/main_window.py` — 新增"导入PCB"按钮 + PCB概览标签页
-
-**预估工时**：3-5 天（含测试）
-
-#### 路线二：视觉分析（中期，P2）
-
-**目标**：聊天框粘贴 PCB 截图 → Vision 模型看图分析布局/散热/EMC
-
-**前提条件**：
-- 切换支持图片的模型（GPT-4V、Claude 3+、Gemini 2 Flash、Qwen-VL、Kimi K2）
-- 聊天框支持粘贴图片
-- `LLMClient` 扩展 `chat_with_image()` 方法
-
-**优点**：AI 能看布局全貌，直观判断元件摆位/散热/EMC
-**缺点**：不能做精确的线宽/间距量化分析
-
-#### 路线三：两者融合（远期，P3）
-
-- **文本解析**负责精确电气规则检查（线宽/间距/阻抗/载流）
-- **视觉分析**负责布局审查（元件摆放合理性/散热/EMC/可制造性）
-- Controller 统一路由：按问题类型分发
+- 覆盖口径：71/71（可判定）/ 60/71（有输出）；证据与逐条判读在 `experiment_results/`
+- 方法论：每批「金样全量快照 → 无关规则零漂移验证 → 新增输出逐条判读 → 回归测试入库」
 
 ---
 
-## 五、下一步里程碑与任务分解
+## 五、里程碑与状态（2026-10-10 核对）
 
-> **注意**：基于 2026-05-27 行业调研，里程碑已优化。详见第六章"行业调研与优化方向"→ 6.5 优化后的里程碑。
-
-### M1：轻量 PCB 解析 + RAG 知识库（目标 2026-06-15）
-
+### M1：轻量 PCB 解析 + RAG 知识库 ✅ 完成
 ```
-1.1  轻量 PCB 解析器（只提取网络+走线宽度+层，≤800行）
-1.2  RAG 知识库：索引立创EDA中文文档 + 常见封装规则 + DRC 规则
-1.3  补齐信号线宽/电源线宽两个规则（模数分离延后）
-1.4  BOM 专用 Prompt 接线（按意图路由到专用模板）
-1.5  新增 test_pcb.py（≥15 条测试）
+1.1  PCB 解析器        ✅ 超额：不止轻量版，.epro2 全量几何
+1.2  RAG 知识库        ✅ ChromaDB + rag_data/ 11 篇
+1.3  信号/电源线宽规则  ✅ 71 条规则（远超原 2 条目标）
+1.4  BOM Prompt 接线   ✅ ToolRegistry SSOT 派生
 ```
 
-### M2：多 LLM 路由 + 视觉接入（目标 2026-06-30）
-
+### M2：多 LLM 路由 + 视觉接入 🟢 大部分完成
 ```
-2.1  多 LLM 路由网关（按任务类型分派到不同模型：Kimi/DeepSeek/GPT-4V/Qwen-VL）
-2.2  聊天框支持粘贴图片（原理图/PCB截图 → VLM 分析）
-2.3  LLM→DRC 自动生成实验（自然语言描述规则 → 自动生成检查函数）
-2.4  BOM 健康检查（调用 LCEDA 商城 API → 生命周期/替代料推荐）
-```
-
-### M3：闭环验证 + 多智能体（2026 下半年）
-
-```
-3.1  闭环验证引擎（LLM 建议 → 规则引擎验证 → 不一致→反馈纠正）
-3.2  多智能体协作（BOM agent + DRC agent + PCB agent 并行分析）
-3.3  ECharts 热力图 + 跨文件对比 + 模糊指令语义路由
-3.4  封装规则自动生成（从数据手册 PDF/网页 用 LLM 提取封装规则）
+2.1  多 LLM 路由网关    ✅ TaskIntent 分类；按意图绑厂商的配置面未开
+2.2  聊天框粘贴图片     ✅ VLM 多模态（chat_multimodal）
+2.3  LLM→DRC 自动生成  ✅ drc_rule_gen_prompt + 闭环验证引擎落地
+2.4  BOM 健康检查      ✅ 立创商城 API（库存/生命周期/替代料/成本）
 ```
 
-### M4：交付物（2027 春季）
-
+### M3：闭环验证 + 多智能体 🟢 大部分完成
 ```
-4.1  PyInstaller 打包 + 24h 稳定性测试
-4.2  使用手册 + 演示视频 + 软著申请
-4.3  论文撰写（建议选题：多 LLM 路由在 EDA 的应用 / RAG 增强的 PCB 知识检索）
+3.1  闭环验证引擎      ✅ verifier + convergence 状态机（停滞/震荡/发散）
+3.2  多智能体协作      ✅ 5 Agent 并行审查 + 辩论合成
+3.3  热力图/对比/语义路由 ✅ 自研违规网格热力图；跨文件对比与 ECharts 未做
+3.4  封装规则自动生成   ⬜ 未做（调研定位：LLM 从数据手册提取）
+```
+
+### M4：交付物 🟡 进行中
+```
+4.1  PyInstaller 打包  ✅ exe 已构建（205MB，<100MB 待裁剪）；24h 稳定性未测
+4.2  手册/视频/软著     ⬜ 未开始
+4.3  论文              ⬜ 选题已定（EI：闭环验证引擎），未投稿
 ```
 
 ---
 
-## 六、行业调研与优化方向（2026-05-27 调研）
+## 六、行业调研与优化方向（2026-05-27 调研存档）
 
-> 调研范围：国际/国内商业 EDA AI 工具、开源项目、学术前沿（2024-2026）
-> 目标：明确项目差异化定位，优化技术路线
+> 调研范围：国际/国内商业 EDA AI 工具、开源项目、学术前沿（2024-2026）。
+> 本章为战略存档，结论仍指导论文选题与差异化定位。
 
 ### 6.1 行业格局速览
 
@@ -403,219 +315,162 @@ eda_ai_assistant/
 | **1. 多智能体 LLM 框架** | EDAid (NAACL 2025), CircuitMind (BUAA 2025), LayoutCopilot (IEEE TCAD 2025) | 我们的多 LLM 后端天然适配 — 不同厂商模型各司其职 |
 | **2. RAG + 知识图谱** | ChipMind KG (F1=0.95), MuaLLM (90.1% 召回), HSG-RAG | **最高优先级** — 索引立创EDA中文文档+数据手册，建立领域知识库 |
 | **3. LLM→DRC 代码生成** | DRC-Coder (F1=1.000), D2D-LLM+ (AICAS 2025) | 从自然语言描述自动生成 DRC 规则 — 可替代手写规则 |
-| **4. 多模态 PCB 分析** | PCBSchemaGen (约束引导), 上大 Qwen2.5-VL 蒸馏 | 路线二（视觉）应加速 — Kimi/Qwen-VL 已可用于原理图分析 |
-| **5. 闭环验证** | EDAid "分歧思维", UniVista LLM+EDA 闭环 | **关键差异化** — LLM 建议 → 规则引擎验证 → 反馈纠正 |
+| **4. 多模态 PCB 分析** | PCBSchemaGen (约束引导), 上大 Qwen2.5-VL 蒸馏 | 视觉路线已落地 — VLM 多模态接入完成 |
+| **5. 闭环验证** | EDAid "分歧思维", UniVista LLM+EDA 闭环 | **关键差异化** — 已落地收敛状态机（论文 4.3 节数据源） |
 
-### 6.3 项目定位优化：从"工具"到"智能网关"
+### 6.3 项目定位：从"工具"到"智能网关"
 
 ```
-当前定位：EDA AI 辅助工具（功能罗列）
-优化定位：多 LLM 智能 EDA 网关（模型路由 + 知识检索 + 闭环验证）
-
                ┌──────────────────────────┐
-               │    PyQt5 统一界面         │
+               │   Web 统一界面 (Eel)      │
                ├──────────────────────────┤
 用户自然语言 → │  多 LLM 路由网关          │
                │  ├─ Kimi (中文资料 RAG)   │
                │  ├─ GPT-4V (PCB视觉审查)  │
                │  ├─ DeepSeek (代码/规则)  │
                │  ├─ Qwen-VL (原理图分析)  │
-               │  └─ 本地模型 (离线快速)   │
+               │  └─ Claude (原生协议)     │
                ├──────────────────────────┤
                │  闭环验证引擎              │
-               │  LLM建议 → DRC引擎 → 反馈 │
+               │  LLM建议 → 71规则 → 收敛  │
                └──────────────────────────┘
 ```
 
-### 6.4 路线图优化建议
+### 6.4 路线图调整记录（对照 5-27 调研的兑现情况）
 
-基于调研结论，对原有里程碑做出以下调整：
+| 原调整建议 | 兑现情况 |
+|--------|------|
+| PCB 解析器先做轻量版 | ✅ 直接做了全量（.epro2 几何 + 真板框） |
+| 文本解析完成后立即接入 VLM | ✅ chat_multimodal 已落地 |
+| 模糊指令提升至 P1（语义路由） | ✅ 两段式 NLU + 多 LLM 路由 |
+| RAG 知识库新增为 P1 | ✅ ChromaDB + 11 篇中文语料 |
+| 封装规则改自动生成 | ⬜ 未启动（仍是手写 31 条） |
+| 供应链感知 BOM 新增为 P2 | ✅ supply/ 立创商城 API |
 
-| 原计划 | 调整 | 理由 |
-|--------|------|------|
-| PCB 解析器 → P1 首位 | **保持不变**，但先做轻量版（仅提取网络+走线宽度，不解析全量几何） | 3 个空规则可用轻量数据先行填补 |
-| 路线三（融合）→ 远期 | **提升优先级**：文本解析完成后立即接入 VLM | 立创EDA 已有 Kimi 视觉插件，技术可行性已验证 |
-| 模糊指令处理 → P2 | **提升至 P1**：复用多 LLM 路由实现语义路由 | 学术趋势：多智能体路由是最热方向 |
-| RAG 知识库 → 未规划 | **新增为 P1**：索引立创EDA中文文档+BOM规则+封装数据库 | 空白领域，竞品（立创）只有基础实现 |
-| 封装规则扩充 → P1 | **改为自动生成**：用 LLM 从数据手册自动提取封装规则，而非手写 | DRC-Coder 思路：LLM 自动生成比手写更具学术价值 |
-| 供应链感知 BOM → 未规划 | **新增为 P2**：调用立创商城 API，交叉引用物料生命周期、替代料推荐 | 无竞品实现，BOM 健康的实际痛点 |
-
-### 6.5 优化后的里程碑
-
-#### M1：轻量 PCB 解析 + RAG 知识库（目标 2026-06-15）
-
-```
-1.1  轻量 PCB 解析器（只提取网络+走线宽度+层，≤800行）
-1.2  RAG 知识库：索引立创EDA中文文档 + 常见封装规则 + DRC 规则
-1.3  补齐信号线宽/电源线宽两个规则（模数分离延后）
-1.4  BOM 专用 Prompt 接线（按意图路由到专用模板）
-```
-
-#### M2：多 LLM 路由 + 视觉接入（目标 2026-06-30）
-
-```
-2.1  多 LLM 路由网关（按任务类型分派到不同模型）
-2.2  聊天框支持粘贴图片（原理图/PCB截图 → VLM 分析）
-2.3  LLM→DRC 自动生成实验（自然语言描述规则 → 自动生成检查函数）
-2.4  BOM 健康检查（调用 LCEDA 商城 API → 生命周期/替代料推荐）
-```
-
-#### M3：闭环验证 + 多智能体（2026 下半年）
-
-```
-3.1  闭环验证引擎（LLM 建议 → 规则引擎验证 → 不一致→反馈纠正）
-3.2  多智能体协作（BOM agent + DRC agent + PCB agent 并行分析）
-3.3  ECharts 热力图 + 跨文件对比 + 模糊指令语义路由
-3.4  封装规则自动生成（从数据手册 PDF/网页 用 LLM 提取封装规则）
-```
-
-#### M4：交付物（2027 春季）
-
-```
-4.1  PyInstaller 打包 + 24h 稳定性测试
-4.2  使用手册 + 演示视频 + 软著申请
-4.3  论文撰写（选题方向：多 LLM 路由在 EDA 领域的应用 / RAG 增强的 PCB 设计知识检索）
-```
-
-### 6.6 论文选题建议
-
-基于调研发现的空白与项目特色，以下选题方向由强到弱排列：
+### 6.5 论文选题建议
 
 | 选题 | 创新点 | 可行性 | 竞争情况 |
 |------|--------|--------|---------|
-| **多 LLM 协同路由网关在 EDA 领域的应用** | 首次将多 LLM 路由引入 EDA，按任务/成本/能力分派 | 高（已有 6 厂商基础） | 低竞争（学术空白） |
-| **RAG 增强的中文 PCB 设计知识检索系统** | 首个针对立创EDA中文文档的 RAG，对标 ChipMind KG | 高（需建知识库） | 极低竞争 |
-| **基于大语言模型的 DRC 规则自动生成与闭环验证** | LLM 生成 DRC 规则→规则引擎验证→反馈迭代 | 高（闭环引擎待建） | 低竞争（DRC-Coder 是 IC 级） |
-| **面向 PCB 的 BOM 健康评估与智能替代推荐** | 结合商城 API + LLM 推理，首创 BOM 生命周期感知 | 高（需商城 API） | 无竞争 |
+| **多 LLM 协同路由网关在 EDA 领域的应用** | 首次将多 LLM 路由引入 EDA，按任务/成本/能力分派 | 高（已有 10 家基础） | 低竞争（学术空白） |
+| **RAG 增强的中文 PCB 设计知识检索系统** | 首个针对立创EDA中文文档的 RAG，对标 ChipMind KG | 高（知识库已建） | 极低竞争 |
+| **基于大语言模型的 DRC 规则自动生成与闭环验证** | LLM 生成 DRC 规则→规则引擎验证→收敛迭代 | **高（convergence.py 已落地，可直接出 4.3 节数据）** | 低竞争（DRC-Coder 是 IC 级） |
+| **面向 PCB 的 BOM 健康评估与智能替代推荐** | 结合商城 API + LLM 推理，首创 BOM 生命周期感知 | 高（supply/ 已建） | 无竞争 |
 
-**建议选题组合**：毕业论文可覆盖 M1-M3 全部内容，以"多 LLM 协同 + RAG 知识检索"为主线，小标题拆分上述 4 个方向。
-
-### 6.7 差异化护城河
-
-```
-竞品                             本项目
-──────────────────────────────────────────────────
-立创EDA AI     单LLM(Kimi)     → 多LLM路由(6→按需扩展)
-Cadence AI     布局布线专精     → BOM+DRC知识推理（错位竞争）
-KiCad MCP      操作KiCad       → 立创EDA生态（国内唯一）
-ChipMind KG    IC级知识图谱    → PCB级中文知识图谱（空白）
-DRC-Coder      芯片级DRC       → PCB规则自动生成（降维应用）
-Synopsys DSO   芯片设计优化     → 高校/个人用户（市场空白）
-```
+**建议选题组合**：以「闭环验证引擎」为 EI 主攻（代码支撑最完整），「多 LLM 协同 + RAG 知识检索」为主线小标题。
 
 ---
 
 ## 七、技术栈
 
-| 类别 | 技术 | 版本 |
+| 类别 | 技术 | 版本/说明 |
 |------|------|------|
 | 语言 | Python | 3.13 |
-| GUI 框架 | PyQt5 | 5.x |
+| 前端 | Eel + 原生 JavaScript | 13 个经典 script 模块，Cherry Studio 设计系统 |
+| Markdown 渲染 | marked.js（协议过滤加固） | 前端 |
 | 数据处理 | pandas, openpyxl | — |
-| HTML 模板 | Jinja2 | — |
+| HTML 模板 | Jinja2 | HTML BOM |
+| 向量检索 | ChromaDB | 本地 RAG |
+| 持久化 | SQLite（标准库） | 5 表，`~/.eda_ai_assistant/sessions.db` |
+| 系统集成 | pynput（全局热键）/ pystray（托盘） | 伴生模式 |
+| REST | FastAPI | `src/api/`，Eel 之外的通道 |
 | HTTP 请求 | requests | — |
 | 环境管理 | python-dotenv | — |
-| 测试框架 | pytest | 8.x |
-| 打包（计划中） | PyInstaller | — |
-| AI 模型 | DeepSeek / OpenAI / 通义千问 / 智谱 / Kimi / 硅基流动 | — |
-| 协议 | OpenAI 兼容 API | — |
+| 测试框架 | pytest 8.x + Playwright | 1179 条 + 85 项 UI 冒烟 |
+| 打包 | PyInstaller | `eda_ai_assistant.spec` 唯一入口 |
+| AI 模型 | DeepSeek / OpenAI / Gemini / Claude / 通义千问 / 智谱 / Kimi / 豆包 / MiniMax / 硅基流动 | 10 家 |
+| 协议 | OpenAI 兼容 API + Anthropic Messages API | — |
 
 ---
 
-## 八、测试覆盖
+## 八、测试覆盖（2026-10-10）
 
 ```
-tests/
-├── test_bom.py          19 tests   BOM解析/合并/校验/查重
-├── test_controller.py   36 tests   Controller 操作分发/AI fallback
-├── test_eda_adapter.py   5 tests   立创EDA坐标文件解析
-├── test_llm_client.py   29 tests   LLM客户端/厂商适配
-├── test_rules.py         9 tests   设计规则检查
-─────────────────────────────────────
-Total:                   98 tests   全部通过 ✅
+tests/                            49 个文件，1179 条 pytest 用例 ✅
+├── 规则/判据类    test_rules / test_rule_fixes / test_acute_angle /
+│                 test_impedance_matching / test_substring_criteria /
+│                 test_geometry_batch_2026_10_10 / test_violation_noise_2026_10_09 /
+│                 test_real_pcb_decoupling / test_copper_geometry …
+├── 解析器类       test_epro2_parser / test_pcb / test_eda_adapter / test_bom
+├── Agent 类       test_llm_client / test_anthropic_client / test_agent_loop /
+│                 test_nlu_engine / test_router / test_tools / test_tool_catalog
+├── 核心编排类     test_controller / test_controller_nlu / test_persistence /
+│                 test_boot / test_main_lazy / test_convergence /
+│                 test_verifier* / test_closed_loop_revert
+├── Web/UI 类      test_web_render_safety / test_heatmap / test_theme_default /
+│                 test_no_emoji_in_ui / test_provider_catalog
+└── 其他           test_supply / test_api_server / test_violation_mining /
+                  test_confidence_calibration / ml 训练类
+
+tests/ui_smoke.py                 85 项 Playwright 真机冒烟（stub LLM 零 API 花费，
+                                  不以 test_ 开头、不被 pytest 收集）
 ```
 
 ---
 
-## 九、申报书指标达成情况
+## 九、申报书指标达成情况（2026-10-10 诚实核对）
 
 | 申报书指标 | 实际 | 状态 |
 |-----------|------|------|
-| 6厂商 LLM 适配 | 6 厂商已实现 | ✅ |
-| 对话记忆 ≥10 轮 | 已实现（history 管理 + 清空对话） | ✅ **5/27** |
-| 自然语言指令 20+ 条 | 7 条关键词 + AI 语义路由 | ⚠️ 差 13+ |
-| 设计规则 15+ 条 | 1 条（去耦电容） + 3 空桩 | ⚠️ 差 14 条 |
-| 元件类型 ≥50 种 | 31 条封装规则 | ⚠️ 差 19 种 |
-| BOM 全流程 | 解析/合并/校验/查重/HTML 全部完成 | ✅ |
-| AI 辅助 BOM 合并 | 规则合并 + AI 智能合并 全链路实现 | ✅ **5/27** |
-| HTML BOM 交互 | Canvas 点阵图 + 搜索 + 高亮 | ✅ |
-| ECharts 热力图 | Canvas | ⚠️ 待替换 |
-| 模糊指令处理 | 关键词 + AI 语义（混合） | ⚠️ 部分完成 |
-| 4 主题系统 | 深海/冷白/石墨/青森 + 语义色彩 | ✅ |
-| PyInstaller 打包 | 未配置 | ⚠️ Phase 4 |
-| 24h 稳定性 | 未测试 | ⚠️ Phase 4 |
-| 安装包 <100MB | 未打包 | ⚠️ Phase 4 |
-| 论文 1 篇 | 未发表 | 计划 Phase 4 |
-| 软著 1 项 | 未申请 | 计划 Phase 4 |
-| 98 条测试 | 98 条全部通过 | ✅ |
+| 6厂商 LLM 适配 | 10 家（含 Claude 原生协议） | ✅ 超额 |
+| 对话记忆 ≥10 轮 | SQLite 会话/消息全量持久化 + 工作区隔离 | ✅ |
+| 自然语言指令 20+ 条 | 24 工具（ToolRegistry SSOT）+ 10 意图两段式 NLU | ✅ |
+| 设计规则 15+ 条 | 71 条，78 板真实金样校准（3301→1602，rule_errors=0） | ✅ 超额 |
+| 元件类型 ≥50 种 | 31 条封装规则（validator） | ⚠️ 差 19 |
+| BOM 全流程 | 解析/合并/校验/查重/导出/HTML 全部完成 | ✅ |
+| AI 辅助 BOM 合并 | 规则合并 + AI 建议全链路 | ✅ |
+| HTML BOM 交互 | Canvas 点阵图 + 全字段搜索 + 高亮 | ✅ |
+| ECharts 热力图 | 自研 Canvas 违规计数网格热力图（DRC 真数据驱动，未用 ECharts） | ✅ 自研实现 |
+| 模糊指令处理 | 两段式 NLU：embedding + 关键词，低置信 LLM 兜底 | ✅ |
+| 4 主题系统 | Web 深浅双主题 token（PyQt5 四主题随旧 GUI 退役） | ✅ 等效达成 |
+| PyInstaller 打包 | spec 已配置，dist exe 构建成功（frozen 路径实测） | ✅ |
+| 安装包 <100MB | 实测 205MB | ⚠️ 超标（待裁剪） |
+| 24h 稳定性 | 未测试 | ⚠️ |
+| 论文 1 篇 | EI 方向已定（闭环验证引擎），未投稿 | 📅 计划 |
+| 软著 1 项 | 未申请 | 📅 计划 |
+| 98 条测试 | **1179 条 pytest + 85 项 UI 冒烟** | ✅ 超额 |
 
 ---
 
-## 十、阶段进度
+## 十、阶段进度（按工作内容实测标注）
 
 ```
 Phase 1 (2026.5-6)   需求分析 + 架构设计 + Agent 原型      ██████████ 100% ✅
-Phase 2 (2026.7-10)  BOM 核心 + 函数调用 + 对话记忆        ████████░░  80% 🟡
-Phase 3 (2026.11-2)  GUI + HTML BOM + PCB 规则检查         ██████░░░░  60% 🟡
-Phase 4 (2027.3-5)   测试 + 打包 + 论文 + 软著              ░░░░░░░░░░   0% ⬜
+Phase 2 (2026.7-10)  BOM 核心 + 函数调用 + 对话记忆        ██████████ 100% ✅
+Phase 3 (2026.11-2)  Web UI + PCB 解析 + 71规则 + 多智能体 █████████░  92% 🟢
+Phase 4 (2027.3-5)   打包 + 论文 + 软著                    ███░░░░░░░  30% 🟡
 ```
 
-**Phase 2 剩余**：PCB 网表解析器 / 3 个空规则 / 封装规则扩充 / BOM 导出 bug
-**Phase 3 剩余**：ECharts 热力图 / 跨文件对比 / KiCad / 模糊指令
+**Phase 3 剩余**（时间窗未到，工作已超前）：判据档位收敛（阻抗/去耦/ESD）、模板恒真族产品口径、跨文件对比
+**Phase 4 剩余**：安装包裁剪 <100MB、24h 稳定性、使用手册、演示视频、论文、软著
 
 ---
 
-## 十一、当前未提交变更（2026-05-27）
-
-```
-6 files changed: +175 -18  (工作区未提交)
-
-对话记忆上下文:
-  src/agent/llm_client.py       +15 -5   use_history 参数 + _record_turn
-  src/core/controller.py        +29 -4   _conversation_active + clear_conversation
-  src/gui/chat_panel.py         +2       clear_requested 信号
-  src/gui/main_window.py        +7       清空对话菜单 + 信号连接
-
-AI 辅助 BOM 合并:
-  src/agent/prompt_templates.py  +23      BOM_AI_MERGE 模板 + 注册 + COMMAND_PARSE 更新
-  src/bom/merger.py              +63 -6   merge_with_ai_suggestion 完整实现 + logger 修复
-  src/core/controller.py         +83 -12  ai_merge_bom() + _format_merged_for_ai() + 路由注册
-```
-
----
-
-## 十二、配置持久化
+## 十一、配置持久化
 
 ```
 ~/.eda_ai_assistant/
-└── settings.json         # 用户配置（LLM厂商/Key/模型 + 主题选择）
+├── settings.json         # 用户配置（LLM厂商/Key/模型 + 主题等）
+└── sessions.db           # SQLite（工作区/助手/会话/消息/app_state）
 ```
 
-优先级：`环境变量` > `settings.json` > `.env文件` > `厂商预设` > `默认值`
+- 存储目录统一由 `constants.app_home()` 给出，环境变量 **`EDA_AI_HOME`** 可覆盖（测试/受限环境落临时目录）
+- 导出文件目录统一用 `controller.default_output_dir()`（HTML BOM / BOM CSV 共用）
+- 优先级：`环境变量` > `settings.json` > `厂商预设` > legacy `DEEPSEEK_*` 环境变量
 
 ---
 
-## 十三、Git 历史
+## 十二、Git 历史（近期主干）
 
 ```
-b73dda2 fix: 流式消息显示/数量0显示/异常吞没/内存泄漏 (6项修复)
-490a8f4 UI 重构：4主题系统 + 语义色彩 + 卡片布局 + BOM行号列 (v0.3.0)
-c0fb13d GUI 重构：VS Code 风格双主题系统 + 设置面板 + 多项修复 (v0.1.0 → v0.2.0)
-8b1aac7 优化 HTML BOM 搜索栏：全字段搜索 + 搜索提示 + 面板微调
-b313f48 修复 HTML BOM 搜索仅支持位号的问题
-3ffaca9 添加核心模块单元测试（19 → 98 条）
-4b244f8 代码优化：提取重复逻辑、精简方法体、统一 dispatch 模式
-caafccf 重构 LLM 模块：从 DeepSeek 单厂商升级为 6 家多厂商适配
-da7e4e6 添加开发日志
-69591e0 初始化项目：EDA AI 智能助手
+540954e fix(rules): 批5假阳清扫 —— 晶振三证据/封装归一管线/悬空网表化/板边豁免
+01daadc feat(rules): 判据批 —— 去耦档位真容值/串扰最严对排除GND族
+87ad9b3 feat(rules): 几何批 —— 板框轮廓环真距离/元件间距旋转矩形/差分链路径
+29b9766 feat(rules): 标准表批 —— 叠层预设/PDN平面参数/电源树/E24E96/等长分档
+747992a fix(parser): 数据补全批 —— orphan 焊盘保留 + 覆铜几何 + 两真bug
+6503342 fix(rules): 违规噪声清扫 —— 金样 3202 → 2048
+5812c28 fix(rules): 特征阻抗匹配 297 条全量判读 —— 297 → 153
+56a9cf8 refactor(web): app.js 拆为 13 个保序经典模块（P1-6 阶段C）
+64fd8ce feat: 真实PCB数据集全量实验 + 测试隔离修复 (v0.7.5-dev)
+94e70b5 feat: 多智能体协同审查 + 设计意图识别 + 厂商扩展 (v0.7.0)
+dd186d8 feat: 对话记忆上下文 + AI辅助BOM合并 + 蓝图v0.4.0
 ```

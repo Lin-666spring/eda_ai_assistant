@@ -311,7 +311,17 @@
 - [ ] `_check_copper_pour_connectivity` 只认 `POUR` 元素，`.epru` 的 `POLY`+`FILL` 覆铜读不到 → 恒报缺数据
 - [ ] `_check_trace_edge_clearance` 用包围盒而非板框多边形（误差 ±0.06mm）
 
-## 文档仍偏旧
+## 已处理（2026-10-10）：文档批收尾（工程闭环）
 
-- PROJECT_BLUEPRINT.md 仍描述 PyQt5 + src/gui/，实际是 Eel web/
-- README.md 架构章节仍写"三栏布局"，与 CLAUDE.md 的两级导航不一致
+- [x] ~~PROJECT_BLUEPRINT.md 仍描述 PyQt5 + src/gui/，实际是 Eel web/~~
+  → 全篇重写对齐 v0.8.0 现状：架构树（web/ 13 模块 + src/agent/core/pcb/rules/…）、
+  功能清单（10 厂商/24 工具/5 Agent/71 规则/1179 测试）、申报书指标诚实核对
+  （封装规则 31/50 ⚠️、exe 205MB ⚠️ 超标）、五批规则真实化纪实与 Git 历史更新。
+  原「PCB 解析器实施计划」章改为落地纪实（五批金样 3301→1602）。
+  数字全部实测：pytest --collect-only 1179、rules 71、tools 24、providers 10、
+  templates 12、agents 5、封装规则 31、dist 205MB、APP_VERSION 0.8.0。
+- [x] ~~README.md 架构章节仍写"三栏布局"，与 CLAUDE.md 的两级导航不一致~~
+  → index.html 描述改 CLAUDE.md 同款「Chat-first 布局（主页面=对话，功能收进
+  子页面）+ 左侧会话栏 + 右侧可折叠任务面板」；架构树补 src/api/（FastAPI）与
+  src/ml/（训练脚本）；测试数 965 → 1179、版本 v0.7.5-dev → v0.8.0。
+  CLAUDE.md 的「965 collected」同步改 1179（数字漂移同类，见 2026-09-15 先例）。

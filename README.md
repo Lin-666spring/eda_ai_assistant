@@ -1,4 +1,4 @@
-# EDA AI 智能助手 v0.7.5-dev
+# EDA AI 智能助手 v0.8.0
 
 > 基于多智能体协同的 PCB 设计辅助工具 — 71条设计规则 · 24项工具 · 10家AI厂商 · 5个专业审查Agent
 
@@ -47,7 +47,8 @@ python main.py
 
 ```
 web/                          # Eel 前端（Cherry Studio 设计系统）
-├── index.html                # 三栏布局 + 设置面板 + 审查面板 + 图片粘贴
+├── index.html                # Chat-first 布局（主页面=对话，功能收进子页面）
+│                             # + 左侧会话栏 + 右侧可折叠任务面板 + 设置/审查面板 + 图片粘贴
 └── js/                       # 前端 JS（P1-6 阶段C 自 app.js 拆为 13 模块，按原序加载）
     ├── state.js              # 状态与两段式启动；persistence/assistants/conversations/tools/chat/
     │                         # imports/settings/utils/stream/review/heatmap/misc 共 13 个
@@ -75,9 +76,11 @@ src/
 ├── supply/                   # 立创商城 API + BOM 健康
 ├── rag/                      # ChromaDB 知识库
 ├── html_bom/                 # HTML BOM 生成
+├── api/                      # FastAPI 服务（Eel 之外的 REST 通道）
+├── ml/                       # NLU/元件分类模型训练脚本
 └── interfaces/               # EDA 适配器
 
-tests/                        # 965 条测试（pytest 收集）
+tests/                        # 1179 条测试（pytest 收集）
 ```
 
 ## 配置
@@ -100,7 +103,7 @@ tests/                        # 965 条测试（pytest 收集）
 ## 测试
 
 ```bash
-python -m pytest tests/ -q     # 965 条测试
+python -m pytest tests/ -q     # 1179 条测试
 python -m pytest tests/ -v     # 详细输出
 ```
 
