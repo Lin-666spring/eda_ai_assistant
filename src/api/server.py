@@ -78,12 +78,24 @@ app = FastAPI(
     description="REST API for BOM management, PCB design review, and AI chat",
 )
 
-# Allow the LCEDA iframe (file:// or edge:// origin) and any localhost client.
+# CORS 白名单（2026-10-10 安全批）：此前 allow_origins=["*"] + /settings 回明文
+# Key，用户浏览器里任意网页都能 fetch 127.0.0.1:8710 窃取。响应现已脱敏，但仍
+# 收敛到已知调用方：lceda 插件 iframe（file:///扩展页 Origin 为 "null"，见
+# lceda_plugin/iframe/app.js 直连本服务）、本机端口、lceda 编辑器域（内容脚本
+# fetch 走页面 Origin）。新增调用方在此显式追加。
+_CORS_ALLOWED_ORIGINS = [
+    "null",  # file:// / 扩展沙盒 iframe（lceda 插件面板）
+    "http://127.0.0.1:8710",
+    "http://localhost:8710",
+    "http://localhost:5173",  # frontend/ Vite 开发服（待清退）
+    "https://pro.lceda.cn",
+    "https://lceda.cn",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_CORS_ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 
 # ── serve iframe static files (for LCEDA plugin dev) ─────────

@@ -322,6 +322,43 @@ class TestSettings:
         assert "accent" in data
         assert "data_dir" in data
 
+    def test_get_settings_masks_api_key(self):
+        """2026-10-10 安全批：REST 侧不回传明文 Key（CORS 时代任意网页可读）。
+
+        已存 Key → api_key 空串 + has_key=True；未存 → has_key=False。
+        settings 落盘在 conftest 的 EDA_AI_HOME 临时目录，直接读写不污染真实配置。
+        """
+        from src.config import load_settings, save_settings
+
+        saved = load_settings()
+        save_settings({**saved, "llm_api_key": "sk-secret-123"})
+        try:
+            resp = client.get("/api/v1/settings")
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["api_key"] == ""
+            assert data["has_key"] is True
+        finally:
+            save_settings(saved)
+
+    def test_save_settings_empty_key_keeps_existing(self):
+        """2026-10-10 安全批：GET 已脱敏，客户端空 api_key 原样提交不应清掉已存 Key。"""
+        from src.config import load_settings, save_settings
+
+        saved = load_settings()
+        save_settings({**saved, "llm_api_key": "sk-keep-me"})
+        try:
+            resp = client.post("/api/v1/settings", json={
+                "provider": "deepseek", "api_key": "", "base_url": "",
+                "model": "", "temperature": 0.7, "theme": "light",
+                "accent": "#5b8def", "font_size": 13, "data_dir": "",
+            })
+            assert resp.status_code == 200
+            assert resp.json()["ok"] is True
+            assert load_settings().get("llm_api_key") == "sk-keep-me"
+        finally:
+            save_settings(saved)
+
     def test_save_settings_minimal(self):
         resp = client.post("/api/v1/settings", json={
             "provider": "openai", "api_key": "", "base_url": "",

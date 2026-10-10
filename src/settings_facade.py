@@ -48,15 +48,21 @@ def bom_items(ctrl) -> list[dict]:
 # ═══════════════════════════════════════════════════════════════
 
 
-def settings_view() -> dict:
+def settings_view(mask_secrets: bool = False) -> dict:
     """GET /settings 与 eel get_settings 的公共取值口径。
 
     不含 REST 侧的 "ok": True 包装（由 endpoints 自己加）。
+
+    mask_secrets=True 供 REST 入口：api_key 不回传明文（2026-10-10 安全批，
+    浏览器任意网页可跨源读 /settings，此前会拿到明文 Key），改为空串 +
+    has_key 标志；Eel 桌面侧保持明文，设置页编辑回显依赖它。
     """
     saved = load_settings()
+    api_key = saved.get("llm_api_key", "")
     return {
         "provider": saved.get("llm_provider", "deepseek"),
-        "api_key": saved.get("llm_api_key", ""),
+        "api_key": "" if mask_secrets else api_key,
+        "has_key": bool(api_key),
         "base_url": saved.get("llm_base_url", ""),
         "model": saved.get("llm_model", ""),
         "temperature": saved.get("llm_temperature", 0.7),

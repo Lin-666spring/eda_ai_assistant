@@ -34,8 +34,10 @@ async function showDesignSuggestions() {
     if (stack) {
       var div = document.createElement('div');
       div.className = 'design-suggestion-card';
+      // raw 来自导入的 BOM 内容，必须走 renderMarkdown（剥 HTML + 中和
+      // javascript: 链接）；此前是全项目唯一裸用 marked.parse 的路径。
       div.innerHTML = '<div class="design-suggestion-title">AI 设计意图识别</div>' +
-        '<div class="design-suggestion-body">' + marked.parse(raw) + '</div>';
+        '<div class="design-suggestion-body">' + renderMarkdown(raw) + '</div>';
       stack.insertBefore(div, stack.firstChild);
     }
     // Also toast

@@ -136,8 +136,7 @@ function selectProvider(key, card) {
   if (link) {
     if (p.key_url) { link.href = p.key_url; link.style.display = ''; }
     else { link.style.display = 'none'; }
-  }
-  var note = document.getElementById('providerNote');
+  }  var note = document.getElementById('providerNote');
   if (note) {
     note.textContent = p.notes || '';
     note.style.display = p.notes ? '' : 'none';

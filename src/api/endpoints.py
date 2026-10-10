@@ -496,17 +496,27 @@ def test_llm_connection(req: LLMTestRequest):
 
 @router.get("/settings")
 def get_settings():
-    """薄委托：取值口径在 facade.settings_view（曾与 Eel 侧各写一份）。"""
-    return {"ok": True, **facade.settings_view()}
+    """薄委托：取值口径在 facade.settings_view（曾与 Eel 侧各写一份）。
+
+    mask_secrets=True：REST 响应不含明文 API Key（2026-10-10 安全批）。
+    """
+    return {"ok": True, **facade.settings_view(mask_secrets=True)}
 
 
 @router.post("/settings", response_model=OkResponse)
 def save_all_settings(req: SettingsRequest):
-    """Save all settings and reconfigure LLM（薄委托 facade.persist_all_settings）。"""
+    """Save all settings and reconfigure LLM（薄委托 facade.persist_all_settings）。
+
+    空 api_key = 保留已存 Key：GET 已脱敏（api_key 恒空串），客户端回填
+    表单原样提交时不该把真 Key 清掉（2026-10-10 安全批）。
+    """
     ctrl = get_controller()
     try:
+        api_key = req.api_key
+        if not api_key:
+            api_key = load_settings().get("llm_api_key", "")
         facade.persist_all_settings(
-            ctrl, req.provider, req.api_key, req.base_url, req.model,
+            ctrl, req.provider, api_key, req.base_url, req.model,
             req.temperature, req.theme, req.accent, font_size=req.font_size,
         )
         return OkResponse(ok=True)

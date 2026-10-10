@@ -367,7 +367,8 @@
           </div>
           <div class="settings-model-actions">
             <button class="btn-sm" id="fetchModelsBtn" onclick="fetchModelsForProvider()">拉取最新模型</button>
-            <a class="settings-key-link" id="providerKeyLink" href="#" target="_blank" rel="noopener">获取 API Key →</a>
+            <!-- 初始隐藏：href 由 selectProvider 填充后再显示，避免异步加载窗口期的死链 -->
+            <a class="settings-key-link" id="providerKeyLink" href="#" target="_blank" rel="noopener" style="display:none">获取 API Key →</a>
           </div>
           <div id="providerNote" class="settings-note" style="display:none"></div>
         </div>
