@@ -1874,3 +1874,21 @@ body.companion-mode .status-pill { display: none; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ═══ LLM 配置状态徽标（顶栏，2026-10-10 前端批）═══
+   已配置：描边胶囊显示模型名；未配置：warning 配色提示，点击进设置。 */
+.llm-status-badge {
+  display: inline-flex; align-items: center;
+  height: 26px; max-width: 200px; padding: 0 11px;
+  background: var(--info-bg); color: var(--text-secondary);
+  border: 1px solid var(--border); border-radius: 13px;
+  font-size: 11.5px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex-shrink: 1; min-width: 0; cursor: pointer;
+}
+.llm-status-badge:hover { border-color: var(--accent); color: var(--accent); }
+.llm-status-badge.warn {
+  background: var(--warning-bg); color: var(--warning);
+  border-color: var(--warning);
+}
+body.companion-mode .llm-status-badge { display: none; }

@@ -388,7 +388,29 @@ function toggleApiKeyVisibility(btn) {
 
 function openDataDir() {
   var dir = document.getElementById('setDataDir').value;
-  if (dir) { window.open('file:///' + dir.replace(/\\/g, '/')); }
+  // window.open('file:///...') 会被 Chrome 拦截（点了没反应）—— 走后端
+  // open_workspace_dir 用系统 shell 打开资源管理器（2026-10-10 前端批）。
+  if (dir) {
+    try { eel.open_workspace_dir(dir)(); } catch (e) { console.warn('open_workspace_dir failed:', e); }
+  }
+}
+
+/** 文件监听开关 —— 此前是纯装饰（后端 toggle_auto_sync/FileWatcher 前端零
+ *  调用，2026-10-10 前端批接线）。后端找不到立创项目目录时回弹开关。 */
+async function toggleFileWatch(checkbox) {
+  try {
+    const resp = await eel.toggle_auto_sync()();
+    if (resp && resp.ok) {
+      showToast(resp.msg || (resp.running ? '自动同步已开启' : '自动同步已关闭'), 'success');
+      checkbox.checked = !!resp.running;
+    } else {
+      checkbox.checked = false;
+      showToast((resp && resp.msg) || '操作失败', 'error');
+    }
+  } catch (e) {
+    checkbox.checked = false;
+    showToast('文件监听切换失败: ' + (e.message || e), 'error');
+  }
 }
 
 async function clearAllData() {

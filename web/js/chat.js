@@ -75,7 +75,7 @@ async function sendChat() {
     }
     showEmptyState(false);
     const conv = getActiveConversation();
-    if (!conv) return;
+    if (!conv) { input.value = userText; return; }  // 无助手弹了新建框：别吞用户输入
 
     // Update title from first message
     if (conv.messages.length === 0) {
@@ -103,14 +103,16 @@ async function sendChat() {
         _persistMessage(activeConvId, 'ai', resp.result);
       } else {
         _activeStreamBubble.finalize('查询失败：' + (resp ? resp.result : '未知错误'));
-        conv.messages.push({ role: 'ai', content: _activeStreamBubble.text });
-        _persistMessage(activeConvId, 'ai', _activeStreamBubble.text);
+        const failText = _activeStreamBubble.getText();
+        conv.messages.push({ role: 'ai', content: failText });
+        _persistMessage(activeConvId, 'ai', failText);
       }
     } catch(e) {
       if (_activeStreamBubble) {
         _activeStreamBubble.finalize('网络错误：' + e);
-        conv.messages.push({ role: 'ai', content: _activeStreamBubble.text });
-        _persistMessage(activeConvId, 'ai', _activeStreamBubble.text);
+        const errText = _activeStreamBubble.getText();
+        conv.messages.push({ role: 'ai', content: errText });
+        _persistMessage(activeConvId, 'ai', errText);
       }
     }
     _activeStreamBubble = null;
@@ -124,7 +126,7 @@ async function sendChat() {
 
   // Get or create conversation
   const conv = getActiveConversation();
-  if (!conv) return;  // No assistant yet — newConversation showed the dialog
+  if (!conv) { input.value = userText; return; }  // 无助手弹了新建框：别吞用户输入
 
   // Update title from first message
   if (conv.messages.length === 0) {
@@ -207,6 +209,28 @@ async function sendChat() {
       setStatus('错误');
     }
   }
+  renderConversations();
+}
+
+/** 停止生成（2026-10-10 前端批）：作废在途流（后端代次 +1，其后的
+ *  token/done/error 不再下发），气泡定格在已收到的半截内容并落库。
+ *  后端 LLM 请求本身无法中断，跑完即弃；知识库/图片两条非流式路径
+ *  不受影响（它们没有 cancel 概念，等结果即可）。 */
+async function stopGeneration() {
+  try { await eel.cancel_stream()(); } catch (e) { /* 后端不在也不影响前端收尾 */ }
+  _activeToolCards.forEach(c => _finishToolCard(c));
+  _activeToolCards = [];
+  if (_activeStreamBubble) {
+    const text = _activeStreamBubble.getText() + '\n\n*(已停止生成)*';
+    _activeStreamBubble.finalize(text);
+    const conv = getActiveConversation();
+    conv.messages.push({ role: 'ai', content: text });
+    _persistMessage(activeConvId, 'ai', text);
+    _activeStreamBubble = null;
+    _streamTokenCount = 0;
+  }
+  disableInput(false);
+  setStatus('已停止');
   renderConversations();
 }
 

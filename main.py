@@ -220,45 +220,9 @@ def load_demo_data() -> dict:
 
 
 @eel.expose
-def merge_bom() -> dict:
-    try:
-        report = get_controller().merge_bom()
-        return {"ok": True, "report": report}
-    except Exception as e:
-        return {"ok": False, "report": str(e)}
-
-
-@eel.expose
-def ai_merge_bom() -> dict:
-    try:
-        report = get_controller().ai_merge_bom()
-        return {"ok": True, "report": report}
-    except Exception as e:
-        return {"ok": False, "report": str(e)}
-
-
-@eel.expose
-def validate_packages() -> dict:
-    report = get_controller().validate_packages()
-    return {"ok": True, "report": report}
-
-
-@eel.expose
-def check_duplicates() -> dict:
-    report = get_controller().check_duplicates()
-    return {"ok": True, "report": report}
-
-
-@eel.expose
 def check_rules() -> dict:
     ctrl = get_controller()
     report = _offload(ctrl.check_design_rules)
-    return {"ok": True, "report": report}
-
-
-@eel.expose
-def check_health() -> dict:
-    report = get_controller().check_bom_health()
     return {"ok": True, "report": report}
 
 
@@ -279,36 +243,6 @@ def generate_html_bom() -> dict:
 
 
 @eel.expose
-def bom_summary() -> dict:
-    summary = get_controller().get_bom_summary()
-    return {"ok": True, "summary": summary}
-
-
-@eel.expose
-def pcb_status() -> dict:
-    pcb = get_controller().context.pcb_data
-    if not pcb:
-        return {"ok": False, "msg": "未加载 PCB 文件"}
-    return {"ok": True, "pcb": {
-        "format": pcb.format,
-        "net_count": pcb.net_count,
-        "trace_count": pcb.trace_count,
-        "via_count": pcb.via_count,
-        "layers": pcb.layers,
-    }}
-
-
-@eel.expose
-def send_message(text: str) -> dict:
-    """Send a chat message. Returns result synchronously."""
-    try:
-        result = get_controller().process_input(text)
-        return {"ok": True, "result": result}
-    except Exception as e:
-        return {"ok": False, "result": str(e)}
-
-
-@eel.expose
 def send_image(text: str, image_b64: str) -> dict:
     """Send a chat message with an image (base64 data URI).
 
@@ -322,8 +256,25 @@ def send_image(text: str, image_b64: str) -> dict:
 
 
 @eel.expose
-def clear_chat():
-    get_controller().clear_conversation()
+def clear_chat(messages=None):
+    """清空后端对话历史（切换会话/新对话时调用，防上下文串台）。
+
+    messages 非空时用它重建历史 —— 前端切回历史会话时把该会话的消息
+    传回来，LLM 恢复该会话的上下文而不是从零开始。
+    """
+    ctrl = get_controller()
+    ctrl.clear_conversation()
+    if messages:
+        try:
+            turns = [
+                {"role": m.get("role"), "content": m.get("content", "")}
+                for m in messages
+                if isinstance(m, dict) and m.get("role") in ("user", "ai")
+                and m.get("content")
+            ]
+            ctrl.seed_conversation(turns)
+        except Exception:
+            logger.exception("clear_chat: seed_conversation failed")
     return {"ok": True}
 
 
@@ -331,18 +282,6 @@ def clear_chat():
 def review_design_multi_agent() -> str:
     """多智能体协同设计审查 — 返回 JSON"""
     return get_controller().review_design_multi_agent()
-
-
-@eel.expose
-def verify_suggestion(suggestion: str) -> str:
-    """闭环验证 — LLM 建议经规则引擎验证后反馈修正 (路线三核心)"""
-    return get_controller().verify_suggestion(suggestion)
-
-
-@eel.expose
-def run_electrical_health_check() -> str:
-    """PCB 电气健康检查 — 真实电路计算 (阻抗/PDN/去耦/电流/热/串扰)"""
-    return get_controller().run_electrical_health_check()
 
 
 @eel.expose
@@ -371,18 +310,6 @@ def get_llm_config() -> dict:
         "is_configured": config.llm.is_configured,
         "provider_label": config.llm.provider_label,
     }
-
-
-@eel.expose
-def update_llm_config(provider: str, api_key: str, base_url: str, model: str) -> dict:
-    get_controller().reconfigure_llm(provider, api_key, base_url, model)
-    saved = load_settings()
-    saved["llm_provider"] = provider
-    saved["llm_api_key"] = api_key
-    saved["llm_base_url"] = base_url
-    saved["llm_model"] = model
-    save_settings(saved)
-    return {"ok": True}
 
 
 @eel.expose
@@ -503,16 +430,6 @@ def clear_all_data() -> dict:
 def get_design_suggestions() -> str:
     """设计意图识别：BOM加载后自动调用，返回Markdown格式的主动建议"""
     return get_controller().get_design_suggestions()
-
-
-@eel.expose
-def has_bom() -> bool:
-    return get_controller().context.has_data
-
-
-@eel.expose
-def has_pcb() -> bool:
-    return get_controller().context.pcb_data is not None
 
 
 # ══════════════════════════════════════════
@@ -639,6 +556,40 @@ def toggle_auto_sync() -> dict:
     watcher.watch(path, _notify_pcb_changed)
     return {"ok": True, "running": True, "path": path, "msg": f"自动同步已开启 — {path}"}
 
+# ── 流式代次守卫（2026-10-10 前端批）──
+# 前端发新消息/点停止时，旧流可能仍在跑：旧流的 on_stream_done 会把旧回复
+# push 进新会话并落库、旧 token 混进新气泡。每次新流起跑递增代次，回调只对
+# 最新代次生效 —— 被超越的旧流 token/done/error 直接丢弃（前端已把旧气泡
+# 定格在当时的半截内容上）。
+_stream_seq = 0
+_stream_seq_lock = threading.Lock()
+
+
+def _next_stream_seq() -> int:
+    global _stream_seq
+    with _stream_seq_lock:
+        _stream_seq += 1
+        return _stream_seq
+
+
+def _emit_stream(seq: int, fn_name: str, *args) -> None:
+    with _stream_seq_lock:
+        live = seq == _stream_seq
+    if live:
+        getattr(eel, fn_name)(*args)()
+
+
+@eel.expose
+def cancel_stream() -> dict:
+    """停止生成：作废在途流（其后 token/done 不再下发）。
+
+    后端 LLM 请求本身无法中断，会在后台跑完但结果被丢弃；前端气泡定格在
+    已收到的半截内容上。
+    """
+    _next_stream_seq()
+    return {"ok": True}
+
+
 @eel.expose
 def send_message_stream(text: str):
     """Send a chat message with streaming token callbacks to the frontend.
@@ -647,14 +598,15 @@ def send_message_stream(text: str):
     eel.on_stream_done(full_text)() on completion, and
     eel.on_stream_error(err_msg)() on failure.
     """
+    seq = _next_stream_seq()
     try:
         result = get_controller().chat_message_stream(
             text,
-            on_token=lambda token: eel.on_stream_token(token)()
+            on_token=lambda token: _emit_stream(seq, "on_stream_token", token)
         )
-        eel.on_stream_done(result)()
+        _emit_stream(seq, "on_stream_done", result)
     except Exception as e:
-        eel.on_stream_error(str(e))()
+        _emit_stream(seq, "on_stream_error", str(e))
 
 
 @eel.expose
@@ -667,15 +619,16 @@ def send_message_agent(text: str):
     Streaming: on_stream_token is called for the final text response (simulated
     token-by-token output). Tool execution happens before streaming begins.
     """
+    seq = _next_stream_seq()
     try:
         result = get_controller().agent_loop(
             text,
-            on_token=lambda token: eel.on_stream_token(token)(),
-            on_tool_call=lambda name, args: eel.on_tool_call(name)(),
+            on_token=lambda token: _emit_stream(seq, "on_stream_token", token),
+            on_tool_call=lambda name, args: _emit_stream(seq, "on_tool_call", name),
         )
-        eel.on_stream_done(result)()
+        _emit_stream(seq, "on_stream_done", result)
     except Exception as e:
-        eel.on_stream_error(str(e))()
+        _emit_stream(seq, "on_stream_error", str(e))
 
 # ══════════════════════════════════════════
 #  Persistence API (SQLite session store)
@@ -931,12 +884,6 @@ def poll_toggle() -> dict:
         return {"ok": True, "toggled": toggled, "companion": is_companion_mode()}
     except Exception as e:
         return {"ok": False, "toggled": False, "companion": False}
-
-
-@eel.expose
-def get_window_mode() -> dict:
-    """获取当前窗口模式"""
-    return {"companion": is_companion_mode()}
 
 
 @eel.expose

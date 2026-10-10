@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EDA AI 智能助手 v0.8.0</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%232565fe'/><text x='16' y='22' text-anchor='middle' font-family='sans-serif' font-size='14' font-weight='bold' fill='white'>EDA</text></svg>">
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/inter@5.1.0/index.css">
 <link rel="stylesheet" href="css/style.css">
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+<!-- 本地 vendor（2026-10-10 前端批）：echarts 此前走 jsdelivr CDN，打包版
+     断网时热力图直接不可用。Inter 字体同步撤下 —— 系统字体栈（Segoe UI/
+     PingFang/雅黑，见 style.css --font）就近回落，离线不再有外部依赖。 -->
+<script src="vendor/echarts.min.js"></script>
 <script src="/eel.js"></script>
 <script>
 // ── 首屏前的主题引导（必须内联、必须早于样式表）──
@@ -127,6 +128,9 @@
     <button class="nav-item" data-view="config" onclick="switchView('config')">配置管理</button>
   </nav>
   <div class="topbar-right">
+    <!-- LLM 配置状态徽标：已配置显示模型名，未配置显示警示（点击进设置）。
+         updateLLMStatus 的展示挂点（2026-10-10 前端批，此前该函数未定义）。 -->
+    <button id="llmStatusBadge" class="llm-status-badge hidden" onclick="toggleSettings()"></button>
     <!-- 全局忙碌状态：运行中的动词短语（带 spinner），完成后短暂显示 ✓ -->
     <div id="statusPill" class="status-pill hidden" aria-live="polite">
       <span class="status-spinner"></span>
@@ -200,6 +204,9 @@
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
       </button>
       <textarea id="chatInput" placeholder="输入审查指令或问题... (Enter 发送, Shift+Enter 换行)" rows="1" autofocus></textarea>
+      <button id="stopBtn" class="img-btn" onclick="stopGeneration()" title="停止生成" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1.5"/></svg>
+      </button>
       <button id="sendBtn" onclick="sendChat()" title="发送">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
@@ -452,35 +459,16 @@
         <h3 class="settings-tab-title">通用设置</h3>
         <p class="settings-tab-desc">数据存储和应用行为</p>
 
-        <div class="setting-toggle-row">
-          <div>
-            <div class="setting-toggle-label">自动保存对话</div>
-            <div class="setting-toggle-desc">退出时自动保存所有对话记录</div>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="setAutoSave" checked>
-            <span class="toggle-track"></span>
-          </label>
-        </div>
-
+        <!-- 「自动保存对话」「发送前确认」两个装饰开关已撤（2026-10-10 前端批）：
+             对话本就每次落库（_persistMessage），无「不保存」模式可切；
+             发送确认从未实现过 gating。 -->
         <div class="setting-toggle-row">
           <div>
             <div class="setting-toggle-label">文件监听</div>
             <div class="setting-toggle-desc">立创EDA项目文件变更时自动同步</div>
           </div>
           <label class="toggle-switch">
-            <input type="checkbox" id="setFileWatch" checked>
-            <span class="toggle-track"></span>
-          </label>
-        </div>
-
-        <div class="setting-toggle-row">
-          <div>
-            <div class="setting-toggle-label">发送前确认</div>
-            <div class="setting-toggle-desc">执行关键操作前弹出确认对话框</div>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="setConfirmOps">
+            <input type="checkbox" id="setFileWatch" onchange="toggleFileWatch(this)">
             <span class="toggle-track"></span>
           </label>
         </div>

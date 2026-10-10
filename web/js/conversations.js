@@ -32,6 +32,9 @@ function newConversation() {
   closeSubPage();
   showEmptyState(true);
   document.getElementById('chatInput').focus();
+  // 新对话 = 后端历史也清零：此前只在切助手/重配置时清，「新对话」名不副实
+  // —— LLM 还带着上一对话的 20 轮上下文（2026-10-10 前端批）。
+  try { eel.clear_chat()(); } catch (e) {}
 }
 
 async function switchConversation(convId) {
@@ -58,6 +61,13 @@ async function switchConversation(convId) {
     conv._loaded = true;
   }
   if (activeConvId !== convId) return;   // 加载期间用户又切走了
+
+  // 后端历史对齐到切过去的会话：清掉旧上下文并用该会话消息重建
+  // （此前从不调用，跨「前端会话」串台 —— B 会话续着 A 会话的上下文答）。
+  try {
+    const msgs = (conv && conv.messages) || [];
+    eel.clear_chat(msgs.map(m => ({ role: m.role, content: m.content })))();
+  } catch (e) {}
 
   const msgs = (conv && conv.messages) || [];
   if (msgs.length > 0) {

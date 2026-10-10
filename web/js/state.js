@@ -236,3 +236,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
+/** 顶栏 LLM 配置状态徽标 —— 此前 state.js 里只有调用没有定义，
+ *  ReferenceError 被外层 try/catch 吞掉，「是否已配 Key」从未展示（假功能，
+ *  2026-10-10 前端批补实）。已配置显示模型名，未配置显示警示，点击进设置。 */
+function updateLLMStatus(cfg) {
+  const el = document.getElementById('llmStatusBadge');
+  if (!el) return;
+  if (cfg && cfg.is_configured) {
+    el.textContent = cfg.model || cfg.provider_label || cfg.provider || 'LLM';
+    el.title = (cfg.provider_label || cfg.provider || 'LLM') + ' · 已配置';
+    el.classList.remove('warn');
+  } else {
+    el.textContent = '未配置 LLM';
+    el.title = '点击配置 API Key 后即可对话';
+    el.classList.add('warn');
+  }
+  el.classList.remove('hidden');
+}
+

@@ -151,6 +151,9 @@ function _wrapBusyCall(orig, label) {
 function disableInput(disabled) {
   document.getElementById('chatInput').disabled = disabled;
   document.getElementById('sendBtn').disabled = disabled;
+  // 生成期间把发送键换成「停止」键（2026-10-10 前端批）
+  const stop = document.getElementById('stopBtn');
+  if (stop) stop.style.display = disabled ? '' : 'none';
 }
 
 // ── 思考动效：三点脉冲 + 轮换文案 + 计时 ──

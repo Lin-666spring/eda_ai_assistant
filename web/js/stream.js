@@ -9,6 +9,8 @@
 eel.expose(onPCBChanged, 'on_pcb_changed');
 function onPCBChanged(filepath) {
   appendSystem(`[PCB]  检测到 PCB 文件变化: ${filepath}`);
+  // 文件监听开启时 PCB 到位 → 刷新工具可用性（与 onStreamDone 同口径）
+  refreshToolCatalog();
 }
 
 // ── Streaming callbacks (called by Python) ──

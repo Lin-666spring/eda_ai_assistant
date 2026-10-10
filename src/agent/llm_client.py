@@ -9,6 +9,7 @@
 import json
 import logging
 import threading
+import time
 from dataclasses import dataclass, field
 from typing import Optional, Generator, Callable
 
@@ -17,6 +18,10 @@ import requests
 from ..constants import LLM_PROVIDER_PRESETS, DEFAULT_PROVIDER
 
 logger = logging.getLogger(__name__)
+
+# 429/5xx 是瞬态失败（限流/网关抖动），值得退避重试；4xx 参数类错误重试无意义。
+_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+_RETRY_DELAYS = (1.5, 4.0)
 
 # 进程级 LLM token 用量累计（供实验脚本读取）。
 # 2026-10-08（P1-11）：多智能体审查 5 线程并发调用同一客户端，+= 不是原子
@@ -524,35 +529,45 @@ class LLMClient:
     def _open(self, payload: dict, stream: bool = False):
         """发请求并返回 response 对象。
 
-        遇到「该模型不支持 temperature/top_p」的 400 时，去掉采样参数重试一次
-        —— 见文件头 _SAMPLING_KEYS 的说明。第二次仍失败就照常抛出。
+        两条重试路径（2026-10-10 前端批补齐 429/5xx 退避）：
+        - 429/5xx：限流与网关抖动是最常见的瞬态失败，此前一次失败整轮对话
+          就断 —— 退避 1.5s/4s 重试至多 2 次；
+        - 「该模型不支持 temperature/top_p」的 400：去掉采样参数重试一次
+          （见文件头 _SAMPLING_KEYS 的说明）。仍失败就照常抛出。
         """
         url = f"{self.base_url}{self.API_ENDPOINT}"
         headers = self._build_headers()
-        try:
-            resp = requests.post(url, headers=headers, json=payload,
-                                 timeout=120, stream=stream)
-            resp.raise_for_status()
-            return resp
-        except requests.HTTPError as error:
-            detail = _safe_response_text(error)
-            if _looks_like_unsupported_param(detail) and any(
-                    k in payload for k in _SAMPLING_KEYS):
-                logger.warning(
-                    "模型 %s 拒绝采样参数，去掉 %s 后重试一次",
-                    self.model, list(_SAMPLING_KEYS),
-                )
-                retry = requests.post(
-                    url, headers=headers, json=_strip_sampling_params(payload),
-                    timeout=120, stream=stream,
-                )
-                retry.raise_for_status()
-                return retry
-            logger.error("LLM API 请求失败 (%s): %s — %s", self.base_url, error, detail)
-            raise
-        except requests.RequestException as error:
-            logger.error("LLM API 请求失败 (%s): %s", self.base_url, error)
-            raise
+        for attempt in range(len(_RETRY_DELAYS) + 1):
+            try:
+                resp = requests.post(url, headers=headers, json=payload,
+                                     timeout=120, stream=stream)
+                resp.raise_for_status()
+                return resp
+            except requests.HTTPError as error:
+                status = error.response.status_code if error.response is not None else None
+                if status in _RETRYABLE_STATUS and attempt < len(_RETRY_DELAYS):
+                    logger.warning("LLM API %s（第 %d 次失败），%.1fs 后重试: %s",
+                                   self.base_url, attempt + 1, _RETRY_DELAYS[attempt], status)
+                    time.sleep(_RETRY_DELAYS[attempt])
+                    continue
+                detail = _safe_response_text(error)
+                if _looks_like_unsupported_param(detail) and any(
+                        k in payload for k in _SAMPLING_KEYS):
+                    logger.warning(
+                        "模型 %s 拒绝采样参数，去掉 %s 后重试一次",
+                        self.model, list(_SAMPLING_KEYS),
+                    )
+                    retry = requests.post(
+                        url, headers=headers, json=_strip_sampling_params(payload),
+                        timeout=120, stream=stream,
+                    )
+                    retry.raise_for_status()
+                    return retry
+                logger.error("LLM API 请求失败 (%s): %s — %s", self.base_url, error, detail)
+                raise
+            except requests.RequestException as error:
+                logger.error("LLM API 请求失败 (%s): %s", self.base_url, error)
+                raise
 
     def _post_stream_lines(self, request: ChatRequest) -> Generator[str, None, None]:
         """发送流式 POST 请求，逐行 yield"""

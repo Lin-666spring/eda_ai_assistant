@@ -174,6 +174,18 @@ class AppController:
         if self.agent:
             self.agent.clear_history()
 
+    def seed_conversation(self, turns: list[dict]) -> None:
+        """用前端传回的会话消息重建 LLM 历史（clear_chat(messages=) 的配套）。
+
+        切换回历史会话时调用：LLM 恢复该会话的上下文，而不是从零开始。
+        前端已把消息裁成 [{role: user|ai, content}]。
+        """
+        self._conversation_active = bool(turns)
+        self._history_generation += 1
+        if self.agent:
+            self.agent.seed_history(list(turns)[-40:])  # 与 HISTORY_MAX_TURNS=20 轮同量级
+        logger.info("Conversation seeded with %d turns", len(turns))
+
     def set_active_assistant(self, assistant_id: str):
         """切换当前助手 — 影响 AI 回复的系统提示词风格
 
@@ -362,6 +374,11 @@ class AppController:
             report += "\n\n AI 未发现额外合并机会"
         return report
 
+    # prompt 里的本地数据截断上限（2026-10-10 前端批）：大 BOM/大板整段塞进
+    # prompt 会打出超长请求（费用暴涨/部分网关直接 400），截断后带省略标注。
+    _AI_CONTEXT_MAX_BOM_LINES = 300
+    _AI_CONTEXT_MAX_CHARS = 8000
+
     def _format_merged_for_ai(self, merged: list) -> str:
         """Format rule-merged BOM groups as compact text for AI analysis."""
         lines: list[str] = []
@@ -370,6 +387,9 @@ class AppController:
                 f"{i}. 位号:{m.reference_str} | 型号:{m.part_number} "
                 f"| 封装:{m.package} | 值:{m.value} | 数量:{m.total_quantity}"
             )
+            if i >= self._AI_CONTEXT_MAX_BOM_LINES:
+                lines.append(f"…（共 {len(merged)} 行，已截断至前 {i} 行）")
+                break
         return "\n".join(lines)
 
     def validate_packages(self) -> str:
@@ -1305,8 +1325,11 @@ class AppController:
         """处理 PCB 分析请求（本地降级时）"""
         if self.agent is None:
             return " PCB 分析需要 AI 支持，请先配置 API Key。"
+        summary = str(self.context.pcb_data or "未加载")
+        if len(summary) > self._AI_CONTEXT_MAX_CHARS:
+            summary = summary[:self._AI_CONTEXT_MAX_CHARS] + f"\n…（repr 已截断，原文 {len(summary)} 字符）"
         return self.agent.chat(
-            PromptTemplates.get("pcb_analysis", pcb_summary=str(self.context.pcb_data or "未加载")),
+            PromptTemplates.get("pcb_analysis", pcb_summary=summary),
             system_prompt=PromptTemplates.get_system_prompt("pcb"),
         )
 
