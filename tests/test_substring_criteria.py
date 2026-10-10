@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from src.bom.parser import BOMItem
 from src.pcb.models import PCBData, PCBNet, PCBTrace, PCBVia
-from src.rules.base import _has_power_entry, _net_kw_hit, _row_text
+from src.rules.base import RuleSeverity, _has_power_entry, _net_kw_hit, _row_text
 from src.rules.checker import DesignRuleChecker
 
 
@@ -393,3 +393,124 @@ def test_crosstalk_gnd_family_suffix_net_excluded():
     out = _run(pcb, rule="_check_crosstalk_spacing")
     assert len(out) == 1
     assert "最严重" not in out[0].description
+
+
+# ── 批5 假阳清扫（2026-10-10）：晶振识别 / 封装别名 / 悬空网表化 / 板边豁免 ──
+# 金样对比见 experiment_results/batch5_fp_sweep_2026-10-10/。
+
+def test_crystal_load_caps_rejects_bead_and_dcdc():
+    """金样 22 条全假阳锁：磁珠 100MHz / DC-DC 1.5MHz 都不是晶振（台账 #12 前半）。"""
+    bom = [_item("L5", pn="BLM15AX102SN1D", desc="1kΩ@100MHz ±25%"),
+           _item("U6", pn="MT3406", desc="1A，2V-6V输入，1.5MHz同步降压转换器")]
+    assert _run(_pcb(), bom, {}, "_check_crystal_load_caps") == []
+
+
+def test_crystal_load_caps_rejects_x_prefix_connector_and_junk():
+    """X 前缀不充分：连接器 WAFER-PH2.0、无证据杂行 pn=00 都不认。"""
+    bom = [_item("X3", pn="WAFER-PH2.0-4PWZ", desc="1x4P 间距:2mm 弯插 系列:PH"),
+           _item("X9", pn="00")]
+    assert _run(_pcb(), bom, {}, "_check_crystal_load_caps") == []
+
+
+def test_crystal_load_caps_active_oscillator_needs_no_cl():
+    """有源晶振自己出时钟：H1OSC 不计负载电容供需。"""
+    bom = [_item("X2", pn="H1OSC-SUG-12M", desc="12MHz ±20ppm 20pF")]
+    assert _run(_pcb(), bom, {}, "_check_crystal_load_caps") == []
+
+
+def test_crystal_load_caps_internal_rtc_silent():
+    """RTC 描述「内置 32.768kHz 晶振」是片内振荡源，底板无需负载电容。"""
+    bom = [_item("U3", pn="RX8025T", desc="实时时钟 内置 32.768kHz 晶振")]
+    assert _run(_pcb(), bom, {}, "_check_crystal_load_caps") == []
+
+
+def test_crystal_load_caps_real_passive_crystal_fires():
+    bom = [_item("X1", pn="X50328MSB2GI", value="8MHz", desc="YSX530GA 8MHZ 2P 5032 20PF ±10PPM")]
+    out = _run(_pcb(), bom, {}, "_check_crystal_load_caps")
+    assert len(out) == 1 and "1 个无源晶振" in out[0].description
+
+
+def test_crystal_load_caps_bare_mhz_ppm_desc_recognized():
+    """「3225 25M 20PF 10ppm」裸 M 频率+ppm 描述也要认出来（金样 Mini FOC X1）。"""
+    bom = [_item("X1", pn="S3226000151040", value="-", desc="3225 25M 20PF  10ppm  -20 -75℃")]
+    out = _run(_pcb(), bom, {}, "_check_crystal_load_caps")
+    assert len(out) == 1
+
+
+def test_package_consistency_size_and_clone_variants_are_same_pkg():
+    """SOT-23-3_L2.9-… ≡ SOT-23；0603_5 ≡ 0603；LED0603-FD ≡ LED0603（台账 #25）。"""
+    bom = [_item("Q1", pn="S8050", pkg="SOT-23"),
+           _item("Q2", pn="S8050", pkg="SOT-23-3_L2.9-W1.3-P1.90-LS2.4-BR"),
+           _item("C1", pn="CL10A106KP8NNNC", pkg="0603"),
+           _item("C2", pn="CL10A106KP8NNNC", pkg="0603_5"),
+           _item("C3", pn="CL10A106KP8NNNC", pkg="0603_6"),
+           _item("D1", pn="1191", pkg="LED0603"),
+           _item("D2", pn="1191", pkg="LED0603-FD")]
+    assert _run(_pcb(), bom, {}, "_check_package_consistency") == []
+
+
+def test_package_consistency_hdr_clone_stripped_pin_count_differs():
+    """-V-M-2/_1 是克隆+安装标记要剥掉（HEAD3 两变体同件）；归一不能抹掉
+    引脚数真差异——同型号 3P vs 4P 排针必须仍报。"""
+    bom = [_item("H1", pn="HEAD3", pkg="HDR-TH_3P-P2.54"),
+           _item("H2", pn="HEAD3", pkg="HDR-TH_3P-P2.54-V-M-2"),
+           _item("J1", pn="FH254", pkg="HDR-TH_3P-P2.54"),
+           _item("J2", pn="FH254", pkg="HDR-TH_4P-P2.54-V-F")]
+    out = _run(_pcb(), bom, {}, "_check_package_consistency")
+    assert len(out) == 1 and "FH254" in out[0].description
+
+
+def test_package_consistency_dirty_pkg_text_skipped():
+    """「纽扣电池」「SMD,P=0.5mm」是描述文本混入封装字段——跳过，不出假警告。"""
+    bom = [_item("BT1", pn="1.25-2A", pkg="CONN-TH_1.25-2A"),
+           _item("BT2", pn="1.25-2A", pkg="纽扣电池"),
+           _item("CN1", pn="91302-32-067RDM", pkg="CONN-SMD_91302-32-067RDM"),
+           _item("CN2", pn="91302-32-067RDM", pkg="SMD,P=0.5mm")]
+    assert _run(_pcb(), bom, {}, "_check_package_consistency") == []
+
+
+def test_package_consistency_crystal_vs_osc_still_reported():
+    """CRYSTAL-SMD vs OSC-SMD 同型号是真可疑（无源/有源混料），保留警示。"""
+    bom = [_item("X1", pn="X322525MOB4SI", pkg="CRYSTAL-SMD_4P-L3.2-W2.5-BL"),
+           _item("X2", pn="X322525MOB4SI", pkg="OSC-SMD_4P-L3.2-W2.5-BL")]
+    out = _run(_pcb(), bom, {}, "_check_package_consistency")
+    assert len(out) == 1
+
+
+def test_floating_pins_netlist_connected_silent():
+    """金样 24/25 板假阳锁：主控引脚挂在 NRST 网上 → 静默。"""
+    bom = [_item("U1", pn="STM32F103C8T6", desc="MCU")]
+    netlist = {"NRST": ["U1.7", "R1.1"], "VCC": ["U1.9"]}
+    assert _run(_pcb(), bom, netlist, "_check_floating_pins") == []
+
+
+def test_floating_pins_reset_net_bypasses_mcu_warns():
+    """板上存在复位网却不连主控 → 强证据 WARNING。"""
+    bom = [_item("U1", pn="STM32F103C8T6", desc="MCU")]
+    netlist = {"NRST": ["U9.3"], "VCC": ["U1.9"]}
+    out = _run(_pcb(), bom, netlist, "_check_floating_pins")
+    assert len(out) == 1 and out[0].severity == RuleSeverity.WARNING
+
+
+def test_floating_pins_no_netlist_downgrades_info():
+    """无网表数据 → 诚实降级 INFO，不再报「可能悬空」模板 WARNING。"""
+    bom = [_item("U1", pn="STM32F103C8T6", desc="MCU")]
+    out = _run(_pcb(), bom, {}, "_check_floating_pins")
+    assert len(out) == 1 and out[0].severity == RuleSeverity.INFO
+
+
+def test_edge_clearance_exempts_function_edge_parts():
+    """连接器/排针/测试点/电机贴板边是设计意图；脏位号(纯数字)跳过。"""
+    pcb = _pcb()
+    pcb.board_outline = {"source": "outline", "min_x_mm": 0.0, "min_y_mm": 0.0,
+                         "max_x_mm": 50.0, "max_y_mm": 40.0}
+    positions = {"C1": {"x": 1.5, "y": 20.0}, "J1": {"x": 0.8, "y": 20.0},
+                 "TP1": {"x": 25.0, "y": 0.9}, "M1": {"x": 49.5, "y": 20.0},
+                 "25": {"x": 1.0, "y": 1.0}}
+    bom = [_item("C1"), _item("J1"), _item("TP1"), _item("M1"), _item("25")]
+    checker = DesignRuleChecker()
+    checker._pcb_data = pcb
+    out = checker._check_component_edge_clearance(bom, positions, {})
+    assert len(out) == 1
+    assert "C1" in out[0].description and "J1" not in out[0].description
+    assert "已豁免" in out[0].description

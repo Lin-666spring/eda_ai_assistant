@@ -181,6 +181,13 @@ class LayoutRulesMixin:
         return violations
 
 
+    # 功能上必须贴板边的器件（批5 2026-10-10，金样 45 条里三成以上是这类）：
+    # 连接器/排针要插拔、FPC 要翻出、按键要按压、声学件要开孔、天线馈点/
+    # 测试点本来就设计在边缘。3.0mm 装配余量判据只约束「不必贴边」的器件。
+    _EDGE_FUNCTION_PREFIXES = ("J", "P", "CN", "CON", "USB", "HDMI", "RJ", "DC",
+                               "BT", "BAT", "FPC", "H", "TP", "SW", "M", "MIC", "SPK",
+                               "BUZ", "RF", "ANT")
+
     def _check_component_edge_clearance(self, bom_items, positions, netlist):
         """板边间距：元件距 PCB 板边应 ≥3mm（按板框包围盒算真实边距）
 
@@ -188,6 +195,11 @@ class LayoutRulesMixin:
         原点偏移的板上恒不响，原点在 0 附近的板只判了左/下两条边。
         板框退回「铜包围盒」(source=copper) 时边距恒为 0、无判定意义，
         直接跳过（与走线板边规则同一守卫）。
+        批5（2026-10-10）：功能贴边件豁免（_EDGE_FUNCTION_PREFIXES）——
+        金样探底 45 条警告里 H 排针/J 连接器/FPC/MIC/TP/RF 占比过半，
+        这些贴边是设计意图不是装配风险；位号按逗号拆分逐个判（旧行为
+        整串查 positions，多位号行恒漏）。LED 不豁免（贴边常是灯导但也
+        常是随手放，保留提示由人判）。
         """
         if not positions: return []
         pcb = self._pcb_data
@@ -197,15 +209,26 @@ class LayoutRulesMixin:
         mc = 3.0
         minx, miny = bo["min_x_mm"], bo["min_y_mm"]
         maxx, maxy = bo["max_x_mm"], bo["max_y_mm"]
-        near = []
+        near, exempt = [], 0
         for item in bom_items:
-            ref = getattr(item, "reference", "")
-            if ref and ref in positions:
+            for ref in (getattr(item, "reference", "") or "").split(","):
+                ref = ref.strip()
+                if not ref or ref not in positions:
+                    continue
+                pfx = "".join(c for c in ref if c.isalpha()).upper()
+                if not pfx:
+                    continue  # 纯数字"位号"（25/50/75）是 BOM 脏数据，不是元件
+                if pfx.startswith(self._EDGE_FUNCTION_PREFIXES):
+                    x, y = _xy(positions[ref])
+                    if min(x - minx, maxx - x, y - miny, maxy - y) < mc:
+                        exempt += 1
+                    continue
                 x, y = _xy(positions[ref])
                 if min(x - minx, maxx - x, y - miny, maxy - y) < mc: near.append(ref)
         if near:
+            note = f"（另有 {exempt} 个连接器/排针/测试点等功能贴边件已豁免）" if exempt else ""
             return [RuleViolation(
-                rule_name="板边间距检查", description=f"{len(near)} 个元件距板边 <{mc}mm: {', '.join(near[:5])}",
+                rule_name="板边间距检查", description=f"{len(near)} 个元件距板边 <{mc}mm: {', '.join(near[:5])}{note}",
                 severity=RuleSeverity.WARNING,
                 suggestion=f"元件距板边 ≥{int(mc)}mm，高元件需更大间距",
                 theory="PCB 板边在拼板分离、波峰焊夹持、机壳装配中承受最大机械应力。IPC-2222 §8.2 建议元件体距板边 ≥2.5mm，高元件≥5mm。传送边禁布区≥3mm。")]

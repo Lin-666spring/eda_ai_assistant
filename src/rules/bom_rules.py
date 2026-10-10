@@ -47,13 +47,31 @@ logger = logging.getLogger(__name__)
 
 
 def _norm_fp(fp: str) -> str:
-    """封装名归一：剥离单字母类别前缀（C0603/R0402/L3216 → 0603/0402/3216）。
+    """封装名归一：同物理封装的库命名变体折叠成同一名字；脏文本返回 ""。
 
-    立创封装库用首字母区分类别（C=电容/R=电阻），同一物理封装在电容行和
-    电阻行会分别记成 C0603/R0603，字符串直比会误报「多种封装」——金样
-    150 条封装一致性里 55 条是这类前缀差异。
+    批5（2026-10-10）扩展，各层对应金样 43 条假阳的实测形态：
+    ① 单字母类别前缀（C0603/R0402 → 0603/0402）——原口径，金样 150 条里 55 条；
+    ② 尺寸参数块 `_L2.9-W1.6-…`（SOT-23-3_L2.9-… → SOT-23-3）；
+    ③ 库克隆序号尾巴 `_5`/`_1`（0603_5 → 0603）与字母后克隆 `-M-2`（…-V-M-2 → …-V-M，
+       只在尾巴数字前是字母时剥，SOT-23-3 的引脚数 3 前面是数字、不剥）；
+    ④ 方向/安装变体 `-FD|-BI|-RD|-BL|-BR|-V-M|-V-F`（LED0603-FD → LED0603）；
+    ⑤ 家族别名 SOT-23-3 ≡ SOT-23（3 脚是 SOT-23 的默认形态，SOT-23-5/6 不在此列）。
+    含中文/逗号/等号的"封装"（「纽扣电池」「SMD,P=0.5mm」）是描述文本混入的
+    脏数据，返回 "" 让调用方跳过该行——数据问题不出封装警告（台账 #28）。
     """
-    return re.sub(r"^[A-Za-z](?=\d{3})", "", fp.strip())
+    s = (fp or "").strip()
+    if not s:
+        return ""
+    if re.search(r"[\u4e00-\u9fff,=]", s):
+        return ""
+    s = re.sub(r"^[A-Za-z](?=\d{3})", "", s)          # ① 类别前缀
+    s = re.sub(r"_L\d[^\s_]*.*$", "", s)               # ② 尺寸参数块
+    s = re.sub(r"_(\d+)$", "", s)                      # ③a 克隆序号 _N
+    if re.search(r"-[A-Za-z]-\d+$", s):                # ③b -M-2（SOT-23-3 的 3 前是数字，不剥）
+        s = re.sub(r"-(\d+)$", "", s)
+    s = re.sub(r"[_-](BGA|FD|BI|RD|BL|BR|V-M|V-F)$", "", s)  # ④ 方向/焊盘变体（0402_BGA/LED0603-FD）
+    s = {"SOT-23-3": "SOT-23"}.get(s.upper(), s.upper())  # ⑤ 家族别名
+    return s
 
 
 class BomRulesMixin:
@@ -163,25 +181,48 @@ class BomRulesMixin:
 
 
     def _check_crystal_load_caps(self, bom_items, positions, netlist):
-        """晶振负载电容检查：每个晶振应配备 2 个匹配负载电容。
+        """晶振负载电容检查：每个无源晶振应配备 2 个匹配负载电容。
 
-        契合实际使用的修复（2026-08-03）：
-        1. 晶振判定必须描述含频率/晶振关键词——"X" 前缀可能是连接器
-           （如 dcdc 板的 X3=AFC07 排线座），纯前缀判定会产生误报。
-        2. 负载电容不要求与晶振同前缀（真实设计负载电容均为 C 前缀），
-           退化为统计板上负载电容级小电容（1-47pF）的供需关系。
+        晶振判定三修（批5 2026-10-10，台账 #12 前半结案）：
+        1. 裸 `mhz/khz` 关键词删除——金样 22 条里被当晶振的全是磁珠
+           （「60Ω@100MHz」）和 DC-DC（「1.5MHz 同步降压」），无一是真晶振；
+           频率只在 料号/容值字段 或带 ppm 特征的描述里才算证据。
+        2. X/Y 前缀是主信号但不是充分条件——X 下有连接器（WAFER-PH2.0）、
+           无源据不足的杂行（pn=00）不认；描述含晶振词但标注「内置/集成」
+           的是片内振荡源（RTC/模组），底板不需要负载电容。
+        3. 有源晶振（有源/OSC）自己出时钟，不需要外部负载电容——
+           只对无源晶振计 2 颗/个的供需。
         """
         violations = []
-        crystal_kw = ["晶振", "crystal", "oscillator", "谐振", "mhz", "khz", "32.768"]
+        tight_kw = ("晶振", "crystal", "谐振器")
+        # 频率 token：带词尾守卫——「100MHz3.5x6.0」（磁珠特性频率贴数字）不认
+        freq_re = re.compile(r"\d+(?:\.\d+)?\s*[MK]HZ(?![A-Z0-9])|\d+(?:\.\d+)?M(?=[\s/])",
+                             re.IGNORECASE)
         crystals = []
         for item in bom_items:
-            desc = (
-                f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')} "
-                f"{getattr(item, 'value', '')}"
-            ).lower()
-            if any(kw in desc for kw in crystal_kw):
-                crystals.append(item)
-        if not crystals:
+            ref = getattr(item, "reference", "").split(",")[0].strip()
+            pfx = "".join(c for c in ref if c.isalpha()).upper()
+            pn = (getattr(item, "part_number", "") or "")
+            desc = (getattr(item, "description", "") or "")
+            val = (getattr(item, "value", "") or "")
+            text = f"{pn} {desc}".lower()
+            tight = any(kw in text for kw in tight_kw)
+            if not tight and pfx not in ("X", "Y"):
+                continue
+            # 证据：晶振词；或频率在料号/容值；或描述里「频率 + ppm」同现
+            # （单有 MHz 不够——磁珠 100MHz、DC-DC 1.5MHz 是特性/开关频率）
+            freq_field = bool(freq_re.search(pn) or freq_re.search(val))
+            freq_desc = bool(freq_re.search(desc)) and bool(re.search(r"PPM", desc, re.IGNORECASE))
+            if not (tight or freq_field or freq_desc):
+                continue  # X 前缀连接器 / pn=00 杂行：认不出是晶振，诚实跳过
+            if any(k in text for k in ("内置", "集成", "internal")) and pfx not in ("X", "Y"):
+                continue  # 片内振荡源（RTC/模组），底板无需负载电容
+            crystals.append(item)
+        passive = [c for c in crystals
+                   if not (any(k in f"{getattr(c, 'part_number', '')} {getattr(c, 'description', '')}".lower()
+                               for k in ("有源", "oscillator"))
+                           or "OSC" in (getattr(c, "part_number", "") or "").upper())]
+        if not passive:
             return violations
 
         # 统计板上负载电容级小电容总量（1-47pF，皮尔斯振荡器典型 12-22pF）
@@ -192,14 +233,14 @@ class BomRulesMixin:
             and (cf := _parse_capacitance(getattr(c, "value", ""))) is not None
             and 1e-12 <= cf <= 47e-12
         )
-        need = 2 * len(crystals)
+        need = 2 * len(passive)
         if load_count < need:
-            refs = ",".join(getattr(i, "reference", "?").split(",")[0] for i in crystals)
+            refs = ",".join(getattr(i, "reference", "?").split(",")[0] for i in passive)
             violations.append(RuleViolation(
                 rule_name="晶振负载电容检查",
                 description=(
                     f"晶振负载电容可能不足：板上 {load_count} 颗 1-47pF 小电容，"
-                    f"需 {need} 颗覆盖 {len(crystals)} 个晶振"
+                    f"需 {need} 颗覆盖 {len(passive)} 个无源晶振"
                 ),
                 severity=RuleSeverity.WARNING,
                 location=refs,
@@ -356,20 +397,50 @@ class BomRulesMixin:
 
 
     def _check_floating_pins(self, bom_items, positions, netlist):
-        """悬空引脚：MCU 的 RST/BOOT/EN 等控制引脚不应悬空"""
+        """悬空引脚：MCU 的 RST/BOOT/EN 控制引脚应有明确连接
+
+        批5（2026-10-10）数据化：旧版对任何 MCU 关键词命中的板报同一句
+        「可能悬空」模板——金样 25/25 板全响，探底 24/25 板主控其实挂着
+        NRST/BOOT/EN/CHIP_PU 类网络，全是假阳。现在以网表为证：
+        - 主控位号有引脚挂在复位/BOOT/EN 类网络 → 静默（有连接）；
+        - 板上有该类网络但都不连主控 → WARNING（复位网络存在却绕开主控，
+          强证据）；
+        - 全板没有该类网络（网名非惯例）或主控无网表引脚 → INFO 诚实降级
+          （名字猜不全，不下断言）。
+        """
         violations = []
         mcu_kw = ["MCU", "STM32", "ESP32", "ATmega", "ARM", "单片机", "CPU", "FPGA"]
+        reset_re = re.compile(r"RST|RESET|BOOT|CHIP_PU|(?:^|[^A-Z])EN(?![A-Z])", re.IGNORECASE)
+        nets_u = {str(n).upper(): [str(p).upper() for p in (pins or [])]
+                  for n, pins in (netlist or {}).items()}
         for item in bom_items:
             desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}"
-            if any(kw.lower() in desc.lower() for kw in mcu_kw):
-                ref = getattr(item, "reference", "?")
+            if not any(kw.lower() in desc.lower() for kw in mcu_kw):
+                continue
+            ref = getattr(item, "reference", "?").split(",")[0].strip()
+            ref_u = ref.upper() + "."
+            ctrl = [n for n, pins in nets_u.items()
+                    if reset_re.search(n) and any(p.startswith(ref_u) for p in pins)]
+            if ctrl:
+                return violations  # 复位/BOOT/EN 有网表连接，不悬空
+            board_has_reset_nets = any(reset_re.search(n) for n in nets_u)
+            mcu_has_pins = any(p.startswith(ref_u) for pins in nets_u.values() for p in pins)
+            if board_has_reset_nets and mcu_has_pins:
                 violations.append(RuleViolation(
                     rule_name="悬空引脚检查",
-                    description=f"主控 {ref} 的 RST/BOOT/EN 等控制引脚可能悬空",
+                    description=f"主控 {ref} 未连接任何复位/BOOT/EN 类网络（板上存在同类网络但不与其相连）",
                     severity=RuleSeverity.WARNING, location=ref,
                     suggestion="RST 上拉(10kΩ)，BOOT 明确上下拉。悬空=不可预知行为。",
                     theory="CMOS 输入阻抗>10MΩ，悬空时引脚电压由漏电流和 EMI 决定，处于亚稳态——可能引起振荡、功耗增大、闩锁效应(latch-up)。"))
-                break
+            else:
+                violations.append(RuleViolation(
+                    rule_name="悬空引脚检查",
+                    description=(f"主控 {ref} 的 RST/BOOT/EN 连接无法从网表确认"
+                                 f"（{'网表无该主控引脚' if not mcu_has_pins else '全板无复位/BOOT 类网络名'}），建议人工确认"),
+                    severity=RuleSeverity.INFO, location=ref,
+                    suggestion="RST 上拉(10kΩ)，BOOT 明确上下拉；网名若非惯例命名请忽略本条。",
+                    theory="复位/BOOT 引脚悬空会导致上电亚稳态；网表网名与惯例不一致时本检查无法证伪，降级为提醒。"))
+            break
         return violations
 
 
@@ -491,9 +562,9 @@ class BomRulesMixin:
         pn_pkgs: dict[str, set] = {}
         for item in bom_items:
             pn = (getattr(item, "part_number", "") or "").strip()
-            pkg = (getattr(item, "package", "") or "").strip()
+            pkg = _norm_fp(getattr(item, "package", "") or "")
             if not pn or not pkg or pn == "N/A": continue
-            pn_pkgs.setdefault(pn, set()).add(_norm_fp(pkg))
+            pn_pkgs.setdefault(pn, set()).add(pkg)
         for pn, pkgs in pn_pkgs.items():
             if len(pkgs) > 1:
                 refs = [getattr(i, "reference", "") for i in bom_items if (getattr(i, "part_number", "") or "").strip() == pn]
