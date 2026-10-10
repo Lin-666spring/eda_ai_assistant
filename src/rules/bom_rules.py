@@ -293,7 +293,8 @@ class BomRulesMixin:
         if not bom_items:
             return violations
         pwr_kw = ["电源", "power", "VIN", "VBUS", "DC-IN", "PWR"]
-        bulk_uf = ["100u", "220u", "470u", "1000u", "100ΜF"]
+        # 2026-10-10 标准表批：bulk 白名单补 330µF（立创常用电解档位）
+        bulk_uf = ["100u", "220u", "330u", "470u", "1000u", "100ΜF"]
         try:
             has_input = any(kw.lower() in f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')} {getattr(i, 'value', '')}".lower()
                             for i in bom_items for kw in pwr_kw)
@@ -493,11 +494,47 @@ class BomRulesMixin:
         return violations
 
 
+    # IEC 60063 标准系列有效数字×100。E24 覆盖 ±5/10%，E96 覆盖 ±1%。
+    # E24 值（470 等）在 ±1% 供应里同样常见（E96 与 E24 在 1% 精度下并行供货），
+    # 故判据取「E24 恒合法，容差支持时 E96 追加合法」。
+    _E24_MANT100 = frozenset((
+        100, 110, 120, 130, 150, 160, 180, 200, 220, 240, 270, 300,
+        330, 360, 390, 430, 470, 510, 560, 620, 680, 750, 820, 910))
+    _E96_MANT100 = frozenset((
+        100, 102, 105, 107, 110, 113, 115, 118, 121, 124, 127, 130,
+        133, 137, 140, 143, 147, 150, 154, 158, 162, 165, 169, 174,
+        178, 182, 187, 191, 196, 200, 205, 210, 215, 221, 226, 232,
+        237, 243, 249, 255, 261, 267, 274, 280, 287, 294, 301, 309,
+        316, 324, 332, 340, 348, 357, 365, 374, 383, 392, 402, 412,
+        422, 432, 442, 453, 464, 475, 487, 499, 511, 523, 536, 549,
+        562, 576, 590, 604, 619, 634, 649, 665, 681, 698, 715, 732,
+        750, 768, 787, 806, 825, 845, 866, 887, 909, 931))
+
+    @staticmethod
+    def _parse_tolerance_percent(item) -> float | None:
+        """从 BOM 行文本解析容差 (%)；无容差信息返回 None。
+
+        覆盖 ±1% / 1% / ±10% 写法与 EIA 代码 F(±1%)/G(±2%)/J(±5%)/K(±10%)
+        ——后者常单独出现在料号尾段（如 10uF±20% 的「M」码不取，M=±20% 同 E24 档）。
+        """
+        txt = _row_text(item)
+        m = re.search(r"[±+\-~]*\s*(0\.5|1|2|5|10)\s*%", txt)
+        if m:
+            return float(m.group(1))
+        m = re.search(r"(?:^|[^a-z0-9])([fgjk])(?:[^a-z0-9]|$)", txt)
+        if m:
+            return {"f": 1.0, "g": 2.0, "j": 5.0, "k": 10.0}[m.group(1)]
+        return None
+
     def _check_bom_value_range(self, bom_items, positions, netlist):
-        """参数范围：电阻/电容值应在标准系列内"""
+        """参数范围：电阻/电容值应在标准系列内（按容差分档 E24/E96）。
+
+        2026-10-10 标准表批：原判据一律套 E24，±1% 精度件的 E96 值
+        （4.64kΩ/45.3kΩ…）全被判「不在 E24」——值是真的标准值，只是系列
+        不对。改按行容差分档：±1/2% → E96∪E24 合法，±5/10% → E24，
+        无容差信息 → 并集放行（不冤枉没写容差的行）。
+        """
         violations = []
-        e24_base = {10, 11, 12, 13, 15, 16, 18, 20, 22, 24, 27, 30,
-                    33, 36, 39, 43, 47, 51, 56, 62, 68, 75, 82, 91}
         for item in bom_items:
             val = (getattr(item, "value", "") or "").strip()
             if not val: continue
@@ -508,7 +545,7 @@ class BomRulesMixin:
             if parsed is None: continue
             mantissa, exp = parsed
             if mantissa <= 0: continue
-            # 归一化到 [1, 10)：E24 只比较有效数字
+            # 归一化到 [1, 10)：只比较有效数字
             # （20kΩ→2.0、22µF→2.2、100nF→1.0、0.47µF→4.7）。
             # 2026-09-18 抽查修正：原实现拿未归一化的 mantissa 去比 e*10，相差 10 倍，
             # 于是 20kΩ/22µF/100nF/100KΩ 等标准值全被判「不在 E24」（全库 779 条误报）。
@@ -519,14 +556,22 @@ class BomRulesMixin:
                 mantissa *= 10.0
                 exp -= 1
             mant_x100 = round(mantissa * 100)
-            # 容差取 E24 自身的 ±5%（IEC 60063）；用 10% 会因为 E24 相邻档只差约 10%
-            # 而让任何取值都落进某个档位窗口，判据恒真（等于不失效）。
-            if not any(abs(mant_x100 - e * 10) / (e * 10) <= 0.05 for e in e24_base):
+            tol = self._parse_tolerance_percent(item)
+            if tol is None:                      # 无容差信息：E24∪E96 放行
+                legal = self._E24_MANT100 | self._E96_MANT100
+                series_note = "E24/E96"
+            elif tol <= 2:                       # ±1%/±2%：E96 精度件
+                legal = self._E96_MANT100 | self._E24_MANT100
+                series_note = f"E96/E24(±{tol:g}%)"
+            else:                                # ±5%/±10%：E24
+                legal = self._E24_MANT100
+                series_note = "E24"
+            if mant_x100 not in legal:
                 violations.append(RuleViolation(
-                    rule_name="参数范围检查", description=f"{ref} 参数 [{val}] 不在 E24 标准系列",
+                    rule_name="参数范围检查", description=f"{ref} 参数 [{val}] 不在{series_note}标准系列",
                     severity=RuleSeverity.INFO, location=ref,
-                    suggestion="非标值可能需要定制或从 E48/E96 系列选择",
-                    theory="标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E48 覆盖±2%,E96 覆盖±1%。"))
+                    suggestion="非标值可能需要定制或改选相邻标准档（E24/E96 由 IEC 60063 规定）",
+                    theory="标准值系列(E-series)由 IEC 60063 规定:E24 覆盖±5%(步进≈10%),E96 覆盖±1%。"))
         return violations
 
 
@@ -982,33 +1027,132 @@ class BomRulesMixin:
         return violations
 
 
-    def _estimate_power_current(self, bom_items) -> float:
-        """从 BOM 估算总功耗电流 (粗略)"""
-        total = 0.5  # 最小 0.5A
+    # ── 需求电流标准表（2026-10-10 标准表批）──
+    # 家族电流表：料号前缀 startswith 匹配（与 _DCDC_PN_PREFIXES 同口径）。
+    # 旧实现拿 desc 子串（"STM32"/"ARM"/"单片机"）命中即 +0.3A，且 ESP32 行
+    # 同中 MCU 与 WiFi 两个分支双计 0.5A——改为每行只按最高一档家族计一次。
+    # 电流值取各家族数据手册峰值/典型供电能力（电源设计口径，不是平均功耗）。
+    _IC_FAMILY_CURRENT_A: tuple[tuple[tuple[str, ...], float], ...] = (
+        (("ESP32", "ESP32S2", "ESP32S3", "ESP32C3"), 0.50),   # WiFi/BT 发射峰值
+        (("ESP8266",), 0.35),
+        (("STM32", "GD32", "CH32", "AT32", "PY32", "APM32"), 0.15),
+        (("RP2040",), 0.10),
+        (("ATMEGA", "ATTINY"), 0.03),
+        # FPGA/CPLD：Altera Cyclone / Xilinx Spartan·Zynq / Lattice
+        (("EP1C", "EP2C", "EP3C", "EP4C", "EP4CE", "XC6S", "XC7A",
+          "XC7Z", "LCMXO", "ECP5", "ICE40"), 0.30),
+        (("NRF24",), 0.02),
+        (("CC25",), 0.03),
+        (("HC-05", "HC-06", "JDY-31", "BK3231"), 0.04),       # 经典蓝牙串口模块
+        (("RTL8201", "LAN8720", "DP83848"), 0.05),            # 以太网 PHY
+    )
+
+    # 电机驱动：电流路由到 VM/VBAT/MOTOR 动力网（_estimate_net_current），
+    # 不摊进主电源——旧实现把它加进总电流，VCC 走线被电机电流撑大。
+    _MOTOR_DRIVER_CURRENT_A: tuple[tuple[tuple[str, ...], float], ...] = (
+        (("L298",), 2.0),
+        (("L293",), 1.0),
+        (("DRV8833", "DRV8701", "DRV8871"), 1.5),
+        (("A4988", "A4950"), 2.0),
+        (("TB6612",), 1.2),
+        (("ULN2003",), 0.5),
+    )
+    _MOTOR_DESC_FALLBACK_A = 1.5   # 描述含「电机/马达」的驱动行（无料号可依）兜底值
+
+    # 稳压器输出能力表：整板能取用的电流被稳压器封顶，
+    # 主电流取 min(负载估算, Σ稳压能力)。
+    _REGULATOR_CAPACITY_A: tuple[tuple[tuple[str, ...], float], ...] = (
+        (("AMS1117", "LM1117", "LD1117"), 1.0),
+        (("RT9013",), 0.5),
+        (("ME6211",), 0.5),
+        (("XC6206",), 0.2),
+        (("HT7333", "HT75"), 0.25),
+        (("LM7805", "L7805", "LM78M", "L78M"), 1.0),
+        (("LM2596",), 3.0),
+        (("MP1584",), 3.0),
+        (("MP2315",), 3.0),
+        (("MP2359",), 2.0),
+        (("XL1509",), 2.0),
+        (("SY8088",), 2.0),
+        (("TPS5430",), 3.0),
+    )
+
+    @classmethod
+    def _pn_family_current(cls, bom_items) -> tuple[float, float]:
+        """按料号前缀表估电流，返回 (主电源电流, 电机驱动电流)。每行只计一档。"""
+        main = motor = 0.0
         for item in bom_items:
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')} {getattr(item, 'value', '')}".upper()
-            # MCU/FPGA: ~100-300mA
-            if any(kw in desc for kw in ("STM32", "MCU", "ARM", "ESP32", "单片机", "FPGA", "CPLD")):
-                total += 0.3
-            # 电机驱动: ~1-2A
-            if any(kw in desc for kw in ("L298", "L293", "DRV", "电机", "MOTOR", "A4988", "TB6612")):
-                total += 1.5
-            # WiFi/BT 模块: ~200mA peak
-            if any(kw in desc for kw in ("WIFI", "蓝牙", "BLE", "ESP", "NRF", "CC25")):
-                total += 0.2
-            # LED 驱动: ~500mA
-            if any(kw in desc for kw in ("LED 驱动", "WS2812", "SK6812")):
-                total += 0.5
+            pn = (getattr(item, "part_number", "") or "").strip().upper()
+            if not pn:
+                continue
+            for prefixes, amps in cls._MOTOR_DRIVER_CURRENT_A:
+                if pn.startswith(prefixes):
+                    motor += amps
+                    break
+            else:
+                for prefixes, amps in cls._IC_FAMILY_CURRENT_A:
+                    if pn.startswith(prefixes):
+                        main += amps
+                        break
+                else:
+                    if _kw_hit(_row_text(item), ("电机", "马达", "motor driver")):
+                        motor += cls._MOTOR_DESC_FALLBACK_A
+        return main, motor
+
+    @classmethod
+    def _regulator_capacity_sum(cls, bom_items) -> float:
+        """BOM 内已知稳压器输出能力之和 (A)；无已知稳压器返回 0（不封顶）。"""
+        cap = 0.0
+        for item in bom_items:
+            pn = (getattr(item, "part_number", "") or "").strip().upper()
+            if not pn:
+                continue
+            for prefixes, amps in cls._REGULATOR_CAPACITY_A:
+                if pn.startswith(prefixes):
+                    cap += amps
+                    break
+        return cap
+
+    def _estimate_power_current(self, bom_items) -> float:
+        """从 BOM 估算主电源电流 (A)。
+
+        2026-10-10 标准表批：
+        - 家族电流用料号前缀表（替换「desc 含 ARM/单片机」子串，消除 ESP32
+          行 MCU+WiFi 双计）；
+        - 电机驱动电流不摊进主电源（路由见 _estimate_net_current）；
+        - 有已知稳压器时取 min(负载估算, Σ稳压能力)——稳压器输出封顶了
+          整板可取用的电流，电源走线按封顶值设计即可。
+        """
+        load, _motor = self._pn_family_current(bom_items)
+        # LED 装饰灯珠链：驱动电流与灯珠数量强相关，按行保守估 0.5A（同旧值）
+        for item in bom_items:
+            if _kw_hit(_row_text(item), ("led 驱动", "ws2812", "sk6812")):
+                load += 0.5
+        total = max(0.5, load)   # 主控静态/传感器兜底 0.5A
+        reg_cap = self._regulator_capacity_sum(bom_items)
+        if reg_cap > 0:
+            total = min(total, reg_cap)
         return round(total, 2)
 
+    def _estimate_motor_current(self, bom_items) -> float:
+        """电机驱动电流合计 (A)，0 表示 BOM 无电机驱动。"""
+        _main, motor = self._pn_family_current(bom_items)
+        return motor
 
-    def _estimate_net_current(self, net_name: str, total_current: float) -> float:
-        """按网络名分配电流"""
+    def _estimate_net_current(self, net_name: str, total_current: float,
+                              motor_current: float = 0.0) -> float:
+        """按网络名分配电流。
+
+        2026-10-10 标准表批：电机驱动电流不再摊进主电源总电流，而是路由到
+        VM/V motor 动力网（VBAT/+12V 既给动力也可给主控，取两者较大值）。
+        """
         name = net_name.upper()
         if any(kw in name for kw in ("VCC", "VDD", "+5V", "+3.3V", "+3V3", "VIN")):
             return total_current * 0.6  # 主电源承担 60%
-        elif any(kw in name for kw in ("VMOTOR", "VM", "POWER", "VBAT", "+12V")):
-            return max(total_current * 0.4, 1.0)  # 动力电至少 1A
+        if any(kw in name for kw in ("VMOTOR", "VM", "MOTOR")):
+            return max(total_current * 0.4, 1.0, motor_current)
+        if any(kw in name for kw in ("POWER", "VBAT", "+12V")):
+            return max(total_current * 0.4, 1.0, motor_current)
         return total_current * 0.3
 
 
@@ -1373,8 +1517,14 @@ class BomRulesMixin:
         2026-10-09 噪声清扫：板面积原硬编码 5000mm²，现取 board_outline 实测
         宽×高（无板框数据则跳过——没有几何就没法算平面电容/IR 压降）；电压与
         电流是推断值，文案标注「估算」。
+        2026-10-10 标准表批：电源-地平面间距按铜层数取叠层预设（4 层 core
+        0.71mm；2 层板无平面对，平面电容如实按不适用处理，不再默认 0.2mm
+        硬算）；IR 压降的平面电阻改方阻公式（calculator 内 1oz≈2 方≈1mΩ）。
         """
-        from src.pcb.calculator import analyze_pdn, pdn_target_impedance
+        from src.pcb.calculator import (
+            analyze_pdn, pdn_target_impedance, stackup_for_layers,
+            infer_copper_layer_count,
+        )
 
         pcb = self._pcb_data
         bo = (pcb.board_outline or {}) if pcb else {}
@@ -1392,22 +1542,34 @@ class BomRulesMixin:
                 voltage = 5.0
                 break
 
-        pdn = analyze_pdn(voltage, current, board_area_mm2=area, ripple_percent=5.0)
+        n_layers = infer_copper_layer_count(pcb) if pcb else 2
+        stackup = stackup_for_layers(n_layers)
+        plane_gap = stackup.plane_gap_mm
+        pdn = analyze_pdn(voltage, current, board_area_mm2=area,
+                          layers_between_plane=plane_gap, ripple_percent=5.0)
+
+        if plane_gap:
+            plane_note = (f"平面电容 {pdn.plane_capacitance_f*1e9:.2f}nF"
+                          f"（电源-地平面间距按 {n_layers} 层板典型值 {plane_gap}mm）")
+        else:
+            plane_note = f"{n_layers} 层板无电源-地平面对，平面电容不适用"
 
         violations.append(RuleViolation(
             rule_name="PDN 目标阻抗分析",
             description=(
                 f"{voltage}V/{current:.2f}A 电源(估算，板面积 {area:.0f}mm²): "
                 f"目标阻抗 Z_target={pdn.target_impedance_ohm*1000:.0f}mΩ，"
-                f"平面电容 {pdn.plane_capacitance_f*1e9:.2f}nF，"
+                f"{plane_note}，"
                 f"建议 ≥{pdn.decoupling_count} 个去耦电容，IR压降≈{pdn.voltage_drop_mv:.1f}mV"
             ),
             severity=RuleSeverity.WARNING if pdn.decoupling_count > 3 else RuleSeverity.INFO,
             suggestion=(
                 f"推荐电容组合: {', '.join(f'{c*1e6:.0f}µF' if c>=1e-6 else f'{c*1e9:.0f}nF' for c in pdn.recommended_caps[:4])}。"
                 "各频段去耦: 100µF(≤10kHz) + 10µF(≤1MHz) + 100nF(1-100MHz) + 10nF(≥100MHz)。"
+                + ("" if plane_gap else " 2 层板无平面电容可用，低频去耦更依赖 Bulk 电解电容。")
             ),
             theory="PDN 目标阻抗 Z_target = (Vdd × ripple%) / I_transient。全频段内 Z_PDN < Z_target 才能保证电源纹波在允许范围内。"
-                   "多层陶瓷电容(MLCC)并联降低等效 ESL，扩展有效去耦频率范围。",
+                   "多层陶瓷电容(MLCC)并联降低等效 ESL，扩展有效去耦频率范围。"
+                   + ("" if plane_gap else " 电源-地平面对的分布电容是 PDN 低频段主力，2 层板缺失后 bulk 电容 ESR 承担低频阻尼。"),
         ))
         return violations

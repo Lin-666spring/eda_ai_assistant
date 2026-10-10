@@ -139,8 +139,10 @@ class GeometryRulesMixin:
                      for kw in PCB.POWER_NET_KEYWORDS)]
         if not pw_traces: return violations
 
-        # 从 BOM 估算电源电流
+        # 从 BOM 估算电源电流；电机驱动电流单独取出，在 _estimate_net_current
+        # 里路由到 VM/MOTOR 动力网，不再摊进主电源（2026-10-10 标准表批）
         est_current_a = self._estimate_power_current(bom_items)
+        motor_current_a = self._estimate_motor_current(bom_items)
         tr, cu = PCB.IPC_TEMP_RISE, PCB.IPC_COPPER_OZ
 
         # 每条网络取**最窄的那条走线**，外层/内层按它自己的层判定。
@@ -158,30 +160,44 @@ class GeometryRulesMixin:
 
         for name, (mw, layer) in narrow.items():
             # 用估算电流或按网络名定制
-            I = self._estimate_net_current(name, est_current_a)
+            I = self._estimate_net_current(name, est_current_a, motor_current_a)
             is_inner = _is_inner_layer(pcb, layer)
             capacity = ipc2221_current_capacity(mw, cu, tr, is_inner)
             req_w = ipc2221_trace_width(I, cu, tr, is_inner)
 
+            # 2026-10-10 标准表批：加 1.5× 余量带——capacity<I 才是 ERROR，
+            # I≤capacity<1.5I 提示余量不足（WARNING）。估算电流本身带 ±20%
+            # 误差，0.89A 容量对 0.90A 需求报 ERROR 是假阳性边界。
             if capacity < I:
-                violations.append(RuleViolation(
-                    rule_name="电源线载流检查",
-                    description=(
-                        f"电源网络 [{name}] {layer or '未知层'}"
-                        f"（{'内层' if is_inner else '外层'}）: "
-                        f"线宽 {mw:.3f}mm 载流 {capacity:.2f}A "
-                        f"< 需求 {I:.2f}A，需宽 ≥{req_w:.3f}mm"
-                    ),
-                    severity=RuleSeverity.ERROR,
-                    location=name,
-                    suggestion=(
-                        f"当前 {mw:.3f}mm (1oz) 仅承载 {capacity:.2f}A。"
-                        f"加宽至 ≥{req_w:.3f}mm 或改用 {cu*2}oz 铜厚。"
-                        f"1oz → 2oz 载流提升约 {ipc2221_current_capacity(mw,cu*2,tr,is_inner)/capacity:.1f}×"
-                    ),
-                    theory="IPC-2221 §6.2: I=k·ΔT^0.44·A^0.725。基于铜箔截面积与允许温升的物理模型，"
-                           "是 PCB 行业标准载流公式。",
-                ))
+                severity = RuleSeverity.ERROR
+                head = "载流不足"
+                cmp_txt = "<"
+                tail = f"，需宽 ≥{req_w:.3f}mm"
+            elif capacity < 1.5 * I:
+                severity = RuleSeverity.WARNING
+                head = "载流余量不足(<1.5×)"
+                cmp_txt = "≈"
+                tail = f"，无故障裕量，建议宽 ≥{req_w:.3f}mm"
+            else:
+                continue
+            violations.append(RuleViolation(
+                rule_name="电源线载流检查",
+                description=(
+                    f"电源网络 [{name}] {layer or '未知层'}"
+                    f"（{'内层' if is_inner else '外层'}）: "
+                    f"线宽 {mw:.3f}mm 载流 {capacity:.2f}A "
+                    f"{cmp_txt} 需求 {I:.2f}A，{head}{tail}"
+                ),
+                severity=severity,
+                location=name,
+                suggestion=(
+                    f"当前 {mw:.3f}mm (1oz) 仅承载 {capacity:.2f}A。"
+                    f"加宽至 ≥{req_w:.3f}mm 或改用 {cu*2}oz 铜厚。"
+                    f"1oz → 2oz 载流提升约 {ipc2221_current_capacity(mw,cu*2,tr,is_inner)/capacity:.1f}×"
+                ),
+                theory="IPC-2221 §6.2: I=k·ΔT^0.44·A^0.725。基于铜箔截面积与允许温升的物理模型，"
+                       "是 PCB 行业标准载流公式。",
+            ))
         return violations
 
 
@@ -502,12 +518,32 @@ class GeometryRulesMixin:
         return violations
 
 
+    # ── 差分对内等长公差分档（mm，2026-10-10 标准表批）──
+    # FR4 ≈6.7ps/mm。USB2.0 位周期 2.08ns，2mm≈13ps，版图指南普遍放宽到
+    # 1~2mm；HDMI/LVDS/MIPI/PCIE/SATA 与以太网 MDI 对内等长常用 0.5mm 档。
+    # 表外差分组（RS485/CAN/SDIO 等工程声明的「差分组」）没有严格等长要求，
+    # 沿用旧判据 2.0mm 绝对 + 10% 相对。描述文案与判据同取这一张表。
+    _DIFF_SKEW_BANDS: tuple[tuple[tuple[str, ...], float, str], ...] = (
+        (("USB",), 2.0, "USB2.0"),
+        (("HDMI", "LVDS", "MIPI", "PCIE", "SATA"), 0.5, "高速串行"),
+        (("ETH", "LAN", "RGMII"), 0.5, "以太网 MDI"),
+    )
+    _DIFF_SKEW_DEFAULT_MM = 2.0
+    _DIFF_SKEW_DEFAULT_REL = 0.10   # 表外组附加相对判据（组内长度差 ≥10%）
+
     def _check_diff_pair_length(self, bom_items, positions, netlist):
-        """差分对等长：同组两条走线长度差应 < DIFF_PAIR_MAX_SKEW_MM"""
+        """差分对等长：按接口分档取对内长度差公差（_DIFF_SKEW_BANDS）。
+
+        2026-09-24 抽查修正：0.5mm 一刀切对 USB2.0（位周期 2083ps，
+        3.25mm≈22ps）、音频功放、直流输入 ± 都过严。
+        2026-10-10 标准表批：0.5mm 换成按接口分档——USB2.0 档 2.0mm，
+        HDMI/LVDS/MIPI/PCIE/SATA/ETH 档 0.5mm，表外组 2.0mm 绝对 + 10%
+        相对（旧行为）；违规描述的门限数字与判据同取 _DIFF_SKEW_BANDS，
+        消除「描述写 0.5mm、判据实际 2.0mm」的两张皮。
+        """
         pcb = self._pcb_data
         if not pcb or not pcb.traces: return []
         violations = []
-        tol = PCB.DIFF_PAIR_MAX_SKEW_MM
         lengths: dict[str, float] = {}
         for t in pcb.traces:
             name = t.net_name or ""
@@ -523,19 +559,26 @@ class GeometryRulesMixin:
                 continue
             diff_mm = round(max(lens) - min(lens), 4)
             avg_len = sum(lens) / len(lens)
-            # 2026-09-24 抽查修正：0.5mm 一刀切对 USB2.0（位周期 2083ps，3.25mm≈22ps）、
-            # 音频功放、直流输入 ± 都过严。改用量则：极差 ≥2mm 或 ≥10% 走线长度才算真失配；
-            # 名字猜测出来的配对降级为 INFO，不再按差分对判 WARNING。
-            if not (diff_mm >= 2.0 or diff_mm >= 0.10 * avg_len):
+            # 接口分档：label+网络名命中哪档就用哪档公差
+            text = f"{label} {' '.join(nets)}".lower()
+            tol, band = next(
+                ((t, name) for kws, t, name in self._DIFF_SKEW_BANDS
+                 if any(kw in text for kw in kws)),
+                (self._DIFF_SKEW_DEFAULT_MM, "表外差分组"))
+            over = diff_mm > tol
+            if band == "表外差分组":
+                over = over or diff_mm >= self._DIFF_SKEW_DEFAULT_REL * avg_len
+            if not over:
                 continue
             violations.append(RuleViolation(
                 rule_name="差分对等长检查",
                 description=(f"差分/等长组 [{label}] 走线长度差 {diff_mm}mm "
-                             f"(判据门限 {tol}mm，组内平均长 {avg_len:.1f}mm): "
+                             f"({band}判据门限 {tol}mm，组内平均长 {avg_len:.1f}mm): "
                              + ", ".join(nets[:4])),
                 severity=(RuleSeverity.WARNING if source == "engine" else RuleSeverity.INFO),
                 location=label,
-                    suggestion=f"差分对走线长度差应 <{tol}mm。用蛇形走线补偿短的一侧。蛇形幅度≥3W,间距≥2S。",
+                    suggestion=(f"差分对走线长度差应 ≤{tol}mm（{band}档）。"
+                                "用蛇形走线补偿短的一侧。蛇形幅度≥3W,间距≥2S。"),
                     theory="差分信号依赖两条线同时到达接收端来维持共模抑制。长度不匹配→到达时间差→差模分量→共模噪声↑、眼图闭合。FR4 中约 6.7ps/mm。",
                 ))
         return violations
@@ -1096,19 +1139,26 @@ class GeometryRulesMixin:
            套 100Ω——这些接口没有受控阻抗要求，改为表外不判；表补
            MIPI/DSI/CSI、PCIE、SATA（均 100Ω 差分，语料 47 对按真实标准保留）。
 
-        叠层仍按 4 层典型 h=0.2mm/εr=4.5 兜底（.epro2 不含叠层数据）；4 层板
-        LVDS/USB 样本换 JLC 真实叠层（PP 0.21mm/εr≈4.6）复算同样越界——
-        保留的差分告警是真检出，不是 h 假设的产物。
+        叠层按铜层数推断取典型叠层预设 STACKUP_PRESETS（.epro2 不含叠层
+        数据；4 层 JLC PP 0.2104/εr≈4.6 与 impedance_recheck 复算口径一致）。
+        2 层板没有参考平面，微带公式在 h≈1.565mm 下受控阻抗必不达标——
+        违规降级 WARNING 并注明根因，≥4 层保持 ERROR。
         """
         from src.pcb.calculator import (
             microstrip_impedance, trace_width_for_impedance, differential_impedance,
+            stackup_for_layers, infer_copper_layer_count,
         )
 
         pcb = self._pcb_data
         if not pcb or not pcb.traces:
             return []
 
-        h_mm, er = 0.2, 4.5   # 工程未提供叠层参数时的 4 层板典型兜底值
+        n_layers = infer_copper_layer_count(pcb)
+        stackup = stackup_for_layers(n_layers)
+        h_mm, er = stackup.h_signal_mm, stackup.er
+        # 2 层板无参考平面：h≈1.565mm 下任何线宽都凑不出 90~100Ω，
+        # 按 ERROR 报会全板飘红；降级 WARNING 说明根因。
+        two_layer = n_layers <= 2
 
         # 差分组（工程声明优先，退化后缀配对）：upper 排序键去重 → 原名对
         pairs: dict[tuple, tuple] = {}
@@ -1153,17 +1203,21 @@ class GeometryRulesMixin:
                 microstrip_impedance(w, h_mm, er=er), s_mm, h_mm, er=er)
             if abs(z_actual - z_target) <= z_target * 0.25:
                 continue
+            stack_note = (f"{n_layers} 层板典型叠层（{stackup.note}）"
+                          if not two_layer else
+                          f"{n_layers} 层板典型叠层（{stackup.note}）；"
+                          "2 层板无参考平面，受控阻抗需 ≥4 层或带平面结构才可实现")
             violations.append(RuleViolation(
                 rule_name="特征阻抗匹配检查",
                 description=(f"差分对 [{'/'.join(orig)}]: 线宽 {w:.3f}mm / "
                              f"对内间距 {s_mm:.3f}mm → Z≈{z_actual:.0f}Ω，"
                              f"偏离目标 {z_target:.0f}Ω 超过 ±25%"),
-                severity=RuleSeverity.ERROR,
+                severity=RuleSeverity.WARNING if two_layer else RuleSeverity.ERROR,
                 location="/".join(orig),
                 suggestion=(f"调整线宽 {w:.3f}mm 与对内间距 {s_mm:.3f}mm 的组合，"
                             f"使差分阻抗 ≈{z_target:.0f}Ω（当前 {z_actual:.0f}Ω）"
-                            f"。介质厚度/介电常数按 4 层板典型值 {h_mm}mm / εr={er} "
-                            "估算；精确控制请用 PCB 厂商提供的叠层参数（Polar Si9000）。"),
+                            f"。介质厚度/介电常数按 {stack_note}估算；精确控制请用 "
+                            "PCB 厂商提供的叠层参数（Polar Si9000）。"),
                 theory="微带线 Z₀=(87/√(εr+1.41))·ln(5.98h/(0.8w+t))；差分线 "
                        "Zdiff≈2·Z₀·(1-0.48·exp(-0.96·s/h))——差分网络必须用差分公式与差分"
                        "目标比对，拿单端公式去比差分目标会结构性地差近一倍。"
@@ -1182,16 +1236,20 @@ class GeometryRulesMixin:
             if abs(z0_single - 50.0) <= 50.0 * 0.25:
                 continue
             w_target = trace_width_for_impedance(50.0, h_mm, er=er)
+            stack_note = (f"{n_layers} 层板典型叠层（{stackup.note}）"
+                          if not two_layer else
+                          f"{n_layers} 层板典型叠层（{stackup.note}）；"
+                          "2 层板无参考平面，50Ω 受控阻抗需 ≥4 层才可实现")
             violations.append(RuleViolation(
                 rule_name="特征阻抗匹配检查",
                 description=(f"网络 [{name}] 单端: 线宽 {w:.3f}mm → Z≈{z0_single:.0f}Ω，"
                              f"偏离目标 50Ω 超过 ±25%"),
-                severity=RuleSeverity.ERROR,
+                severity=RuleSeverity.WARNING if two_layer else RuleSeverity.ERROR,
                 location=name,
                 suggestion=(f"调整线宽至 {w_target:.3f}mm 使 Z₀≈50Ω"
                             f"（当前 {w:.3f}mm → {z0_single:.0f}Ω）。"
-                            f"介质厚度/介电常数按 4 层板典型值 {h_mm}mm / εr={er} "
-                            "估算；精确控制请用 PCB 厂商提供的叠层参数（Polar Si9000）。"),
+                            f"介质厚度/介电常数按 {stack_note}估算；精确控制请用 "
+                            "PCB 厂商提供的叠层参数（Polar Si9000）。"),
                 theory="微带线 Z₀=(87/√(εr+1.41))·ln(5.98h/(0.8w+t))。"
                        "阻抗不匹配→反射(Γ=(ZL-Z₀)/(ZL+Z₀))→过冲/振铃/EMI↑。",
             ))

@@ -504,7 +504,10 @@ def _classify_component(item) -> str:
 def _parse_component_value(val: str):
     """解析 R/C/L 参数值 -> (mantissa, exponent)。返回 None 表示无法解析。"""
     val = val.strip().upper()
-    if re.fullmatch(r'\d{3}', val):
+    # 2026-10-10 标准表批：0 开头的 4 位纯数字是英制封装码（0402/0603/0805），
+    # 不是电气值——旧判据靠 ±5% 窗口侥幸放行（603→6.03 落在 6.2 档内），
+    # E24/E96 精确匹配后必须显式跳过，否则被误判「不在标准系列」。
+    if re.fullmatch(r'\d{3}', val) or re.fullmatch(r'0\d{3}', val):
         return None
     multipliers = {
         "P": -12, "PF": -12, "N": -9, "NF": -9, "NH": -9,

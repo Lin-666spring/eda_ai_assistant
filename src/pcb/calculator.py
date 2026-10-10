@@ -28,6 +28,9 @@ FR4_TAND = 0.02                    # FR-4 损耗角正切 @1MHz
 IPC_K_OUTER = 0.048                # 外层走线 k (A/mil²)
 IPC_K_INNER = 0.024                # 内层走线 k (A/mil²)
 
+# 1oz 铜箔厚度 (m)，平面电阻方阻公式用
+COPPER_OZ_THICKNESS_M = 35e-6
+
 
 # ═══════════════════════════════════════════════════════════════
 # 数据类
@@ -204,6 +207,78 @@ def differential_impedance(
     """
     factor = 1 - 0.48 * math.exp(-0.96 * s_mm / h_mm)
     return round(2 * z0_single * factor, 1)
+
+
+# ═══════════════════════════════════════════════════════════════
+# 1b. 典型叠层预设（.epro2 不含叠层数据时的工程兜底值）
+# ═══════════════════════════════════════════════════════════════
+
+@dataclass
+class StackupPreset:
+    """按铜层数分档的典型叠层
+
+    Attributes:
+        layers: 铜层数
+        h_signal_mm: 信号层到参考平面的介质厚度 (mm)
+        er: 介质相对介电常数
+        plane_gap_mm: 电源-地平面对间距 (mm)；None = 无平面对（2 层板）
+        note: 参数来源标注（随违规文案透出，用户可判口径）
+    """
+    layers: int
+    h_signal_mm: float
+    er: float
+    plane_gap_mm: float | None
+    note: str = "典型"
+
+
+# 2 层：1.6mm 板厚 − 1oz 铜箔 → 上下层间介质 1.565mm；无电源-地平面对。
+# 4 层：JLC 常规叠层外层 PP≈0.2104mm/εr≈4.6（impedance_recheck_2026-10-09
+#   实测口径：LVDS/USB 样本换真实叠层复算结论一致），电源-地平面对坐
+#   core 上，间距≈0.71mm。
+# 6 层：外层介质同 4 层 PP 口径，电源-地平面间距取典型 0.3mm。
+STACKUP_PRESETS: dict[int, StackupPreset] = {
+    2: StackupPreset(2, h_signal_mm=1.565, er=4.5, plane_gap_mm=None,
+                     note="1.6mm 板厚典型值"),
+    4: StackupPreset(4, h_signal_mm=0.2104, er=4.6, plane_gap_mm=0.71,
+                     note="JLC 4 层常规叠层 PP 口径"),
+    6: StackupPreset(6, h_signal_mm=0.2104, er=4.6, plane_gap_mm=0.3,
+                     note="6 层典型叠层"),
+}
+
+
+def stackup_for_layers(n_layers: int) -> StackupPreset:
+    """按铜层数取典型叠层预设；分档口径与 infer_copper_layer_count 一致
+    （≤2→2 层，3~4→4 层，≥5→6 层）。"""
+    if n_layers <= 2:
+        return STACKUP_PRESETS[2]
+    return STACKUP_PRESETS[6] if n_layers >= 5 else STACKUP_PRESETS[4]
+
+
+def infer_copper_layer_count(pcb) -> int:
+    """从走线∪覆铜出现过的层名推断铜层数（去重计数）。
+
+    .epro2 不含叠层表；设计上出现的信号层是层数下界。金样分布集中在
+    2/4/6 层，故 ≤2→2 层、3~4→4 层、≥5→6 层。无任何层数据时按 2 层
+    （最保守——叠层假设只会更不准，见 stackup_for_layers 的降级语义）。
+    """
+    layers: set[str] = set()
+    for t in (getattr(pcb, "traces", None) or []):
+        if getattr(t, "layer", None):
+            layers.add(str(t.layer))
+    for p in (getattr(pcb, "copper_pours", None) or []):
+        lay = p.get("layer") if isinstance(p, dict) else getattr(p, "layer", None)
+        if lay:
+            layers.add(str(lay))
+    n = len(layers)
+    if n <= 2:
+        return 2
+    return 4 if n <= 4 else 6
+
+
+def plane_sheet_resistance_ohm(copper_oz: float = 1.0) -> float:
+    """平面铜方阻 (Ω/□) = ρ/t。1oz 铜约 0.49mΩ/□。"""
+    t_m = max(copper_oz, 1e-3) * COPPER_OZ_THICKNESS_M
+    return COPPER_RESISTIVITY / t_m
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -395,9 +470,10 @@ def analyze_pdn(
     voltage_v: float,
     max_current_a: float,
     board_area_mm2: float = 5000,
-    layers_between_plane: float = 0.2,
+    layers_between_plane: float | None = 0.2,
     ripple_percent: float = 5.0,
     max_freq_mhz: float = 100.0,
+    copper_oz: float = 1.0,
 ) -> PDNResult:
     """全面 PDN 分析。
 
@@ -405,17 +481,20 @@ def analyze_pdn(
         voltage_v: 电源电压 (V)
         max_current_a: 最大电流 (A)
         board_area_mm2: 板面积 (mm²)
-        layers_between_plane: 电源-地平面间距 (mm)
+        layers_between_plane: 电源-地平面间距 (mm)；None = 无平面对
+            （2 层板）——平面电容如实按 0 处理，不做估算
         ripple_percent: 纹波 (%)
         max_freq_mhz: 最高关注频率 (MHz)
+        copper_oz: 铜厚 (oz)，平面电阻方阻公式用
 
     Returns:
         PDNResult
     """
     z_target = pdn_target_impedance(voltage_v, max_current_a, ripple_percent)
 
-    # 平面电容
-    c_plane = plane_capacitance(board_area_mm2, layers_between_plane)
+    # 平面电容（无平面对 → 无平面电容，不留默认值假数据）
+    c_plane = (plane_capacitance(board_area_mm2, layers_between_plane)
+               if layers_between_plane else 0.0)
 
     # 平面电容单独满足 Z_target 的频率上限
     # Z_plane = 1/(2πfC) → f = 1/(2π·Z_target·C)
@@ -435,8 +514,9 @@ def analyze_pdn(
     else:
         n_caps = 0
 
-    # IR Drop (粗略，假设 1mΩ 平面电阻)
-    plane_r_ohm = 0.001
+    # IR Drop：平面电阻按方阻公式（2 个方长的电流路径），
+    # 1oz 铜 ≈ 0.98mΩ，与旧硬编码 0.001Ω 同量级但可导
+    plane_r_ohm = plane_sheet_resistance_ohm(copper_oz) * 2
     v_drop_mv = plane_r_ohm * max_current_a * 1000
 
     # 推荐电容组合（大小电容并联覆盖不同频段）
