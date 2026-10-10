@@ -62,16 +62,21 @@ src/
 │   ├── anthropic_client.py   # Claude 原生 Messages API 客户端
 │   ├── prompt_templates.py   # 提示模板库
 │   ├── tools.py              # 24 工具统一注册表 (SSOT)
+│   ├── model_catalog.py      # 厂商模型目录实时拉取
 │   ├── review_agents.py      # 5 Agent 多智能体协同审查
 │   └── design_templates.py   # 12 电路模板 + 设计意图识别
 ├── core/
 │   ├── controller.py         # AppController 编排层
+│   ├── verifier.py           # 闭环验证（LLM 建议 → DRC 复验）
+│   ├── convergence.py        # 迭代收敛判定
+│   ├── boot.py               # 两段式启动序列
+│   ├── electrical_check.py   # 电气健康检查（阻抗/PDN/去耦/热）
 │   ├── design_scorer.py      # 6 维度设计质量评分引擎
 │   ├── persistence.py        # SQLite 会话持久化
 │   ├── system_bridge.py      # 全局热键 + 系统托盘
 │   └── file_watcher.py       # 立创EDA 文件监听
 ├── bom/                      # BOM 解析/合并/校验/查重
-├── pcb/                      # PCB JSON 解析
+├── pcb/                      # PCB 解析（parser.py 格式分发 + epro2_parser 全量）
 ├── rules/                    # 71 条设计规则
 ├── supply/                   # 立创商城 API + BOM 健康
 ├── rag/                      # ChromaDB 知识库

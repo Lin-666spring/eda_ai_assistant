@@ -1,0 +1,721 @@
+{
+ "板边间距检查": {
+  "n": 45,
+  "boards": 45,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 45
+  },
+  "samples": [
+   "ProPrj_ 基于ESP32的超级大杂 | 9 个元件距板边 <3.0mm: H3, H4, LED1, MIC1, R22",
+   "ProPrj_#星火计划#ESP32墨水 | 5 个元件距板边 <3.0mm: D1, J2, U13, U5, U6",
+   "ProPrj_[精品毕设]分布式设备的物 | 4 个元件距板边 <3.0mm: C22, R1, SW13, U8",
+   "ProPrj_AIBox-Lite简易A | 4 个元件距板边 <3.0mm: C11, C13, H1, SW6"
+  ]
+ },
+ "铜皮连接检查": {
+  "n": 29,
+  "boards": 29,
+  "kind": "advise",
+  "sev": {
+   "INFO": 29
+  },
+  "samples": [
+   "ProPrj_ 基于ESP32的超级大杂 | 1 片铜区没有任何同网络过孔/焊盘/走线接入（含经相邻铜形传递），孤岛嫌疑: MIC-@Top Layer",
+   "ProPrj_#星火计划#ESP32墨水 | 2 片铜区没有任何同网络过孔/焊盘/走线接入（含经相邻铜形传递），孤岛嫌疑: EPD_SDL@Bottom Layer、EN@Bottom Layer",
+   "ProPrj_AirLink（无线！US | PCB 文件未包含铜皮数据，请确认覆铜无孤岛",
+   "ProPrj_AI智能相框_2026-0 | 8 片铜区没有任何同网络过孔/焊盘/走线接入（含经相邻铜形传递），孤岛嫌疑: VBUS@Bottom Layer、VBUS@Bottom Layer、VBAT+@Bottom Layer、$2N131"
+  ]
+ },
+ "差分对等长检查": {
+  "n": 70,
+  "boards": 29,
+  "kind": "detect",
+  "sev": {
+   "INFO": 14,
+   "WARNING": 56
+  },
+  "samples": [
+   "ProPrj_ 基于ESP32的超级大杂 | 差分/等长组 [SPKL] 走线长度差 2.3279mm (表外差分组判据门限 2.0mm，组内平均长 29.4mm): SPKL+, SPKL-",
+   "ProPrj_#星火计划#ESP32墨水 | 差分/等长组 [USB_D] 走线长度差 11.167mm (USB2.0判据门限 2.0mm，组内平均长 8.4mm): USB_D+, USB_D-",
+   "ProPrj_AIBox-Lite简易A | 差分/等长组 [DP1] 走线长度差 2.816mm (表外差分组判据门限 2.0mm，组内平均长 1.8mm): SPK_IN_N, SPK_IN_P",
+   "ProPrj_AIBox-Lite简易A | 差分/等长组 [DP2] 走线长度差 0.263mm (表外差分组判据门限 2.0mm，组内平均长 0.6mm): $1N3924, $1N3930"
+  ]
+ },
+ "ESD 保护检查": {
+  "n": 47,
+  "boards": 47,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 47
+  },
+  "samples": [
+   "ProPrj_ 基于ESP32的超级大杂 | 存在外部连接器但未检测到 TVS/ESD 保护器件",
+   "ProPrj_#星火计划#ESP32墨水 | 存在外部连接器但未检测到 TVS/ESD 保护器件",
+   "ProPrj_#第十届立创电赛#流浪地球 | 存在外部连接器但未检测到 TVS/ESD 保护器件",
+   "ProPrj_2025年TI杯作品E题- | 存在外部连接器但未检测到 TVS/ESD 保护器件"
+  ]
+ },
+ "光学定位点检查": {
+  "n": 65,
+  "boards": 65,
+  "kind": "advise",
+  "sev": {
+   "INFO": 65
+  },
+  "samples": [
+   "ProPrj_ 基于ESP32的超级大杂 | 未检测到光学定位(Mark)点器件，SMT 批量贴片前需确认",
+   "ProPrj_#星火计划#ESP32墨水 | 未检测到光学定位(Mark)点器件，SMT 批量贴片前需确认",
+   "ProPrj_#第十届立创电赛#流浪地球 | 未检测到光学定位(Mark)点器件，SMT 批量贴片前需确认",
+   "ProPrj_[精品毕设]分布式设备的物 | 未检测到光学定位(Mark)点器件，SMT 批量贴片前需确认"
+  ]
+ },
+ "电感饱和电流检查": {
+  "n": 35,
+  "boards": 35,
+  "kind": "detect",
+  "sev": {
+   "INFO": 35
+  },
+  "samples": [
+   "ProPrj_ 基于ESP32的超级大杂 | 功率电感 L1 建议验证额定电流 ≥1.3× Ipeak",
+   "ProPrj_#星火计划#ESP32墨水 | 功率电感 L2 建议验证额定电流 ≥1.3× Ipeak",
+   "ProPrj_AI-Box离线DeepS | 功率电感 L1 建议验证额定电流 ≥1.3× Ipeak",
+   "ProPrj_AI智能相框_2026-0 | 功率电感 L1 建议验证额定电流 ≥1.3× Ipeak"
+  ]
+ },
+ "PDN 目标阻抗分析": {
+  "n": 78,
+  "boards": 78,
+  "kind": "advise",
+  "sev": {
+   "INFO": 78
+  },
+  "samples": [
+   "ProPrj_ 基于ESP32的超级大杂 | 5.0V/0.50A 电源(估算，板面积 1156mm²): 目标阻抗 Z_target=1000mΩ，平面电容 0.06nF（电源-地平面间距按 4 层板典型值 0.71mm），建议 ≥1 个去耦电",
+   "ProPrj_#星火计划#ESP32墨水 | 3.3V/0.50A 电源(估算，板面积 2041mm²): 目标阻抗 Z_target=660mΩ，2 层板无电源-地平面对，平面电容不适用，建议 ≥1 个去耦电容，IR压降≈0.5mV",
+   "ProPrj_#第十届立创电赛#流浪地球 | 5.0V/0.50A 电源(估算，板面积 1050mm²): 目标阻抗 Z_target=1000mΩ，2 层板无电源-地平面对，平面电容不适用，建议 ≥1 个去耦电容，IR压降≈0.5mV",
+   "ProPrj_2025年TI杯作品E题- | 5.0V/0.20A 电源(估算，板面积 1730mm²): 目标阻抗 Z_target=2500mΩ，2 层板无电源-地平面对，平面电容不适用，建议 ≥1 个去耦电容，IR压降≈0.2mV"
+  ]
+ },
+ "功率回路面积检查": {
+  "n": 33,
+  "boards": 33,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 33
+  },
+  "samples": [
+   "ProPrj_ 基于ESP32的超级大杂 | 检测到开关电源器件，输入电容→开关→电感→输出电容的 di/dt 回路需最小化",
+   "ProPrj_#星火计划#ESP32墨水 | 检测到开关电源器件，输入电容→开关→电感→输出电容的 di/dt 回路需最小化",
+   "ProPrj_[精品毕设]分布式设备的物 | 检测到开关电源器件，输入电容→开关→电感→输出电容的 di/dt 回路需最小化",
+   "ProPrj_AI智能相框_2026-0 | 检测到开关电源器件，输入电容→开关→电感→输出电容的 di/dt 回路需最小化"
+  ]
+ },
+ "开关电源布局检查": {
+  "n": 33,
+  "boards": 33,
+  "kind": "advise",
+  "sev": {
+   "INFO": 33
+  },
+  "samples": [
+   "ProPrj_ 基于ESP32的超级大杂 | DC-DC U3 建议优化输入回路布局以降低 EMI",
+   "ProPrj_#星火计划#ESP32墨水 | DC-DC C16 建议优化输入回路布局以降低 EMI",
+   "ProPrj_[精品毕设]分布式设备的物 | DC-DC Q4 建议优化输入回路布局以降低 EMI",
+   "ProPrj_AI智能相框_2026-0 | DC-DC U6 建议优化输入回路布局以降低 EMI"
+  ]
+ },
+ "测试点覆盖检查": {
+  "n": 66,
+  "boards": 66,
+  "kind": "advise",
+  "sev": {
+   "INFO": 66
+  },
+  "samples": [
+   "ProPrj_ 基于ESP32的超级大杂 | 2 个关键网络缺少测试点: 3V3, +5V",
+   "ProPrj_#星火计划#ESP32墨水 | 1 个关键网络缺少测试点: VIN_5V",
+   "ProPrj_#第十届立创电赛#流浪地球 | 6 个关键网络缺少测试点: AVDD_2V8, VDD_2V8, DOVDD_2V8, VDD_1V5, DVDD_1V5",
+   "ProPrj_2025年TI杯作品E题- | 3 个关键网络缺少测试点: 3V3, VCC, RST"
+  ]
+ },
+ "过孔热焊盘检查": {
+  "n": 64,
+  "boards": 64,
+  "kind": "advise",
+  "sev": {
+   "INFO": 64
+  },
+  "samples": [
+   "ProPrj_ 基于ESP32的超级大杂 | PCB 含 61 个过孔，大面积铜皮上的过孔应使用热焊盘(Thermal Relief)连接",
+   "ProPrj_#星火计划#ESP32墨水 | PCB 含 177 个过孔，大面积铜皮上的过孔应使用热焊盘(Thermal Relief)连接",
+   "ProPrj_#第十届立创电赛#流浪地球 | PCB 含 64 个过孔，大面积铜皮上的过孔应使用热焊盘(Thermal Relief)连接",
+   "ProPrj_[精品毕设]分布式设备的物 | PCB 含 125 个过孔，大面积铜皮上的过孔应使用热焊盘(Thermal Relief)连接"
+  ]
+ },
+ "时钟信号包地检查": {
+  "n": 104,
+  "boards": 22,
+  "kind": "advise",
+  "sev": {
+   "INFO": 104
+  },
+  "samples": [
+   "ProPrj_#星火计划#ESP32墨水 | 时钟网络 [EPD_SCLK] 走线长约 41mm，建议添加包地走线",
+   "ProPrj_2025年TI杯作品E题- | 时钟网络 [CLK] 走线长约 26mm，建议添加包地走线",
+   "ProPrj_All in one服务器 | 时钟网络 [OCP_REFCLK-] 走线长约 61mm，建议添加包地走线",
+   "ProPrj_All in one服务器 | 时钟网络 [OCP_REFCLK+] 走线长约 61mm，建议添加包地走线"
+  ]
+ },
+ "元件间距检查": {
+  "n": 8,
+  "boards": 8,
+  "kind": "detect",
+  "sev": {
+   "INFO": 5,
+   "WARNING": 3
+  },
+  "samples": [
+   "ProPrj_#星火计划#ESP32墨水 | 1 对元件体间隙 <0.2mm（最紧 C6-Q2 0.18mm）: C6-Q2(0.18mm)",
+   "ProPrj_AI智能相框_2026-0 | 1 对元件体间隙 <0.2mm（最紧 Q6-R48 0.14mm）: Q6-R48(0.14mm)",
+   "ProPrj_承载我所有幻想的键盘_20 | 2 对元件体间隙 <0.2mm（最紧 D1-D2 0.11mm）: D1-D2(0.11mm), C8-LED1(0.11mm)",
+   "ProPrj_承载我所有幻想的键盘_20 | 2 对元件体间隙 <0.2mm（最紧 D1-D2 0.11mm）: D1-D2(0.11mm), C8-LED1(0.11mm)"
+  ]
+ },
+ "连接器边沿布局检查": {
+  "n": 36,
+  "boards": 21,
+  "kind": "detect",
+  "sev": {
+   "INFO": 36
+  },
+  "samples": [
+   "ProPrj_#星火计划#ESP32墨水 | 连接器 J5 距最近板边 17mm（>10mm），可能影响插拔操作",
+   "ProPrj_#第十届立创电赛#流浪地球 | 连接器 FPC1 距最近板边 12mm（>10mm），可能影响插拔操作",
+   "ProPrj_2025年TI杯作品E题- | 连接器 FPC1 距最近板边 17mm（>10mm），可能影响插拔操作",
+   "ProPrj_PowerPico：便携u | 连接器 U16 距最近板边 17mm（>10mm），可能影响插拔操作"
+  ]
+ },
+ "3W 串扰间距检查": {
+  "n": 71,
+  "boards": 44,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 71
+  },
+  "samples": [
+   "ProPrj_#星火计划#ESP32墨水 | Bottom Layer 层 1 对走线平行间距 <3W 且重叠 ≥5.0mm；最严重 [3.3V_CODEC/EPD_SCLK] 5.4mm",
+   "ProPrj_2025年TI杯作品E题- | Top Layer 层 2 对走线平行间距 <3W 且重叠 ≥5.0mm；最严重 [MOSI/RST] 10.9mm",
+   "ProPrj_[精品毕设]分布式设备的物 | Top Layer 层 2 对走线平行间距 <3W 且重叠 ≥5.0mm；最严重 [OLED_RES/SPI_MOSI] 9.4mm",
+   "ProPrj_[精品毕设]分布式设备的物 | Bottom Layer 层 3 对走线平行间距 <3W 且重叠 ≥5.0mm；最严重 [SPI_MISO/SPI_MOSI] 14.4mm"
+  ]
+ },
+ "调试接口检查": {
+  "n": 13,
+  "boards": 13,
+  "kind": "detect",
+  "sev": {
+   "INFO": 4,
+   "WARNING": 9
+  },
+  "samples": [
+   "ProPrj_#星火计划#ESP32墨水 | 检测到调试接口器件，请确认调试排针位置便于连接",
+   "ProPrj_AI智能相框_2026-0 | 检测到调试接口器件但缺少调试排针",
+   "ProPrj_EagleH7-EDU_2 | 检测到调试接口器件但缺少调试排针",
+   "ProPrj_ESPMonitor_Pl | 检测到调试接口器件但缺少调试排针"
+  ]
+ },
+ "去耦电容检查": {
+  "n": 135,
+  "boards": 38,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 92,
+   "ERROR": 43
+  },
+  "samples": [
+   "ProPrj_#星火计划#ESP32墨水 | 体电容不足：1 个 10µF 需覆盖 12 个 IC，缺口 11 个",
+   "ProPrj_[精品毕设]分布式设备的物 | IC U1 缺少 100nF 高频去耦电容",
+   "ProPrj_[精品毕设]分布式设备的物 | IC U10,U3 缺少 100nF 高频去耦电容",
+   "ProPrj_[精品毕设]分布式设备的物 | IC U11 缺少 100nF 高频去耦电容"
+  ]
+ },
+ "高速信号参考平面检查": {
+  "n": 48,
+  "boards": 48,
+  "kind": "advise",
+  "sev": {
+   "WARNING": 48
+  },
+  "samples": [
+   "ProPrj_#星火计划#ESP32墨水 | 3 个高速网络需确认邻层为完整 GND 参考平面",
+   "ProPrj_#第十届立创电赛#流浪地球 | 2 个高速网络需确认邻层为完整 GND 参考平面",
+   "ProPrj_2025年TI杯作品E题- | 1 个高速网络需确认邻层为完整 GND 参考平面",
+   "ProPrj_[精品毕设]分布式设备的物 | 1 个高速网络需确认邻层为完整 GND 参考平面"
+  ]
+ },
+ "特征阻抗匹配检查": {
+  "n": 149,
+  "boards": 26,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 21,
+   "ERROR": 128
+  },
+  "samples": [
+   "ProPrj_#星火计划#ESP32墨水 | 差分对 [USB_D+/USB_D-]: 线宽 0.200mm / 对内间距 0.500mm → Z≈179Ω，偏离目标 90Ω 超过 ±25%",
+   "ProPrj_EDA-Pager寻呼机_ | 差分对 [4G_USB_D+/4G_USB_D-]: 线宽 0.127mm / 对内间距 0.279mm → Z≈180Ω，偏离目标 90Ω 超过 ±25%",
+   "ProPrj_EDA-Pager寻呼机_ | 差分对 [MCU_USB_D+/MCU_USB_D-]: 线宽 0.254mm / 对内间距 0.406mm → Z≈164Ω，偏离目标 90Ω 超过 ±25%",
+   "ProPrj_EDA-Pager寻呼机_ | 网络 [LET_ANT] 单端: 线宽 0.254mm → Z≈131Ω，偏离目标 50Ω 超过 ±25%"
+  ]
+ },
+ "封装一致性检查": {
+  "n": 43,
+  "boards": 14,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 43
+  },
+  "samples": [
+   "ProPrj_#星火计划#ESP32墨水 | 型号 [1.25-2A] 出现多种封装: CONN-TH_1.25-2A, 纽扣电池",
+   "ProPrj_#星火计划#ESP32墨水 | 型号 [CJ3401] 出现多种封装: SOT-23, SOT-23-3_L2.9-W1.6-P1.90-LS2.8-BR",
+   "ProPrj_#星火计划#ESP32墨水 | 型号 [B3U-1000P] 出现多种封装: key-smd_b3u-1000pm, 立插凯华",
+   "ProPrj_AI-Box离线DeepS | 型号 [MMBT5401] 出现多种封装: SOT-23, SOT-23-3_L2.9-W1.3-P1.90-LS2.4-BR"
+  ]
+ },
+ "电源轨去耦网络": {
+  "n": 12,
+  "boards": 12,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 12
+  },
+  "samples": [
+   "ProPrj_#星火计划#ESP32墨水 | 缺少: 1~10μF(中频滤波)",
+   "ProPrj_AI-Box离线DeepS | 缺少: 0.1μF(高频去耦)",
+   "ProPrj_ESPMonitor_Pl | 缺少: 1~10μF(中频滤波)",
+   "ProPrj_Mini FOC无刷平衡车 | 缺少: 1~10μF(中频滤波)"
+  ]
+ },
+ "位号连续性检查": {
+  "n": 51,
+  "boards": 51,
+  "kind": "advise",
+  "sev": {
+   "INFO": 51
+  },
+  "samples": [
+   "ProPrj_#星火计划#ESP32墨水 | 位号存在跳号: C41→C44(跳2号), D4→D8(跳3号), J2→J5(跳2号), J5→J8(跳2号) …",
+   "ProPrj_[精品毕设]分布式设备的物 | 位号存在跳号: C2→C9(跳6号), C9→C13(跳3号), C13→C16(跳2号), C17→C21(跳3号) …",
+   "ProPrj_AI-Box离线DeepS | 位号存在跳号: R4→R6(跳1号), R10→R70(跳59号)",
+   "ProPrj_AIBox-Lite简易A | 位号存在跳号: C15→C34(跳18号), R8→R10(跳1号), R12→R33(跳20号), R34→R40(跳5号) …"
+  ]
+ },
+ "走线锐角检查": {
+  "n": 7,
+  "boards": 5,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 7
+  },
+  "samples": [
+   "ProPrj_#星火计划#ESP32墨水 | 网络 [3.3V] Top Layer 有 1 处锐角，最尖 42.3° @(13.37, 39.56)mm",
+   "ProPrj_Mini FOC无刷平衡车 | 网络 [$1N81804] Top Layer 有 1 处锐角，最尖 45.4° @(-11.94, 6.99)mm",
+   "ProPrj_立创·地奇星RA6E2开发 | 网络 [P003] Top Layer 有 1 处锐角，最尖 7.6° @(138.55, -74.93)mm",
+   "ProPrj_立创·梁山派开发板_202 | 网络 [3V3] Bottom Layer 有 1 处锐角，最尖 38.9° @(95.34, 41.84)mm"
+  ]
+ },
+ "I2C 上拉电阻检查": {
+  "n": 11,
+  "boards": 11,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 11
+  },
+  "samples": [
+   "ProPrj_#第十届立创电赛#流浪地球 | 检测到 I2C 器件但未发现典型上拉电阻(2.2~10kΩ)",
+   "ProPrj_AI-Box离线DeepS | 检测到 I2C 器件但未发现典型上拉电阻(2.2~10kΩ)",
+   "ProPrj_Excam基于openmv | 检测到 I2C 器件但未发现典型上拉电阻(2.2~10kΩ)",
+   "ProPrj_Screen-Lock智能 | 检测到 I2C 器件但未发现典型上拉电阻(2.2~10kΩ)"
+  ]
+ },
+ "电源线载流检查": {
+  "n": 30,
+  "boards": 20,
+  "kind": "detect",
+  "sev": {
+   "ERROR": 16,
+   "WARNING": 14
+  },
+  "samples": [
+   "ProPrj_#第十届立创电赛#流浪地球 | 电源网络 [VBAT] Bottom Layer（外层）: 线宽 0.254mm 载流 0.89A < 需求 1.00A，载流不足，需宽 ≥0.300mm",
+   "ProPrj_AirLink（无线！US | 电源网络 [VBAT] Top Layer（外层）: 线宽 0.500mm 载流 1.45A ≈ 需求 1.00A，载流余量不足(<1.5×)，无故障裕量，建议宽 ≥0.300mm",
+   "ProPrj_AI智能相框_2026-0 | 电源网络 [VBAT+] Inner2（内层）: 线宽 0.200mm 载流 0.37A < 需求 1.00A，载流不足，需宽 ≥0.781mm",
+   "ProPrj_EagleH7-EDU_2 | 电源网络 [VBAT] Top Layer（外层）: 线宽 0.305mm 载流 1.01A < 需求 1.50A，载流不足，需宽 ≥0.525mm"
+  ]
+ },
+ "天线净空区检查": {
+  "n": 23,
+  "boards": 22,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 23
+  },
+  "samples": [
+   "ProPrj_[精品毕设]分布式设备的物 | 无线模块 MK1 天线周围需净空区",
+   "ProPrj_AI智能相框_2026-0 | 无线模块 U2 天线周围需净空区",
+   "ProPrj_EagleH7-EDU_2 | 无线模块 U8 天线周围需净空区",
+   "ProPrj_EDA-Pager寻呼机_ | 无线模块 U5 天线周围需净空区"
+  ]
+ },
+ "电源滤波检查": {
+  "n": 7,
+  "boards": 7,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 7
+  },
+  "samples": [
+   "ProPrj_[精品毕设]分布式设备的物 | 电源入口缺少: 大电解(≥100μF), 小陶瓷(0.1μF)",
+   "ProPrj_AI智能相框_2026-0 | 电源入口缺少: 大电解(≥100μF)",
+   "ProPrj_EagleH7-EDU_2 | 电源入口缺少: 大电解(≥100μF)",
+   "ProPrj_Mini FOC无刷平衡车 | 电源入口缺少: 大电解(≥100μF)"
+  ]
+ },
+ "走线直角检查": {
+  "n": 77,
+  "boards": 19,
+  "kind": "advise",
+  "sev": {
+   "INFO": 77
+  },
+  "samples": [
+   "ProPrj_[精品毕设]分布式设备的物 | 网络 [USB_VBUS] Top Layer 有 1 处直角走线",
+   "ProPrj_[精品毕设]分布式设备的物 | 网络 [USB_VBUS] Bottom Layer 有 1 处直角走线",
+   "ProPrj_All in one服务器 | 网络 [REFCLK1-] Bottom Layer 有 1 处直角走线",
+   "ProPrj_All in one服务器 | 网络 [REFCLK1+] Bottom Layer 有 1 处直角走线"
+  ]
+ },
+ "参数范围检查": {
+  "n": 21,
+  "boards": 15,
+  "kind": "detect",
+  "sev": {
+   "INFO": 21
+  },
+  "samples": [
+   "ProPrj_AI-Box离线DeepS | R2 参数 [500mΩ] 不在E96/E24(±1%)标准系列",
+   "ProPrj_AIBox-Lite简易A | R33 参数 [250mΩ] 不在E24标准系列",
+   "ProPrj_EagleH7-EDU_2 | R7 参数 [400mΩ] 不在E96/E24(±1%)标准系列",
+   "ProPrj_EDA-Pager寻呼机_ | R6 参数 [500mΩ] 不在E96/E24(±1%)标准系列"
+  ]
+ },
+ "天线效应检查": {
+  "n": 12,
+  "boards": 12,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 12
+  },
+  "samples": [
+   "ProPrj_AI-Box离线DeepS | 20 个网络仅连接 ≤1 个引脚，可能为浮空网络或天线",
+   "ProPrj_All in one服务器 | 7 个网络仅连接 ≤1 个引脚，可能为浮空网络或天线",
+   "ProPrj_EagleH7-EDU_2 | 7 个网络仅连接 ≤1 个引脚，可能为浮空网络或天线",
+   "ProPrj_ESP-VoCat 喵伴旋 | 3 个网络仅连接 ≤1 个引脚，可能为浮空网络或天线"
+  ]
+ },
+ "电池电压分压器检查": {
+  "n": 2,
+  "boards": 2,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 2
+  },
+  "samples": [
+   "ProPrj_AIBox-Lite简易A | 电池供电系统缺少电压监测分压电阻网络",
+   "ProPrj_SW3538彩屏桌面充电站 | 电池供电系统缺少电压监测分压电阻网络"
+  ]
+ },
+ "晶振负载电容检查": {
+  "n": 22,
+  "boards": 22,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 22
+  },
+  "samples": [
+   "ProPrj_AIBox-Lite简易A | 晶振负载电容可能不足：板上 0 颗 1-47pF 小电容，需 2 颗覆盖 1 个晶振",
+   "ProPrj_EagleH7-EDU_2 | 晶振负载电容可能不足：板上 0 颗 1-47pF 小电容，需 16 颗覆盖 8 个晶振",
+   "ProPrj_EDA-Pager寻呼机_ | 晶振负载电容可能不足：板上 0 颗 1-47pF 小电容，需 2 颗覆盖 1 个晶振",
+   "ProPrj_Mini FOC无刷平衡车 | 晶振负载电容可能不足：板上 0 颗 1-47pF 小电容，需 2 颗覆盖 1 个晶振"
+  ]
+ },
+ "去耦电容距离检查": {
+  "n": 20,
+  "boards": 20,
+  "kind": "advise",
+  "sev": {
+   "WARNING": 20
+  },
+  "samples": [
+   "ProPrj_AIBox-Lite简易A | 2 个去耦电容距 IC >15.0mm（2 对电容-IC 组合）: C7/U8(15.2mm), C9/U11(15.1mm)",
+   "ProPrj_All in one服务器 | 2 个去耦电容距 IC >15.0mm（2 对电容-IC 组合）: C207/U14(16.8mm), C37/U11(18.1mm)",
+   "ProPrj_【八卦.键盘】Sudo.  | 6 个去耦电容距 IC >15.0mm（6 对电容-IC 组合）: C/U7(45.1mm), C24/U4(26.8mm), C26/U(117.3mm)",
+   "ProPrj_【铝合金外壳】USB2.0 | 1 个去耦电容距 IC >15.0mm（1 对电容-IC 组合）: C5/U3(53.5mm)"
+  ]
+ },
+ "EMI 滤波检查": {
+  "n": 11,
+  "boards": 11,
+  "kind": "detect",
+  "sev": {
+   "INFO": 11
+  },
+  "samples": [
+   "ProPrj_AIBox-Lite简易A | 电源入口缺少共模电感/EMI 滤波器件",
+   "ProPrj_EDA-Robot机器狗_ | 电源入口缺少共模电感/EMI 滤波器件",
+   "ProPrj_ESP-HDMI-Brid | 电源入口缺少共模电感/EMI 滤波器件",
+   "ProPrj_ESP-VoCat 喵伴旋 | 电源入口缺少共模电感/EMI 滤波器件"
+  ]
+ },
+ "电源极性保护检查": {
+  "n": 4,
+  "boards": 4,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 4
+  },
+  "samples": [
+   "ProPrj_AIBox-Lite简易A | 直流电源输入未检测到反接保护器件",
+   "ProPrj_EDA-Robot机器狗_ | 直流电源输入未检测到反接保护器件",
+   "ProPrj_ESP-Hi：ESP32- | 直流电源输入未检测到反接保护器件",
+   "ProPrj_ESP-VoCat 喵伴旋 | 直流电源输入未检测到反接保护器件"
+  ]
+ },
+ "地平面连续性检查": {
+  "n": 5,
+  "boards": 5,
+  "kind": "advise",
+  "sev": {
+   "INFO": 5
+  },
+  "samples": [
+   "ProPrj_AirLink（无线！US | 未检测到 GND 族铺铜，建议整板铺地",
+   "ProPrj_LW焊台_2026-09- | 未检测到 GND 族铺铜，建议整板铺地",
+   "ProPrj_MoCM0 树莓派CM0迷 | 未检测到 GND 族铺铜，建议整板铺地",
+   "ProPrj_【立创·泰山派】全键盘掌上 | 未检测到 GND 族铺铜，建议整板铺地"
+  ]
+ },
+ "悬空引脚检查": {
+  "n": 25,
+  "boards": 25,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 25
+  },
+  "samples": [
+   "ProPrj_AI智能相框_2026-0 | 主控 U2 的 RST/BOOT/EN 等控制引脚可能悬空",
+   "ProPrj_All in one服务器 | 主控 U2 的 RST/BOOT/EN 等控制引脚可能悬空",
+   "ProPrj_EagleH7-EDU_2 | 主控 U1 的 RST/BOOT/EN 等控制引脚可能悬空",
+   "ProPrj_EDA-Pager寻呼机_ | 主控 U5 的 RST/BOOT/EN 等控制引脚可能悬空"
+  ]
+ },
+ "热焊盘检查": {
+  "n": 2,
+  "boards": 2,
+  "kind": "advise",
+  "sev": {
+   "WARNING": 2
+  },
+  "samples": [
+   "ProPrj_AI智能相框_2026-0 | 大功率器件需确认散热方案: U4(QFN-16_L3.0-W3.0-P0.50-TL-EP1.7)",
+   "ProPrj_立创·泰山派RK3566- | 大功率器件需确认散热方案: U43(ESOP-8_L4.9-W3.9-P1.27-LS6.0-BL-EP-1)"
+  ]
+ },
+ "BGA 扇出检查": {
+  "n": 3,
+  "boards": 3,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 3
+  },
+  "samples": [
+   "ProPrj_All in one服务器 | BGA 封装 PC15 需要扇出设计——确认过孔尺寸/间距满足工艺能力",
+   "ProPrj_立创·泰山派3M（RK35 | BGA 封装 U14 需要扇出设计——确认过孔尺寸/间距满足工艺能力",
+   "ProPrj_立创·逻辑派FPGA-G1 | BGA 封装 U29 需要扇出设计——确认过孔尺寸/间距满足工艺能力"
+  ]
+ },
+ "晶振频率匹配": {
+  "n": 27,
+  "boards": 17,
+  "kind": "detect",
+  "sev": {
+   "INFO": 27
+  },
+  "samples": [
+   "ProPrj_All in one服务器 | 晶振 X1 (25MHz) 建议 CL=12pF~18pF",
+   "ProPrj_EagleH7-EDU_2 | 晶振 X1 (32.768Hz) 建议 CL=12.5pF~15pF",
+   "ProPrj_EagleH7-EDU_2 | 晶振 X3 (12MHz) 建议 CL=15pF~22pF",
+   "ProPrj_【RA】农田环境数据无线采 | 晶振 X3 (32.768Hz) 建议 CL=12.5pF~15pF"
+  ]
+ },
+ "环路面积检查": {
+  "n": 77,
+  "boards": 14,
+  "kind": "detect",
+  "sev": {
+   "INFO": 77
+  },
+  "samples": [
+   "ProPrj_All in one服务器 | 高速网络 [REFCLK+] 走线长度 96mm，环路面积可能偏大",
+   "ProPrj_All in one服务器 | 高速网络 [REFCLK-] 走线长度 96mm，环路面积可能偏大",
+   "ProPrj_All in one服务器 | 高速网络 [SWCLK] 走线长度 50mm，环路面积可能偏大",
+   "ProPrj_All in one服务器 | 高速网络 [SWDIO] 走线长度 50mm，环路面积可能偏大"
+  ]
+ },
+ "信号线宽度检查": {
+  "n": 6,
+  "boards": 1,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 6
+  },
+  "samples": [
+   "ProPrj_All in one服务器 | 网络 [OCP_TX3+] 最小线宽 0.089mm，细于工艺下限 0.1mm",
+   "ProPrj_All in one服务器 | 网络 [M2_TX2-] 最小线宽 0.089mm，细于工艺下限 0.1mm",
+   "ProPrj_All in one服务器 | 网络 [OCP_TX2-] 最小线宽 0.089mm，细于工艺下限 0.1mm",
+   "ProPrj_All in one服务器 | 网络 [UPE_TX3-] 最小线宽 0.089mm，细于工艺下限 0.1mm"
+  ]
+ },
+ "短桩线检查": {
+  "n": 14,
+  "boards": 14,
+  "kind": "advise",
+  "sev": {
+   "INFO": 14
+  },
+  "samples": [
+   "ProPrj_All in one服务器 | 4 层板高速网络 REFCLK+, REFCLK-, REFCLK3+ 各有 ≥2 个过孔，可能存在 stub 分支",
+   "ProPrj_EagleH7-EDU_2 | 4 层板高速网络 CSI_PCLK 各有 ≥2 个过孔，可能存在 stub 分支",
+   "ProPrj_ESP-HDMI-Brid | 4 层板高速网络 ESP32_CLKN, ESP32_CLKP 各有 ≥2 个过孔，可能存在 stub 分支",
+   "ProPrj_Mini FOC无刷平衡车 | 5 层板高速网络 MPU_SPI3_CLK, M_TLE5012_CLK 各有 ≥2 个过孔，可能存在 stub 分支"
+  ]
+ },
+ "未连接引脚检查": {
+  "n": 7,
+  "boards": 7,
+  "kind": "detect",
+  "sev": {
+   "INFO": 7
+  },
+  "samples": [
+   "ProPrj_All in one服务器 | IC U2(LQFP-48_L7.0-W7.0-P0.50-LS9.0-BL) 仅 21/48 个引脚出现在网表中，可能大量引脚未连接",
+   "ProPrj_EagleH7-EDU_2 | IC U8(QFN-32_L5.0-W5.0-P0.50-TL-EP3.7) 仅 15/32 个引脚出现在网表中，可能大量引脚未连接",
+   "ProPrj_ESPMonitor_Pl | IC U3(SOP-16_L10.0-W3.9-P1.27-LS6.0-BL) 仅 9/16 个引脚出现在网表中，可能大量引脚未连接",
+   "ProPrj_SW3538彩屏桌面充电站 | IC U19(SOP-16_L10.0-W3.9-P1.27-LS6.0-BL) 仅 9/16 个引脚出现在网表中，可能大量引脚未连接"
+  ]
+ },
+ "上下拉电阻检查": {
+  "n": 3,
+  "boards": 3,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 3
+  },
+  "samples": [
+   "ProPrj_ESP-HDMI-Brid | 控制信号网络 [LT8912B_INT] 可能缺少上拉/下拉电阻",
+   "ProPrj_专业级全键盘电子钢琴_20 | 控制信号网络 [CTP_INT] 可能缺少上拉/下拉电阻",
+   "ProPrj_迷你便携无线WIFI热成像 | 控制信号网络 [EN] 可能缺少上拉/下拉电阻"
+  ]
+ },
+ "磁珠隔离检查": {
+  "n": 5,
+  "boards": 5,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 5
+  },
+  "samples": [
+   "ProPrj_ESP-Hi：ESP32- | 数模混合电路缺少磁珠进行电源域隔离",
+   "ProPrj_基于ESP32C3+PT6 | 数模混合电路缺少磁珠进行电源域隔离",
+   "ProPrj_我 DIY 了一款不太一样 | 数模混合电路缺少磁珠进行电源域隔离",
+   "ProPrj_柯南同款, 全自研高速电动 | 数模混合电路缺少磁珠进行电源域隔离"
+  ]
+ },
+ "MOSFET 栅极电阻检查": {
+  "n": 2,
+  "boards": 1,
+  "kind": "detect",
+  "sev": {
+   "INFO": 2
+  },
+  "samples": [
+   "ProPrj_Mini FOC无刷平衡车 | 功率 MOSFET Q1 建议串联栅极电阻",
+   "ProPrj_Mini FOC无刷平衡车 | 功率 MOSFET Q2 建议串联栅极电阻"
+  ]
+ },
+ "元件高度分区检查": {
+  "n": 7,
+  "boards": 7,
+  "kind": "detect",
+  "sev": {
+   "INFO": 7
+  },
+  "samples": [
+   "ProPrj_Mini-LinuxPC- | 高元件(2个)与矮元件(50个)混合布局",
+   "ProPrj_【铝合金外壳】USB2.0 | 高元件(2个)与矮元件(7个)混合布局",
+   "ProPrj_无线激光雕刻机_2026- | 高元件(2个)与矮元件(32个)混合布局",
+   "ProPrj_立创·梁山派-盖革计数器- | 高元件(2个)与矮元件(41个)混合布局"
+  ]
+ },
+ "复位电路检查": {
+  "n": 2,
+  "boards": 2,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 2
+  },
+  "samples": [
+   "ProPrj_TV-Pro双固件在线大模 | MCU U2 复位电路缺少: 对地电容(0.1μF)",
+   "ProPrj_迷你便携无线WIFI热成像 | MCU U1 复位电路缺少: 上拉电阻(10kΩ), 对地电容(0.1μF)"
+  ]
+ },
+ "走线板边间距检查": {
+  "n": 2,
+  "boards": 2,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 2
+  },
+  "samples": [
+   "ProPrj_【八卦.键盘】Sudo.  | 1 条走线距板框 <0.3mm（最小 0.254mm）: U2_30",
+   "ProPrj_比掌上电子书更小的，是指尖 | 1 条走线距板框 <0.3mm（最小 0.263mm）: GND"
+  ]
+ },
+ "光耦隔离间距检查": {
+  "n": 1,
+  "boards": 1,
+  "kind": "detect",
+  "sev": {
+   "WARNING": 1
+  },
+  "samples": [
+   "ProPrj_天空星·筑基学习板_202 | 检测到光耦元件，隔离式光耦初次级之间需保证≥6mm爬电距离"
+  ]
+ },
+ "过孔密度检查": {
+  "n": 5,
+  "boards": 2,
+  "kind": "detect",
+  "sev": {
+   "INFO": 5
+  },
+  "samples": [
+   "ProPrj_天空星·筑基学习板_202 | 高速网络 [SERVO_PWM1] 过孔数量(6) ≥ 5",
+   "ProPrj_天空星·筑基学习板_202 | 高速网络 [SERVO_PWM2] 过孔数量(6) ≥ 5",
+   "ProPrj_天空星·筑基学习板_202 | 高速网络 [SPI_CLK] 过孔数量(8) ≥ 5",
+   "ProPrj_迷你数字可调电源_数控电源 | 高速网络 [SW2] 过孔数量(28) ≥ 5"
+  ]
+ }
+}

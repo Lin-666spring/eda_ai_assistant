@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-"""成员A个人汇报文档。运行: python gen_member_a_report.py"""
+"""⚠️ 本文件内嵌的代码片段是 2026 年早期的规则引擎副本，与现行实现（src/rules/）
+已发生漂移，仅作大创汇报的 historical 展示用途 —— 不要以此为参考改代码（2026-10-10 声明）。
+Original docstring: 成员A个人汇报文档。运行: python gen_member_a_report.py"""
 import os
 from docx import Document
 from docx.shared import Pt, RGBColor, Inches

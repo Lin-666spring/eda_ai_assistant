@@ -83,11 +83,11 @@ app = FastAPI(
 # 收敛到已知调用方：lceda 插件 iframe（file:///扩展页 Origin 为 "null"，见
 # lceda_plugin/iframe/app.js 直连本服务）、本机端口、lceda 编辑器域（内容脚本
 # fetch 走页面 Origin）。新增调用方在此显式追加。
+# frontend/ Vite 模板已随批6 清退，5173 调试端口一并移除。
 _CORS_ALLOWED_ORIGINS = [
     "null",  # file:// / 扩展沙盒 iframe（lceda 插件面板）
     "http://127.0.0.1:8710",
     "http://localhost:8710",
-    "http://localhost:5173",  # frontend/ Vite 开发服（待清退）
     "https://pro.lceda.cn",
     "https://lceda.cn",
 ]
@@ -111,18 +111,6 @@ if IFRAME_DIR.is_dir():
 from src.api.endpoints import router  # noqa: E402
 
 app.include_router(router, prefix="/api/v1")
-
-# ── serve built React frontend (if present) ──────────────────
-# Registered AFTER /api/v1 routes so API takes precedence. The mount
-# only activates once `frontend/dist` exists (i.e. after `npm run build`).
-FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
-if FRONTEND_DIST.is_dir():
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
-
-
-# ═══════════════════════════════════════════════════════════════
-#  Convenience launcher
-# ═══════════════════════════════════════════════════════════════
 
 
 def start_server(host: str = "127.0.0.1", port: int = 8710) -> None:

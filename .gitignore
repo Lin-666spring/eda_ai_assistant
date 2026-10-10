@@ -53,9 +53,26 @@ rag_data/*.sqlite3
 # Claude Code
 .claude/
 .zcode/
+.zcodeignore
 
 # DSH harness（本地技能与会话状态，不入库）
 .dsh/
 test_data/_incoming_thing/
 test_data/_incoming_epro2/
 .specs/
+
+# ═══ 实验产物与大文件边界（批6 2026-10-10 仓库治理）═══
+# 原则：方法论 README / 小体积摘要（*.md、before/after、audit_dump）入库，
+# 可再生的大 dump 与二进制不入库。已跟踪的历史文件已 git rm --cached。
+# violations.jsonl 可由 scripts/rule_spotcheck_dump.py 再生
+experiment_results/**/violations.jsonl
+# 训练产物；本地保留，克隆后相关测试自动 skip
+data/*.pt
+data/*.pth
+# npm build 产物，可由源码重建
+lceda_plugin/dist/
+# AI 会话记录，个人工作产物
+memories/session/
+# 根目录演示材料（大体积 pptx/pdf），归档在本地/网盘
+/*.pptx
+/*.pdf

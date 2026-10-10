@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-"""生成三名成员各自的代码库示例文档。运行: python gen_code_docs.py"""
+"""⚠️ 本文件内嵌的代码片段是 2026 年早期的规则引擎副本，与现行实现（src/rules/）
+已发生漂移，仅作大创汇报的 historical 展示用途 —— 不要以此为参考改代码（2026-10-10 声明）。
+Original docstring: 生成三名成员各自的代码库示例文档。运行: python gen_code_docs.py"""
 import os
 from docx import Document
 from docx.shared import Pt, RGBColor, Inches

@@ -21,7 +21,7 @@ pip install -r requirements.txt
 # Run the app (Eel Web UI, opens Chrome/Edge)
 python main.py
 
-# Run all tests (1179 collected)
+# Run all tests (1203 collected)
 python -m pytest tests/ -q
 
 # Run a single test module
@@ -45,7 +45,7 @@ pyinstaller --noconfirm --clean eda_ai_assistant.spec
 
 ### Entry point → Eel bridge
 
-`main.py` is the Eel application entry. It exposes ~25 `@eel.expose` functions that the JS frontend calls. These thin wrappers delegate to `AppController` — never put business logic in `main.py`.
+`main.py` is the Eel application entry. It exposes 49 `@eel.expose` functions that the JS frontend calls (批3 2026-10-10 清退了 14 个被 `run_tool` 取代的重复入口；数量变化时同步改这里)。These thin wrappers delegate to `AppController` — never put business logic in `main.py`.
 
 ### Controller (the brain)
 
@@ -123,7 +123,7 @@ pyinstaller --noconfirm --clean eda_ai_assistant.spec
 - 图标统一用 `ICONS` 里的内联 SVG（`web/js/tools.js`），不用 emoji 字体图标；`confirm()` 已由自定义对话框替代。
 - 前端 JS 是 13 个经典 script 模块（P1-6 阶段C 拆分，`web/js/`），index.html 按「原单文件的区块顺序」加载——顺序不可调换，模块间靠顶层 `function`/`const` 共享全局作用域；内联 `onclick` 引用的函数必须声明在这些文件顶层。
 
-回归手段：`python tests/ui_smoke.py`（Playwright 真机驱动 + stub LLM，零 API 花费，85 项检查 + 截图到 `output/ui_smoke/`）。覆盖布局回归 P12（主页面默认是对话）/ P13（左侧会话栏 + 工作区隔离）/ P14（生成中的加载动效：思考气泡、顶栏胶囊+进度条、审查骨架屏、按钮 loading）/ P15（热力图数据来源与空状态：坐标文件也能出格、网格边长透传、reason 文案）/ P16（两段式启动：480×340 小窗启动界面不溢出、`#boot-hold` 能停住、展开后遮罩移除、`resizeTo` 被拒走兜底）。
+回归手段：`python scripts/ui_smoke.py`（Playwright 真机驱动 + stub LLM，零 API 花费，85 项检查 + 截图到 `output/ui_smoke/`）。覆盖布局回归 P12（主页面默认是对话）/ P13（左侧会话栏 + 工作区隔离）/ P14（生成中的加载动效：思考气泡、顶栏胶囊+进度条、审查骨架屏、按钮 loading）/ P15（热力图数据来源与空状态：坐标文件也能出格、网格边长透传、reason 文案）/ P16（两段式启动：480×340 小窗启动界面不溢出、`#boot-hold` 能停住、展开后遮罩移除、`resizeTo` 被拒走兜底）。
 ⚠️ Playwright 要起自己的驱动子进程（管道 stdio），在受限沙箱里会 `PermissionError` —— 它需要能正常 `spawn` 的权限，不是代码问题。
 文件名不以 `test_` 开头，因此不会被 pytest 收集；配套的 pytest 用例是 `tests/test_heatmap.py`（热力图回落/reason）、`tests/test_tool_catalog.py`（锁前后端工具目录一致性）与 `tests/test_persistence.py`（含 workspaces 用例）。
 
@@ -132,19 +132,19 @@ pyinstaller --noconfirm --clean eda_ai_assistant.spec
 | Directory | Purpose |
 |-----------|---------|
 | `src/bom/` | CSV/Excel parsing, rule-based merge, package validation, duplicate reference detection |
-| `src/pcb/` | PCB JSON parsing, data models |
+| `src/pcb/` | PCB 解析：`parser.py` 是格式分发工厂（.json/.epro 旧策略 + .epro2 转发 `Epro2Parser` 全量解析），数据模型在 `models.py` |
 | `src/rules/` | 71 design rules (`DesignRuleChecker`): decoupling caps, signal traces, power current, acute angles, via density, analog-digital separation, etc. |
 | `src/supply/` | LCSC API client + BOM health checker (stock, lifecycle, alternatives, cost) |
 | `src/rag/` | ChromaDB indexer + retriever for Chinese PCB knowledge |
 | `src/html_bom/` | Interactive HTML BOM generator (Jinja2 templates) |
-| `src/interfaces/` | EDA adapter (LCEDAAdapter for 立创EDA JSON), simulator abstraction |
+| `src/interfaces/` | EDA adapter (LCEDAAdapter：BOM/坐标/PCB 三入口，走 `src/pcb/parser.py` 分发), simulator abstraction |
 | `src/core/` | Controller, file watcher, SQLite persistence, system bridge (hotkey/tray), boot sequencer (两段式启动) |
 | `src/agent/` | NLU engine, LLM client, router, prompt templates, tool registry |
 
 ## Key design rules
 
 - **ToolRegistry is the SSOT**: Add capabilities only in `src/agent/tools.py`. Never hardcode keyword lists or dispatch mappings in controller/router.
-- **Controller is UI-agnostic**: `AppController` has zero UI imports. Both Eel and CLI (`tests/cli_prototype.py`) consume the same API.
+- **Controller is UI-agnostic**: `AppController` has zero UI imports. Both Eel and CLI (`scripts/cli_prototype.py`) consume the same API.
 - **`.env` never committed**: API keys go in `.env` (gitignored) or `~/.eda_ai_assistant/settings.json`.
 - **`CommandContext` is mutable session state**: BOM items, positions, PCB data live here with a single `has_data` gate.
 - **DRC 热力图是「违规计数网格」，不是图像**：`violation.location` 正则抠位号 → 查坐标 → 按 `grid_size_mm` 分桶计数，全程不解析原理图/位图。位置来源优先级 **PCB `component_positions` > 坐标文件(`ctx.positions`)**（`DesignRuleChecker.build_heatmap` 统一处理，`get_heatmap_data` 是它的兼容壳）。入口只有 `AppController.get_drc_heatmap()`，Eel 与 FastAPI 都委托它；空结果必须带 `reason`（`no_data`/`no_positions`/`no_violations`/`unmapped`），前端据此给不同文案 —— 不要退回「只认 PCB 坐标」的老写法，那会让一键演示永远显示"无位置数据"。

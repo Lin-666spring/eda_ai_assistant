@@ -110,7 +110,7 @@ eda_ai_assistant/
 │   │   └── electrical_check.py      # 电气健康检查
 │   │
 │   ├── bom/                         # BOM 解析/合并/校验/查重/归一化
-│   ├── pcb/                         # .epro2 解析器 + 数据模型 + geometry.py（锐角串联）
+│   ├── pcb/                         # parser.py 格式分发工厂（.json/.epro 旧策略 + .epro2）+ epro2_parser 全量解析 + 数据模型 + geometry.py（锐角串联）
 │   ├── rules/                       # 71 条设计规则（base + bom/geometry/layout 三 mixin）
 │   ├── supply/                      # 立创商城 API + BOM 健康（库存/生命周期/替代料/成本）
 │   ├── rag/                         # ChromaDB 本地中文知识库
@@ -123,7 +123,8 @@ eda_ai_assistant/
 └── tests/                           # 49 个测试文件，1179 条 pytest 用例
 ```
 
-> 注：`src/gui/`（PyQt5 原型）已由 `web/` 取代，仓库内无 import 引用，作为历史遗留保留。
+> 注：`src/gui/`（PyQt5 原型）与 `frontend/`（Vite React 模板）已于 2026-10-10 仓库治理批删除 ——
+> 前者零引用但曾被 spec 打进 exe，后者是与 `web/` 并行的双前端死代码。唯一 UI 栈是 `web/`（Eel）。
 
 ### 架构分层
 
@@ -220,7 +221,7 @@ eda_ai_assistant/
 | 4 | 电源需求电流粗估 | 仍是 BOM 关键词（"电机控制"→MCU +1.5A）；台账 #12 后半：频率→CL 表不看器件规格 |
 | 5 | 实验指标可信度 | 幻觉消除率 100%、多智能体均分 94（min 88.7）无区分度，需重新定义 + 评分校准 |
 | 6 | simulator.py 占位 | `LTspiceSimulator` 真仿真（生成 SPICE netlist → 命令行 → 解析输出）属远期 |
-| 7 | frontend/ 去留 | 原封不动的 Vite React+TS 模板（node_modules 未提交），实际 UI 是 web/ |
+| 7 | ~~frontend/ 去留~~ | ✅ 2026-10-10 已删除（Vite 模板，实际 UI 是 web/） |
 | 8 | 封装规则 31 → 50+ | 申报书指标差 19 条；调研建议改「LLM 从数据手册自动生成」路线 |
 | 9 | 安装包体积 | 实测 205MB，超申报书 <100MB 指标（TODO：裁剪依赖/UPX） |
 | 10 | 论文/软著 | EI 论文（闭环验证方向）、软著申请未提交 |
