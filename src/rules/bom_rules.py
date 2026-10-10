@@ -319,20 +319,31 @@ class BomRulesMixin:
     def _check_power_rail_decoupling(self, bom_items, positions, netlist):
         """电源轨去耦网络：每条电源轨应有分级去耦"""
         violations = []
-        cap_vals = []
         if not bom_items:
             return violations
-        try:
-            for item in bom_items:
-                pn = (getattr(item, "part_number", "") or "").lower()
-                val = (getattr(item, "value", "") or "").replace(" ", "").upper()
-                if any(kw.lower() in pn for kw in ["电容", "capacitor"]):
-                    cap_vals.append(val)
-        except Exception:
-            return violations
-        has_small = any(v in ["0.1UF", "100NF", "0.1ΜF", "104"] for v in cap_vals)
-        has_mid = any(any(s in v for s in ["1UF", "2.2U", "4.7U", "10U"]) for v in cap_vals)
-        if cap_vals and not (has_small and has_mid):
+        # 2026-10-10 判据批：电容行判定对齐 _is_cap_row（位号前缀 C 优先，
+        # 与片式电容判别口径统一）——旧判据 part_number 含「电容/capacitor」，
+        # 而 LCSC BOM 料号是 CL10A…式型号、描述常为空，金样 78 板 cap_vals
+        # 恒空 = 整条规则死码（0 板触发）。档位判定改 _parse_capacitance
+        # 真容值分档：旧字符串子串有 "1UF" ⊂ "0.1UF" 恒真 bug，中频档永不缺档。
+        cap_uf = []
+        for item in bom_items:
+            if not _is_cap_row(item):
+                continue
+            up = (getattr(item, "value", "") or "").strip().upper().replace(" ", "")
+            if not up or up.endswith(("UH", "MH", "NH")):
+                continue  # 电感值（normalizer 把 UH 也当 -6 指数，会冒充 µF）
+            f = _parse_capacitance(up)
+            if f is None:
+                continue
+            cap_uf.append(f * 1e6)
+        if not cap_uf:
+            return violations  # 无可解析容值 → 诚实跳过，不凭空断言缺档
+        # 档位带：小档 47nF~220nF（0.1µF 高频去耦），中档 0.47~22µF（1~10µF
+        # 中频滤波，22µF 常并入该档）
+        has_small = any(0.047 <= uf <= 0.22 for uf in cap_uf)
+        has_mid = any(0.47 <= uf <= 22 for uf in cap_uf)
+        if not (has_small and has_mid):
             missing = []
             if not has_small: missing.append("0.1μF(高频去耦)")
             if not has_mid: missing.append("1~10μF(中频滤波)")

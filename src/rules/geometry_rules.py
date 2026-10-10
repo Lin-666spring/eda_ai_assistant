@@ -27,6 +27,7 @@ from .base import (
     _extract_voltage_rating,
     _init_component_model,
     _is_dcdc_part,
+    _is_gnd_net,
     _is_inner_layer,
     _is_power_or_ground_net,
     _kw_hit,
@@ -723,6 +724,9 @@ class GeometryRulesMixin:
         AirLink 21 对里 17 对、Mini-LinuxPC 17 对里 11 对）。同一差分组（工程
         声明或名字猜测配对）的两网不再互判串扰；「diff」类别只认工程声明，
         猜测配对的成员退回按名字分类。
+        2026-10-10 判据批：最严对标注排除 GND 族（_is_gnd_net）——地线贴
+        高速线是隔离手法，金样 11/71 条把 [信号/GND] 标成最严 offender；
+        只改最严对标注、不改线对计数。
         """
         pcb = self._pcb_data
         if not pcb or not pcb.traces: return []
@@ -804,11 +808,20 @@ class GeometryRulesMixin:
             hits = {k: v for k, v in contested.items() if v >= min_par}
             if not hits:
                 continue
-            worst = max(hits.items(), key=lambda kv: kv[1])
+            # 2026-10-10 判据批：最严对标注排除 GND 族——地线贴高速线是隔离/
+            # 回流手法不是风险源（suggestion 自己也建议「加接地隔离」），金样
+            # 71 条串扰里 11 条的最严对是 [信号/GND]（最大 200.7mm）。只改
+            # 标注不动计数：N 对几何事实仍在，若全对都是 GND 相邻则不标最严。
+            sig_pool = {k: v for k, v in hits.items()
+                        if not (_is_gnd_net(k[0]) or _is_gnd_net(k[1]))}
+            desc = (f"{layer} 层 {len(hits)} 对走线平行间距 <{factor:.0f}W 且重叠 "
+                    f"≥{min_par}mm")
+            if sig_pool:
+                worst = max(sig_pool.items(), key=lambda kv: kv[1])
+                desc += f"；最严重 [{worst[0][0]}/{worst[0][1]}] {worst[1]:.1f}mm"
             violations.append(RuleViolation(
                 rule_name="3W 串扰间距检查",
-                description=(f"{layer} 层 {len(hits)} 对走线平行间距 <{factor:.0f}W 且重叠 "
-                             f"≥{min_par}mm；最严重 [{worst[0][0]}/{worst[0][1]}] {worst[1]:.1f}mm"),
+                description=desc,
                 severity=RuleSeverity.WARNING, location=layer,
                 suggestion=(f"平行走线间距 ≥{factor:.0f}W(W=线宽)，高速信号 ≥5W。增大间距或加接地隔离；"
                             "平行长度越短越安全。"),

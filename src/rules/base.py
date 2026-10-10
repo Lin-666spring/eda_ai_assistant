@@ -401,6 +401,23 @@ def _is_power_or_ground_net(name: str) -> bool:
     return _kw_hit(n.lower(), _POWER_OR_GROUND_KW)
 
 
+# GND 族 = 地参考网络（GND/AGND/DGND/PGND/xxx_GND/GND2/VSS/VSSA/EARTH/SHIELD）。
+# 不走 _kw_hit：「gnd」「vss」是 ≤3 字母短词要词边界，AU2GND/AGND/GND_IN 全漏；
+# 这几个缩写是地网络专名、没有英文词含这些子串，大写子串判定即可。
+_GND_FAMILY_KW = ("GND", "VSS", "EARTH", "SHIELD")
+
+
+def _is_gnd_net(name: str) -> bool:
+    """地参考网络（GND 族）判定——2026-10-10 判据批：串扰最严对标注排除用。
+
+    地线贴高速线是隔离/回流手法不是风险源（3W 规则的 suggestion 自己也
+    建议「加接地隔离」），把 [信号/GND] 对选成最严 offender 自相矛盾。
+    金样 78 板网络名里类地共 22 个，全部被这四个子串覆盖。
+    """
+    n = (name or "").upper()
+    return any(k in n for k in _GND_FAMILY_KW)
+
+
 def _net_class(name: str, diff_members) -> str:
     """网络类别：'diff'（工程声明的差分组）| 'high' | 'low' | 'other'。"""
     n = (name or "").upper()

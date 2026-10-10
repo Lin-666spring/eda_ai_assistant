@@ -329,3 +329,67 @@ def test_has_power_entry_usb_flag():
     assert not _has_power_entry([], netlist_usb, include_usb=False)
     netlist_dc = {"VCC_24V": ["CN7.1", "U1.1"]}
     assert _has_power_entry([], netlist_dc, include_usb=False)
+
+
+# ── 判据批（2026-10-10）：去耦档位真容值 + 串扰最严对排除 GND 族 ──
+# 金样对比见 experiment_results/criteria_batch_2026-10-10/。
+
+def test_power_rail_decoupling_ref_prefix_caps_alive():
+    """修复前判据 pn 含「电容/capacitor」，LCSC 料号 CL10A…恒不命中 → 规则死码。"""
+    bom = [_item("C1", value="0.1uF", pn="CL10A105KB8NNNC"),
+           _item("C2", value="10uF", pn="CL10A106MQ8NNNC")]
+    assert _run(_pcb(), bom, {}, "_check_power_rail_decoupling") == []
+
+
+def test_power_rail_decoupling_missing_mid_tier():
+    """「1UF」是「0.1UF」子串的恒真 bug 锁：只有 0.1µF 必须报缺中频档。"""
+    bom = [_item("C1,C2,C3", value="100nF")]
+    out = _run(_pcb(), bom, {}, "_check_power_rail_decoupling")
+    assert len(out) == 1 and "1~10μF" in out[0].description
+
+
+def test_power_rail_decoupling_missing_small_tier():
+    bom = [_item("C1", value="22uF")]
+    out = _run(_pcb(), bom, {}, "_check_power_rail_decoupling")
+    assert len(out) == 1 and "0.1μF" in out[0].description
+
+
+def test_power_rail_decoupling_equiv_writings_and_eia_code():
+    bom = [_item("C1", value="104"), _item("C2", value="4.7uF")]
+    assert _run(_pcb(), bom, {}, "_check_power_rail_decoupling") == []
+
+
+def test_power_rail_decoupling_inductor_value_not_fake_mid():
+    """C 行挂 10uH 电感值不能冒充 10µF 中频档；无可解析容值诚实跳过。"""
+    bom = [_item("C1", value="10uH")]
+    assert _run(_pcb(), bom, {}, "_check_power_rail_decoupling") == []
+
+
+def test_power_rail_decoupling_non_cap_rows_silent():
+    bom = [_item("R1", value="10K"), _item("L1", value="10uH")]
+    assert _run(_pcb(), bom, {}, "_check_power_rail_decoupling") == []
+
+
+def test_crosstalk_worst_pair_excludes_gnd_family():
+    """GND 贴高速线是隔离手法：该层只有信号-GND 对时不标最严（计数保留）。"""
+    pcb = _pcb([_trace("USB_DP", 0.0), _trace("GND", 0.3)])
+    out = _run(pcb, rule="_check_crosstalk_spacing")
+    assert len(out) == 1
+    assert "最严重" not in out[0].description
+
+
+def test_crosstalk_worst_pair_prefers_signal_pair():
+    """信号对与 GND 对都违规时，最严对选信号对——即使 GND 对重叠更长。"""
+    pcb = _pcb([_trace("USB_DP", 0.0), _trace("SPI_CLK", 0.3),
+                _trace("GND", 0.3, x1=50.0)])
+    out = _run(pcb, rule="_check_crosstalk_spacing")
+    assert len(out) == 1
+    assert "最严重 [SPI_CLK/USB_DP]" in out[0].description
+
+
+def test_crosstalk_gnd_family_suffix_net_excluded():
+    """AU2GND 这类带前缀的地网络也要排除——_kw_hit 词边界会漏，必须子串判。"""
+    pcb = _pcb([_trace("USB_DP", 0.0), _trace("AU2GND", 0.3)])
+    out = _run(pcb, rule="_check_crosstalk_spacing")
+    assert len(out) == 1
+    assert "最严重" not in out[0].description
