@@ -547,6 +547,8 @@ class GeometryRulesMixin:
         ④ 平行重叠前置——两网没有实质平行走线（最长平行段 <5mm）时，「最小间距」
         量到的是交叉/换层泄漏距离，报「耦合过松」没有意义（抽样里重叠 0.0mm
         相距 2.8mm 也报 11.2W）。
+        批4 2026-10-10 复核：四重门（engine声明+高速接口+平行≥5mm+>4W）为
+        2026-10-09 有意收紧，金样零触发为预期，非死代码，逻辑不动。
         """
         pcb = self._pcb_data
         if not pcb or not pcb.traces: return []
@@ -831,23 +833,37 @@ class GeometryRulesMixin:
 
 
     def _check_loop_area(self, bom_items, positions, netlist):
-        """环路面积：高速信号应最小化电流环路面积"""
+        """环路面积：高速信号应最小化电流环路面积
+
+        批4 2026-10-10 审计残留：
+        ① 裸子串 "SW" 命中 …BUZZER_SWITCH/GUN_SWITCH（拨码/轻触开关网络被当
+           高速网）——关键词复用 PCB.VIA_DENSITY_NET_KEYWORDS 同一张表，
+           匹配器统一换 _net_kw_hit（右侧放行数字后缀 SW1/CLK2，拒绝内嵌），
+           表内容不动；与 _check_via_density 同口径；
+        ② 电源/地网络排除（_is_power_or_ground_net，对齐串扰规则）；
+        ③ 解析器没有回流路径几何，量不出真实环路面积——只有「名字像 +
+           长度>50mm」两道弱证据时按需确认项措辞（INFO），文案明说需人工
+           确认实际回流路径，不写确定性违规语气。
+        """
         pcb = self._pcb_data
         if not pcb or not pcb.traces: return []
         violations = []
-        high_speed_kw = ["CLK", "PWM", "SW", "SENSE", "FB", "DRV", "GATE", "DRIVE"]
+        kws = [k.lower() for k in PCB.VIA_DENSITY_NET_KEYWORDS]
         for net_name, net in (pcb.nets or {}).items():
-            name_upper = net_name.upper()
-            if any(kw.upper() in name_upper for kw in high_speed_kw):
-                length = getattr(net, "total_length_mm", 0)
-                if length > 50:  # >50mm 长的高速走线
-                    violations.append(RuleViolation(
-                        rule_name="环路面积检查",
-                        description=f"高速网络 [{net_name}] 走线长度 {length:.0f}mm，环路面积可能偏大",
-                        severity=RuleSeverity.INFO, location=net_name,
-                        suggestion="高速信号紧邻参考平面走线，信号/回流路径构成的环路面积最小化。多层板保证关键信号邻层为完整 GND 平面。",
-                        theory="EMI 辐射强度 ∝ 环路面积 × 频率² × 电流。相邻层的信号-回流间距 = 介质厚度(4 层板 ≈0.1~0.2mm),环路面积极小。双层板缺连续参考平面,需手动布置回流路径。",
-                    ))
+            if _is_power_or_ground_net(net_name):
+                continue
+            if not _net_kw_hit(net_name, kws):
+                continue
+            length = getattr(net, "total_length_mm", 0) or 0
+            if length > 50:  # >50mm 长的高速走线
+                violations.append(RuleViolation(
+                    rule_name="环路面积检查",
+                    description=(f"网络 [{net_name}] 走线长度 {length:.0f}mm 且名字含"
+                                 "高速关键词——环路面积可能偏大，需人工确认实际回流路径"),
+                    severity=RuleSeverity.INFO, location=net_name,
+                    suggestion="高速信号紧邻参考平面走线，信号/回流路径构成的环路面积最小化。多层板保证关键信号邻层为完整 GND 平面。",
+                    theory="EMI 辐射强度 ∝ 环路面积 × 频率² × 电流。相邻层的信号-回流间距 = 介质厚度(4 层板 ≈0.1~0.2mm),环路面积极小。双层板缺连续参考平面,需手动布置回流路径。",
+                ))
         return violations
 
 
@@ -973,26 +989,57 @@ class GeometryRulesMixin:
         )]
 
 
+    # 测试点痕迹匹配（批4 2026-10-10）：封装名里独立 token 的 TP、
+    # TESTPOINT/TEST-POINT/TEST POINT 变体、中文「测试点」
+    _TP_FOOTPRINT_RE = re.compile(
+        r"(?i)(?<![a-z0-9])tp(?![a-z0-9])|test[ _-]?point|测试点")
+
     def _check_testpoint_coverage(self, bom_items, positions, netlist):
-        """测试点覆盖：关键网络应预留测试点"""
+        """测试点覆盖：关键网络应预留测试点
+
+        批4 2026-10-10 审计残留改写：旧实现把所有命中关键词（VCC/RST/SWD…）
+        的网络直接列为「缺少测试点」，全程没有测试点检测——与输入内容无关
+        的存在性模板，金样大面积误报。现在：
+        ① 真测试点检测：component_positions 里 footprint_name 命中
+           TP/TESTPOINT/测试点 模式、或位号 TP 前缀的元件，经 netlist 收集
+           其引脚所在网络；板上有任何测试点痕迹 → 静默（测点引脚↔网络的
+           映射精度只够「板上有测试点」这一层，不逐网判缺）；
+        ② 有 positions 但没有任何测试点痕迹，且 netlist 存在电源/复位/
+           调试类关键网络 → 报一条汇总 INFO（不是逐网络 WARNING）；
+        ③ 无 positions 或无 netlist → 诚实跳过：测试点痕迹在 positions、
+           关键网络在 netlist，缺一即无法证伪，绝不再「关键词命中=缺测试点」。
+        """
         pcb = self._pcb_data
         if not pcb: return []
-        violations = []
-        key_net_kw = ["VCC", "VDD", "3V3", "5V", "RST", "BOOT", "SWD", "SWCLK", "SWDIO"]
-        nets_without_tp = []
-        for net_name in (pcb.nets or {}):
-            name_upper = net_name.upper()
-            if any(kw.upper() in name_upper for kw in key_net_kw):
-                nets_without_tp.append(net_name)
-        if nets_without_tp:
-            violations.append(RuleViolation(
-                rule_name="测试点覆盖检查",
-                description=f"{len(nets_without_tp)} 个关键网络缺少测试点: {', '.join(nets_without_tp[:5])}",
-                severity=RuleSeverity.INFO,
-                suggestion="电源轨、复位、调试接口、关键信号预留 φ1.0mm 测试焊盘(TP)。间距≥2.54mm 便于探针/ICT。",
-                theory="无测试点→调试时需手工飞线,成品批量测试用 ICT(在线测试)/飞针测试需夹具兼容的测试点布局。IPC-2221 建议测试点直径≥0.9mm,间距≥2.5mm。",
-            ))
-        return violations
+        comp_pos = getattr(pcb, "component_positions", None) or {}
+        nets = netlist or {}
+        if not comp_pos or not nets:
+            return []
+        for ref, pos in comp_pos.items():
+            pfx = "".join(ch for ch in str(ref) if ch.isalpha()).upper()
+            if pfx == "TP":
+                return []       # 位号 TP 前缀的元件：已有测试点痕迹
+            if isinstance(pos, dict):
+                fp = str(pos.get("footprint_name") or pos.get("footprint") or "")
+                if fp and self._TP_FOOTPRINT_RE.search(fp):
+                    return []
+        # 关键网络：电源轨 + 复位/BOOT/调试口（_net_kw_hit 词边界，
+        # SWD/SWCLK 不再内嵌命中其它词）
+        key_net_kw = ("VCC", "VDD", "3V3", "5V", "RST", "RESET", "BOOT",
+                      "SWD", "SWCLK", "SWDIO")
+        key_nets = [n for n in nets if _net_kw_hit(n, key_net_kw)]
+        if not key_nets:
+            return []
+        return [RuleViolation(
+            rule_name="测试点覆盖检查",
+            description=(f"板上未检测到测试点器件（位号 TP 前缀 / 封装 "
+                         f"TP·TESTPOINT），{len(key_nets)} 个电源/复位/调试类"
+                         f"关键网络缺乏专用测试点: {', '.join(key_nets[:5])}"),
+            severity=RuleSeverity.INFO,
+            location=", ".join(key_nets[:5]),
+            suggestion="电源轨、复位、调试接口、关键信号预留 φ1.0mm 测试焊盘(TP)。间距≥2.54mm 便于探针/ICT。",
+            theory="无测试点→调试时需手工飞线,成品批量测试用 ICT(在线测试)/飞针测试需夹具兼容的测试点布局。IPC-2221 建议测试点直径≥0.9mm,间距≥2.5mm。",
+        )]
 
 
     def _check_silkscreen_readability(self, bom_items, positions, netlist):
@@ -1007,6 +1054,8 @@ class GeometryRulesMixin:
         pcb = self._pcb_data
         if not pcb:
             return []
+        # 设计性休眠（批4 2026-10-10 确认）：解析器暂无 silk_elements 几何，
+        # 规则保持静默；判据已备好，解析器落地丝印后无需改逻辑即可启用。
         if not (getattr(pcb, "metadata", None) or {}).get("silk_elements"):
             return []
         violations = []
@@ -1031,6 +1080,8 @@ class GeometryRulesMixin:
         pcb = self._pcb_data
         if not pcb or not pcb.component_positions:
             return []
+        # 设计性休眠（批4 2026-10-10 确认）：解析器暂无 silk_elements 几何，
+        # 规则保持静默；判据已备好，解析器落地丝印后无需改逻辑即可启用。
         if not (getattr(pcb, "metadata", None) or {}).get("silk_elements"):
             return []
         comp_count = len(pcb.component_positions)
@@ -1211,33 +1262,67 @@ class GeometryRulesMixin:
 
 
     def _check_via_thermal_relief(self, bom_items, positions, netlist):
-        """过孔热焊盘：大面积铜皮上的过孔应使用热焊盘连接"""
+        """过孔热焊盘：大面积铜皮上的过孔应使用热焊盘连接
+
+        批4 2026-10-10 审计残留：旧判据 via_count>20 就报模板文案——与过孔
+        所属网络毫无关系，每块多过孔板必响。现在只统计**电源/地网络上**的
+        过孔（PCBVia.net_name + _is_power_or_ground_net）；整板过孔都没有
+        net 信息 → 诚实跳过（无法区分缝合孔/信号孔）；电源类网络过孔 >20
+        时提示「电源网络过孔密集，建议热焊盘/多过孔并联」，一般信号过孔不报。
+        """
         pcb = self._pcb_data
         if not pcb or not pcb.vias: return []
-        via_count = len(pcb.vias)
-        if via_count > 20:
-            return [RuleViolation(
-                rule_name="过孔热焊盘检查",
-                description=f"PCB 含 {via_count} 个过孔，大面积铜皮上的过孔应使用热焊盘(Thermal Relief)连接",
-                severity=RuleSeverity.INFO,
-                suggestion="大面积 GND/VCC 铜皮上的过孔用热焊盘(十字花连接)而非全连接，便于手工焊接返修。",
-                theory="全连接过孔在大面积铜皮上散热极快→烙铁无法熔化焊锡→虚焊。热焊盘用 4 条细径(通常 0.25mm)限制热传导，使焊点可达到焊接温度。",
-            )]
-        return []
+        via_net_counts: dict[str, int] = {}
+        net_info_seen = False
+        for v in (pcb.vias or []):
+            net = getattr(v, "net_name", "") or getattr(v, "net", "") or ""
+            if not net:
+                continue        # 无网络归属的过孔判不了用途，不计不报
+            net_info_seen = True
+            if _is_power_or_ground_net(net):
+                via_net_counts[net] = via_net_counts.get(net, 0) + 1
+        if not net_info_seen:
+            return []          # 通道缺失（过孔无 net 属性）：诚实跳过
+        pwr_total = sum(via_net_counts.values())
+        if pwr_total <= 20:
+            return []
+        worst_net, worst_cnt = max(via_net_counts.items(), key=lambda kv: kv[1])
+        return [RuleViolation(
+            rule_name="过孔热焊盘检查",
+            description=(f"电源/地网络过孔共 {pwr_total} 个（最密 [{worst_net}] "
+                         f"{worst_cnt} 个）——电源网络过孔密集，建议热焊盘/多过孔并联"),
+            severity=RuleSeverity.INFO,
+            location=worst_net,
+            suggestion="大电流路径单孔载流不足时多过孔并联分摊电流；大面积 GND/VCC 铜皮上的过孔用热焊盘(十字花连接)而非全连接，便于手工焊接返修。",
+            theory="全连接过孔在大面积铜皮上散热极快→烙铁无法熔化焊锡→虚焊。热焊盘用 4 条细径(通常 0.25mm)限制热传导；电源网络多过孔并联可摊薄单孔电流与寄生电感。",
+        )]
 
 
     def _check_hs_signal_reference_plane(self, bom_items, positions, netlist):
-        """高速信号参考平面检查"""
+        """高速信号参考平面检查
+
+        批4 2026-10-10 审计残留：
+        ① 裸子串 "USB" 命中 USB_GND/USB_VBUS（电源地网被当高速信号网）——
+           关键词改 _net_kw_hit 词边界（右侧放行数字后缀），对齐串扰口径；
+        ② 电源/地网络排除（_is_power_or_ground_net）；
+        ③ 解析器没有叠层/平面分割几何，量不出「跨分割」——本条是需确认项：
+           severity 保持 WARNING，描述明确需人工确认，不写已判定语气。
+        """
         pcb = self._pcb_data
         if not pcb or not pcb.traces: return []
-        hs_nets = [t.net_name for t in pcb.traces
-                   if t.net_name and any(kw.upper() in t.net_name.upper()
-                   for kw in ["CLK", "USB", "HDMI", "PCIE", "SDRAM", "LVDS", "ETH"])]
+        hs_kw = ("CLK", "USB", "HDMI", "PCIE", "SDRAM", "LVDS", "ETH")
+        hs_nets = sorted({t.net_name for t in pcb.traces
+                          if t.net_name
+                          and not _is_power_or_ground_net(t.net_name)
+                          and _net_kw_hit(t.net_name, hs_kw)})
         if hs_nets:
             return [RuleViolation(
                 rule_name="高速信号参考平面检查",
-                description=f"{len(set(hs_nets))} 个高速网络需确认邻层为完整 GND 参考平面",
+                description=(f"{len(hs_nets)} 个高速网络需人工确认邻层为完整 GND "
+                             f"参考平面（需确认项：解析器无叠层/平面分割几何，"
+                             f"未实测跨分割）: {', '.join(hs_nets[:5])}"),
                 severity=RuleSeverity.WARNING,
+                location=", ".join(hs_nets[:3]),
                 suggestion="高速信号邻层必须是完整 GND 平面(不分割)。4层板推荐 SIG-GND-PWR-SIG 叠层。",
                 theory="微带线/带状线特性阻抗取决于信号到参考平面的距离(H)。邻层跨分割区→阻抗突变→反射、串扰↑。IPC-2221 建议高速信号不能跨越参考平面分割区。",
             )]
@@ -1309,8 +1394,11 @@ class GeometryRulesMixin:
         violations = []
         gap_cache: dict = {}
         for key in sorted(pairs):
+            # 批4 2026-10-10 审计残留：原先裸子串 kw in n，USB_GND/USB_VBUS 这类
+            # 电源地网名也命中表项；统一 _net_kw_hit 词边界（与单端 single_kw
+            # 的 _kw_hit 同口径，网络名允许数字后缀 USB2/ETH0）
             z_target = next((z for kw, z in diff_targets.items()
-                             if any(kw in n for n in key)), None)
+                             if any(_net_kw_hit(n, (kw,)) for n in key)), None)
             if z_target is None:
                 continue
             orig = pairs[key]
@@ -1320,12 +1408,17 @@ class GeometryRulesMixin:
             if key not in gap_cache:      # 每对只算一次对内间距（几何很贵）
                 gap_cache[key] = self._pair_min_gap(pcb, list(orig))
             s_mm = gap_cache[key]
+            gap_estimated = False
             if not s_mm or s_mm <= 0:
+                # 批4：保留 2×线宽兜底计算，但描述必须注明是估算（见下）
                 s_mm = 2 * w
+                gap_estimated = True
             z_actual = differential_impedance(
                 microstrip_impedance(w, h_mm, er=er), s_mm, h_mm, er=er)
-            if abs(z_actual - z_target) <= z_target * 0.25:
+            # 批4：±25% 容差从两处硬编码收编 PCB.IMPEDANCE_TOLERANCE
+            if abs(z_actual - z_target) <= z_target * PCB.IMPEDANCE_TOLERANCE:
                 continue
+            tol_pct = int(round(PCB.IMPEDANCE_TOLERANCE * 100))
             stack_note = (f"{n_layers} 层板典型叠层（{stackup.note}）"
                           if not two_layer else
                           f"{n_layers} 层板典型叠层（{stackup.note}）；"
@@ -1334,7 +1427,9 @@ class GeometryRulesMixin:
                 rule_name="特征阻抗匹配检查",
                 description=(f"差分对 [{'/'.join(orig)}]: 线宽 {w:.3f}mm / "
                              f"对内间距 {s_mm:.3f}mm → Z≈{z_actual:.0f}Ω，"
-                             f"偏离目标 {z_target:.0f}Ω 超过 ±25%"),
+                             f"偏离目标 {z_target:.0f}Ω 超过 ±{tol_pct}%"
+                             + ("（间距未量得，按 2×线宽估算，建议人工复核）"
+                                if gap_estimated else "")),
                 severity=RuleSeverity.WARNING if two_layer else RuleSeverity.ERROR,
                 location="/".join(orig),
                 suggestion=(f"调整线宽 {w:.3f}mm 与对内间距 {s_mm:.3f}mm 的组合，"
@@ -1356,8 +1451,10 @@ class GeometryRulesMixin:
             if not _kw_hit(name.lower(), single_kw):
                 continue
             z0_single = microstrip_impedance(w, h_mm, er=er)
-            if abs(z0_single - 50.0) <= 50.0 * 0.25:
+            # 批4：±25% 容差收编 PCB.IMPEDANCE_TOLERANCE（与差分半区同口径）
+            if abs(z0_single - 50.0) <= 50.0 * PCB.IMPEDANCE_TOLERANCE:
                 continue
+            tol_pct = int(round(PCB.IMPEDANCE_TOLERANCE * 100))
             w_target = trace_width_for_impedance(50.0, h_mm, er=er)
             stack_note = (f"{n_layers} 层板典型叠层（{stackup.note}）"
                           if not two_layer else
@@ -1366,7 +1463,7 @@ class GeometryRulesMixin:
             violations.append(RuleViolation(
                 rule_name="特征阻抗匹配检查",
                 description=(f"网络 [{name}] 单端: 线宽 {w:.3f}mm → Z≈{z0_single:.0f}Ω，"
-                             f"偏离目标 50Ω 超过 ±25%"),
+                             f"偏离目标 50Ω 超过 ±{tol_pct}%"),
                 severity=RuleSeverity.WARNING if two_layer else RuleSeverity.ERROR,
                 location=name,
                 suggestion=(f"调整线宽至 {w_target:.3f}mm 使 Z₀≈50Ω"

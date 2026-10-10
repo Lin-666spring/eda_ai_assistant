@@ -136,6 +136,121 @@ def _rect_edge_dist(c1, c2) -> float:
                 best = d
     return best
 
+
+# ── 晶振识别（批4 2026-10-10 审计残留）──
+# 口径与 bom_rules._check_crystal_load_caps 的三证据标准一致（本处私有实现，
+# 待后续批次抽公共模块，避免两处漂移）：
+# ① 位号 X/Y 前缀是主信号但不是充分条件（X 下有 WAFER 连接器、pn=00 杂行）；
+# ② 频率证据走料号/容值字段；描述里的频率必须与 ppm 特征同现才算——
+#    磁珠「60Ω@100MHz」、DC-DC「1.5MHz 同步降压」都不是晶振；
+# ③ 标注「内置/集成」的是片内振荡源（RTC/模组），不认。
+_CRYSTAL_FREQ_RE = re.compile(
+    r"\d+(?:\.\d+)?\s*[MK]HZ(?![A-Z0-9])|\d+(?:\.\d+)?M(?=[\s/])", re.IGNORECASE)
+_CRYSTAL_TIGHT_KW = ("晶振", "crystal", "谐振器")
+
+
+def _identify_crystal_refs(bom_items) -> list:
+    """识别晶振 BOM 行 → [(item, 首位号), ...]（三证据口径，同 bom_rules）。"""
+    out = []
+    for item in bom_items:
+        ref = getattr(item, "reference", "").split(",")[0].strip()
+        pfx = "".join(c for c in ref if c.isalpha()).upper()
+        pn = getattr(item, "part_number", "") or ""
+        desc = getattr(item, "description", "") or ""
+        val = getattr(item, "value", "") or ""
+        text = f"{pn} {desc}".lower()
+        tight = any(kw in text for kw in _CRYSTAL_TIGHT_KW)
+        if not tight and pfx not in ("X", "Y"):
+            continue
+        # 证据：晶振词；或频率在料号/容值；或描述里「频率 + ppm」同现
+        freq_field = bool(_CRYSTAL_FREQ_RE.search(pn) or _CRYSTAL_FREQ_RE.search(val))
+        freq_desc = bool(_CRYSTAL_FREQ_RE.search(desc)) and bool(
+            re.search(r"PPM", desc, re.IGNORECASE))
+        if not (tight or freq_field or freq_desc):
+            continue  # X 前缀连接器 / pn=00 杂行：认不出是晶振，诚实跳过
+        if any(k in text for k in ("内置", "集成", "internal")) and pfx not in ("X", "Y"):
+            continue  # 片内振荡源（RTC/模组），底板无需外部晶振布局约束
+        out.append((item, ref))
+    return out
+
+
+# ── 模数件识别通道（批4 2026-10-10 审计残留）──
+# 旧判据只搜 description 关键词表（PCB.ANALOG/DIGITAL_COMPONENT_KW），真实
+# BOM desc 多为空或参数文本，模数件识别大面积失效。改三通道：
+# ① ML 细类 ic_analog（运放/比较器/ADC/DAC/接口IC）/ ic_mcu（MCU/FPGA/CPLD）；
+# ② 料号前缀（ADC/DAC/运放族 → 模拟；MCU/逻辑族 → 数字）；
+# ③ desc 关键词表仅作回退（_kw_hit 词边界，短词 AD/OP/TL 不再内嵌命中
+#    PicoBlade/inmp441 之类）。位号 U/A 前缀只是「这是一颗 IC」的信号、
+#    不是模数归属的充分条件，不单独参与判定。
+_AD_ANALOG_PN_RE = re.compile(
+    r"^(?:ADC|DAC|ADS|ADA|AD[0-9]|OPA|OP[0-9]{2}|NE5532|RC4558|"
+    r"LM(?:358|324|393|V358|V324|2904)|TL(?:07|08|431|9\d{2})|GS86|SGM8)",
+    re.IGNORECASE)
+_AD_DIGITAL_PN_RE = re.compile(
+    r"^(?:STM32|ESP32|CH32|CH55|CH9\d|GD32|ATMEGA|ATTINY|NRF\d|SN74|74HC|74LS|"
+    r"74HCT|HT6\d|PY32|SC8\d|W25Q|GD25|FPGA|ECP\d|ICE40|MAX3232)",
+    re.IGNORECASE)
+
+
+def _classify_ad_zone(item) -> str:
+    """模/数分区归属：'analog' | 'digital' | ''（识别不出）。
+
+    电源变换器（DC-DC/LDO，_is_dcdc_part / ic_power）不属模数信号分区
+    任何一方，返回 ''。
+    """
+    fine, _conf = _classify_component_fine(item)
+    if fine == "ic_analog":
+        return "analog"
+    if fine == "ic_mcu":
+        return "digital"
+    if _is_dcdc_part(item) or fine == "ic_power":
+        return ""
+    pn = (getattr(item, "part_number", "") or "").strip()
+    desc = f"{pn} {getattr(item, 'description', '') or ''}".lower()
+    if pn and _AD_ANALOG_PN_RE.match(pn):
+        return "analog"
+    if pn and _AD_DIGITAL_PN_RE.match(pn):
+        return "digital"
+    if _kw_hit(desc, PCB.ANALOG_COMPONENT_KW):
+        return "analog"
+    if _kw_hit(desc, PCB.DIGITAL_COMPONENT_KW):
+        return "digital"
+    return ""
+
+
+# ── 温度敏感/热源识别通道（批4 2026-10-10 审计残留）──
+# 敏感件：NTC/温度传感器料号族、晶振（_identify_crystal_refs 三证据口径）、
+# 电解电容（ML 细类 cap_elec，或容值 ≥100µF——MLCC 极少做到该量级）。
+# 热源：_is_dcdc_part（统一 DC-DC 口径）、LDO/功率器件料号族 + 明确描述词。
+_TEMP_SENSOR_PN_RE = re.compile(
+    r"^(?:NTC|PTC|DS18B\d?|LM35|LM75|TMP\d|SHT\d|DHT\d|PT1000?|MLX90|STTS|"
+    r"TS\d|LMT)", re.IGNORECASE)
+_HEAT_PN_RE = re.compile(
+    r"^(?:AMS1|LM1117|XC6\d|ME62|ME63|HT7\d|RT90|AP21|AP7\d|MIC52|SPX38|"
+    r"LD11|L78\d|L79\d|78M\d|78L\d|CJ63\d|AOD\d|AO[3489]\d|IRF\d|IRL\d|"
+    r"IPB\d|IPD\d|BUK\d|NDT\d|NCE\d|SI44\d|SI7\d|HY[23]\d|2N[56]\d|TIP[12])",
+    re.IGNORECASE)
+_TEMP_SENSITIVE_DESC_KW = ("ntc", "ptc", "温度传感", "热敏", "电解电容", "electrolytic")
+_HEAT_DESC_KW = ("ldo", "mosfet", "稳压", "功率")
+# 电解电容的容值下限（F）：≥100µF 判温度敏感（MLCC 主流量级 ≤22µF）
+_ELECTROLYTIC_MIN_F = 100e-6
+
+# ── EMI 滤波器件/接口识别通道（批4 2026-10-10 审计残留）──
+# 旧判据 EMI 器件与「电源入口」都靠 desc 关键词子串（filter/EMI/PWR…），
+# 真实 BOM 上双向失效。EMI 器件改料号+value 通道：
+# ① 磁珠料号特征 BLM/MPZ/CBM（村田/TDK/三莹族，token 边界）+ 共模扼流圈
+#    族 DLW/ACM/SDM/ACT45/CMxx——加分项；
+# ② value 里的「Ω@MHz」阻抗-频率标注（磁珠专属形态，金样磁珠行 value
+#    常是「600Ω@100MHz」式参数）；
+# ③ desc 明确词（共模/磁珠/choke/ferrite/bead/EMI）作回退。
+# 接口走位号通道：J/CN/USB/FPC 前缀（连接器/接口座）。
+_EMI_PN_RE = re.compile(
+    r"(?i)(?<![a-z0-9])(?:BLM\d|BLM[+-]|MPZ|CBM|DLW|ACM|SDM|ACT45|CM\d{2,}|EMI)"
+    r"(?![a-z0-9])")
+_EMI_BEAD_VALUE_RE = re.compile(r"(?i)Ω\s*@|@\s*\d+(?:\.\d+)?\s*[MK]?HZ")
+_EMI_DESC_KW = ("共模", "磁珠", "choke", "ferrite", "bead", "emi")
+_EMI_IF_REF_PREFIXES = {"J", "CN", "USB", "FPC"}
+
 class LayoutRulesMixin:
     """方法集由 facade DesignRuleChecker 组合；此处无状态、无 __init__。"""
 
@@ -143,22 +258,31 @@ class LayoutRulesMixin:
     # ═══ Position-data rules ═══
 
     def _check_analog_digital_separation(self, bom_items, positions, netlist):
-        """模数分离：模拟/数字元件应物理分区"""
+        """模数分离：模拟/数字元件应物理分区
+
+        批4 2026-10-10 审计残留：识别通道重写——旧判据只搜 description
+        关键词表（真实 BOM desc 多为空/参数文本，模数件识别大面积失效），
+        改走 _classify_ad_zone 三通道（ML 细类 ic_analog/ic_mcu + 料号
+        前缀 + desc 词边界回退）。识别不出两类都存在 → 跳过不报模板；
+        无 positions 跳过（无坐标无距离可言）。距离判定与阈值
+        （PCB.AD_SEPARATION_MIN_MM）不变。
+        """
+        # positions 参数为空时回落 pcb_data.component_positions（同晶振布局检查）
+        positions = positions or (getattr(self._pcb_data, "component_positions", None) or {})
         if not positions or not bom_items: return []
         violations = []
         acoords, dcoords = [], []
         for item in bom_items:
-            desc = f"{getattr(item, 'description', '') or ''} {getattr(item, 'part_number', '') or ''}".lower()
-            # 2026-09-24 抽查修正：短关键词（AD/DA/OP…）改为词边界匹配，
-            # 否则 "PicoBlade" 里的 "ad" 会让 FPC 连接器被当成模拟器件。
-            is_a = _kw_hit(desc, PCB.ANALOG_COMPONENT_KW)
-            is_d = _kw_hit(desc, PCB.DIGITAL_COMPONENT_KW)
-            ref = getattr(item, "reference", "")
-            fr = ref.split(",")[0].strip() if ref else ""
-            if fr and fr in positions:
-                x, y = _xy(positions[fr])
-                if is_a: acoords.append((x, y, fr))
-                elif is_d: dcoords.append((x, y, fr))
+            ref = getattr(item, "reference", "").split(",")[0].strip()
+            if not ref or ref not in positions:
+                continue
+            zone = _classify_ad_zone(item)
+            if zone == "analog":
+                x, y = _xy(positions[ref])
+                acoords.append((x, y, ref))
+            elif zone == "digital":
+                x, y = _xy(positions[ref])
+                dcoords.append((x, y, ref))
         if not acoords or not dcoords: return violations
         min_sep = PCB.AD_SEPARATION_MIN_MM
         cross = []
@@ -206,7 +330,7 @@ class LayoutRulesMixin:
         bo = (pcb.board_outline or {}) if pcb else {}
         if bo.get("source") != "outline":
             return []
-        mc = 3.0
+        mc = PCB.LAYOUT_BOARD_EDGE_CLEARANCE_MM
         minx, miny = bo["min_x_mm"], bo["min_y_mm"]
         maxx, maxy = bo["max_x_mm"], bo["max_y_mm"]
         near, exempt = [], 0
@@ -253,7 +377,7 @@ class LayoutRulesMixin:
             elif kind == "ic":
                 ics.append((ref, positions[ref]))
         if not ics: return violations
-        md = 15.0
+        md = PCB.LAYOUT_DECOUPLE_MAX_DIST_MM
         far = []
         for cr, cp in caps:
             cx, cy = _xy(cp)
@@ -280,68 +404,127 @@ class LayoutRulesMixin:
 
 
     def _check_crystal_proximity(self, bom_items, positions, netlist):
-        """晶振靠近 MCU：晶振应尽可能靠近 MCU 振荡器引脚"""
+        """晶振靠近 MCU：晶振应尽可能靠近 MCU 振荡器引脚
+
+        批4 2026-10-10 审计残留：晶振识别原来只认 desc 词（真实立创 BOM
+        description 常为空或只有容值/参数），规则在多数板上恒静默。改用
+        _identify_crystal_refs（与 bom_rules._check_crystal_load_caps 三证据
+        口径一致：X/Y 位号是信号不是充分条件、频率证据走料号/容值字段、
+        描述频率须与 ppm 同现、内置/集成的片内振荡源不认）。识别不出晶振
+        或 MCU → 跳过。距离阈值 25mm 保持；netlist 可用时顺带找出晶振关联
+        的负载电容（同网络 1-47pF 小电容），距离过远时在描述中一并提示。
+        """
+        # positions 参数为空时回落 pcb_data.component_positions（.epro2 解析
+        # 可重建坐标，产品里只加载 PCB 文件时 Pick&Place CSV 常缺席）
+        positions = positions or (getattr(self._pcb_data, "component_positions", None) or {})
         if not positions: return []
         violations = []
-        crystal_kw = ["晶振", "crystal", "XTAL"]
-        mcu_kw = ["MCU", "STM32", "ESP32", "ATmega", "ARM", "单片机", "CPU"]
+        crystals = _identify_crystal_refs(bom_items)
+        if not crystals:
+            return violations
+        # MCU 识别：ML 细类 ic_mcu 优先，料号/描述关键词（词边界）回退
+        mcu_kw = ("MCU", "STM32", "ESP32", "ATMEGA", "ARM", "单片机", "CPU",
+                  "CH32", "GD32", "NRF")
+        crystal_ref_set = {ref for _item, ref in crystals}
         crystal_positions = []
         mcu_positions = []
-        for item in bom_items:
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
-            ref = getattr(item, "reference", "").split(",")[0].strip()
-            if ref not in positions:
-                continue
-            pos = positions[ref]
-            x, y = _xy(pos)
-            if any(kw.lower() in desc for kw in crystal_kw):
+        for item, ref in crystals:
+            if ref in positions:
+                x, y = _xy(positions[ref])
                 crystal_positions.append((ref, x, y))
-            if any(kw.lower() in desc for kw in mcu_kw):
+        for item in bom_items:
+            ref = getattr(item, "reference", "").split(",")[0].strip()
+            if not ref or ref in crystal_ref_set or ref not in positions:
+                continue
+            text = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
+            fine, _conf = _classify_component_fine(item)
+            if fine == "ic_mcu" or _kw_hit(text, mcu_kw):
+                x, y = _xy(positions[ref])
                 mcu_positions.append((ref, x, y))
         if not crystal_positions or not mcu_positions:
             return violations
-        max_dist = 25.0  # mm
+        # 负载电容关联（best-effort，需 netlist）：晶振引脚所在网络上的
+        # 1-47pF 小电容即皮尔斯电路的 CL1/CL2
+        small_caps: set = set()
+        for item in bom_items:
+            if _classify_component(item) != "cap":
+                continue
+            cf = _parse_capacitance(getattr(item, "value", ""))
+            if cf is not None and 1e-12 <= cf <= 47e-12:
+                small_caps.update(item.reference_list)
+        assoc_cap_refs: set = set()
+        if netlist and small_caps:
+            for _nname, pins in netlist.items():
+                pin_refs = {str(p).split(".")[0]
+                            for p in (pins if isinstance(pins, (list, tuple, set))
+                                      else getattr(pins, "pins", None) or ())}
+                if pin_refs & crystal_ref_set:
+                    assoc_cap_refs |= (pin_refs & small_caps)
+        cap_positions = [(r, _xy(positions[r])) for r in assoc_cap_refs
+                         if r in positions]
+        max_dist = PCB.LAYOUT_CRYSTAL_MCU_MAX_DIST_MM
         for cr, cx, cy in crystal_positions:
-            closest = min(((cx - mx) ** 2 + (cy - my) ** 2) ** 0.5 for _, mx, my in mcu_positions)
-            if closest > max_dist:
-                violations.append(RuleViolation(
-                    rule_name="晶振布局检查",
-                    description=f"晶振 {cr} 距 MCU {closest:.0f}mm(建议≤{int(max_dist)}mm)",
-                    severity=RuleSeverity.WARNING, location=cr,
-                    suggestion="晶振紧靠 MCU OSC_IN/OSC_OUT 引脚，走线短而直，底部铺 GND 铜皮。晶振下方不走其他信号线。",
-                    theory="晶振到 MCU 的走线每 1cm 引入约 8nH 寄生电感和 2~5pF 寄生电容→频率偏移和起振困难。皮尔斯振荡器依赖走线电容作为负载的一部分，走线过长破坏 CL 匹配。",
-                ))
+            closest = min(((cx - mx) ** 2 + (cy - my) ** 2) ** 0.5
+                          for _, mx, my in mcu_positions)
+            if closest <= max_dist:
+                continue
+            cap_note = ""
+            if cap_positions:
+                cdist = min(((cx - px) ** 2 + (cy - py) ** 2) ** 0.5
+                            for _, (px, py) in cap_positions)
+                if cdist > max_dist:
+                    cap_note = f"；最近的负载电容也距 {cdist:.0f}mm"
+            violations.append(RuleViolation(
+                rule_name="晶振布局检查",
+                description=f"晶振 {cr} 距 MCU {closest:.0f}mm(建议≤{int(max_dist)}mm){cap_note}",
+                severity=RuleSeverity.WARNING, location=cr,
+                suggestion="晶振紧靠 MCU OSC_IN/OSC_OUT 引脚，走线短而直，底部铺 GND 铜皮。晶振下方不走其他信号线。",
+                theory="晶振到 MCU 的走线每 1cm 引入约 8nH 寄生电感和 2~5pF 寄生电容→频率偏移和起振困难。皮尔斯振荡器依赖走线电容作为负载的一部分，走线过长破坏 CL 匹配。",
+            ))
         return violations
 
 
+    # 安装孔痕迹（批4 2026-10-10 审计残留）：真实安装孔通常没有 BOM 行，
+    # 从 pcb_data.component_positions 的封装名/位号找。token 边界允许数字
+    # 后缀（HR3.2 / HOLE3.0 / MTG-3.2），拒绝内嵌（HOLES 之类）。
+    _MOUNT_HOLE_FP_RE = re.compile(
+        r"(?i)(?<![a-z0-9])(?:HR|HOLE|MTG)\d*(?![a-z])|安装孔|螺丝孔|定位孔")
+
     def _check_mounting_hole_keepout(self, bom_items, positions, netlist):
-        """安装孔禁区：安装孔周围应有禁布区"""
-        if not positions: return []
+        """安装孔禁区：安装孔周围应有禁布区
+
+        批4 2026-10-10 审计残留：旧实现从 BOM 行 desc 搜 HOLE/MTG——真实
+        安装孔通常没有 BOM 行，识别通道整体失效。改从 pcb_data.
+        component_positions 找：封装名含 HR/HOLE/安装孔/MTG（token 边界）
+        或位号 H 前缀的条目；找到后与元件位置做禁区判定（阈值 3.0mm 保持，
+        pcb 坐标与传入 positions 合并、pcb 侧优先）。没有安装孔数据 → 跳过。
+        """
         violations = []
-        hole_kw = ["HOLE", "MTG", "安装孔", "螺丝孔", "定位孔"]
-        keepout_r = 3.0
-        hole_refs = []
-        for item in bom_items:
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')} {getattr(item, 'reference', '')}".lower()
-            if not any(kw.lower() in desc for kw in hole_kw):
-                continue
-            ref = getattr(item, "reference", "").split(",")[0].strip()
-            hole_refs.append(ref)
+        pcb = self._pcb_data
+        comp_pos = (getattr(pcb, "component_positions", None) or {}) if pcb else {}
+        all_pos = dict(positions or {})
+        all_pos.update(comp_pos)      # pcb 数据更权威，覆盖同名位号
+        if not all_pos:
+            return violations
+        hole_refs = set()
+        for ref, pos in all_pos.items():
+            pfx = "".join(c for c in str(ref) if c.isalpha()).upper()
+            fp = ""
+            if isinstance(pos, dict):
+                fp = str(pos.get("footprint_name") or pos.get("footprint") or "")
+            if pfx == "H" or (fp and self._MOUNT_HOLE_FP_RE.search(fp)):
+                hole_refs.add(ref)
+        if not hole_refs:
+            return violations
+        keepout_r = PCB.LAYOUT_MOUNT_HOLE_KEEPOUT_MM
         near_holes = []
-        for hole_ref in hole_refs:
-            if hole_ref not in positions:
-                continue
-            hpos = positions[hole_ref]
-            hx = hpos.get("x", 0) if isinstance(hpos, dict) else (hpos[0] if isinstance(hpos, (list, tuple)) else 0)
-            hy = hpos.get("y", 0) if isinstance(hpos, dict) else (hpos[1] if isinstance(hpos, (list, tuple)) and len(hpos) > 1 else 0)
-            for item in bom_items:
-                ref = getattr(item, "reference", "").split(",")[0].strip()
-                if ref in hole_refs or ref not in positions:
+        for hole_ref in sorted(hole_refs):
+            hx, hy = _xy(all_pos[hole_ref])
+            for ref in all_pos:
+                if ref in hole_refs:
                     continue
-                pos = positions[ref]
-                x = pos.get("x", 0) if isinstance(pos, dict) else (pos[0] if isinstance(pos, (list, tuple)) else 0)
-                y = pos.get("y", 0) if isinstance(pos, dict) else (pos[1] if isinstance(pos, (list, tuple)) and len(pos) > 1 else 0)
-                dist = ((hx - x) ** 2 + (hy - y) ** 2) ** 0.5
+                x, y = _xy(all_pos[ref])
+                dist = math.hypot(hx - x, hy - y)
                 if dist < keepout_r:
                     near_holes.append(ref)
         if near_holes:
@@ -356,89 +539,125 @@ class LayoutRulesMixin:
 
 
     def _check_temp_sensitive_placement(self, bom_items, positions, netlist):
-        """温度敏感元件：温度敏感元件应远离热源"""
+        """温度敏感元件：温度敏感元件应远离热源
+
+        批4 2026-10-10 审计残留：旧判据敏感/热源全靠 desc 关键词子串
+        （ADC/基准/传感器 vs LDO/DC-DC/电源），真实 BOM 上双向失效。改：
+        敏感件 = NTC/温度传感器料号族、晶振（三证据口径）、电解电容
+        （ML cap_elec 细类或容值 ≥100µF）；热源 = _is_dcdc_part、
+        LDO/功率器件料号族 + 明确描述词回退。任一侧识别不出或无
+        positions → 跳过；>2 对近距离（<10mm）才报（阈值保持）。
+        """
         violations = []
-        temp_sensitive_kw = ["晶振", "crystal", "XTAL", "ADC", "基准", "reference", "REF", "传感器",
-                            "电解电容", "electrolytic", "光耦", "optocoupler"]
-        heat_source_kw = ["LDO", "DC-DC", "BUCK", "BOOST", "MOSFET", "功率电阻", "电源",
-                         "regulator", "driver", "LED驱动"]
+        if not positions:
+            return violations
+        crystal_refs = {ref for _item, ref in _identify_crystal_refs(bom_items)}
         temp_sensitive = []
         heat_sources = []
         for item in bom_items:
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
             ref = getattr(item, "reference", "").split(",")[0].strip()
-            if any(kw.lower() in desc for kw in temp_sensitive_kw):
+            if not ref:
+                continue
+            pn = (getattr(item, "part_number", "") or "").strip()
+            val = (getattr(item, "value", "") or "")
+            desc = f"{pn} {getattr(item, 'description', '') or ''}".lower()
+            fine, _conf = _classify_component_fine(item)
+            is_sensitive = (
+                ref in crystal_refs
+                or (pn and _TEMP_SENSOR_PN_RE.match(pn))
+                or fine == "cap_elec"
+                or (_classify_component(item) == "cap"
+                    and (cf := _parse_capacitance(val)) is not None
+                    and cf >= _ELECTROLYTIC_MIN_F)
+                or _kw_hit(desc, _TEMP_SENSITIVE_DESC_KW)
+            )
+            is_heat = (
+                _is_dcdc_part(item)
+                or fine == "ic_power"
+                or (pn and _HEAT_PN_RE.match(pn))
+                or _kw_hit(desc, _HEAT_DESC_KW)
+            )
+            if is_sensitive:
                 temp_sensitive.append(ref)
-            if any(kw.lower() in desc for kw in heat_source_kw):
+            if is_heat:
                 heat_sources.append(ref)
         if not temp_sensitive or not heat_sources:
             return violations
-        if positions:
-            warnings = 0
-            min_distance = 10.0
-            for tr in temp_sensitive:
-                if tr not in positions: continue
-                tp = positions[tr]
-                tx = tp.get("x", 0) if isinstance(tp, dict) else (tp[0] if isinstance(tp, (list, tuple)) else 0)
-                ty = tp.get("y", 0) if isinstance(tp, dict) else (tp[1] if isinstance(tp, (list, tuple)) and len(tp) > 1 else 0)
-                for hr in heat_sources:
-                    if hr not in positions: continue
-                    hp = positions[hr]
-                    hx = hp.get("x", 0) if isinstance(hp, dict) else (hp[0] if isinstance(hp, (list, tuple)) else 0)
-                    hy = hp.get("y", 0) if isinstance(hp, dict) else (hp[1] if isinstance(hp, (list, tuple)) and len(hp) > 1 else 0)
-                    dist = ((tx - hx) ** 2 + (ty - hy) ** 2) ** 0.5
-                    if dist < min_distance:
-                        warnings += 1
-            if warnings > 2:
-                violations.append(RuleViolation(
-                    rule_name="温度敏感元件布局检查",
-                    description=f"{warnings} 对温度敏感元件与热源间距 <{int(min_distance)}mm",
-                    severity=RuleSeverity.WARNING,
-                    suggestion=f"晶振/ADC/基准源/电解电容距离热源 ≥{int(min_distance)}mm。使用热仿真或红外热像仪验证。",
-                    theory="晶振频率漂移 Δf/f≈α×ΔT(α≈-0.03ppm/°C²),温升 20°C→频率漂移可达 12ppm。电解电容在 85°C 以上工作时寿命指数衰减(105°C 品在 95°C 工作寿命减半)。",
-                ))
+        warnings = 0
+        min_distance = PCB.LAYOUT_TEMP_HEAT_MIN_DIST_MM
+        for tr in temp_sensitive:
+            if tr not in positions: continue
+            tx, ty = _xy(positions[tr])
+            for hr in heat_sources:
+                if hr == tr or hr not in positions: continue
+                hx, hy = _xy(positions[hr])
+                dist = math.hypot(tx - hx, ty - hy)
+                if dist < min_distance:
+                    warnings += 1
+        if warnings > 2:
+            violations.append(RuleViolation(
+                rule_name="温度敏感元件布局检查",
+                description=f"{warnings} 对温度敏感元件与热源间距 <{int(min_distance)}mm",
+                severity=RuleSeverity.WARNING,
+                suggestion=f"晶振/NTC/温度传感器/电解电容距离热源 ≥{int(min_distance)}mm。使用热仿真或红外热像仪验证。",
+                theory="晶振频率漂移 Δf/f≈α×ΔT(α≈-0.03ppm/°C²),温升 20°C→频率漂移可达 12ppm。电解电容在 85°C 以上工作时寿命指数衰减(105°C 品在 95°C 工作寿命减半)。",
+            ))
         return violations
 
 
     def _check_emi_filter_proximity(self, bom_items, positions, netlist):
-        """EMI 滤波器靠近入口：EMI 滤波器件应紧靠电源入口"""
+        """EMI 滤波器靠近入口：EMI 滤波器件应紧靠电源入口
+
+        批4 2026-10-10 审计残留：识别通道重写——EMI 器件走料号+value
+        （磁珠/共模扼流圈料号族 BLM/MPZ/CBM…、「Ω@MHz」value 标注、
+        明确 desc 词回退），接口走位号（J/CN/USB/FPC 前缀）。识别不出
+        任一侧或无 positions → 跳过。30mm 阈值保持（收编文件内具名
+        常量，不改值）。
+        """
         violations = []
-        emi_kw = ["共模", "choke", "CMC", "EMI", "filter", "X电容", "Y电容"]
-        conn_kw = ["电源", "DC-IN", "VIN", "PWR", "power", "端子", "插座", "connector", "HEADER"]
-        emi_refs, conn_refs = [], []
-        for item in bom_items:
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
-            ref = getattr(item, "reference", "").split(",")[0].strip()
-            if any(kw.lower() in desc for kw in emi_kw):
-                emi_refs.append(ref)
-            if any(kw.lower() in desc for kw in conn_kw):
-                conn_refs.append(ref)
-        if not emi_refs or not conn_refs:
+        if not positions:
             return violations
-        if positions:
-            max_dist = 30.0
-            far_pairs = []
-            for er in emi_refs:
-                if er not in positions: continue
-                ep = positions[er]
-                ex = ep.get("x", 0) if isinstance(ep, dict) else (ep[0] if isinstance(ep, (list, tuple)) else 0)
-                ey = ep.get("y", 0) if isinstance(ep, dict) else (ep[1] if isinstance(ep, (list, tuple)) and len(ep) > 1 else 0)
-                for cr in conn_refs:
-                    if cr not in positions: continue
-                    cp = positions[cr]
-                    cx = cp.get("x", 0) if isinstance(cp, dict) else (cp[0] if isinstance(cp, (list, tuple)) else 0)
-                    cy = cp.get("y", 0) if isinstance(cp, dict) else (cp[1] if isinstance(cp, (list, tuple)) and len(cp) > 1 else 0)
-                    dist = ((ex - cx) ** 2 + (ey - cy) ** 2) ** 0.5
-                    if dist > max_dist:
-                        far_pairs.append(f"{er}/{cr}({dist:.0f}mm)")
-            if far_pairs:
-                violations.append(RuleViolation(
-                    rule_name="EMI 滤波器布局检查",
-                    description=f"EMI 滤波器件距电源入口 >{int(max_dist)}mm: {', '.join(far_pairs[:3])}",
-                    severity=RuleSeverity.WARNING,
-                    suggestion=f"EMI 滤波器件紧靠电源连接器(≤{int(max_dist)}mm)。滤波前后分区敷铜,避免噪声耦合绕过滤波器。",
-                    theory="EMI 滤波器的作用是将噪声电流旁路回源端。滤波器距入口越远,入口到滤波器间的走线越长→走线辐射的噪声绕过滤波器直接耦合到电源线,滤波器效果大幅降低。",
-                ))
+        # EMI 滤波器件距接口连接器的最大距离（批5 收编常量，值不变）
+        _EMI_IF_MAX_DIST_MM = PCB.LAYOUT_EMI_IF_MAX_DIST_MM
+        emi_refs, if_refs = [], []
+        for item in bom_items:
+            ref = getattr(item, "reference", "").split(",")[0].strip()
+            if not ref:
+                continue
+            pn = (getattr(item, "part_number", "") or "").strip()
+            val = str(getattr(item, "value", "") or "")
+            desc = f"{pn} {getattr(item, 'description', '') or ''}".lower()
+            if ((pn and _EMI_PN_RE.search(pn))
+                    or _kw_hit(desc, _EMI_DESC_KW)
+                    or _EMI_BEAD_VALUE_RE.search(val)):
+                emi_refs.append(ref)
+                continue
+            pfx = "".join(c for c in ref if c.isalpha()).upper()
+            if pfx in _EMI_IF_REF_PREFIXES:
+                if_refs.append(ref)
+        if not emi_refs or not if_refs:
+            return violations
+        far_pairs = []
+        for er in emi_refs:
+            if er not in positions: continue
+            ex, ey = _xy(positions[er])
+            for cr in if_refs:
+                if cr not in positions: continue
+                cx, cy = _xy(positions[cr])
+                dist = math.hypot(ex - cx, ey - cy)
+                if dist > _EMI_IF_MAX_DIST_MM:
+                    far_pairs.append(f"{er}/{cr}({dist:.0f}mm)")
+        if far_pairs:
+            violations.append(RuleViolation(
+                rule_name="EMI 滤波器布局检查",
+                description=(f"EMI 滤波器件距接口连接器 >{int(_EMI_IF_MAX_DIST_MM)}mm: "
+                             f"{', '.join(far_pairs[:3])}"),
+                severity=RuleSeverity.WARNING,
+                suggestion=(f"EMI 滤波器件紧靠接口/电源连接器"
+                            f"(≤{int(_EMI_IF_MAX_DIST_MM)}mm)。滤波前后分区敷铜,"
+                            "避免噪声耦合绕过滤波器。"),
+                theory="EMI 滤波器的作用是将噪声电流旁路回源端。滤波器距入口越远,入口到滤波器间的走线越长→走线辐射的噪声绕过滤波器直接耦合到电源线,滤波器效果大幅降低。",
+            ))
         return violations
 
 
@@ -457,7 +676,7 @@ class LayoutRulesMixin:
         violations = []
         conn_kw = ["USB", "RJ45", "HDMI", "DB9", "排针", "端子", "CONNECTOR", "HEADER", "JACK",
                    "DC", "电源插座", "SD卡", "TF卡", "SIM卡", "FPC", "FFC"]
-        max_board_edge = 10.0
+        max_board_edge = PCB.LAYOUT_CONN_BOARD_EDGE_MM
         minx, miny = bo["min_x_mm"], bo["min_y_mm"]
         maxx, maxy = bo["max_x_mm"], bo["max_y_mm"]
         for item in bom_items:

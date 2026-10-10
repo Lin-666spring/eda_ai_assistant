@@ -74,6 +74,69 @@ def _norm_fp(fp: str) -> str:
     return s
 
 
+# ── 批4 2026-10-10 审计残留：BOM 规则私有辅助（判据通道用，模块级单点维护）──
+
+# DC-DC 反馈网络名关键词：FB/FEEDBACK/VSENSE/VS（含 VFB 变体）。
+# 走 _net_kw_hit（左侧拒字母数字、右侧放行数字后缀）——"VSYNC" 的内嵌 VS 不中。
+_FB_NET_KW = ("fb", "feedback", "vsense", "vs", "vfb")
+
+# LED 限流档电阻的阻值区间：下限 47Ω（更小在 5V 下超 LED 额定），
+# 上限 47kΩ（100k+ 是典型上拉/下拉值，不承担限流——供需估算时剔除）。
+_LED_R_MIN_OHM = 47.0
+_LED_R_MAX_OHM = 47_000.0
+
+# 功率电阻 token：value/料号里独立的 "1W/2W/0.5W/0.25W"（W 前是数字、
+# 前后不能贴字母数字——"60mW" 的 mW 是毫瓦、LED 规格文本不认成功率电阻）。
+_POWER_W_RE = re.compile(r"(?<![a-z0-9.])(\d+(?:\.\d+)?)W(?![a-z0-9])", re.IGNORECASE)
+
+# 封装名→引脚数兜底解析用的家族词（数字即引脚数的封装家族）。
+# SOT 家族单独处理（SOT-23 的 23 是系列号不是脚数）；TO 家族（TO-220 是 3 脚）不参与。
+_PKG_PIN_FAMILY_RE = re.compile(
+    r"(?:LQFP|TQFP|HQFP|QFP|QFN|DFN|SON|SOP|SOIC|SSOP|TSSOP|MSOP|USOP|DIP|BGA|WLCSP)"
+    r"[-_ ]?(\d+)", re.IGNORECASE)
+_PKG_SOT23_RE = re.compile(r"SOT[-_ ]?23(?:[-_ ](\d+))?", re.IGNORECASE)
+
+
+def _parse_resistance_ohm(val_str: str):
+    """阻值字符串 → 欧姆；解析失败返回 None。
+
+    覆盖 "100R"/"4.7k"/"10kΩ"/"1M" 写法（批4 2026-10-10，LED 限流供需判定用）。
+    """
+    s = (val_str or "").strip().upper().replace("Ω", "").replace(" ", "")
+    if not s:
+        return None
+    m = re.fullmatch(r"(\d+(?:\.\d+)?)([KMR])?", s)
+    if not m:
+        return None
+    mult = {"K": 1e3, "M": 1e6, "R": 1.0}.get(m.group(2), 1.0)
+    return float(m.group(1)) * mult
+
+
+def _res_counts_as_led_limit(item) -> bool:
+    """电阻行是否计入 LED 限流供需：阻值落在限流档 47Ω~47kΩ。
+
+    阻值解析失败时保守计入（不冤枉没写值的行）；100k/1M 这类典型上拉
+    下拉阻值不计入——它们物理上不承担 LED 限流（批4 2026-10-10）。
+    """
+    ohm = _parse_resistance_ohm(getattr(item, "value", ""))
+    if ohm is None:
+        return True
+    return _LED_R_MIN_OHM <= ohm <= _LED_R_MAX_OHM
+
+
+def _norm_voltage_token(tok: str) -> str:
+    """电压域写法归一：3V3→3.3V、1V8→1.8V、5V0→5V（末尾数字写法折叠同域）。
+
+    批4 2026-10-10 审计残留：多电压域隔离的候选表同时含 "3.3V" 和 "3V3"
+    （"1.8V"/"1V8" 同）——同一域双计凑门槛。先归一化再数独立域。
+    """
+    t = (tok or "").strip().upper()
+    m = re.fullmatch(r"(\d)V(\d)", t)
+    if m:
+        return f"{m.group(1)}V" if m.group(2) == "0" else f"{m.group(1)}.{m.group(2)}V"
+    return t
+
+
 class BomRulesMixin:
     """方法集由 facade DesignRuleChecker 组合；此处无状态、无 __init__。"""
 
@@ -336,11 +399,11 @@ class BomRulesMixin:
         pwr_kw = ["电源", "power", "VIN", "VBUS", "DC-IN", "PWR"]
         # 2026-10-10 标准表批：bulk 白名单补 330µF（立创常用电解档位）
         bulk_uf = ["100u", "220u", "330u", "470u", "1000u", "100ΜF"]
-        try:
-            has_input = any(kw.lower() in f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')} {getattr(i, 'value', '')}".lower()
-                            for i in bom_items for kw in pwr_kw)
-        except Exception:
-            return violations
+        # 批4 2026-10-10 审计残留：删除整体 except Exception 静默吞错——规则 bug
+        # 会被 checker.check_all 收进 rule_errors（错误通道），规则内吞掉等于
+        # 把红灯变绿灯。此处 getattr 均有缺省值，本身不应抛异常，直接平铺。
+        has_input = any(kw.lower() in f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')} {getattr(i, 'value', '')}".lower()
+                        for i in bom_items for kw in pwr_kw)
         if not has_input:
             return violations
         has_bulk = any(any(v.lower() in getattr(i, "value", "").lower() for v in bulk_uf) for i in bom_items)
@@ -445,27 +508,34 @@ class BomRulesMixin:
 
 
     def _check_reset_circuit(self, bom_items, positions, netlist):
-        """复位电路：MCU RST 应有 RC 网络或专用复位 IC"""
+        """复位电路：MCU RST 应有 RC 网络或专用复位 IC
+
+        批4 2026-10-10 审计残留（识别通道修复）：① MCU/复位 IC 识别从
+        「pn+desc 裸子串」改为 _row_text 全文（pn/desc/value）+ _kw_hit 词
+        边界 + 复位芯片家族料号前缀；② RC 元件识别走真值解析——电容用
+        _is_cap_row + _parse_capacitance（0.1µF 档 47nF~470nF），电阻用
+        _is_resistor_row（位号前缀优先）+ 典型上拉值。识别不出就不算证据。
+        """
         violations = []
         mcu_kw = ["MCU", "STM32", "ESP32", "ATmega", "ARM", "单片机", "CPU"]
+        reset_ic_kw = ("复位", "reset", "监控", "supervisor", "看门狗", "watchdog")
+        reset_ic_pn = ("MAX809", "MAX811", "IMP809", "STM809")
         found_mcu = next((i for i in bom_items
-                          if any(kw.lower() in f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}".lower()
-                                 for kw in mcu_kw)), None)
+                          if _kw_hit(_row_text(i), mcu_kw)), None)
         if not found_mcu:
             return violations
         has_cap, has_r, has_ic = False, False, False
         for item in bom_items:
-            pn = (getattr(item, "part_number", "") or "").lower()
-            desc = (getattr(item, "description", "") or "").lower()
-            val = (getattr(item, "value", "") or "").lower()
-            ref = getattr(item, "reference", "").split(",")[0].strip()
-            prefix = "".join(c for c in ref if c.isalpha()).upper()
-            if any(kw in desc or kw in pn for kw in ["复位", "reset", "监控", "supervisor", "看门狗", "watchdog",
-                                                       "MAX809", "MAX811", "IMP809", "STM809"]):
+            pn = (getattr(item, "part_number", "") or "").strip().upper()
+            if pn.startswith(reset_ic_pn) or _kw_hit(_row_text(item), reset_ic_kw):
                 has_ic = True
-            if prefix == "C" and any(v in val for v in ["0.1u", "0.1μ", "100n", "104"]):
-                has_cap = True
-            if prefix == "R" and any(v in val for v in ["10k", "10000", "4.7k", "4700"]):
+            if _is_cap_row(item):
+                cap_f = _parse_capacitance(getattr(item, "value", "") or "")
+                if cap_f is not None and 47e-9 <= cap_f <= 470e-9:
+                    has_cap = True
+            if _is_resistor_row(item) and any(
+                    v in (getattr(item, "value", "") or "").upper().replace(" ", "")
+                    for v in ["10K", "10kΩ", "10000", "4.7K", "4.7kΩ", "4700"]):
                 has_r = True
         mcu_ref = getattr(found_mcu, "reference", "").split(",")[0].strip()
         if has_ic:
@@ -497,7 +567,9 @@ class BomRulesMixin:
         esd_pn_prefixes = ("ESD", "GESD", "LESD", "TVS", "PESD", "SRV05", "USBLC",
                            "RCLAMP", "PGB", "SMF", "SMAJ", "SMBJ")
         # Connector reference prefixes (common for headers, FPC, USB, etc.)
-        conn_ref_prefixes = {"J", "P", "H", "CN", "USB", "FPC"}
+        # 批4 2026-10-10 审计残留：删掉 "H"——H 是安装孔（Mounting Hole）不是
+        # 外部连接器，金样 47/78 板因此假阳「存在外部连接器」。
+        conn_ref_prefixes = {"J", "P", "CN", "USB", "FPC"}
         # Check for connectors by keyword OR reference prefix
         has_conn = any(
             _any_ref_prefix(i, conn_ref_prefixes)
@@ -658,26 +730,65 @@ class BomRulesMixin:
 
 
     def _check_led_current_limit(self, bom_items, positions, netlist):
-        """LED 限流电阻：每个 LED 应有匹配的限流电阻"""
+        """LED 限流电阻：每个 LED 应有匹配的限流电阻
+
+        批4 2026-10-10 审计残留（结构性恒真修正）：旧版 has_resistor =
+        any(_is_resistor_row(...)) —— 板上任意 1 个无关电阻（如 100k 上拉）
+        就全局静默。现对齐晶振三证据口径：
+        ① LED 识别补位号通道（LED 前缀）+ _row_text 词边界；
+        ② 网表可用：LED 每个引脚所在网络上有电阻引脚（ref 前缀 R/RN）→
+           该 LED 视为已限流；没覆盖到的 LED 逐个报；
+        ③ 网表不可用退化为供需：限流档电阻位号数（47Ω~47kΩ，100k 这类
+           上拉阻值不计入）< LED 位号数 → 报差额（文案说明按供需估算）。
+        """
         violations = []
         led_kw = ["LED", "发光", "light", "指示", "照明", "灯珠"]
-        # 2026-10-09 抽查修正：「描述含电阻」判据在真实 BOM 上恒假（描述是
-        # 参数文本或为空）→ 每个 LED 行都报。改位号前缀 R 判电阻存在
-        # （电阻行前缀 R/RN，与 LED 行前缀天然不同，无需再排除自身）。
-        has_resistor = any(_is_resistor_row(r) for r in bom_items)
-        for item in bom_items:
-            desc = _row_text(item)
-            if not _kw_hit(desc, led_kw):
-                continue
-            ref = getattr(item, "reference", "").split(",")[0].strip()
-            if not has_resistor:
-                violations.append(RuleViolation(
-                    rule_name="LED 限流电阻检查",
-                    description=f"LED {ref} 可能缺少限流电阻",
-                    severity=RuleSeverity.WARNING, location=ref,
-                    suggestion=f"串联限流电阻 R=(VCC-Vf)/If。红/绿LED Vf≈1.8~2.2V,蓝/白LED Vf≈3.0~3.4V。If通常取5~20mA。",
-                    theory="LED 是电流驱动型器件，其 I-V 曲线在导通后极为陡峭——Vf 变化仅 0.1V 即可致电流变化数倍，未限流易烧毁。限流电阻将电压源转为近似电流源。",
-                ))
+        leds = [i for i in bom_items
+                if _any_ref_prefix(i, {"LED"})
+                or _kw_hit(_row_text(i), led_kw)]
+        if not leds:
+            return violations
+        if netlist:
+            net_pins = {name: self._net_pins(v) for name, v in netlist.items()}
+            for item in leds:
+                uncovered = []
+                for ref in item.reference_list:
+                    ru = ref.upper()
+                    my_nets = [name for name, pins in net_pins.items()
+                               if any(str(p).split(".")[0].strip().upper() == ru
+                                      for p in pins)]
+                    covered = any(
+                        "".join(c for c in str(p).split(".")[0] if c.isalpha()).upper()
+                        in ("R", "RN")
+                        for name in my_nets for p in net_pins[name])
+                    if not covered:
+                        uncovered.append(ref)
+                if uncovered:
+                    violations.append(RuleViolation(
+                        rule_name="LED 限流电阻检查",
+                        description=(f"LED {','.join(uncovered)} 引脚所在网络上"
+                                     f"未见限流电阻（R/RN 引脚）"),
+                        severity=RuleSeverity.WARNING, location=",".join(uncovered),
+                        suggestion=f"串联限流电阻 R=(VCC-Vf)/If。红/绿LED Vf≈1.8~2.2V,蓝/白LED Vf≈3.0~3.4V。If通常取5~20mA。",
+                        theory="LED 是电流驱动型器件，其 I-V 曲线在导通后极为陡峭——Vf 变化仅 0.1V 即可致电流变化数倍，未限流易烧毁。限流电阻将电压源转为近似电流源。",
+                    ))
+            return violations
+        # 无网表：供需估算。限流档电阻 = _is_resistor_row 且阻值落在 47Ω~47kΩ
+        # （100k 上拉不承担限流，不计入；无阻值信息的行保守计入）。
+        led_total = sum(_component_count(i) for i in leds)
+        r_total = sum(_component_count(i) for i in bom_items
+                      if _is_resistor_row(i) and _res_counts_as_led_limit(i))
+        if r_total < led_total:
+            gap = led_total - r_total
+            refs = ",".join(getattr(i, "reference", "?").split(",")[0] for i in leds[:5])
+            violations.append(RuleViolation(
+                rule_name="LED 限流电阻检查",
+                description=(f"LED 限流电阻不足（按供需估算）：LED {led_total} 个，"
+                             f"限流档电阻(47Ω~47kΩ)仅 {r_total} 个，缺口 {gap} 个"),
+                severity=RuleSeverity.WARNING, location=refs,
+                suggestion=f"串联限流电阻 R=(VCC-Vf)/If。红/绿LED Vf≈1.8~2.2V,蓝/白LED Vf≈3.0~3.4V。If通常取5~20mA。",
+                theory="LED 是电流驱动型器件，其 I-V 曲线在导通后极为陡峭——Vf 变化仅 0.1V 即可致电流变化数倍，未限流易烧毁。限流电阻将电压源转为近似电流源。",
+            ))
         return violations
 
 
@@ -739,33 +850,76 @@ class BomRulesMixin:
 
 
     def _check_dcdc_feedback_network(self, bom_items, positions, netlist):
-        """DC-DC 反馈网络：开关稳压器应有 FB 分压电阻"""
+        """DC-DC 反馈网络：开关稳压器应有 FB 分压电阻
+
+        批4 2026-10-10 审计残留（结构性恒真修正）：旧版 has_fb_r =「板上任意
+        ≥2 **行** 电阻」——不看网表、不查 FB 引脚，且一行 "R1,R2" 只算 1；
+        金样板上随便两行无关电阻（I2C 上拉等）就全局静默。现对齐晶振三证据
+        口径（位号前缀是信号不是充分条件、证据走网表/料号、供需计数）：
+        ① 电阻计数改 _component_count（按位号数，不按行数）；
+        ② 网表可用（非空 dict）走真证据：DC-DC 引脚所在网络里找名字含
+           FB/FEEDBACK/VSENSE/VS 的网络，该网络上应有 ≥2 个不同电阻位号的
+           引脚（分压上下臂）——找不到才报「反馈网络未检出」；
+        ③ 网表不可用退化为供需计数：板上电阻位号数 < 2×DC-DC 数 → 报不足。
+        """
         violations = []
-        # 2026-09-24 抽查修正：原关键词含裸两字母 "MP"/"SY"/"MT"/"XL" 且只做子串匹配，
-        # 于是 XL-1608(LED)、MPU6500、磁珠、钽电容都被当成「开关稳压器」去要 FB 分压电阻。
-        # 现在：① 位号必须是 IC 类前缀；② 料号命中明确稳压器系列，或描述含完整词
-        # （口径统一收编到模块级 _DCDC_PN_PREFIXES / _is_dcdc_part，2026-10-06）。
+        # 2026-09-24 抽查修正：位号必须是 IC 类前缀；料号命中明确稳压器系列
+        # 或描述含完整词（口径统一收编到 _DCDC_PN_PREFIXES / _is_dcdc_part）。
+        dcdc_items = []
         for item in bom_items:
             ref = getattr(item, "reference", "").split(",")[0].strip()
             ref_prefix = "".join(c for c in ref if c.isalpha()).upper()
             if ref_prefix not in ("U", "IC", "PU", "PS"):
                 continue
-            if not _is_dcdc_part(item):
-                continue
-            pn = (getattr(item, "part_number", "") or "").strip().upper()
-            # 检查是否有分压电阻（DC-DC FB 需要两个电阻分压）。
-            # 2026-10-09 抽查修正：「描述含电阻」在真实 BOM 上恒假 → 有反馈
-            # 网络的板也恒报。改位号前缀 R 判电阻行。
-            resistors = [r for r in bom_items if _is_resistor_row(r) and r is not item]
-            has_fb_r = len(resistors) >= 2
-            if not has_fb_r:
-                violations.append(RuleViolation(
-                    rule_name="DC-DC 反馈网络检查",
-                    description=f"开关稳压器 {ref}({pn}) 缺少 FB 分压电阻网络",
-                    severity=RuleSeverity.ERROR, location=ref,
-                    suggestion=f"Vout=Vref×(1+R1/R2)。Vref 通常 0.6V/0.8V/1.25V(查数据手册)。R2 通常取 10kΩ 左右。",
-                    theory="开关稳压器通过比较 FB 电压与内部基准 Vref 来调节占空比→稳定 Vout。无 FB 网络则输出电压不受控,可能升至输入电压致负载烧毁。R1/R2 精度影响 Vout 精度—建议用 ±1% 电阻。",
-                ))
+            if _is_dcdc_part(item):
+                dcdc_items.append(item)
+        if not dcdc_items:
+            return violations
+        if netlist:
+            net_pins = {name: self._net_pins(v) for name, v in netlist.items()}
+            for item in dcdc_items:
+                ref = getattr(item, "reference", "?").split(",")[0].strip()
+                pn = (getattr(item, "part_number", "") or "").strip().upper()
+                my_refs = {r.upper() for r in item.reference_list}
+                my_nets = [name for name, pins in net_pins.items()
+                           if any(str(p).split(".")[0].strip().upper() in my_refs for p in pins)]
+                has_fb = False
+                for name in my_nets:
+                    if not _net_kw_hit(str(name), _FB_NET_KW):
+                        continue
+                    r_refs = {
+                        str(p).split(".")[0].strip().upper()
+                        for p in net_pins[name]
+                        if "".join(c for c in str(p).split(".")[0] if c.isalpha()).upper()
+                        in ("R", "RN", "RNC", "RP")}
+                    if len(r_refs) >= 2:   # 分压上下臂各出一脚
+                        has_fb = True
+                        break
+                if not has_fb:
+                    violations.append(RuleViolation(
+                        rule_name="DC-DC 反馈网络检查",
+                        description=(f"开关稳压器 {ref}({pn}) 反馈网络未检出：其 {len(my_nets)} 个网络中"
+                                     f"未见 FB/FEEDBACK/VSENSE 网络上挂两个分压电阻（FB 分压电阻缺失）"),
+                        severity=RuleSeverity.ERROR, location=ref,
+                        suggestion=f"Vout=Vref×(1+R1/R2)。Vref 通常 0.6V/0.8V/1.25V(查数据手册)。R2 通常取 10kΩ 左右。",
+                        theory="开关稳压器通过比较 FB 电压与内部基准 Vref 来调节占空比→稳定 Vout。无 FB 网络则输出电压不受控,可能升至输入电压致负载烧毁。R1/R2 精度影响 Vout 精度—建议用 ±1% 电阻。",
+                    ))
+        else:
+            # 网表不可用：供需计数（按位号数，一行 "R1,R2" 算 2 个）
+            res_total = sum(_component_count(r) for r in bom_items if _is_resistor_row(r))
+            need = 2 * sum(_component_count(d) for d in dcdc_items)
+            if res_total < need:
+                for item in dcdc_items:
+                    ref = getattr(item, "reference", "?").split(",")[0].strip()
+                    pn = (getattr(item, "part_number", "") or "").strip().upper()
+                    violations.append(RuleViolation(
+                        rule_name="DC-DC 反馈网络检查",
+                        description=(f"开关稳压器 {ref}({pn}) 缺少 FB 分压电阻网络"
+                                     f"（按供需估算：板上电阻位号 {res_total} 个 < 需 {need} 个）"),
+                        severity=RuleSeverity.ERROR, location=ref,
+                        suggestion=f"Vout=Vref×(1+R1/R2)。Vref 通常 0.6V/0.8V/1.25V(查数据手册)。R2 通常取 10kΩ 左右。",
+                        theory="开关稳压器通过比较 FB 电压与内部基准 Vref 来调节占空比→稳定 Vout。无 FB 网络则输出电压不受控,可能升至输入电压致负载烧毁。R1/R2 精度影响 Vout 精度—建议用 ±1% 电阻。",
+                    ))
         return violations
 
 
@@ -792,11 +946,10 @@ class BomRulesMixin:
             )
             if not is_mosfet:
                 continue
-            has_gate_r = any(
-                any(kw in (f"{getattr(r, 'part_number', '')} {getattr(r, 'description', '')}").lower()
-                    for kw in ("电阻", "resistor"))
-                for r in bom_items if r is not item
-            )
+            # 批4 2026-10-10 审计残留：栅极电阻判定从「描述含 电阻/resistor」
+            # （真实 BOM 描述为空或参数文本，恒假 → 有 MOSFET 就报 INFO 噪声）
+            # 改 _is_resistor_row（位号前缀 R/RN 优先，描述词仅回退）。
+            has_gate_r = any(_is_resistor_row(r) for r in bom_items if r is not item)
             if has_gate_r:
                 continue
             violations.append(RuleViolation(
@@ -810,63 +963,96 @@ class BomRulesMixin:
 
 
     def _check_optocoupler_input_resistor(self, bom_items, positions, netlist):
-        """光耦输入限流：光耦输入端应有限流电阻"""
+        """光耦输入限流：光耦输入端应有限流电阻
+
+        批4 2026-10-10 审计残留：旧版限流电阻判定用「描述含 电阻/resistor」
+        旧口径——真实 BOM 描述为空或参数文本，判据双向失效（描述空 → 有光耦
+        就报假阳；描述有字就恒静默）。现统一：
+        ① 电阻判定走 _is_resistor_row（位号前缀优先）；
+        ② 网表可用时光耦引脚所在网络上有电阻引脚（ref 前缀 R/RN）→
+           该光耦输入侧已限流（网表证据只作豁免，不作定罪——网表可能不完整）；
+        ③ 未被网表豁免的光耦按供需（电阻位号数 ≥ 光耦位号数）判定，
+           不足才报，文案注明按供需估算。
+        """
         violations = []
-        # 2026-09-24 抽查修正：原关键词含裸两字母 "PS" → 所有 TPS 电源芯片被判成光耦；
-        # 且「输入端限流电阻」要求电阻位号前缀 == 光耦位号前缀（U vs R 永不相等），
-        # 只要识别出光耦就必然报一次。现在：料号命中明确光耦系列或描述含完整词，
-        # 限流电阻按「BOM 里存在电阻」判定。
+        # 2026-09-24 抽查修正：料号命中明确光耦系列或描述含完整词。
         opto_kw = ["光耦", "optocoupler", "光电耦合"]
         opto_pn_prefixes = ["PC817", "PC81", "TLP", "EL817", "EL357", "6N137",
                             "HCPL", "PS25", "PS28", "SFH", "LTV", "CNY", "MOC30"]
-        for item in bom_items:
-            pn = (getattr(item, "part_number", "") or "").strip().upper()
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
-            if not (any(kw in desc for kw in opto_kw)
-                    or any(pn.startswith(p) for p in opto_pn_prefixes)):
+        optos = [i for i in bom_items
+                 if (getattr(i, "part_number", "") or "").strip().upper().startswith(tuple(opto_pn_prefixes))
+                 or _kw_hit(_row_text(i), opto_kw)]
+        if not optos:
+            return violations
+        covered_refs = set()
+        if netlist:
+            net_pins = {name: self._net_pins(v) for name, v in netlist.items()}
+            for item in optos:
+                for ref in item.reference_list:
+                    ru = ref.upper()
+                    nets = [name for name, pins in net_pins.items()
+                            if any(str(p).split(".")[0].strip().upper() == ru for p in pins)]
+                    if any("".join(c for c in str(p).split(".")[0] if c.isalpha()).upper()
+                           in ("R", "RN")
+                           for name in nets for p in net_pins[name]):
+                        covered_refs.add(ru)
+        opto_total = sum(_component_count(i) for i in optos)
+        res_total = sum(_component_count(i) for i in bom_items if _is_resistor_row(i))
+        if res_total >= opto_total:
+            return violations   # 供需不缺 → 证据不足，不下断言
+        for item in optos:
+            refs = [r for r in item.reference_list if r.upper() not in covered_refs]
+            if not refs:
                 continue
-            ref = getattr(item, "reference", "").split(",")[0].strip()
-            has_input_r = any(
-                any(kw in (f"{getattr(r, 'part_number', '')} {getattr(r, 'description', '')}").lower()
-                    for kw in ("电阻", "resistor"))
-                for r in bom_items if r is not item
-            )
-            if not has_input_r:
-                violations.append(RuleViolation(
-                    rule_name="光耦输入限流检查",
-                    description=f"光耦 {ref} 输入端可能缺少限流电阻",
-                    severity=RuleSeverity.WARNING, location=ref,
-                    suggestion=f"Rin=(Vin-Vf)/If。Vf≈1.2V,If 取 5~20mA(查 CTR 曲线)。CTR=50~600% 根据型号而不同。",
-                    theory="光耦内部 LED 的 Vf≈1.0~1.4V。无限流时 LED 电流仅由驱动端内阻限制,可能超出 LED 额定电流(通常 50mA max)。CTR(电流传输比)随 If 变化,设计需保证全温范围内 CTR 足够。",
-                ))
+            ref = refs[0]
+            violations.append(RuleViolation(
+                rule_name="光耦输入限流检查",
+                description=(f"光耦 {ref} 输入端可能缺少限流电阻"
+                             f"（按供需估算：板上电阻位号 {res_total} 个 < 光耦 {opto_total} 个）"),
+                severity=RuleSeverity.WARNING, location=ref,
+                suggestion=f"Rin=(Vin-Vf)/If。Vf≈1.2V,If 取 5~20mA(查 CTR 曲线)。CTR=50~600% 根据型号而不同。",
+                theory="光耦内部 LED 的 Vf≈1.0~1.4V。无限流时 LED 电流仅由驱动端内阻限制,可能超出 LED 额定电流(通常 50mA max)。CTR(电流传输比)随 If 变化,设计需保证全温范围内 CTR 足够。",
+            ))
         return violations
 
 
     def _check_adc_input_filter(self, bom_items, positions, netlist):
-        """ADC 输入滤波：ADC 输入引脚应有 RC 抗混叠滤波"""
+        """ADC 输入滤波：ADC 输入引脚应有 RC 抗混叠滤波
+
+        批4 2026-10-10 审计残留（假阳储备修正）：旧版 ① ADC 识别只在
+        pn+description 上做裸子串（"A/D" 内嵌误命中、value 列写的型号漏认）；
+        ② has_cap 在 pn+description 里搜 "nF/pF" 子串——真实 BOM 容值写在
+        value 列 → 恒假 → 有 ADC 就报缺滤波。现对齐晶振三证据口径：
+        ① ADC 识别走 料号前缀 + _row_text（pn/desc/value 全文）词边界；
+        ② 滤波电容走 _is_cap_row + _parse_capacitance 真容值，落在 RC 滤波
+           典型档 100pF~1µF（value 列为主，pn 回退）；
+        ③ 无引脚级网表关联可查输入网，按供需计数：滤波档电容数 ≥ ADC 数则过。
+        """
         violations = []
-        adc_kw = ["ADC", "A/D", "模数转换", "ADS", "MCP3", "MAX1", "AD77", "AD76"]
-        has_adc = False
-        for item in bom_items:
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
-            pn = (getattr(item, "part_number", "") or "").strip().upper()
-            if any(kw.lower() in desc for kw in ["ADC", "模数", "模数转换", "A/D"]) or \
-               any(pn.startswith(p) for p in ["ADS1", "ADS8", "MCP3", "MAX1", "AD77", "AD76"]):
-                has_adc = True
-                break
-        if not has_adc:
+        adc_pn_prefixes = ("ADS1", "ADS8", "MCP3", "MAX1", "AD77", "AD76")
+        adc_kw = ("adc", "模数转换", "模数", "a/d")
+        adcs = [i for i in bom_items
+                if (getattr(i, "part_number", "") or "").strip().upper().startswith(adc_pn_prefixes)
+                or _kw_hit(_row_text(i), adc_kw)]
+        if not adcs:
             return violations
-        # 检查是否有 RC 滤波元件
-        has_cap = any(
-            any(kw.lower() in (f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}").lower()
-                for kw in ["电容", "capacitor", "nF", "pF", "NP0", "C0G"])
-            for i in bom_items
-        )
-        if not has_cap:
+        rc_caps = 0
+        for i in bom_items:
+            if not _is_cap_row(i):
+                continue
+            cap_f = _parse_capacitance(getattr(i, "value", "") or "")
+            if cap_f is None:
+                cap_f = _parse_capacitance(getattr(i, "part_number", "") or "")
+            if cap_f is not None and 100e-12 <= cap_f <= 1e-6:
+                rc_caps += _component_count(i)
+        adc_count = sum(_component_count(i) for i in adcs)
+        if rc_caps < adc_count:
+            refs = ",".join(getattr(i, "reference", "?").split(",")[0] for i in adcs[:5])
             violations.append(RuleViolation(
                 rule_name="ADC 输入滤波检查",
-                description="检测到 ADC 但未发现输入滤波电容",
-                severity=RuleSeverity.WARNING,
+                description=(f"检测到 ADC({refs}) 但 RC 滤波档(100pF~1µF)电容仅 {rc_caps} 个"
+                             f" < ADC {adc_count} 个（按供需估算，输入滤波电容可能缺失）"),
+                severity=RuleSeverity.WARNING, location=refs,
                 suggestion="ADC 输入端加 RC 低通滤波(R=100Ω~1kΩ,C=1~100nF)。截止频率 fc=1/(2πRC) < 采样率/2(Nyquist)。",
                 theory="ADC 采样产生 aliasing — 高于 fs/2 的输入频率混叠到基带。RC 抗混叠滤波器必须在 ADC 输入之前。电容同时作为采样保持电容的电荷库—SAR ADC 在采样瞬间从输入电容抽取电荷。",
             ))
@@ -965,10 +1151,12 @@ class BomRulesMixin:
             )
             if not is_cap:
                 continue
-            val = (getattr(item, "value", "") or "").strip().upper()
-            pn = (getattr(item, "part_number", "") or "").strip().upper()
-            # 2026-09-24 抽查修正：见 _extract_voltage_rating 注释
-            rated_v = _extract_voltage_rating(val, pn)
+            # 2026-09-24 抽查修正：见 _extract_voltage_rating 注释。
+            # 批4 2026-10-10 审计残留：耐压 token 只搜 value+pn——立创 BOM 的
+            # 耐压常写在描述（"25V 100μF X5R"），value 只剩容值 → 恒取不到
+            # 耐压 → 恒不报。扩到 _row_text（pn+desc+value 全文，仍走
+            # _extract_voltage_rating 的独立 token 口径）。
+            rated_v = _extract_voltage_rating(_row_text(item))
             if rated_v is not None and max_voltage > 0 and rated_v < max_voltage * 1.2:
                 violations.append(RuleViolation(
                     rule_name="电容耐压降额检查",
@@ -983,16 +1171,24 @@ class BomRulesMixin:
     def _check_resistor_power_rating(self, bom_items, positions, netlist):
         """电阻功率降额：功率电阻应有足够功率裕量"""
         violations = []
-        # 2026-09-24 抽查修正：原判据只看描述子串，LED 规格文本「功率:60mW」会被
-        # 当成功率电阻。现在先要求位号是电阻类前缀。
+        # 批4 2026-10-10 审计残留：功率电阻识别从「描述含 功率电阻/shunt/检流」
+        # （真实 BOM 描述常为空，恒漏）改为三通道：
+        # ① value/料号里的功率 token（独立 \d+(\.\d+)?W，如 1W/2W/0.5W/0.25W；
+        #    "60mW" 的毫瓦、"3R4" 的阻值码不带 W 后缀，都不认）；
+        # ② 描述词回退（_kw_hit 全行文本 pn+desc+value）；
+        # ③ 先决条件：位号是电阻类前缀（R/RN/…，排除 RL/RELAY）。
+        # 识别不出功率档的行诚实跳过。
         pwr_r_kw = ["功率电阻", "shunt", "采样电阻", "检流", "限流电阻", "current sense"]
         for item in bom_items:
             ref = getattr(item, "reference", "").split(",")[0].strip()
             ref_prefix = "".join(c for c in ref if c.isalpha()).upper()
             if not ref_prefix.startswith("R") or ref_prefix in ("RL", "RELAY"):
                 continue
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')} {getattr(item, 'value', '')}".lower()
-            if not (_kw_hit(desc, pwr_r_kw) or ("功率" in desc and "电阻" in desc)):
+            val = (getattr(item, "value", "") or "").strip()
+            pn = (getattr(item, "part_number", "") or "").strip()
+            has_power_token = bool(_POWER_W_RE.search(f"{val} {pn}"))
+            has_power_desc = _kw_hit(_row_text(item), pwr_r_kw)
+            if not (has_power_token or has_power_desc):
                 continue
             pkg = (getattr(item, "package", "") or "").strip().upper()
             # 小封装难以承受大功率
@@ -1024,10 +1220,12 @@ class BomRulesMixin:
         if not has_battery:
             return violations
         # 检查是否有分压电阻网络(两个串联电阻)
-        resistors = [i for i in bom_items
-                    if any(kw.lower() in (f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}").lower()
-                           for kw in ["电阻", "resistor"])]
-        has_divider = len(resistors) >= 2 and any(
+        # 批4 2026-10-10 审计残留：电阻识别从「描述含 电阻/resistor」（真实
+        # BOM 描述为空或参数文本，恒假 → 有电池就报假阳）改为 _is_resistor_row
+        # （位号前缀优先），并按位号数计供需（一行多位号不漏计）。
+        resistors = [i for i in bom_items if _is_resistor_row(i)]
+        res_total = sum(_component_count(r) for r in resistors)
+        has_divider = res_total >= 2 and any(
             any(v in (getattr(r, "value", "") or "").replace(" ", "").upper()
                 for v in ["100K", "200K", "300K", "470K", "1M"])
             for r in resistors
@@ -1311,58 +1509,78 @@ class BomRulesMixin:
 
 
     def _check_component_height_zoning(self, bom_items, positions, netlist):
-        """元件高度分区：高/矮元件应分区布局，避免高元件遮挡矮元件"""
-        violations = []
-        tall_pkgs = {"DIP", "SIP", "TO-220", "TO-247", "电解电容", "大电解", "散热器", "继电器",
-                     "RJ45", "USB-A", "DB9", "HDMI", "排针", "接线端子", "变压器", "电感"}
-        tall_refs, short_refs = [], []
-        for item in bom_items:
-            pkg = (getattr(item, "package", "") or "").upper()
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".upper()
-            ref = getattr(item, "reference", "").split(",")[0].strip()
-            is_tall = any(kw.upper() in pkg for kw in tall_pkgs) or \
-                      any(kw.upper() in desc for kw in tall_pkgs)
-            if is_tall:
-                tall_refs.append(ref)
-            else:
-                short_refs.append(ref)
-        if len(tall_refs) >= 2 and len(short_refs) >= 5:
-            violations.append(RuleViolation(
-                rule_name="元件高度分区检查",
-                description=f"高元件({len(tall_refs)}个)与矮元件({len(short_refs)}个)混合布局",
-                severity=RuleSeverity.INFO,
-                suggestion="高元件(>10mm)置于PCB无遮挡区域或背面。同面布局时矮元件靠近PCB边沿,高元件在中心。",
-                theory="波峰焊时高元件会产生阴影效应→后方焊点虚焊。同时装配后矮元件难以目检和维护。IPC-A-610 要求人工检查视线无遮挡。",
-            ))
-        return violations
+        """元件高度分区：高/矮元件应分区布局，避免高元件遮挡矮元件
+
+        设计性休眠（批4 2026-10-10 确认）：「分区布局」判定需要元件实际高度
+        （封装名只能粗分高矮，电解/散热器之外的 TO/DIP 判断失准）+ 摆位几何
+        （高矮件的相邻关系/遮挡方向）。现有数据两样都缺 —— 旧判据「≥2 高 +
+        ≥5 矮就报混合布局」是与摆位无关的计数模板（真实 BOM 描述为空时连
+        高件都认不出，金样 78 板零触发）。解析器提供元件高度字段后再启用；
+        高件识别届时走封装字段（封装名可靠，描述列不可靠）。
+        """
+        return []
 
 
     def _check_debug_port_accessibility(self, bom_items, positions, netlist):
-        """调试接口可访问性：SWD/JTAG/UART 调试接口应便于连接"""
+        """调试接口可访问性：SWD/JTAG/UART 调试接口应便于连接
+
+        批4 2026-10-10 审计残留（识别通道修复）：旧版 ① 调试器件/排针识别都
+        只在 pn+description 搜裸子串——value 列写的 CH340 等型号、以及描述为
+        空的连接器行（要靠位号前缀认）全漏；② 有连接器时仍发一条「请确认
+        便于连接」的 INFO 模板。现在：
+        ① 网表通道优先——SWD/JTAG 类网络存在且其引脚落在连接器位号
+           （J/P/CN/HDR）上 → 可访问，静默；网络存在但不落任何连接器 → 报
+           WARNING（强证据）；网表无调试网络 → 走 ②；
+        ② BOM 通道：调试器件（CH340/CP210/FT232/ST-LINK 料号或行文本词）
+           + 连接器位号行 → 静默（无几何数据无法判断「便不便于连接」，
+           不发模板）；有调试器件而全板无连接器 → 报缺少调试排针。
+        """
         violations = []
+        debug_net_kw = ("swd", "jtag", "swclk", "swdio", "tck", "tms", "tdo", "tdi")
+        conn_ref_prefixes = {"J", "P", "CN", "HDR", "CON"}
+        debug_nets = [n for n in (netlist or {}) if _net_kw_hit(str(n), debug_net_kw)]
+        if debug_nets:
+            net_pins = {name: self._net_pins(netlist[name]) for name in debug_nets}
+            pin_refs = {str(p).split(".")[0].strip().upper()
+                        for pins in net_pins.values() for p in pins}
+            on_conn = any("".join(c for c in r if c.isalpha()).upper() in conn_ref_prefixes
+                          for r in pin_refs)
+            if not on_conn:
+                violations.append(RuleViolation(
+                    rule_name="调试接口检查",
+                    description=(f"调试网络 {', '.join(str(n) for n in debug_nets[:4])} 存在"
+                                 f"但其引脚未落在任何连接器位号上，调试口可能不可访问"),
+                    severity=RuleSeverity.WARNING,
+                    location=",".join(str(n) for n in debug_nets[:3]),
+                    suggestion="SWD 接口: 3.3V/GND/SWDIO/SWCLK 四针排针(2.54mm间距)，置于 PCB 边沿。加丝印标注引脚功能。UART 串口: TX/RX/GND 三针。",
+                    theory="调试接口在研发阶段使用频率极高——难连接的调试口严重降低开发效率。量产可保留测试点但不焊接排针以节省成本。",
+                ))
+            return violations
+        debug_pn_prefixes = ("CH340", "CP210", "FT232", "ST-LINK", "STLINK", "JLINK")
         debug_kw = ["SWD", "JTAG", "SWCLK", "SWDIO", "TCK", "TMS", "TDO", "TDI",
-                   "UART", "串口", "TTL", "CH340", "CP210", "FT232", "ST-LINK"]
+                    "UART", "串口", "TTL", "CH340", "CP210", "FT232", "ST-LINK"]
         has_debug = any(
-            any(kw.lower() in (f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}").lower()
-                for kw in debug_kw)
+            (getattr(i, "part_number", "") or "").strip().upper().startswith(debug_pn_prefixes)
+            or _kw_hit(_row_text(i), debug_kw)
             for i in bom_items
         )
         if not has_debug:
             return violations
-        # 检查是否有调试排针/连接器
-        conn_kw = ["排针", "HEADER", "排母", "插座", "connector", "端子"]
+        # 调试排针/连接器：位号前缀优先（真实 BOM 连接器行描述常为空）
         has_conn = any(
-            any(kw.lower() in (f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}").lower()
-                for kw in conn_kw)
+            _any_ref_prefix(i, conn_ref_prefixes)
+            or _kw_hit(_row_text(i), ("排针", "header", "排母", "插座",
+                                      "connector", "端子"))
             for i in bom_items
         )
-        violations.append(RuleViolation(
-            rule_name="调试接口检查",
-            description="检测到调试接口器件，请确认调试排针位置便于连接" if has_conn else "检测到调试接口器件但缺少调试排针",
-            severity=RuleSeverity.INFO if has_conn else RuleSeverity.WARNING,
-            suggestion="SWD 接口: 3.3V/GND/SWDIO/SWCLK 四针排针(2.54mm间距)，置于 PCB 边沿。加丝印标注引脚功能。UART 串口: TX/RX/GND 三针。",
-            theory="调试接口在研发阶段使用频率极高——难连接的调试口严重降低开发效率。量产可保留测试点但不焊接排针以节省成本。",
-        ))
+        if not has_conn:
+            violations.append(RuleViolation(
+                rule_name="调试接口检查",
+                description="检测到调试接口器件但缺少调试排针/连接器",
+                severity=RuleSeverity.WARNING,
+                suggestion="SWD 接口: 3.3V/GND/SWDIO/SWCLK 四针排针(2.54mm间距)，置于 PCB 边沿。加丝印标注引脚功能。UART 串口: TX/RX/GND 三针。",
+                theory="调试接口在研发阶段使用频率极高——难连接的调试口严重降低开发效率。量产可保留测试点但不焊接排针以节省成本。",
+            ))
         return violations
 
 
@@ -1379,6 +1597,10 @@ class BomRulesMixin:
         if not found_mcu:
             return violations
         # 根据封装估计引脚数
+        # 批4 2026-10-10 审计残留：查表只有 9 个键——SOT-23-6/QFN-32/LQFP48 这类
+        # 常见封装查不到 → pin_count=0 整条规则跳过。加「封装名里的数字即引脚数」
+        # 兜底解析：查表优先 → 正则兜底（SOT-23 家族特殊：23 是系列号不是脚数，
+        # SOT-23=3 脚、SOT-23-5/6 才是脚数）→ 都不中则跳过该行不凭空断言。
         pkg = (getattr(found_mcu, "package", "") or "").upper()
         pkg_pin_count = {"LQFP-48": 48, "LQFP-64": 64, "LQFP-100": 100, "LQFP-144": 144,
                          "TQFP-32": 32, "TQFP-48": 48, "QFN-32": 32, "QFN-48": 48, "BGA-256": 256}
@@ -1387,18 +1609,28 @@ class BomRulesMixin:
             if p in pkg:
                 pin_count = n
                 break
+        if pin_count == 0:
+            m = _PKG_SOT23_RE.search(pkg)
+            if m:
+                pin_count = int(m.group(1)) if m.group(1) else 3
+            else:
+                m = _PKG_PIN_FAMILY_RE.search(pkg)
+                if m:
+                    pin_count = int(m.group(1))
         # 统计总电容数量（2026-10-09 抽查修正：「描述含电容」在真实 BOM 上恒假
         # → 有去耦的板也报不足。改位号前缀 C 计数，并按位号数量而非行数——
         # 真实 BOM 一行常含多个位号）。
         cap_count = sum(_component_count(i) for i in bom_items if _is_cap_row(i))
-        # 规则：每 16 个引脚至少 1 个 0.1μF 电容
+        # 规则：每 20 个引脚至少 1 个 0.1μF 电容
+        # （批4 2026-10-10 审计残留：原注释写「每 16 引脚」、建议文案用
+        # pin_count//10，三处打架——统一为代码现行口径 20，注释与文案随代码）
         if pin_count > 0 and cap_count < pin_count / 20:
             ref = getattr(found_mcu, "reference", "").split(",")[0].strip()
             violations.append(RuleViolation(
                 rule_name="多电源引脚去耦检查",
                 description=f"主控 {ref}({pkg},{pin_count}引脚) 电容数量({cap_count})可能不足",
                 severity=RuleSeverity.WARNING, location=ref,
-                suggestion=f"每个 VDD/VCC 引脚就近放置 0.1μF(100nF)去耦电容。大封装 IC({pin_count}引脚)建议≥{pin_count//10}个。",
+                suggestion=f"每个 VDD/VCC 引脚就近放置 0.1μF(100nF)去耦电容。大封装 IC({pin_count}引脚)建议≥{(pin_count + 19) // 20}个。",
                 theory="现代 IC 内部多电源域(核心/IO/模拟/PLL),每个 VDD 引脚的 di/dt 不尽相同。独立的去耦电容针对各域供电→降低接地反弹。",
             ))
         return violations
@@ -1441,20 +1673,17 @@ class BomRulesMixin:
 
 
     def _check_polarity_orientation(self, bom_items, positions, netlist):
-        """极性元件方向：电解电容/二极管/LED 等极性元件应有统一方向标记"""
-        polar_kw = {"电解", "electrolytic", "钽电容", "tantalum", "二极管", "diode",
-                    "LED", "发光", "铝电解", "铝电容"}
-        polar_count = sum(1 for i in bom_items
-                         if any(kw.lower() in (f"{getattr(i, 'part_number', '')} {getattr(i, 'description', '')}").lower()
-                                for kw in polar_kw))
-        if polar_count >= 3:
-            return [RuleViolation(
-                rule_name="极性元件方向检查",
-                description=f"BOM 含 {polar_count} 个极性元件，建议丝印标注极性方向和统一朝向",
-                severity=RuleSeverity.INFO,
-                suggestion="电解电容/二极管/Tantalum 丝印标注正极(+)标记。同一类型极性元件朝向统一(便于人工目检和自动插件)。",
-                theory="极性反接→电解电容反向击穿(短路/爆炸)、二极管反向击穿、LED不亮。SMT 极性标记需在 IPC-7351 指定的丝印层。",
-            )]
+        """极性元件方向：电解电容/二极管/LED 等极性元件应有统一方向标记
+
+        批4 2026-10-10 审计残留（设计性休眠）：旧版是「行文本含极性词 ≥3 个
+        就报一条」的模板计数——描述通道在真实 BOM 上不可靠，且报文与任何
+        具体元件/朝向都无关联。真正的朝向冲突判定需要 positions 提供旋转
+        角度/焊盘极性标记几何，而当前位号坐标只有 (x, y)（见
+        checker._extract_xy），无法计算朝向。按审计结论选保守路线：跳过 +
+        本注释留档；极性件识别改走 料号/容值/位号 通道（D 前缀 + LED/二极管
+        料号、容值 ≥10µF 且 C 前缀等）的判据保留在注释里，待位置数据带
+        rotation 后启用。
+        """
         return []
 
 
@@ -1524,64 +1753,82 @@ class BomRulesMixin:
 
 
     def _check_cap_temperature_coefficient(self, bom_items, positions, netlist):
-        """电容温度系数：关键电路应选用 NP0/C0G 而非 X7R/X5R"""
-        cap_count = 0
+        """电容温度系数：可疑介质电容应提示温度系数与降额
+
+        批4 2026-10-10 审计残留：旧版是「≥5 个电容（靠描述认电容）就报一条」
+        模板——描述认电容在真实 BOM 上恒假，报不出真问题。改为真证据：
+        电容行用 _is_cap_row（位号前缀 C 优先），只对 介质可疑 的行提示——
+        ① value/pn/描述含 Y5V/Z5U/YS 低稳定介质；② 电解/钽电容（行文本含
+        电解/钽/tantalum/electrolytic）；③ 容值 ≥10µF 的大容值电容（C0G/NP0
+        容积比做不到 10µF，必然是 X7R/X5R/Y5V 类高 K 介质）。没有可疑介质
+        → 不报。
+        """
+        low_stab_kw = ("Y5V", "Z5U", "YS")
+        polar_kw = ("电解", "钽", "tantalum", "electrolytic")
+        suspects = []   # (ref, 原因)
         for item in bom_items:
-            desc = f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}".lower()
-            if any(kw in desc for kw in ["电容", "capacitor"]):
-                cap_count += 1
-        if cap_count >= 5:
-            return [RuleViolation(
-                rule_name="电容温度系数检查",
-                description=f"BOM 含 {cap_count} 个电容，振荡/滤波/定时电路应选用 NP0/C0G(温漂<30ppm/°C)",
-                severity=RuleSeverity.INFO,
-                suggestion="晶振负载电容、RC 定时电路、ADC 采样保持电容选用 NP0/C0G。X7R 温漂 ±15%+DC Bias 效应。",
-                theory="X7R 的 EIA 编码: -55~+125°C, ±15%。实际 DC Bias 下有效容量可降至标称 20~50%。NP0/C0G 几乎无 DC Bias 效应和温漂，但容积比低。",
-            )]
-        return []
+            if not _is_cap_row(item):
+                continue
+            text = _row_text(item)
+            ref = getattr(item, "reference", "?").split(",")[0].strip()
+            cap_f = _parse_capacitance(getattr(item, "value", "") or "")
+            if cap_f is None:
+                cap_f = _parse_capacitance(getattr(item, "part_number", "") or "")
+            if _kw_hit(text, low_stab_kw):
+                suspects.append((ref, "低稳定介质(Y5V/Z5U)"))
+            elif _kw_hit(text, polar_kw) or (cap_f is not None and cap_f >= 10e-6):
+                suspects.append((ref, "电解/钽或≥10µF大容值"))
+        if not suspects:
+            return []
+        shown = ", ".join(f"{r}({why})" for r, why in suspects[:5])
+        return [RuleViolation(
+            rule_name="电容温度系数检查",
+            description=(f"{len(suspects)} 个电容介质可疑（{shown}），温度系数与降额需注意："
+                         f"振荡/滤波/定时电路应选用 NP0/C0G(温漂<30ppm/°C)"),
+            severity=RuleSeverity.INFO,
+            location=",".join(r for r, _ in suspects[:5]),
+            suggestion="晶振负载电容、RC 定时电路、ADC 采样保持电容选用 NP0/C0G。X7R 温漂 ±15%+DC Bias 效应。",
+            theory="X7R 的 EIA 编码: -55~+125°C, ±15%。实际 DC Bias 下有效容量可降至标称 20~50%。NP0/C0G 几乎无 DC Bias 效应和温漂，但容积比低。",
+        )]
 
 
     def _check_opto_isolation_creepage(self, bom_items, positions, netlist):
-        """光耦隔离间距：隔离式光耦初次级间应有≥6mm爬电距离"""
-        opto_kw = ["光耦", "optocoupler", "PC817", "TLP", "6N137", "HCPL", "EL817"]
-        has_opto = any(any(kw.upper() in (getattr(i, "part_number", "") or "").upper()
-                           for kw in opto_kw) for i in bom_items)
-        if has_opto and positions:
-            return [RuleViolation(
-                rule_name="光耦隔离间距检查",
-                description="检测到光耦元件，隔离式光耦初次级之间需保证≥6mm爬电距离",
-                severity=RuleSeverity.WARNING,
-                suggestion="光耦下方 PCB 挖空(隔离槽)保证爬电距离≥6mm(基本绝缘)或≥8mm(加强绝缘)。初次级走线分区分层。",
-                theory="IEC 60950-1/62368-1 对隔离距离有严格要求。爬电距离沿绝缘表面的最短路径，受污染等级和 CTI 值影响。隔离槽(宽度≥1mm)是增大爬电距离的经济方法。",
-            )]
+        """光耦隔离间距：隔离式光耦初次级间应有≥6mm爬电距离
+
+        批4 2026-10-10 审计残留（设计性休眠）：旧版「料号含光耦家族名 +
+        positions 非空」即报一条模板——爬电距离是初次级焊盘沿绝缘表面的
+        最短路径，需要焊盘级几何；当前 positions 只有元件中心 (x, y)、
+        pcb_data 不含焊盘/隔离槽几何，无法计算也无法证伪。守卫返回空，
+        待焊盘级解析就绪后再启用。
+        """
         return []
 
 
     def _check_bga_fanout(self, bom_items, positions, netlist):
-        """BGA 扇出检查"""
-        for item in bom_items:
-            pkg = (getattr(item, "package", "") or "").upper()
-            if "BGA" in pkg:
-                ref = getattr(item, "reference", "").split(",")[0].strip()
-                return [RuleViolation(
-                    rule_name="BGA 扇出检查",
-                    description=f"BGA 封装 {ref} 需要扇出设计——确认过孔尺寸/间距满足工艺能力",
-                    severity=RuleSeverity.WARNING, location=ref,
-                    suggestion="BGA 扇出: 焊盘→微孔(Φ0.2mm)→内层走线。0.8mm pitch BGA 用 0.25/0.5mm 过孔。1.0mm pitch 可用 0.3/0.6mm。",
-                    theory="BGA 焊球位于元件底部无法直接走线→必须用过孔扇出到其他层。过孔必须塞孔或覆盖以防止焊接时吸锡。IPC-7095 规定了 BGA 设计标准。",
-                )]
+        """BGA 扇出检查
+
+        批4 2026-10-10 审计残留（设计性休眠：解析器无焊盘扇出几何）：旧版
+        「封装含 BGA 即报一条模板建议」——扇出是否合格取决于焊盘级几何
+        （pitch、过孔孔径/盘径、逃逸布线层），而 pcb_data 不提供焊盘与扇出
+        几何，BOM 行级信息（封装名）不足以做出可证伪的判定。守卫返回空，
+        待焊盘级解析就绪后再启用（参照丝印可读性规则的休眠写法）。
+        """
         return []
 
 
     def _check_mixed_voltage_isolation(self, bom_items, positions, netlist):
         """多电压域隔离: 不同电压域应有清晰隔离"""
+        # 批4 2026-10-10 审计残留：候选域表同时含 "3.3V" 和 "3V3"（"1.8V"/
+        # "1V8" 同）——同一域双计凑门槛。先 _norm_voltage_token 归一化
+        # （3V3→3.3V、1V8→1.8V、5V0→5V）再数独立域。
         voltages = set()
         for item in bom_items:
             val = (getattr(item, "value", "") or "").upper().replace(" ", "")
             pn = (getattr(item, "part_number", "") or "").upper()
-            for v_str in ["3.3V", "5V", "1.8V", "12V", "24V", "3V3", "1V8"]:
+            for v_str in ["3.3V", "5V", "1.8V", "12V", "24V", "3V3", "1V8",
+                          "5V0", "2V5", "1V2", "2.5V"]:
                 if v_str in val or v_str in pn:
-                    voltages.add(v_str)
+                    voltages.add(_norm_voltage_token(v_str))
         if len(voltages) >= 3:
             return [RuleViolation(
                 rule_name="多电压域隔离检查",

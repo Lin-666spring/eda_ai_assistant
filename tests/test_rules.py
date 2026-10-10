@@ -176,10 +176,14 @@ class TestDCDFeedbackNetwork:
 
 
 class TestNewRuleCount:
-    """验证规则总数 ≥50"""
-    def test_at_least_50_rules(self, checker):
+    """规则总数精确锁（批4 2026-10-10：>=50 太松，丢 21 条才红）。
+
+    增删规则时同步改这个数 —— mixin 里误写成模块级 def 会被 dir(self)
+    静默漏掉（历史事故），这颗 tripwire 是唯一防线。
+    """
+    def test_exact_rule_count(self, checker):
         rules = [name for name in dir(checker) if name.startswith('_check_')]
-        assert len(rules) >= 50, f"规则数={len(rules)}，应≥50"
+        assert len(rules) == 71, f"规则数={len(rules)}，应==71（增删规则请同步改断言）"
 
 
 class TestGetReport:

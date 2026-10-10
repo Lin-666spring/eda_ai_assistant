@@ -282,6 +282,22 @@ class PCBConstants:
     VIA_DENSITY_MAX_PER_NET: int = 5
     VIA_DENSITY_NET_KEYWORDS: tuple = ("CLK", "PWM", "SW", "SENSE", "FB", "DRV", "GATE", "DRIVE")
 
+    # ── 布局类距离阈值（批5 2026-10-10 自 layout_rules 内联魔数收编，值不变）──
+    LAYOUT_BOARD_EDGE_CLEARANCE_MM: float = 3.0     # 元件距板边最小间隙
+    LAYOUT_DECOUPLE_MAX_DIST_MM: float = 15.0       # 去耦电容距 IC 最大距离
+    LAYOUT_CRYSTAL_MCU_MAX_DIST_MM: float = 25.0    # 晶振距 MCU 最大距离
+    LAYOUT_MOUNT_HOLE_KEEPOUT_MM: float = 3.0       # 安装孔禁布半径
+    LAYOUT_TEMP_HEAT_MIN_DIST_MM: float = 10.0      # 温敏元件距热源最小距离
+    LAYOUT_EMI_IF_MAX_DIST_MM: float = 30.0         # EMI 滤波器件距接口最大距离
+    LAYOUT_CONN_BOARD_EDGE_MM: float = 10.0         # 连接器距板边最大距离
+
+    # 特征阻抗判定容差（相对目标值）。批4 2026-10-10 审计残留：原先在
+    #   geometry_rules._check_impedance_matching 两处硬编码 0.25，收编常量。
+    #   出处：常见工程实践 ±10% 制造公差（USB2.0 差分 90Ω±15%、LVDS 100Ω±10%
+    #   均为整板阻抗公差），叠加线宽/介质厚度批次波动与估算叠层误差的
+    #   设计余量，工程上放宽到 ±25% 再判越界。
+    IMPEDANCE_TOLERANCE: float = 0.25
+
     # 3W 串扰：间距系数（经验准则）+ 平行重叠长度门限。
     #   只用最短距离判定时 74/74 个设计全中（交叉/过孔处必然接近）；
     #   要求平行重叠 >5mm 后降到 242 对 / 34 个设计。
