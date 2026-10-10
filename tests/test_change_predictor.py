@@ -10,6 +10,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# src.ml 顶层 import torch：纯运行时依赖环境（requirements.txt 不含 torch）整文件收集即崩。
+# 2026-10-10 依赖批：importorskip 让 ML 测试在未装 requirements-dev 的环境下跳过。
+pytest.importorskip("torch", reason="ML 测试需要 torch（pip install -r requirements-dev.txt）")
 from src.ml.change_predictor import (
     ChangeRiskPredictor,
     ChangeFeatureExtractor,

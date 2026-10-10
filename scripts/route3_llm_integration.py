@@ -7,7 +7,7 @@
   3. 多智能体协同审查
   4. 验证报告 Markdown 输出
 
-用法: python tests/route3_llm_integration.py
+用法: python scripts/route3_llm_integration.py
 """
 
 import json

@@ -256,7 +256,10 @@ def generate_defects(bom_items: list) -> list[DefectSpec]:
         defects.append(DefectSpec(
             defect_id="bad_resistor_values",
             name="非标准电阻值",
-            description="将电阻值改为非 E24 系列值 (如 13k, 27k 等模拟错误)",
+            # 2026-10-10 依赖批修正：原清单 13k/27k/91Ω/110Ω 其实都是 E24 值
+            #（memories/audit-findings.md #51），且规则在无容差信息时按 E24∪E96
+            # 放行 —— 注入值必须两个系列都不在才能真正触发「参数范围检查」。
+            description="将电阻值改为非 E24/E96 系列值 (如 3.5k, 4.2k 等模拟错误)",
             expected_rules=["参数范围检查"],
             severity="info",
         ))
@@ -368,8 +371,9 @@ def apply_defect(bom_items: list, defect: DefectSpec) -> list:
                    if not (item.reference.startswith("C") and "100nF" in item.value)]
 
     elif defect.defect_id == "bad_resistor_values":
-        # Change resistor values to non-E24 values
-        bad_values = ["13kΩ", "27kΩ", "42kΩ", "55kΩ", "91Ω", "110Ω"]
+        # Change resistor values to non-E24/non-E96 values
+        # （旧清单 13k/27k/91Ω/110Ω 全是 E24 值，注入了也不触发 —— 见 defect 定义处批注）
+        bad_values = ["42kΩ", "55kΩ", "3.5kΩ", "4.2kΩ", "350Ω", "420Ω"]
         for i, item in enumerate(mutated):
             if item.reference.startswith("R"):
                 new_val = bad_values[i % len(bad_values)]

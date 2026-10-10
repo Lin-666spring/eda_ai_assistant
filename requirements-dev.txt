@@ -1,0 +1,15 @@
+# EDA AI 智能助手 — 开发/实验环境补充依赖
+# 运行时主清单见 requirements.txt；本清单只装「测试收集与实验脚本」需要的重依赖。
+# 安装：pip install -r requirements.txt -r requirements-dev.txt
+#
+# 2026-10-10 依赖批：torch/numpy 此前缺失 —— src/ml/*.py 顶层 import torch，
+# 新环境 pytest 收集即崩；运行时有 ImportError 兜底走规则回退（产品 exe 不带
+# torch，ML 分类永远走规则路径，是有意的设计决定，见 PROJECT_BLUEPRINT），
+# 但跑全量测试/复现实验必须装。
+
+torch>=2.0.0             # src/ml 意图/元件分类模型推理（tests/test_confidence_calibration 等直接依赖）
+numpy>=1.24.0            # torch/pandas 计算后端
+
+# UI 冒烟（可选，仅跑 tests/ui_smoke.py 85 例时需要）
+# playwright>=1.40.0
+# 安装后另需：python -m playwright install chromium

@@ -3,13 +3,13 @@ EI 论文图表生成模块 — 从实验结果 JSON 生成论文级图表
 
 用法:
   # 从实验结果生成所有图表
-  python tests/paper_charts.py experiment_results/run_2026-07-09_143052/
+  python scripts/paper_charts.py experiment_results/run_2026-07-09_143052/
 
   # 指定输出目录
-  python tests/paper_charts.py results.json --output charts/
+  python scripts/paper_charts.py results.json --output charts/
 
   # 交互式显示
-  python tests/paper_charts.py results.json --show
+  python scripts/paper_charts.py results.json --show
 
 图表列表:
   1. hallucination_bar.png      — 幻觉消除率柱状图

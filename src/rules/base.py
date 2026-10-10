@@ -6,10 +6,13 @@ ADVISE_RULES、_DCDC_PN_PREFIXES、_kw_hit 等口径在这里单点维护，
 
 import logging
 import math
+import os
 import re
+import sys
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Optional
 
 from ..constants import PCB
@@ -129,8 +132,25 @@ def _parallel_overlap_len(a, b, c, d, tol_rad: float = 0.2618) -> float:
 
 _component_predictor = None
 _component_model_attempted = False
-_COMPONENT_MODEL_PATH = "data/component_model.pt"
-_COMPONENT_VOCAB_PATH = "data/vocab.json"
+
+
+def _model_dir() -> str:
+    """模型目录：源码运行 = 项目根/data；PyInstaller 打包 = _MEIPASS/data。
+
+    2026-10-10 依赖批：原来是相对 CWD 的 "data/..."，工作目录一变（打包版
+    从任意位置启动）就找不到模型、静默走规则回退 —— exe 与实验口径分裂。
+    打包侧 spec datas 已补 ('data', 'data')；torch 不进 exe（体积），ML 分类
+    在打包版按设计走规则回退，此路径主要为源码运行与实验对齐。
+    """
+    root = getattr(sys, "_MEIPASS", None)
+    if root:
+        return os.path.join(root, "data")
+    # 项目根 = 本文件上两级（src/rules/base.py → 项目根）
+    return str(Path(__file__).resolve().parents[2] / "data")
+
+
+_COMPONENT_MODEL_PATH = os.path.join(_model_dir(), "component_model.pt")
+_COMPONENT_VOCAB_PATH = os.path.join(_model_dir(), "vocab.json")
 _ML_CONFIDENCE_THRESHOLD = 0.45  # 低于此阈值回退规则
 
 
@@ -141,7 +161,6 @@ def _init_component_model() -> bool:
         return _component_predictor is not None
     _component_model_attempted = True
 
-    import os
     if not os.path.exists(_COMPONENT_MODEL_PATH):
         logger.info("元件分类模型文件不存在，使用规则分类")
         return False

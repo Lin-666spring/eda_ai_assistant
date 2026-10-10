@@ -15,6 +15,10 @@ a = Analysis(
         ('web', 'web'),
         ('src', 'src'),
         ('rag_data', 'rag_data'),
+        # 2026-10-10 依赖批：模型词表随包（base.py 的 _model_dir 走 _MEIPASS/data）。
+        # torch 本体不进 exe（体积），ML 分类在打包版按设计走规则回退 —— 见蓝图。
+        ('data/component_model.pt', 'data'),
+        ('data/vocab.json', 'data'),
         # 一键演示的内置样例 —— main.py / src/api/endpoints.py 都按
         # 「根目录/tests/」找这两个文件，不打包则打包版演示必然失败
         ('tests/sample_bom_bad.csv', 'tests'),
@@ -33,7 +37,8 @@ a = Analysis(
         'requests',
         'dotenv',
         'chromadb',
-        'sentence_transformers',
+        # sentence_transformers 已删（2026-10-10 依赖批）：全仓库零 import、
+        # requirements 亦无此包，纯 spec 漂移。
         # 托盘/全局热键（system_bridge.py 内的函数级导入，显式声明防漏）
         'pynput',
         'pystray',

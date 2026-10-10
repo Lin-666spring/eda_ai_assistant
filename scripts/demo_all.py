@@ -3,6 +3,7 @@
 """
 import sys
 import io
+from pathlib import Path
 
 # Fix Windows GBK encoding for emoji output
 try:
@@ -10,9 +11,13 @@ try:
 except Exception:
     pass
 
-sys.path.insert(0, r"C:\Users\lin\Desktop\eda_ai_assistant")
+# 2026-10-10 依赖批：绝对路径 C:\Users\lin\... 换机即崩 —— 改从本文件反推项目根；
+# 同日仓库治理批：cli_prototype 随本脚本自 tests/ 挪到 scripts/（同目录直接导入）
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(_PROJECT_ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from tests.cli_prototype import (
+from cli_prototype import (
     CLIPrototype, CommandDispatcher, CommandContext,
     MergeCommand, ValidateCommand, DuplicateCheckCommand,
     RuleCheckCommand, HTMLBOMCommand,
@@ -25,8 +30,8 @@ def separator(title: str):
 
 # 初始化
 cli = CLIPrototype()
-bom_path = r"C:\Users\lin\Desktop\eda_ai_assistant\tests\sample_bom.csv"
-pos_path = r"C:\Users\lin\Desktop\eda_ai_assistant\tests\sample_positions.csv"
+bom_path = str(_PROJECT_ROOT / "tests" / "sample_bom.csv")
+pos_path = str(_PROJECT_ROOT / "tests" / "sample_positions.csv")
 
 # 1. 加载 BOM
 separator("1⃣  加载 BOM 文件")

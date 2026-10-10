@@ -332,6 +332,17 @@ def _ev_diff_len(checker, pcb, positions, bom_items, v) -> dict:
     members = [str(e.get("net")) for e in meta if e.get("net")] or nets
     group_len = sorted(
         ((n, round(lengths.get(n, 0.0), 2)) for n in members), key=lambda kv: kv[1])
+    # 批5 2026-10-10 证据口径对齐：tolerance 不再引用已废弃的
+    # PCB.DIFF_PAIR_MAX_SKEW_MM 常量 —— 规则已改 _DIFF_SKEW_BANDS 按接口
+    # 分档（USB2.0 2.0mm / 高速串行·ETH 0.5mm / 表外 2.0mm+10% 相对），
+    # 这里按同样的文本匹配取该组实际适用的档位。
+    text = f"{v.location} {' '.join(members)}".lower()
+    bands = getattr(checker, "_DIFF_SKEW_BANDS", ())
+    tol, band = next(
+        ((t, name) for kws, t, name in bands
+         if any(kw.lower() in text for kw in kws)),
+        (getattr(checker, "_DIFF_SKEW_DEFAULT_MM", 2.0), "表外差分组"),
+    )
     return {
         "group": v.location,
         "nets_in_description": nets,
@@ -341,7 +352,8 @@ def _ev_diff_len(checker, pcb, positions, bom_items, v) -> dict:
         "net_lengths": {n: round(lengths.get(n, 0.0), 2) for n in nets},
         "group_from_engineering_netrules": bool(meta),
         "meta_rows": meta[:4],
-        "tolerance_mm": PCB.DIFF_PAIR_MAX_SKEW_MM,
+        "tolerance_mm": tol,
+        "band": band,
     }
 
 
@@ -356,7 +368,9 @@ def _ev_diff_gap(checker, pcb, positions, bom_items, v) -> dict:
         "gap_mm": round(gap, 3) if gap is not None else None,
         "widths": widths[:6],
         "avg_w": round(sum(widths) / len(widths), 3) if widths else None,
-        "limit_W": PCB.DIFF_PAIR_MAX_GAP_FACTOR,
+        # 批5 2026-10-10 对齐：规则口径是 max(3W, 4W)=4W
+        # （geometry_rules._check_diff_pair_spacing），不是裸常量 3.0
+        "limit_W": max(PCB.DIFF_PAIR_MAX_GAP_FACTOR, 4.0),
         "from_engineering_netrules": bool(meta),
         "meta_rows": meta[:4],
     }
@@ -443,14 +457,24 @@ def _ev_impedance(checker, pcb, positions, bom_items, v) -> dict:
     net = v.location or ""
     traces = _net_traces(pcb, net)
     widths = [t.width_mm for t in traces if t.width_mm > 0]
-    targets = {"USB": 90, "HDMI": 100, "LVDS": 100, "ETH": 100, "RF": 50, "CLK": 50}
-    z_target = next((z for k, z in targets.items() if k in net.upper()), None)
+    # 批5 2026-10-10 证据口径对齐规则（geometry_rules._check_impedance_control）：
+    # ① 目标表是差分值且不含 CLK（时钟网不是差分对，10-09 判读修正已删），
+    #    RF/ANT 走单端 50Ω（single_kw）；② 判据用 differential_impedance 而非
+    #    裸 microstrip —— 证据里的 z0 只是「该线宽在标称 0.2mm 介质下的单端
+    #    参考值」，字段名如实标注，不再冒充判据值。
+    diff_targets = {"USB": 90.0, "HDMI": 100.0, "LVDS": 100.0, "ETH": 100.0,
+                    "MIPI": 100.0, "PCIE": 100.0, "SATA": 100.0}
+    upper = net.upper()
+    z_target = next((z for k, z in diff_targets.items() if k in upper), None)
+    if z_target is None and any(k in upper for k in ("RF", "ANT")):
+        z_target = 50.0  # 单端天线/射频
     w = widths[0] if widths else 0.0
     return {
         "net": net,
         "widths": widths[:6],
-        "z0_at_0.2mm_dielectric": round(microstrip_impedance(w, 0.2, er=4.5), 1) if w else None,
+        "z0_ref_nominal_0.2mm": round(microstrip_impedance(w, 0.2, er=4.5), 1) if w else None,
         "z_target": z_target,
+        "tolerance": getattr(PCB, "IMPEDANCE_TOLERANCE", 0.25),
         "layers": sorted({t.layer for t in traces}),
         "n_traces": len(traces),
     }
