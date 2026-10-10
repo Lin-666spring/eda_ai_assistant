@@ -1,6 +1,7 @@
 """布局位置类规则 —— 从 checker.py 机械迁出（P1-6 阶段B，纯移动）。"""
 
 import logging
+import math
 import re
 from ..constants import PCB
 
@@ -39,6 +40,101 @@ from .base import (
 )
 
 logger = logging.getLogger(__name__)
+
+# ── 元件体尺寸（几何批 2026-10-10）──
+# 封装体外形（mm，长×宽，不含引脚）。两路解析：
+# ① 立创封装名内嵌尺寸（SOT-23-3_L2.9-W1.3-P1.90-LS2.4-BR → 2.9×1.3）；
+# ② 片式封装码查表（R0402/C0603_5/LED0805 → 表值，IPC-7351 体尺寸口径）。
+# 两路都落空的（连接器/异形/无封装名 404 条）诚实跳过——体尺寸猜错比
+# 不测更糟。Mark/定位/安装孔没有「体」，整行不参与配对。
+_EMBEDDED_DIMS_RE = re.compile(r"_L(\d+(?:\.\d+)?)-W(\d+(?:\.\d+)?)")
+_CHIP_CODE_RE = re.compile(
+    r"(?:^|[^0-9])(0201|0402|0603|0805|1206|1210|1806|1812|2010|2512)(?:[^0-9]|$)")
+_CHIP_BODY_MM = {
+    "0201": (0.6, 0.3), "0402": (1.0, 0.5), "0603": (1.6, 0.8),
+    "0805": (2.0, 1.25), "1206": (3.2, 1.6), "1210": (3.2, 2.5),
+    "1806": (4.5, 1.6), "1812": (4.5, 3.2), "2010": (5.0, 2.5),
+    "2512": (6.4, 3.2),
+}
+_NO_BODY_RE = re.compile(
+    r"test[-_ ]?point|fiducial|\bmark\b|基准|定位|\bhole\b|\bm3\b|\bnpth\b|mounting")
+# JLC 机贴元件体最小间隙（edge-to-edge）；0.2~0.5mm 可贴但返修困难，
+# 建议 ≥0.5mm(0603)/≥0.8mm(0805) 写在 suggestion 里
+_COMPONENT_GAP_MIN_MM = 0.2
+# 焊盘佐证门：体「相交/紧贴」但焊盘中心距仍 ≥此值的，判为封装含引脚
+# 尺寸的口径噪声（金样判读：真事件焊盘距 0~0.4mm，口径噪声 2.3mm+）
+_PAD_CORROB_MAX_MM = 1.5
+
+
+def _body_dims(pos: dict):
+    """元件体尺寸 (长, 宽) mm；无法定体尺寸返回 None。"""
+    blob = " ".join(str(pos.get(k) or "") for k in
+                    ("footprint_name", "footprint", "value", "device", "part_number"))
+    if _NO_BODY_RE.search(blob.lower()):
+        return None
+    m = _EMBEDDED_DIMS_RE.search(blob.upper())
+    if m:
+        dims = (float(m.group(1)), float(m.group(2)))
+    else:
+        m = _CHIP_CODE_RE.search(blob.upper())
+        if m:
+            dims = _CHIP_BODY_MM[m.group(1)]
+        else:
+            return None
+    if dims[0] <= 0 or dims[1] <= 0:
+        return None
+    return max(dims), min(dims)
+
+
+def _rect_corners_mm(x: float, y: float, long_: float, short: float,
+                     rot_deg: float) -> list[tuple[float, float]]:
+    """体矩形四角（长边沿 rotation 方向）。"""
+    rad = math.radians(rot_deg or 0.0)
+    c, s = math.cos(rad), math.sin(rad)
+    hl, hw = long_ / 2.0, short / 2.0
+    return [
+        (x + hl * c - hw * s, y + hl * s + hw * c),
+        (x + hl * c + hw * s, y + hl * s - hw * c),
+        (x - hl * c + hw * s, y - hl * s - hw * c),
+        (x - hl * c - hw * s, y - hl * s + hw * c),
+    ]
+
+
+def _rect_rect_gap(c1, c2) -> float:
+    """两旋转矩形（角点列表）的间隙。
+
+    SAT（矩形边法线 4 轴）判相交：相交返回 −最小重叠深度（穿透近似）；
+    分离时取 4×4 边对真距离——45°/135° 旋转件的准确值，外接框口径会把
+    纯侧向 0.6mm 间隙冤判成 −0.7mm 相交（金样可调电源/地正星两例）。
+    """
+    axes = []
+    for corners in (c1, c2):
+        for i in range(2):
+            (ax, ay), (bx, by) = corners[i], corners[i + 1]
+            ex, ey = bx - ax, by - ay
+            n = math.hypot(ex, ey) or 1.0
+            axes.append((-ey / n, ex / n))
+    overlaps = []
+    for ux, uy in axes:
+        p1 = [x * ux + y * uy for x, y in c1]
+        p2 = [x * ux + y * uy for x, y in c2]
+        o = min(max(p1), max(p2)) - max(min(p1), min(p2))
+        if o <= 0.0:
+            return _rect_edge_dist(c1, c2)   # 分离：边对真距离（精确）
+        overlaps.append(o)
+    return -min(overlaps)
+
+
+def _rect_edge_dist(c1, c2) -> float:
+    best = float("inf")
+    for i in range(4):
+        a, b = c1[i], c1[(i + 1) % 4]
+        for j in range(4):
+            e, f = c2[j], c2[(j + 1) % 4]
+            d = _seg_seg_dist(a, b, e, f)
+            if d < best:
+                best = d
+    return best
 
 class LayoutRulesMixin:
     """方法集由 facade DesignRuleChecker 组合；此处无状态、无 __init__。"""
@@ -362,29 +458,114 @@ class LayoutRulesMixin:
 
 
     def _check_component_spacing(self, bom_items, positions, netlist):
-        """元件间距：按导入顺序抽样比较相邻元件对（非空间最近邻全量检索）"""
-        if not positions: return []
-        min_spacing = 1.0
-        close_pairs = 0
-        pos_items = list(positions.items())
-        for i in range(len(pos_items)):
-            for j in range(i + 1, min(i + 5, len(pos_items))):
-                p1 = pos_items[i][1]
-                p2 = pos_items[j][1]
-                x1, y1 = _xy(p1)
-                x2, y2 = _xy(p2)
-                if ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5 < min_spacing:
-                    close_pairs += 1
-        if close_pairs > 3:
-            return [RuleViolation(
-                rule_name="元件间距检查",
-                description=(f"抽样比较发现约 {close_pairs} 对元件间距 <{min_spacing}mm"
-                             f"（按导入顺序取相邻对，非空间最近邻），可能影响 SMT 贴片和返修"),
-                severity=RuleSeverity.INFO,
-                suggestion="SMT 元件间≥0.5mm(0603), ≥0.8mm(0805)。高元件间≥1.5mm。连接器周围预留插拔空间。",
-                theory="元件间距过小→SMT 钢网印刷桥连、回流焊阴影效应、烙铁无法伸入返修。IPC-7351 为每种封装定义了标准焊盘和间距。",
-            )]
-        return []
+        """元件间距：spatial hash 全对检索 + 封装体尺寸真间隙。
+
+        2026-10-10 几何批重写。旧实现只比 positions 字典里索引相邻的 4 项
+        （真实 <1mm 的对只抓到一半），中心距 1.0mm 一刀切（不分封装体大小），
+        也不分正反面（正反面元件同 XY 互不算间距）。现在：
+        ① 网格 3×3 邻域全对检索（5mm 网格覆盖所有相关对）；
+        ② 体尺寸两路解析（封装名内嵌 _L..-W.. / 片式封装码表），旋转取
+          外接框，间隙 = 中心距 − 两体外接框半宽/半高（分离轴取大者）；
+        ② 体尺寸两路解析（封装名内嵌 _L..-W.. / 片式封装码表），间隙按
+          **旋转矩形精确距离**（SAT 判相交 + 边对真距离；外接框口径会把
+          45° 旋转件的侧向间隙冤判成相交）；
+        ③ 正反面（side 已知且不同）不配对；无体的（Mark/定位孔/测试点/
+          安装孔）与体尺寸落空的（连接器/异形封装）不参与；
+        ④ 「站立件」不配对——通孔大件（体长 ≥8mm 且有通孔焊盘，如插针
+          OLED 模块、DIP 载板）是架在板上的，封装矩形罩住的板面仍可放
+          件，按矩形算会冤枉其正下方的 0603（金样判读：智能秤 OLED、
+          星光4N A4988 载板两例）；
+        ⑤ 焊盘佐证门——封装名内嵌尺寸常含引脚（TDSON-8_L5.9 实体
+          ~5mm、CAP-TH_L4.2 含引脚），体「相交」而焊盘中心距仍有
+          ≥1.5mm 的对是尺寸口径噪声，跳过（金样判读 3 例）；焊盘
+          贴邻（<1.5mm）或无焊盘数据的（纯 positions 调用）按体判据报。
+        间隙 <0.2mm 聚合一条：有被焊盘佐证的体相交（<0）报 WARNING，
+        否则 INFO。
+        """
+        if not positions:
+            return []
+        pcb = getattr(self, "_pcb_data", None)
+        thru_refs = {p.get("ref") for p in (getattr(pcb, "pads", None) or [])
+                     if p.get("thru")}
+        pad_pts: dict[str, list[tuple[float, float]]] = {}
+        for p in (getattr(pcb, "pads", None) or []):
+            pad_pts.setdefault(p.get("ref"), []).append((p["x"], p["y"]))
+        bodies = {}          # ref → (x, y, L, W, side, standing)
+        for ref, pos in positions.items():
+            if not isinstance(pos, dict):
+                continue
+            dims = _body_dims(pos)
+            if dims is None:
+                continue
+            x, y = _xy(pos)
+            bodies[ref] = (float(x), float(y), dims[0], dims[1],
+                           str(pos.get("side") or ""),
+                           dims[0] >= 8.0 and ref in thru_refs)
+        if len(bodies) < 2:
+            return []
+        cell = 5.0
+        grid: dict[tuple[int, int], list[str]] = {}
+        for ref, (x, y, _, _, _, _) in bodies.items():
+            grid.setdefault((int(math.floor(x / cell)),
+                             int(math.floor(y / cell))), []).append(ref)
+        pairs = []           # (gap, ref1, ref2)
+        for ref, (x1, y1, l1, w1, s1, st1) in bodies.items():
+            if st1:
+                continue
+            cx, cy = int(math.floor(x1 / cell)), int(math.floor(y1 / cell))
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    for ref2 in grid.get((cx + dx, cy + dy), ()):
+                        if ref2 <= ref:
+                            continue
+                        x2, y2, l2, w2, s2, st2 = bodies[ref2]
+                        if st2:
+                            continue
+                        if s1 and s2 and s1 != s2:
+                            continue          # 正反面不互算间距
+                        # 外接圆预筛（半径 0.5·对角线，比任何间隙判据都宽松）
+                        if math.hypot(x1 - x2, y1 - y2) > (
+                                0.5 * math.hypot(l1, w1)
+                                + 0.5 * math.hypot(l2, w2)
+                                + _COMPONENT_GAP_MIN_MM):
+                            continue
+                        gap = _rect_rect_gap(
+                            _rect_corners_mm(x1, y1, l1, w1, float(positions[ref].get("rotation") or 0.0)),
+                            _rect_corners_mm(x2, y2, l2, w2, float(positions[ref2].get("rotation") or 0.0)))
+                        if gap >= _COMPONENT_GAP_MIN_MM:
+                            continue
+                        # 焊盘佐证门（见 docstring ⑤）
+                        pa, pb = pad_pts.get(ref) or [], pad_pts.get(ref2) or []
+                        pad_gap = min(
+                            (math.hypot(ax - bx, ay - by) for ax, ay in pa
+                             for bx, by in pb), default=None)
+                        if pad_gap is not None and pad_gap >= _PAD_CORROB_MAX_MM:
+                            continue
+                        pairs.append((gap, ref, ref2, pad_gap))
+        if not pairs:
+            return []
+        pairs.sort()
+        overlap = any(g < 0.0 and (pg is None or pg < _PAD_CORROB_MAX_MM)
+                      for g, _, _, pg in pairs)
+        worst = ", ".join(f"{a}-{b}({g:.2f}mm)" for g, a, b, _ in pairs[:5])
+        return [RuleViolation(
+            rule_name="元件间距检查",
+            description=(
+                f"{len(pairs)} 对元件体间隙 <{_COMPONENT_GAP_MIN_MM}mm"
+                f"（{'含相交' if overlap else '最紧 ' + pairs[0][1] + '-' + pairs[0][2] + f' {pairs[0][0]:.2f}mm'}）: {worst}"
+            ),
+            severity=(RuleSeverity.WARNING if overlap else RuleSeverity.INFO),
+            location=", ".join(b for _, a, b, _ in pairs[:3]),
+            suggestion=(
+                "间隙按封装体外接框估算（旋转角取外接框，未含引脚悬出），"
+                "连接器/异形封装未参与。SMT 元件体间 ≥0.2mm 可贴片，"
+                "≥0.5mm(0603)/≥0.8mm(0805) 才好返修；高元件间 ≥1.5mm。"
+            ),
+            theory=(
+                "元件间距过小→SMT 钢网印刷桥连、回流焊阴影效应、烙铁无法伸入返修。"
+                "IPC-7351 为每种封装定义了标准焊盘和间距。"
+            ),
+        )]
 
 
     def _check_fiducial_mark(self, bom_items, positions, netlist):

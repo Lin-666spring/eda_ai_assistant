@@ -596,6 +596,27 @@ class Epro2Parser(PCBParseStrategy):
                 ),
                 "source": source,
             }
+            if source == "outline":
+                # 真实轮廓环（mm）：板边间距走「线段-多边形真距离」用。
+                # 板框在文件里是多条独立描边（每条 POLY 常只有一段线），
+                # 先把每条路径抽成相邻点对，再 chain_segments 拼回环；
+                # 拼不拢的开放链也是边界的一部分，一并保留（规则只算
+                # 到边界的距离，不需要内点判定）。ARC/CARC 离散成 10°
+                # 弦段；R 矩形的圆角参数仍按直角近似（圆角只往矩形内
+                # 收，直角包络给出的距离偏小 = 保守）。
+                from src.pcb.geometry import chain_segments
+                stroke_segs: list[tuple[float, float, float, float]] = []
+                for path_pts in raw["polygons"]:
+                    pts = _copper_ring_points(path_pts, arc_segments=10.0)
+                    stroke_segs.extend(
+                        (a[0], a[1], b[0], b[1]) for a, b in zip(pts, pts[1:]))
+                rings = [
+                    [(round(x * scale, 4), round(y * scale, 4)) for x, y in line]
+                    for line in chain_segments(stroke_segs, tol=0.05)
+                ]
+                rings = [r for r in rings if len(r) >= 3]
+                if rings:
+                    pcb.board_outline["outline_rings_mm"] = rings
 
         # ---- BOM（DEVICE 库属性 + 位号聚合）----
         pcb.bom_items = _build_bom_items(raw)
@@ -734,12 +755,14 @@ def _ring_count(path) -> int:
     return 1
 
 
-def _copper_ring_points(sub: list) -> list[tuple[float, float]]:
-    """覆铜子路径 → 环顶点（存储单位，mm 缩放由调用方处理）。
+def _copper_ring_points(sub: list, arc_segments: float = 0.0) -> list[tuple[float, float]]:
+    """覆铜/板框子路径 → 环顶点（存储单位，mm 缩放由调用方处理）。
 
     FILL/POLY 的子路径是 R/CIRCLE 独立模式或点列模式。CIRCLE 取 24 边形
     近似——孤岛判定只需「点在多边形内」，板级尺度下弦差远小于 0.1mm；
     不能直接用 _polygon_points，它对 CIRCLE 只回包围盒对角点。
+    arc_segments > 0 时 ARC/CARC 离散成弦段（板框环走真距离用），
+    覆铜环保持默认弦线行为，判定口径不变。
     """
     if not sub:
         return []
@@ -754,7 +777,7 @@ def _copper_ring_points(sub: list) -> list[tuple[float, float]]:
                  cy + r * math.sin(2 * math.pi * k / 24))
                 for k in range(24)
             ]
-    return _polygon_points(sub)
+    return _polygon_points(sub, arc_segments=arc_segments)
 
 
 def _split_rings(path) -> tuple[list, list]:
@@ -813,7 +836,63 @@ def _rect_corners(x: float, y: float, w: float, h: float, rot: float) -> list[tu
     ]
 
 
-def _polygon_points(path_pts: list) -> list[tuple[float, float]]:
+def _arc_center_angle(s: tuple[float, float], e: tuple[float, float],
+                      angle_deg: float):
+    """ARC `start angle end` → (圆心, 半径, 起角, 终角)。
+
+    规范：angle 为包含角，逆时针为正。圆心在弦中垂线上，
+    距弦中点 c/(2·tan(θ/2))（θ<0 时为负 → 落在行进方向右侧），半径
+    c/(2·sin(|θ|/2))。退化（弦长≈0、|θ|≤0.5° 共线、|θ|≥355.5° 近整圆）
+    返回 None，调用方回退成弦线端点。
+    """
+    cx = (s[0] + e[0]) / 2.0
+    cy = (s[1] + e[1]) / 2.0
+    chx, chy = e[0] - s[0], e[1] - s[1]
+    chord = math.hypot(chx, chy)
+    if chord < 1e-9 or abs(angle_deg) <= 0.5 or abs(angle_deg) >= 355.5:
+        return None
+    half = math.radians(angle_deg / 2.0)
+    t = math.tan(half)
+    if abs(t) < 1e-12:
+        # |θ|→180°：半圆，圆心即弦中点
+        r = chord / 2.0
+    else:
+        d = chord / (2.0 * t)
+        ux, uy = chx / chord, chy / chord
+        cx += -uy * d
+        cy += ux * d
+        r = chord / (2.0 * abs(math.sin(half)))
+    a0 = math.atan2(s[1] - cy, s[0] - cx)
+    a1 = math.atan2(e[1] - cy, e[0] - cx)
+    return cx, cy, r, a0, a1
+
+
+def _arc_interior_points(s, e, angle_deg: float, step_deg: float = 10.0):
+    """圆弧内部采样点（不含首尾端点）。退化时返回 []。"""
+    sol = _arc_center_angle(
+        (float(s[0]), float(s[1])), (float(e[0]), float(e[1])),
+        float(angle_deg))
+    if sol is None:
+        return []
+    cx, cy, r, a0, a1 = sol
+    sweep = angle_deg
+    # 终角按旋向对齐到起角同侧（atan2 断裂处理）
+    two_pi = 2.0 * math.pi
+    if sweep > 0:
+        while a1 < a0:
+            a1 += two_pi
+    else:
+        while a1 > a0:
+            a1 -= two_pi
+    n = max(1, int(math.ceil(abs(math.degrees(a1 - a0)) / step_deg)))
+    return [
+        (cx + r * math.cos(a0 + (a1 - a0) * k / n),
+         cy + r * math.sin(a0 + (a1 - a0) * k / n))
+        for k in range(1, n)
+    ]
+
+
+def _polygon_points(path_pts: list, arc_segments: float = 0.0) -> list[tuple[float, float]]:
     """从立创路径数组里抽出坐标点（按 V3 规范）。
 
     规范（``.specs/v3/lceda-pro-file-format-v3_2025.10.21.md``）：
@@ -822,6 +901,11 @@ def _polygon_points(path_pts: list) -> list[tuple[float, float]]:
       ``C x2 y2 x3 y3 x4 y4``（三阶贝塞尔，取末点为终点）
     - ``R X Y width height rot round``   矩形（独立模式）
     - ``CIRCLE cx cy r isCCW``           圆（独立模式）
+
+    arc_segments > 0 时把 ARC/CARC 按步长（度）离散成弦段（圆心由
+    「弦 + 包含角」反解，见 _arc_center_angle）；默认 0 保持旧的端点
+    弦线行为——覆铜环判定用 eps 邻域，不需要弧中点；板框环要走真
+    距离，圆角处的弦差（r=2mm 时 0.59mm）会误报边距。
     """
     pts: list[tuple[float, float]] = []
     if not path_pts:
@@ -855,6 +939,10 @@ def _polygon_points(path_pts: list) -> list[tuple[float, float]]:
             if cmd in ("ARC", "CARC"):
                 seg = [q for q in path_pts[i + 1:i + 4] if isinstance(q, (int, float))]
                 if len(seg) == 3:  # angle, endX, endY
+                    if arc_segments > 0 and pts:
+                        pts.extend(_arc_interior_points(
+                            pts[-1], (float(seg[1]), float(seg[2])),
+                            float(seg[0]), step_deg=arc_segments))
                     pts.append((float(seg[1]), float(seg[2])))
                 i += 4
             elif cmd == "C":

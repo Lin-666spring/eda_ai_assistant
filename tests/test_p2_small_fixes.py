@@ -108,15 +108,15 @@ def test_connector_skips_without_real_outline():
     assert checker._check_connector_edge_placement(bom, positions, {}) == []
 
 
-# ── 3. 元件间距：描述与实现对齐（按导入顺序抽样，非空间最近邻） ──
+# ── 3. 元件间距：几何批（2026-10-10）改为 spatial hash 全对 + 体尺寸真距离，
+#    抽样口径的描述断言随之退役（详见 test_geometry_batch_2026_10_10.py） ──
 
-def test_component_spacing_description_states_sampling():
+def test_component_spacing_no_bodies_is_silent():
     checker = DesignRuleChecker()
     checker._pcb_data = _outline_pcb()
-    positions = {f"R{i}": {"x": i * 0.9, "y": 0.0} for i in range(6)}  # 相邻 5 对均 0.9mm <1mm
+    positions = {f"R{i}": {"x": i * 0.9, "y": 0.0} for i in range(6)}  # 无封装名 → 体尺寸落空 → 不配对
     out = checker._check_component_spacing([_BomItem(f"R{i}") for i in range(6)], positions, {})
-    assert len(out) == 1
-    assert "抽样" in out[0].description and "非空间最近邻" in out[0].description
+    assert out == []
 
 
 # ── 4. _xy helper ──

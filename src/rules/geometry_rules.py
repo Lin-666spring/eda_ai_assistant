@@ -5,7 +5,7 @@ import math
 import re
 from collections import Counter
 from ..constants import PCB
-from ..pcb.geometry import point_in_polygon, segment_touches_polygon, trace_corners
+from ..pcb.geometry import chain_segments, point_in_polygon, segment_touches_polygon, trace_corners
 
 from .base import (
     RuleSeverity,
@@ -67,6 +67,71 @@ def _shape_touches(sa: dict, sb: dict) -> bool:
                                 outer_b, voids_b):
                 return True
     return False
+
+
+def _net_chain_path_len(segments, tol: float = 0.01) -> float:
+    """网络走线段集的最长连续路径长（mm）。
+
+    chain_segments 串折线；端点处度数 ≥3 的分支结点会把贯通路径切成
+    多条折线，所以再在「折线端点图」上取**树的直径**（两次最远点 BFS，
+    每个连通分量取最大）——叶子到叶子才是信号的实际最坏走法。
+    带环分量（信号网里几乎不存在）保守按分量总长计。
+    """
+    polys = chain_segments(segments, tol=tol)
+    if not polys:
+        return 0.0
+
+    def _key(p):
+        return (round(p[0], 3), round(p[1], 3))
+
+    adj: dict[tuple, list[tuple[tuple, float]]] = {}
+    for poly in polys:
+        w = sum(math.dist(a, b) for a, b in zip(poly, poly[1:]))
+        u, v = _key(poly[0]), _key(poly[-1])
+        adj.setdefault(u, []).append((v, w))
+        adj.setdefault(v, []).append((u, w))
+
+    def _farthest(start):
+        dist = {start: 0.0}
+        queue = [start]
+        best_node, best_d = start, 0.0
+        while queue:
+            nxt = []
+            for u in queue:
+                for v, w in adj[u]:
+                    if v not in dist:
+                        dist[v] = dist[u] + w
+                        if dist[v] > best_d:
+                            best_node, best_d = v, dist[v]
+                        nxt.append(v)
+            queue = nxt
+        return best_node, best_d, dist
+
+    total = 0.0
+    seen: set[tuple] = set()
+    for node in adj:
+        if node in seen:
+            continue
+        # 收集本连通分量的结点与边数，判环（邻接表里每条边出现两次）
+        comp_nodes, comp_edge_ends = {node}, 0
+        stack = [node]
+        while stack:
+            cur = stack.pop()
+            comp_edge_ends += len(adj[cur])
+            for nxt, _w in adj[cur]:
+                if nxt not in comp_nodes:
+                    comp_nodes.add(nxt)
+                    stack.append(nxt)
+        seen |= comp_nodes
+        if comp_edge_ends // 2 >= len(comp_nodes):   # 有环：保守按总长
+            total = max(total, sum(w for es in
+                                   (adj[n] for n in comp_nodes)
+                                   for _, w in es) / 2.0)
+            continue
+        u, _d1, _ = _farthest(node)
+        _v, d2, _ = _farthest(u)
+        total = max(total, d2)
+    return total
 
 
 class GeometryRulesMixin:
@@ -540,18 +605,25 @@ class GeometryRulesMixin:
         HDMI/LVDS/MIPI/PCIE/SATA/ETH 档 0.5mm，表外组 2.0mm 绝对 + 10%
         相对（旧行为）；违规描述的门限数字与判据同取 _DIFF_SKEW_BANDS，
         消除「描述写 0.5mm、判据实际 2.0mm」的两张皮。
+        2026-10-10 几何批：网络长度从「全网线段和」改成 **链路径长**——
+        旧口径把多分支网络的每条支路都加总，T 型/星形网络的和不是任何
+        信号实际走过的距离，支路越多差分差越虚高。现按 chain_segments
+        串成折线，再在折线端点图上取**最长路径**（树直径；贯通结点的
+        路径跨折线拼接，闭合环组件按全环长保守计）。
         """
         pcb = self._pcb_data
         if not pcb or not pcb.traces: return []
         violations = []
+        diff_nets: set[str] = set()
+        for _label, nets, _source in self._diff_groups_src(pcb):
+            diff_nets.update(n for n in nets if n)
         lengths: dict[str, float] = {}
-        for t in pcb.traces:
-            name = t.net_name or ""
-            if not name:
-                continue
-            lengths[name] = lengths.get(name, 0.0) + sum(
-                math.hypot(s[2] - s[0], s[3] - s[1]) for s in (t.segments or [])
-            )
+        for name in diff_nets:
+            segs = [s for t in pcb.traces
+                    if (t.net_name or "") == name
+                    for s in (t.segments or []) if len(s) >= 4]
+            if segs:
+                lengths[name] = _net_chain_path_len(segs)
         for label, nets, source in self._diff_groups_src(pcb):
             lens = [lengths.get(n, 0.0) for n in nets]
             lens = [x for x in lens if x > 0]
@@ -559,11 +631,15 @@ class GeometryRulesMixin:
                 continue
             diff_mm = round(max(lens) - min(lens), 4)
             avg_len = sum(lens) / len(lens)
-            # 接口分档：label+网络名命中哪档就用哪档公差
+            # 接口分档：label+网络名命中哪档就用哪档公差。
+            # 几何批修正：text 已 lower，关键词也必须 lower——旧写法
+            # `kw in text`（大写关键词 vs 小写文本）恒 False，整张
+            # _DIFF_SKEW_BANDS 是死代码，所有组都落表外口径
+            # （金样两批 0 条分档文案，29b9766 引入时未暴露）。
             text = f"{label} {' '.join(nets)}".lower()
             tol, band = next(
                 ((t, name) for kws, t, name in self._DIFF_SKEW_BANDS
-                 if any(kw in text for kw in kws)),
+                 if any(kw.lower() in text for kw in kws)),
                 (self._DIFF_SKEW_DEFAULT_MM, "表外差分组"))
             over = diff_mm > tol
             if band == "表外差分组":
@@ -959,8 +1035,12 @@ class GeometryRulesMixin:
     def _check_trace_edge_clearance(self, bom_items, positions, netlist):
         """走线到板边：走线距板框应有安全间距
 
-        用板框包围盒算真实边距。板框退回「铜包围盒」(source=copper) 时边距恒为 0，
-        没有判定意义，直接跳过。
+        2026-10-10 几何批：有真实轮廓环（outline_rings_mm，解析器由
+        BOARD_OUTLINE 描边链回，含板内开槽）时按「线段-多边形边界真距离」
+        判定——旧包围盒口径在圆角/异形板上与真边界差几毫米，切角板甚至
+        会把含在板内的角区整体误报；跨界/越界段自然得 0。板框退回
+        「铜包围盒」(source=copper) 时没有真边界，维持原守卫直接跳过；
+        有 outline 而轮廓环缺失（异常数据）退回包围盒口径。
         """
         pcb = self._pcb_data
         if not pcb or not pcb.traces: return []
@@ -968,22 +1048,52 @@ class GeometryRulesMixin:
         if bo.get("source") != "outline":
             return []
         min_clearance = PCB.TRACE_EDGE_CLEARANCE_MIN_MM
-        minx, miny = bo["min_x_mm"], bo["min_y_mm"]
-        maxx, maxy = bo["max_x_mm"], bo["max_y_mm"]
+        rings = bo.get("outline_rings_mm") or []
         near = []
-        for t in pcb.traces:
-            pts = []
-            for seg in (t.segments or []):
-                if len(seg) >= 4:
-                    pts.append((seg[0], seg[1]))
-                    pts.append((seg[2], seg[3]))
-            if not pts:
-                continue
-            clearance = min(
-                min(px - minx, maxx - px, py - miny, maxy - py) for px, py in pts
-            )
-            if clearance < min_clearance:
-                near.append((t.net_name, clearance))
+        if rings:
+            # 边表：(x1,y1,x2,y2, 边bbox) —— 逐边先做包围盒剪枝再算真距离
+            edges = []
+            for ring in rings:
+                for a, b in zip(ring, ring[1:]):
+                    edges.append((a[0], a[1], b[0], b[1],
+                                  min(a[0], b[0]), min(a[1], b[1]),
+                                  max(a[0], b[0]), max(a[1], b[1])))
+            for t in pcb.traces:
+                best = float("inf")
+                for seg in (t.segments or []):
+                    if len(seg) < 4:
+                        continue
+                    x1, y1, x2, y2 = seg[0], seg[1], seg[2], seg[3]
+                    sx0, sx1 = (x1, x2) if x1 <= x2 else (x2, x1)
+                    sy0, sy1 = (y1, y2) if y1 <= y2 else (y2, y1)
+                    for ex0, ey0, ex1, ey1, bx0, by0, bx1, by1 in edges:
+                        # 该边沿任一轴都远于当前最好值 → 不可能更近
+                        if (bx0 - sx1 > best or sx0 - bx1 > best or
+                                by0 - sy1 > best or sy0 - by1 > best):
+                            continue
+                        d = _seg_seg_dist((x1, y1), (x2, y2), (ex0, ey0), (ex1, ey1))
+                        if d < best:
+                            best = d
+                    if best <= 0.0:
+                        break
+                if best < min_clearance:
+                    near.append((t.net_name, best))
+        else:
+            minx, miny = bo["min_x_mm"], bo["min_y_mm"]
+            maxx, maxy = bo["max_x_mm"], bo["max_y_mm"]
+            for t in pcb.traces:
+                pts = []
+                for seg in (t.segments or []):
+                    if len(seg) >= 4:
+                        pts.append((seg[0], seg[1]))
+                        pts.append((seg[2], seg[3]))
+                if not pts:
+                    continue
+                clearance = min(
+                    min(px - minx, maxx - px, py - miny, maxy - py) for px, py in pts
+                )
+                if clearance < min_clearance:
+                    near.append((t.net_name, clearance))
         if not near:
             return []
         worst = min(c for _, c in near)
