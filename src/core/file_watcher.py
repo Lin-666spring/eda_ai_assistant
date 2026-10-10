@@ -12,7 +12,13 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
+# PollingObserver 而非原生 Observer（2026-10-10 稳定性批）：Windows 原生实现
+# 的 ReadDirectoryChangesW 是不可协作的原生阻塞调用 —— main.py 打了 gevent
+# monkey-patch 后（threading→greenlet），原生 Observer 的等待循环会把整个
+# hub 占死。PollingObserver 纯 Python 轮询（time.sleep），patch 下协作让出，
+# 未 patch（测试/回退）下照常真实线程；对「文档目录里 .epro 变没变」1s 级
+# 轮询延迟无感。
+from watchdog.observers.polling import PollingObserver
 
 from ..constants import WatcherConstants
 
@@ -60,7 +66,7 @@ class FileWatcher:
     """文件监听器 — 独立守护线程，不阻塞 GUI。"""
 
     def __init__(self):
-        self._observer: Optional[Observer] = None
+        self._observer: Optional[PollingObserver] = None
         self._watched_path: Optional[str] = None
 
     @property
@@ -77,7 +83,7 @@ class FileWatcher:
         if not os.path.isdir(path):
             logger.warning("Watch path does not exist: %s", path)
             return False
-        self._observer = Observer()
+        self._observer = PollingObserver()
         self._observer.schedule(
             PCBFileHandler(on_changed), str(path), recursive=True,
         )

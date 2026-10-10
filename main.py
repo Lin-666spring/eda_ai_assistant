@@ -3,11 +3,29 @@ EDA AI 智能助手 — Eel 应用入口
 面向立创EDA的AI智能辅助设计软件
 """
 
+# gevent monkey-patch 必须先于 eel/requests/subprocess 等一切 import
+# （2026-10-10 稳定性批）：eel 把每个 @eel.expose 回调放进 gevent greenlet
+# 但从不 patch，LLM 的 requests.post(timeout=120)、目录选择器子进程的
+# subprocess.run(timeout=180) 都是纯阻塞调用 —— 期间唯一的 OS 线程被占死，
+# 所有其他 JS→Python 调用（500ms 轮询、保存设置、第二条消息）排队冻结。
+# patch 后这些调用在 greenlet 间协作让出；CPU 密集的 DRC 全量扫描 patch
+# 不了，由 _offload() 卸载到 gevent 线程池。仅作为应用入口运行时打 ——
+# pytest 内 `import main`（test_provider_catalog/test_tool_catalog）不能
+# 污染测试进程的 threading/socket。
+import sys
+
+_GEVENT_PATCHED = "pytest" not in sys.modules
+if _GEVENT_PATCHED:
+    try:
+        from gevent import monkey
+        monkey.patch_all()
+    except ImportError:
+        _GEVENT_PATCHED = False  # eel 依赖 gevent，正常不会缺；缺装时保持旧阻塞行为
+
 import base64
 import json
 import logging
 import os
-import sys
 import tempfile
 import threading
 from pathlib import Path
@@ -80,6 +98,20 @@ def get_store() -> SessionStore:
     return _store
 
 # ── Helpers ──
+
+def _offload(fn, *args):
+    """CPU 密集操作卸载到 gevent 线程池的真实 OS 线程（2026-10-10 稳定性批）。
+
+    monkey-patch 只能让 IO 协作让出，纯 Python 计算（DRC 全量扫描/热力图
+    聚合）仍会占死 hub —— 期间轮询/保存设置全部冻结。经 hub.threadpool 跑
+    在真实线程：调用方 greenlet 挂起等结果，hub 继续服务其他回调。未 patch
+    （测试进程/缺 gevent 回退）时原地执行，行为与旧版一致。
+    """
+    if not _GEVENT_PATCHED:
+        return fn(*args)
+    import gevent
+    return gevent.get_hub().threadpool.apply(fn, args)
+
 
 def _bom_item_to_dict(item: BOMItem) -> dict:
     """薄委托：实现在 src/settings_facade.py（P1-7 双入口收编，曾与 REST 各写一份）。"""
@@ -219,7 +251,8 @@ def check_duplicates() -> dict:
 
 @eel.expose
 def check_rules() -> dict:
-    report = get_controller().check_design_rules()
+    ctrl = get_controller()
+    report = _offload(ctrl.check_design_rules)
     return {"ok": True, "report": report}
 
 
@@ -316,7 +349,8 @@ def run_electrical_health_check() -> str:
 def get_drc_heatmap(grid_size_mm: float = 5.0) -> str:
     """DRC 违规热力图数据 — 返回 JSON {ok, data: [[x,y,count],...], grid_size_mm, source, reason}"""
     import json
-    return json.dumps(get_controller().get_drc_heatmap(grid_size_mm), ensure_ascii=False)
+    ctrl = get_controller()
+    return json.dumps(_offload(ctrl.get_drc_heatmap, grid_size_mm), ensure_ascii=False)
 
 
 @eel.expose
@@ -591,7 +625,18 @@ def toggle_auto_sync() -> dict:
     path = FileWatcher.default_watch_path()
     if not path:
         return {"ok": False, "running": False, "msg": "未找到立创 EDA 项目目录"}
-    watcher.watch(path, lambda fp: eel.on_pcb_changed(fp)())
+
+    def _notify_pcb_changed(fp: str) -> None:
+        # PollingObserver 在 gevent patch 下就是 hub greenlet，直接推送安全；
+        # 未 patch 的回退场景它是真实线程 —— 跨线程写 eel websocket 会帧交错，
+        # 经 hub 调度回正确上下文（2026-10-10 稳定性批）。
+        try:
+            import gevent
+            gevent.get_hub().loop.run_callback(lambda: eel.on_pcb_changed(fp)())
+        except Exception:
+            eel.on_pcb_changed(fp)()
+
+    watcher.watch(path, _notify_pcb_changed)
     return {"ok": True, "running": True, "path": path, "msg": f"自动同步已开启 — {path}"}
 
 @eel.expose

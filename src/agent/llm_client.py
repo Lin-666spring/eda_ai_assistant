@@ -43,8 +43,9 @@ def get_total_usage() -> dict:
 
 
 def reset_total_usage() -> None:
-    for k in _LLM_USAGE:
-        _LLM_USAGE[k] = 0
+    with _USAGE_LOCK:  # 与其余读写同锁（2026-10-10 稳定性批）
+        for k in _LLM_USAGE:
+            _LLM_USAGE[k] = 0
 
 # ══════════════════════════════════════════════════════
 #  数据类
