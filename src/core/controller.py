@@ -1007,7 +1007,8 @@ class AppController:
         """预热本地 ML 模型（启动 boot 线程调用）。
 
         元件分类 TextCNN（torch 导入 + 权重，首次 DRC 的一次性大头）+
-        意图 TextCNN（首次对话分类路径）。懒加载内部均有双检锁，与用户
+        意图模型 rbt3 ONNX（BERT，onnxruntime 加载 ~秒级，首次对话分类路径；
+        缺产物时回退 TextCNN）。懒加载内部均有双检锁，与用户
         操作并发安全；预热完成后首次分析即走稳态。
 
         Returns:

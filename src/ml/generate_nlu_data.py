@@ -138,6 +138,14 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "过滤出所有{component}",
         "过滤{package}的电容",
         "找出所有{package}电阻",
+        # ── 短命令/查表型句式（2026-10-14 BERT 批：短输入上下文少，
+        # 无覆盖时 rbt3 曾把「查重」0.93 判成 RULE_CHECK）──
+        "查重",
+        "BOM查重",
+        "位号查重",
+        "封装匹配检查",
+        "封装匹不匹配",
+        "重码检查",
     ],
     "BOM_HEALTH": [
         "检查BOM中哪些元件缺货",
@@ -166,6 +174,12 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "跑一下BOM健康",
         "评估供应链风险",
         "供应链风险评估",
+        # ── 库存短问句（2026-10-14 BERT 批：「看看库存还够不够」曾被判 RULE_CHECK）──
+        "看看库存还够不够",
+        "库存够吗",
+        "库存还够吗",
+        "还缺料吗",
+        "物料够不够",
     ],
     "RULE_CHECK": [
         "检查设计规则",
@@ -183,6 +197,9 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "电源走线的宽度够不够承载这个电流？",
         "过孔数量会不会太多？",
         "检一下差分对的等长等间距",
+        "差分对有没有等长",
+        "差分线等长了吗",
+        "检查一下差分等长",
         "有没有锐角走线？",
         "板边的间距够不够？",
         "模拟和数字区域分开了吗？",
@@ -202,6 +219,15 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "帮我验证这个设计建议",
         "闭环验证这个修改",
         "验证一下这条修改建议",
+        # ── 短命令/违规解释句式（2026-10-14 BERT 批：「全板DRC跑一遍」
+        #    曾被判 PCB_ANALYSIS、「解释规则原理」被判 VISUAL）──
+        "全板DRC跑一遍",
+        "DRC跑一遍",
+        "把DRC全跑一遍",
+        "规则全跑一遍",
+        "解释一下这条规则的原理",
+        "这条规则为什么违规",
+        "说说这个违规的原理",
     ],
     "PCB_ANALYSIS": [
         "帮我分析一下PCB布局",
@@ -250,6 +276,11 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "查一下规范里{rule}的要求",
         "IPC标准对{issue}有什么规定",
         "设计指南里{rule}怎么说的",
+        # ── 层叠分析变体（2026-10-14 BERT 批：「层叠结构有没有问题」
+        #    曾被判 RULE_CHECK；走设计审查口径不走检查命令口径）──
+        "层叠结构有没有问题",
+        "叠层有没有问题",
+        "层叠设计合不合理",
     ],
     "CODE_RULE_GEN": [
         "帮我写一个{rule}的DRC规则",
@@ -331,6 +362,12 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "看看这个频谱图",
         "这个板子的实物照片，有什么问题？",
         "帮我分析一下这张PCB截面图",
+        # ── 波形分析短句（2026-10-14 BERT 批：「波形怎么有振铃」
+        #    曾被判 TEXT_CHAT；波形图分析走 VISUAL 口径）──
+        "波形怎么有振铃",
+        "看看这个波形有什么问题",
+        "这个波形是不是振铃了",
+        "帮我看看这个示波器截图",
     ],
     "LOCAL_ONLY": [
         "显示BOM统计信息",
@@ -349,6 +386,12 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "汇总信息",
         "概览",
         "当前项目信息",
+        # ── 系统状态短问句（2026-10-14 BERT 批：「现在系统什么状态」
+        #    曾被判 TEXT_CHAT）──
+        "现在系统什么状态",
+        "系统什么状态",
+        "系统状态怎么样",
+        "当前什么状态",
     ],
 }
 
@@ -379,8 +422,13 @@ def _expand_templates(raw_templates: dict[str, list[str]], count_per_class: int)
             for t in chosen:
                 samples.append({"text": _fill_template(t), "intent": intent})
         else:
-            # 模板不够，需要复用（每次随机选术语，产生不同变体）
-            for i in range(count_per_class):
+            # 模板不够，需要复用。先保证每个模板至少入训一次，剩余名额
+            # 随机选术语造变体。（2026-10-14 BERT 批：纯 random.choice 会让
+            # 部分模板零次入训——「运行DRC」恰好漏采，rbt3 对这个评估句
+            # 稳定判错；全量覆盖对 TextCNN 同样受益。）
+            for t in templates:
+                samples.append({"text": _fill_template(t), "intent": intent})
+            for _ in range(count_per_class - len(templates)):
                 t = random.choice(templates)
                 samples.append({"text": _fill_template(t), "intent": intent})
 

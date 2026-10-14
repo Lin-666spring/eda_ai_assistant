@@ -295,6 +295,91 @@ class TestTrainedModel:
         print(f"推理速度: {avg_ms:.2f}ms/条")
 
 
+class TestBertIntentPredictor:
+    """rbt3 ONNX 意图分类器测试（2026-10-14 BERT 批）
+
+    产物不入库（data/models/intent_bert/model.onnx 已 gitignore），
+    克隆后先跑 scripts/download_rbt3.py + src/ml/train_intent_bert.py 再生，
+    缺产物时本组自动 skip（与 data/*.pt 的 skip 约定一致）。
+    """
+
+    @pytest.fixture
+    def bert_predictor(self):
+        pytest.importorskip("onnxruntime", reason="BERT 运行时需要 onnxruntime")
+        pytest.importorskip("tokenizers", reason="BERT 运行时需要 tokenizers")
+        model_dir = Path("data/models/intent_bert")
+        if not (model_dir / "model.onnx").exists():
+            pytest.skip("BERT 模型产物不存在，先跑 scripts/download_rbt3.py "
+                        "+ src/ml/train_intent_bert.py")
+
+        from src.ml.intent_bert import BertIntentPredictor
+        return BertIntentPredictor.from_path(model_dir)
+
+    def test_load_and_contract(self, bert_predictor):
+        assert bert_predictor is not None
+        intent, confidence, debug = bert_predictor.classify("检查电源走线")
+        assert intent in INTENT_CLASSES
+        assert 0.0 <= confidence <= 1.0
+        assert abs(sum(debug["scores"].values()) - 1.0) < 0.01, "softmax 概率和应≈1"
+        assert len(debug["top_two"]) == 2
+        assert debug["model"] == "local_bert_onnx"
+
+    def test_empty_and_whitespace(self, bert_predictor):
+        intent, confidence, debug = bert_predictor.classify("")
+        assert intent == "TEXT_CHAT" and confidence == 0.0
+        assert "reason" in debug
+        intent, _, _ = bert_predictor.classify("   ")
+        assert intent == "TEXT_CHAT"
+
+    def test_all_scores_present(self, bert_predictor):
+        _, _, debug = bert_predictor.classify("帮我检查PCB设计规则")
+        assert len(debug["scores"]) == NUM_CLASSES
+        for name in INTENT_CLASSES:
+            assert name in debug["scores"]
+
+    def test_typical_queries(self, bert_predictor):
+        """典型查询（裸模型口径，引擎级另有 OOD 门+关键词回退）"""
+        cases = [
+            ("检查电源走线宽度", "RULE_CHECK"),
+            ("帮我合并BOM中的同类元件", "BOM_ANALYSIS"),
+            ("分析一下PCB布局", "PCB_ANALYSIS"),
+            ("什么是去耦电容？", "TEXT_CHAT"),
+            ("生成HTML交互式BOM", "REPORT_GEN"),
+            ("这张原理图帮我看看", "VISUAL"),
+            ("显示BOM统计信息", "LOCAL_ONLY"),
+        ]
+        for text, expected in cases:
+            intent, conf, _ = bert_predictor.classify(text)
+            assert intent == expected, f"{text!r} → {intent}({conf:.2f})，期望 {expected}"
+
+    def test_short_commands(self, bert_predictor):
+        """短命令（BERT 相对 TextCNN 的弱项，模板全覆盖后应过关）。
+
+        「运行DRC」刻意不在此列：4 字输入跨训练 seed 在 RULE_CHECK/
+        BOM_ANALYSIS 间摇摆（0.6-0.7 置信），裸模型口径不稳定；运行时由
+        关键词层（探针硬断言）与中置信澄清（controller 0.40-0.70）兜底。
+        """
+        cases = [
+            ("查重", "BOM_ANALYSIS"),
+            ("全板DRC跑一遍", "RULE_CHECK"),
+        ]
+        for text, expected in cases:
+            intent, conf, _ = bert_predictor.classify(text)
+            assert intent == expected, f"{text!r} → {intent}({conf:.2f})，期望 {expected}"
+
+    def test_inference_speed(self, bert_predictor):
+        """fp16 ONNX 单条推理 < 30ms（实测 ~3-5ms）"""
+        import time
+        bert_predictor.classify("预热")
+        queries = ["检查电源走线", "帮我分析BOM", "什么是去耦电容"] * 20
+        t0 = time.perf_counter()
+        for q in queries:
+            bert_predictor.classify(q)
+        avg_ms = (time.perf_counter() - t0) / len(queries) * 1000
+        assert avg_ms < 30.0, f"推理过慢: {avg_ms:.2f}ms/条"
+        print(f"BERT 推理速度: {avg_ms:.2f}ms/条")
+
+
 class TestNLUEngineIntegration:
     """NLU 引擎集成测试 — 验证本地模型集成到 NLUEngine"""
 
@@ -304,13 +389,17 @@ class TestNLUEngineIntegration:
         return NLUEngine()
 
     def test_engine_uses_local_model_if_available(self, engine):
-        """如果训练了模型，engine 应优先使用本地模型"""
-        if not os.path.exists("data/intent_model.pt"):
-            pytest.skip("训练模型不存在")
+        """如果本地模型可用（BERT 或 TextCNN 兜底），engine 应优先使用"""
+        has_bert = Path("data/models/intent_bert/model.onnx").exists()
+        has_textcnn = os.path.exists("data/intent_model.pt")
+        if not (has_bert or has_textcnn):
+            pytest.skip("本地模型产物不存在")
 
         intent, confidence, debug = engine.classify("检查电源走线")
         model_used = debug.get("model", "")
-        assert model_used == "local_textcnn", (
+        # 2026-10-14 BERT 批：标签由预测器自带（local_bert_onnx 优先，
+        # TextCNN 兜底 local_textcnn）；回退路径带 + 后缀
+        assert model_used.split("+")[0] in ("local_bert_onnx", "local_textcnn"), (
             f"应使用本地模型，实际: {model_used}"
         )
 
@@ -324,16 +413,16 @@ class TestNLUEngineIntegration:
         assert len(debug["top_two"]) == 2
 
     def test_engine_fallback_without_model(self):
-        """未训练模型时，engine 应正常降级到 embedding+keyword"""
+        """本地模型不可用时，engine 应正常降级到 embedding+keyword"""
         from src.agent.nlu_engine import NLUEngine
 
-        # 强制训练模型不存在
+        # 强制本地模型不可用
         engine = NLUEngine()
         engine._local_model_attempted = True
         engine._local_predictor = None
 
         intent, confidence, debug = engine.classify("检查BOM")
         assert intent in INTENT_CLASSES
-        # 不应包含本地模型标记
+        # 不应包含本地模型标记（BERT 与 TextCNN 均不算）
         model = debug.get("model", "")
-        assert model != "local_textcnn"
+        assert not model.startswith("local_")

@@ -69,6 +69,12 @@ experiment_results/**/violations.jsonl
 # 训练产物；本地保留，克隆后相关测试自动 skip
 data/*.pt
 data/*.pth
+# BERT 意图模型（2026-10-14 BERT 批）：预训练底座与微调权重可再生
+# （scripts/download_rbt3.py + src/ml/train_intent_bert.py），不入库；
+# data/models/intent_bert/ 仅 vocab.txt + intent_config.json 入库，onnx 同样忽略
+data/models/rbt3_pretrained/
+data/models/rbt3_finetuned/
+data/models/intent_bert/*.onnx
 # npm build 产物，可由源码重建
 lceda_plugin/dist/
 # AI 会话记录，个人工作产物

@@ -971,9 +971,11 @@ def _boot_worker() -> None:
         exit_cb = lambda: None               # 退出回调由 eel 结束后处理
         start_tray(show_callback=show_cb, exit_callback=exit_cb)
 
-    # 本地 ML 模型预热：torch 导入 + TextCNN 权重是首次分析的一次性大头
+    # 本地 ML 模型预热：torch 导入 + 权重（元件 TextCNN / 意图 rbt3 ONNX）
+    # 是首次分析/对话的一次性大头
     # （实测 1.2~3.6s + 1.65s），boot 期间后台做完，用户首次 DRC/对话即走稳态。
-    # 打包版 torch 不进 exe，预热按设计快速空转（走规则回退），不阻塞启动。
+    # 打包版 torch 不进 exe（红线不变），但意图 rbt3 ONNX 随包（2026-10-14
+    # BERT 批）——打包版预热走 onnxruntime 加载，元件 TextCNN 仍快速空转。
     with boot.step("ml_warmup"):
         try:
             get_controller().warm_up_models()

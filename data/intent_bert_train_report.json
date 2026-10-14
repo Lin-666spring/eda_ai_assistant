@@ -1,0 +1,207 @@
+{
+  "model": "IntentBertClassifier (hfl/rbt3 ONNX)",
+  "timestamp": "2026-10-14T11:41:17.068839",
+  "config": {
+    "epochs": 20,
+    "batch_size": 16,
+    "lr": 2e-05,
+    "weight_decay": 0.01,
+    "llrd_decay": 0.7,
+    "patience": 6,
+    "max_len": 32,
+    "seed": 42,
+    "device": "cpu",
+    "precision": "fp16",
+    "skipped_training": false
+  },
+  "training": {
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 2.3834,
+        "val_loss": 2.2683,
+        "val_acc": 0.1267
+      },
+      {
+        "epoch": 2,
+        "train_loss": 2.1514,
+        "val_loss": 1.8562,
+        "val_acc": 0.5933
+      },
+      {
+        "epoch": 3,
+        "train_loss": 1.6899,
+        "val_loss": 1.3167,
+        "val_acc": 0.76
+      },
+      {
+        "epoch": 4,
+        "train_loss": 1.2047,
+        "val_loss": 0.8786,
+        "val_acc": 0.8733
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.815,
+        "val_loss": 0.5887,
+        "val_acc": 0.9067
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.5451,
+        "val_loss": 0.4043,
+        "val_acc": 0.9267
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.3603,
+        "val_loss": 0.2949,
+        "val_acc": 0.9267
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.2328,
+        "val_loss": 0.2052,
+        "val_acc": 0.94
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.1526,
+        "val_loss": 0.1533,
+        "val_acc": 0.9533
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.113,
+        "val_loss": 0.1154,
+        "val_acc": 0.9667
+      },
+      {
+        "epoch": 11,
+        "train_loss": 0.0737,
+        "val_loss": 0.0951,
+        "val_acc": 0.98
+      },
+      {
+        "epoch": 12,
+        "train_loss": 0.0538,
+        "val_loss": 0.0777,
+        "val_acc": 0.98
+      },
+      {
+        "epoch": 13,
+        "train_loss": 0.0446,
+        "val_loss": 0.0744,
+        "val_acc": 0.98
+      },
+      {
+        "epoch": 14,
+        "train_loss": 0.0339,
+        "val_loss": 0.0661,
+        "val_acc": 0.98
+      },
+      {
+        "epoch": 15,
+        "train_loss": 0.0311,
+        "val_loss": 0.0627,
+        "val_acc": 0.98
+      },
+      {
+        "epoch": 16,
+        "train_loss": 0.0299,
+        "val_loss": 0.0616,
+        "val_acc": 0.98
+      },
+      {
+        "epoch": 17,
+        "train_loss": 0.0258,
+        "val_loss": 0.0603,
+        "val_acc": 0.98
+      }
+    ],
+    "best_epoch": 11,
+    "best_val_acc": 0.98,
+    "stopped_early": true
+  },
+  "calibration": {
+    "temperature": 0.7,
+    "ece_before": 0.043,
+    "ece_after": 0.0289
+  },
+  "results": {
+    "val_acc": 0.98,
+    "eval_acc": 0.9643,
+    "eval_total": 84,
+    "per_class": {
+      "BOM_ANALYSIS": {
+        "correct": 14,
+        "total": 14
+      },
+      "BOM_HEALTH": {
+        "correct": 7,
+        "total": 7
+      },
+      "CODE_RULE_GEN": {
+        "correct": 5,
+        "total": 5
+      },
+      "COMPONENT_LOOKUP": {
+        "correct": 6,
+        "total": 6
+      },
+      "LOCAL_ONLY": {
+        "correct": 2,
+        "total": 2
+      },
+      "PCB_ANALYSIS": {
+        "correct": 21,
+        "total": 21
+      },
+      "REPORT_GEN": {
+        "correct": 6,
+        "total": 6
+      },
+      "RULE_CHECK": {
+        "correct": 12,
+        "total": 13
+      },
+      "TEXT_CHAT": {
+        "correct": 4,
+        "total": 6
+      },
+      "VISUAL": {
+        "correct": 4,
+        "total": 4
+      }
+    },
+    "errors": [
+      {
+        "text": "运行DRC",
+        "expected": "RULE_CHECK",
+        "predicted": "BOM_ANALYSIS",
+        "confidence": 0.6813
+      },
+      {
+        "text": "0603电阻的功率一般是多少",
+        "expected": "TEXT_CHAT",
+        "predicted": "COMPONENT_LOOKUP",
+        "confidence": 0.9004
+      },
+      {
+        "text": "怎么提高EMC性能",
+        "expected": "TEXT_CHAT",
+        "predicted": "PCB_ANALYSIS",
+        "confidence": 0.7884
+      }
+    ]
+  },
+  "artifacts": {
+    "model": "C:\\Users\\lin\\Desktop\\eda_ai_assistant\\data\\models\\intent_bert\\model.onnx",
+    "parity": {
+      "n_samples": 234,
+      "argmax_agreement": 1.0,
+      "max_prob_diff": 0.00068,
+      "precision": "fp16"
+    }
+  }
+}

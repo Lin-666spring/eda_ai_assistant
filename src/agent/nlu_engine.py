@@ -288,12 +288,34 @@ MEDIUM_CONFIDENCE = 0.40
 LOW_CONFIDENCE_FLOOR = 0.15
 
 # ── 本地模型路径（相对于项目根目录）──
+# 2026-10-14 BERT 批：意图底座优先 rbt3 ONNX（data/models/intent_bert/），
+# 产物缺失或运行时依赖（onnxruntime/tokenizers）不可用时回退 TextCNN
+# （data/intent_model.pt，保留作兜底），都没有才走 embedding+关键词。
+_BERT_MODEL_DIR = "data/models/intent_bert"
 _LOCAL_MODEL_PATH = "data/intent_model.pt"
 _LOCAL_VOCAB_PATH = "data/vocab.json"
 
+
+def _ml_data_dir() -> str:
+    """本地模型数据目录：源码运行 = 项目根/data；PyInstaller 打包 = _MEIPASS/data。
+
+    与 src/rules/base.py:_model_dir() 同款 frozen-aware 口径（2026-10-10 依赖批
+    教训：相对 CWD 的路径在工作目录一变时就找不到模型）。旧实现用
+    dirname(__file__)/../.. 反推，在打包版因 src 整树随包恰好能工作，但
+    BERT 模型目录入包后统一走这个更强的先例。
+    """
+    import sys
+    from pathlib import Path
+
+    root = getattr(sys, "_MEIPASS", None)
+    if root:
+        return os.path.join(root, "data")
+    return str(Path(__file__).resolve().parents[2] / "data")
+
+
 # 启动预热线程与首次 NLU classify 并发到达时串行化加载（2026-10-13 预热批）。
 # 类级锁：NLUEngine 可有多实例（controller 缓存一个、测试/脚本另建），
-# torch 导入 + 权重加载是一次性进程级开销，全局串行即可。
+# 模型权重加载是一次性进程级开销，全局串行即可。
 _LOCAL_MODEL_LOCK = threading.Lock()
 
 
@@ -320,7 +342,7 @@ class NLUEngine:
         self._api_key: Optional[str] = api_key
         self._intent_embeddings: dict[str, list[float]] = {}
 
-        # 本地模型 (TextCNN)
+        # 本地意图模型（rbt3 ONNX 优先，TextCNN 兜底）
         self._local_predictor = None
         self._local_model_attempted: bool = False
 
@@ -359,9 +381,11 @@ class NLUEngine:
     # ── 本地模型 ──
 
     def _init_local_model(self) -> bool:
-        """lazy init 本地 TextCNN 意图分类器
+        """lazy init 本地意图分类器：优先 rbt3 ONNX（BERT），回退 TextCNN。
 
-        模型文件路径：data/intent_model.pt + data/vocab.json（相对项目根目录）
+        模型路径（相对项目根，frozen-aware 见 _ml_data_dir）：
+          BERT    : data/models/intent_bert/（onnxruntime+tokenizers 运行时）
+          TextCNN : data/intent_model.pt + data/vocab.json（torch 兜底）
 
         2026-10-13 预热批：旧实现先置 attempted 再加载且无锁——boot 预热
         期间用户发消息，用户线程看到 attempted=True 但模型未就绪，会永久
@@ -369,7 +393,7 @@ class NLUEngine:
         确认失败）出来后才置位。
 
         Returns:
-            True 如果本地模型加载成功
+            True 如果任一本地模型加载成功
         """
         if self._local_predictor is not None:
             return True
@@ -381,23 +405,36 @@ class NLUEngine:
                 return True
             if self._local_model_attempted:
                 return False
+            data_dir = _ml_data_dir()
+
+            # 1) rbt3 ONNX（2026-10-14 BERT 批）：依赖缺失/产物缺失 → None 降级
+            try:
+                from ..ml.intent_bert import BertIntentPredictor
+
+                predictor = BertIntentPredictor.from_path(
+                    os.path.join(data_dir, "models", "intent_bert"))
+                if predictor is not None:
+                    self._local_predictor = predictor
+                    self._local_model_attempted = True
+                    logger.info("NLU local model loaded: rbt3 ONNX (BERT)")
+                    return True
+            except Exception as e:
+                logger.warning("NLU BERT model init failed, trying TextCNN: %s", e)
+
+            # 2) TextCNN 兜底（torch 路径，模型文件随仓不在时返回 None）
             try:
                 from ..ml.intent_classifier import IntentPredictor
 
-                # 确定文件路径（相对于项目根目录）
-                project_root = os.path.join(os.path.dirname(__file__), "..", "..")
-                model_path = os.path.join(project_root, _LOCAL_MODEL_PATH)
-                vocab_path = os.path.join(project_root, _LOCAL_VOCAB_PATH)
-
-                predictor = IntentPredictor.from_path(model_path, vocab_path)
+                predictor = IntentPredictor.from_path(
+                    os.path.join(data_dir, "intent_model.pt"),
+                    os.path.join(data_dir, "vocab.json"))
                 self._local_model_attempted = True
                 if predictor is not None:
                     self._local_predictor = predictor
-                    logger.info("NLU local model loaded: TextCNN IntentClassifier")
+                    logger.info("NLU local model loaded: TextCNN (BERT fallback)")
                     return True
-                else:
-                    logger.info("NLU local model not found, using embedding+keyword")
-                    return False
+                logger.info("NLU local model not found, using embedding+keyword")
+                return False
             except ImportError as e:
                 self._local_model_attempted = True
                 logger.info("NLU local model unavailable (torch not installed?): %s", e)
@@ -442,7 +479,7 @@ class NLUEngine:
                 "reason": "empty_input",
             })
 
-        # Step 0: 优先使用本地 TextCNN 模型（离线，< 1ms）
+        # Step 0: 优先使用本地意图模型（rbt3 ONNX，TextCNN 兜底；离线）
         if self._init_local_model():
             intent_name, confidence, debug = self._local_predictor.classify(user_input)
             # 补充 keyword_score 以保持 debug 结构兼容
@@ -450,11 +487,13 @@ class NLUEngine:
             debug["keyword_score"] = kw_scores.get(intent_name, 0.0)
             debug["embedding_score"] = confidence
             debug["embedding_used"] = False
-            debug["model"] = "local_textcnn"
+            # 模型标签由预测器自带（local_bert_onnx / local_textcnn），
+            # 回退路径在此之上加后缀
+            model_tag = debug.get("model", "local")
 
-            # OOD 门：输入与全部意图关键词无直击交集时，TextCNN 的中高置信
-            # 不可信（重训曾出现乱码 0.79 判 BOM_ANALYSIS）——压回关键词路径，
-            # 无有效证据自然落 TEXT_CHAT 兜底。conf ≥ 0.9 的强预测仍放行。
+            # OOD 门：输入与全部意图关键词无直击交集时，本地模型的中高置信
+            # 不可信（TextCNN 时代曾出现乱码 0.79 判 BOM_ANALYSIS）——压回
+            # 关键词路径，无有效证据自然落 TEXT_CHAT 兜底。conf ≥ 0.9 放行。
             # 用原始直击关键词判定而非归一化 kw_scores：后者按意图关键词数
             # 稀释，「查重」这类合法 2 字命中在大意图下只有 0.092 会被误拦；
             # 例句 bigram 碎片噪声则不计入。
@@ -482,12 +521,12 @@ class NLUEngine:
                 if best_score < LOW_CONFIDENCE_FLOOR:
                     debug["keyword_score"] = 0.0
                     debug["top_two"] = [("TEXT_CHAT", LOW_CONFIDENCE_FLOOR)]
-                    debug["model"] = "local_textcnn+text_chat_default"
+                    debug["model"] = f"{model_tag}+text_chat_default"
                     return ("TEXT_CHAT", LOW_CONFIDENCE_FLOOR, debug)
                 if best_score > confidence:
                     debug["keyword_score"] = best_score
                     debug["top_two"] = sorted_intents[:2]
-                    debug["model"] = "local_textcnn+keyword_fallback"
+                    debug["model"] = f"{model_tag}+keyword_fallback"
                     return (best_name, best_score, debug)
 
             return (intent_name, confidence, debug)

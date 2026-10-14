@@ -281,7 +281,9 @@ eda_ai_assistant/
 
 ### M4：交付物 🟡 进行中
 ```
-4.1  PyInstaller 打包  ✅ exe 已构建（205MB，<100MB 待裁剪）；24h 稳定性未测
+4.1  PyInstaller 打包  ✅ exe 已构建（2026-10-14 BERT 批实测 339MB，原 214MB：
+     意图分类底座 rbt3 ONNX fp16 77MB 随包 + onnxruntime/tokenizers 运行时栈，
+     torch 红线不变仍不进 exe；TOC 已验证模型与 DLL 入包）；24h 稳定性未测
 4.2  手册/视频/软著     ⬜ 未开始
 4.3  论文              ⬜ 选题已定（EI：闭环验证引擎），未投稿
 ```
