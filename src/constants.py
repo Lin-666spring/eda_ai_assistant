@@ -93,8 +93,8 @@ class ProviderPreset:
     brand: str = ""                             # 展示用品牌名（卡片标题）
 
 
-# 主流厂商预设 — 2026-09 核对
-# 说明：模型名核对于 2026-09-10，来源为各厂商官方文档/发布记录。
+# 主流厂商预设 — 2026-10-13 核对（15 家）
+# 说明：模型名核对于 2026-10-13，来源为各厂商官方文档/发布记录。
 #       过时与否不再靠这份表兜着：设置面板的「拉取最新模型」会直接问厂商。
 LLM_PROVIDER_PRESETS: dict[str, ProviderPreset] = {
     "deepseek": ProviderPreset(
@@ -177,6 +177,45 @@ LLM_PROVIDER_PRESETS: dict[str, ProviderPreset] = {
         models=("MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.5"),
         key_url="https://platform.minimaxi.com/user-center/basic-information/interface-key",
     ),
+    "hunyuan": ProviderPreset(
+        "hunyuan", "https://api.hunyuan.cloud.tencent.com/v1", "hunyuan-5",
+        "腾讯混元 5 — 混元旗舰，深度推理与长文本一体",
+        icon="HY", brand="腾讯混元",
+        models=("hunyuan-5", "hunyuan-turbo-5", "hunyuan-4.5-turbo"),
+        key_url="https://console.cloud.tencent.com/hunyuan/api-key",
+    ),
+    "spark": ProviderPreset(
+        "spark", "https://spark-api-open.xf-yun.com/v1", "spark-x2",
+        "讯飞星火 X2 — 中文认知旗舰，长文本与多模态",
+        icon="XF", brand="讯飞星火",
+        models=("spark-x2", "spark-x", "spark-4.0-ultra"),
+        key_url="https://console.xfyun.cn/services/bm3",
+        notes="星火 HTTP 接口用 APIPassword 鉴权（Bearer 方式）",
+    ),
+    "ernie": ProviderPreset(
+        "ernie", "https://qianfan.baidubce.com/v2", "ernie-5.0",
+        "百度千帆 ERNIE 5.0 — 文心旗舰，走千帆 v2 OpenAI 兼容端点",
+        icon="BD", brand="百度千帆",
+        models=("ernie-5.0", "ernie-4.5-turbo-128k", "ernie-4.5"),
+        key_url="https://console.bce.baidu.com/iam/#/iam/apikey/list",
+        notes="需先在千帆平台开通对应模型后方可调用",
+    ),
+    "step": ProviderPreset(
+        "step", "https://api.stepfun.com/v1", "step-3.5",
+        "阶跃星辰 Step 3.5 — 多模态推理旗舰",
+        icon="ST", brand="阶跃星辰",
+        models=("step-3.5", "step-3", "step-2-16k"),
+        key_url="https://platform.stepfun.com/interface-key",
+    ),
+    "openrouter": ProviderPreset(
+        "openrouter", "https://openrouter.ai/api/v1", "openai/gpt-5.6-sol",
+        "OpenRouter — 海外聚合，一个 Key 路由多家旗舰模型",
+        icon="OR", brand="OpenRouter",
+        models=("openai/gpt-5.6-sol", "anthropic/claude-opus-5",
+                "google/gemini-3.8-flash", "deepseek/deepseek-flash"),
+        key_url="https://openrouter.ai/keys",
+        notes="模型名带厂商前缀，如 deepseek/deepseek-flash",
+    ),
 }
 
 DEFAULT_PROVIDER = "deepseek"
@@ -196,7 +235,7 @@ def get_provider_preset(provider: str | None) -> ProviderPreset:
 class AgentConstants:
     """AI Agent 常量"""
 
-    DEFAULT_MODEL: str = "deepseek-v4-pro"
+    DEFAULT_MODEL: str = "deepseek-flash"
     DEFAULT_BASE_URL: str = "https://api.deepseek.com/v1"
     DEFAULT_TEMPERATURE: float = 0.7
     DEFAULT_MAX_TOKENS: int = 4096

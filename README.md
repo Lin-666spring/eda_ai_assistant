@@ -10,7 +10,7 @@
 - **设计质量雷达图**: 6 维度量化评分，可视化展示设计质量
 - **设计意图识别**: AI 主动识别电路类型（STM32最小系统/Buck/电机驱动...），提前建议缺失元件
 - **12 种电路模板**: 覆盖 STM32/ESP32/Buck/锂电池/RS485/USB-UART/H桥/运放/LED/CAN/SD卡/无线模块
-- **10 家 AI 厂商**: DeepSeek / OpenAI / Gemini / Claude / 通义千问 / 智谱 / Kimi / 豆包 / MiniMax / 硅基流动
+- **15 家 AI 厂商**: DeepSeek / OpenAI / Gemini / Claude / 通义千问 / 智谱 / Kimi / 豆包 / MiniMax / 硅基流动 / 腾讯混元 / 讯飞星火 / 百度千帆 / 阶跃星辰 / OpenRouter
 - **Claude 原生协议**: 直接支持 Anthropic Messages API（非 OpenAI 兼容）
 
 ## 快速开始
@@ -85,30 +85,35 @@ src/
 ├── ml/                       # NLU/元件分类模型训练脚本
 └── interfaces/               # EDA 适配器
 
-tests/                        # 1179 条测试（pytest 收集）
+tests/                        # 1248 条测试（pytest 收集）
 ```
 
 ## 配置
 
-支持 10 家 AI 厂商，在设置面板中可视化切换:
+支持 15 家 AI 厂商，在设置面板中可视化切换（模型清单以各厂商官方 `GET /models` 实时拉取为准，下表为离线兜底默认值）:
 
 | 厂商 | 默认模型 | API 协议 |
 |------|---------|---------|
-| DeepSeek | deepseek-v4-pro | OpenAI 兼容 |
-| OpenAI | gpt-5.5 | OpenAI 兼容 |
-| Gemini | gemini-3.5-flash | OpenAI 兼容 |
-| Claude | claude-opus-4-8 | **原生 Messages API** |
+| DeepSeek | deepseek-flash | OpenAI 兼容 |
+| OpenAI | gpt-5.6-sol | OpenAI 兼容 |
+| Gemini | gemini-3.8-flash | OpenAI 兼容 |
+| Claude | claude-opus-5 | **原生 Messages API** |
 | 通义千问 | qwen3.7-max | OpenAI 兼容 |
-| 智谱 | glm-5.1 | OpenAI 兼容 |
-| Kimi | kimi-k2.6 | OpenAI 兼容 |
+| 智谱 | glm-5.3 | OpenAI 兼容 |
+| Kimi | kimi-k3 | OpenAI 兼容 |
 | 豆包 | doubao-1.5-pro-256k | OpenAI 兼容 |
 | MiniMax | MiniMax-M3 | OpenAI 兼容 |
 | 硅基流动 | deepseek-ai/DeepSeek-V4-Flash | OpenAI 兼容 (聚合) |
+| 腾讯混元 | hunyuan-5 | OpenAI 兼容 |
+| 讯飞星火 | spark-x2 | OpenAI 兼容 |
+| 百度千帆 | ernie-5.0 | OpenAI 兼容 |
+| 阶跃星辰 | step-3.5 | OpenAI 兼容 |
+| OpenRouter | openai/gpt-5.6-sol | OpenAI 兼容 (聚合) |
 
 ## 测试
 
 ```bash
-python -m pytest tests/ -q     # 1179 条测试
+python -m pytest tests/ -q     # 1248 条测试
 python -m pytest tests/ -v     # 详细输出
 ```
 
