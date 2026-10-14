@@ -44,6 +44,10 @@ a = Analysis(
         'requests',
         'dotenv',
         'chromadb',
+        # chromadb 遥测走 importlib 懒加载，PyInstaller 分析不到（2026-10-14
+        # 打包验证：frozen 下 RAG 初始化报 No module named
+        # chromadb.telemetry.product.posthog），显式补上
+        'chromadb.telemetry.product.posthog',
         # 2026-10-14 BERT 批：意图模型运行时栈（rbt3 ONNX 推理 + WordPiece 分词）。
         # 二者是 chromadb 的传递依赖但走懒加载，不显式声明 PyInstaller 分析不到。
         'onnxruntime',

@@ -68,8 +68,7 @@ class BootSequencer:
         threading.Thread(target=worker).start()
         ...
         with boot.step("services"):
-            start_hotkey_listener()
-            start_tray(...)
+            start_bridge_slave()   # 托盘+热键在独立桥接子进程
     """
 
     def __init__(self, steps: tuple[BootStep, ...] = DEFAULT_STEPS) -> None:

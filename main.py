@@ -14,6 +14,23 @@ EDA AI 智能助手 — Eel 应用入口
 # 污染测试进程的 threading/socket。
 import sys
 
+# 桥接子进程分发（2026-10-14 打包验证批）：托盘+热键的 Win32 消息泵线程与
+# gevent hub 不兼容（hub 主线程直接消失，见 system_bridge 模块注释），故
+# 二者整体跑在独立子进程里。该分发必须在 patch 之前 —— slave 全程无 gevent。
+if "--eda-bridge-slave" in sys.argv:
+    try:
+        from src.core.system_bridge import run_bridge_slave
+
+        run_bridge_slave()
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback
+
+        traceback.print_exc(file=sys.stderr)
+        sys.exit(1)
+    sys.exit(0)
+
 _GEVENT_PATCHED = "pytest" not in sys.modules
 if _GEVENT_PATCHED:
     try:
@@ -871,7 +888,7 @@ def open_workspace_dir(path: str) -> dict:
 # ══════════════════════════════════════════
 
 from src.core.system_bridge import (
-    consume_toggle, start_hotkey_listener, start_tray, stop_tray,
+    consume_toggle, start_bridge_slave, stop_bridge_slave,
     is_companion_mode, request_toggle,
 )
 
@@ -966,10 +983,9 @@ def _boot_worker() -> None:
     放后台的不只是「慢」：它们都不影响对话界面能不能用，没理由让用户等。
     """
     with boot.step("services"):
-        start_hotkey_listener()
-        show_cb = lambda: request_toggle()   # 托盘「显示/隐藏」→ 切换模式
-        exit_cb = lambda: None               # 退出回调由 eel 结束后处理
-        start_tray(show_callback=show_cb, exit_callback=exit_cb)
+        # 托盘+热键在独立桥接子进程承载（消息泵与 gevent hub 不兼容，
+        # 2026-10-14 打包验证批；marker 文件单向通信，见 system_bridge）
+        start_bridge_slave()
 
     # 本地 ML 模型预热：torch 导入 + 权重（元件 TextCNN / 意图 rbt3 ONNX）
     # 是首次分析/对话的一次性大头
@@ -1050,7 +1066,7 @@ def main():
         logger.info("Chrome not found, trying Edge...")
         _run_window("edge")
     finally:
-        stop_tray()
+        stop_bridge_slave()
 
 
 def setup_logging(debug: bool = False):
@@ -1059,7 +1075,15 @@ def setup_logging(debug: bool = False):
         log_dir = app_home() / "logs"
     else:
         log_dir = PROJECT_ROOT / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
+    # 日志目录可能被杀软拦截/只读（2026-10-14 打包验证：普通令牌写用户目录
+    # 被拒）——降级为纯控制台，应用必须能起来
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        file_handler: logging.Handler = logging.FileHandler(
+            log_dir / "app.log", encoding="utf-8")
+    except OSError as e:
+        print(f"[warn] 日志目录不可用（{e}），降级为控制台日志", file=sys.stderr)
+        file_handler = logging.StreamHandler(sys.stdout)
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
@@ -1068,10 +1092,7 @@ def setup_logging(debug: bool = False):
     logging.basicConfig(
         level=level,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        handlers=[
-            logging.FileHandler(log_dir / "app.log", encoding="utf-8"),
-            logging.StreamHandler(sys.stdout),
-        ],
+        handlers=[file_handler, logging.StreamHandler(sys.stdout)],
     )
 
 
