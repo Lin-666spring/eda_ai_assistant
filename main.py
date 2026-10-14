@@ -929,6 +929,7 @@ MAIN_SIZE = (GUI.MAIN_WIDTH, GUI.MAIN_HEIGHT)
 
 boot = BootSequencer((
     BootStep("services", "正在注册全局热键与系统托盘", critical=True),
+    BootStep("ml_warmup", "正在预热本地模型", critical=False),
     BootStep("knowledge", "正在预热知识库", critical=False),
 ))
 
@@ -969,6 +970,15 @@ def _boot_worker() -> None:
         show_cb = lambda: request_toggle()   # 托盘「显示/隐藏」→ 切换模式
         exit_cb = lambda: None               # 退出回调由 eel 结束后处理
         start_tray(show_callback=show_cb, exit_callback=exit_cb)
+
+    # 本地 ML 模型预热：torch 导入 + TextCNN 权重是首次分析的一次性大头
+    # （实测 1.2~3.6s + 1.65s），boot 期间后台做完，用户首次 DRC/对话即走稳态。
+    # 打包版 torch 不进 exe，预热按设计快速空转（走规则回退），不阻塞启动。
+    with boot.step("ml_warmup"):
+        try:
+            get_controller().warm_up_models()
+        except Exception as e:
+            logger.warning("ML 预热失败（不阻塞启动，首次使用时再懒加载）: %s", e)
 
     # 知识库首次索引可能要十几秒 —— 只做预热，不挡界面（前端顶栏会给提示）
     with boot.step("knowledge"):

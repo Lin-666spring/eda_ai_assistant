@@ -28,6 +28,7 @@ from .base import (
     _is_cap_row,
     _is_dcdc_part,
     _is_inner_layer,
+    _is_module_not_ic,
     _is_power_or_ground_net,
     _is_resistor_row,
     _kw_hit,
@@ -162,7 +163,10 @@ class BomRulesMixin:
             cls = _classify_component(item)
             if cls == "cap":
                 caps.append(item)
-            elif cls == "ic":
+            # 2026-10-13 判据批：U 前缀模组/连接器（OLED 显示屏、WAFER/XT30
+            # 连接器、麦克风）描述二次否决——U 前缀不在分类安全网内，ML 与
+            # 规则回退都会把它们当 IC，虚增去耦需求（金样实测 16 个假目标）
+            elif cls == "ic" and not _is_module_not_ic(item):
                 ics.append(item)
 
         # ── 统计可用去耦电容总量（含数量）──
@@ -883,23 +887,43 @@ class BomRulesMixin:
                 my_refs = {r.upper() for r in item.reference_list}
                 my_nets = [name for name, pins in net_pins.items()
                            if any(str(p).split(".")[0].strip().upper() in my_refs for p in pins)]
+                # 2026-10-13 判据批：加结构化通道。名字通道（FB/FEEDBACK/VSENSE）
+                # 对 LCEDA 自动命名的 $1Nxxxx 匿名网全盲——金样 51 条 ERROR 经
+                # 逐条深查全部具备「稳压器某网络挂 ≥2 电阻」的结构特征（分压
+                # 中点本就是匿名网，如 TPS61022 的 R8/R9 挂 $1N604）。通道取或：
+                # 名字命中即充分（原逻辑），或某稳压器网络挂 ≥2 个独立 R 位号、
+                # 非使能网（EN 分压是上下电时序网络，不是输出反馈）、且是小网络
+                # （≤5 个位号：分压中点=稳压器+两臂±辅件）。规模门替代按网名判
+                # 电源——真电源轨必挂一堆负载/去耦（金样 3V3 轨 40+ 位号），而
+                # MIPI_DSI_VCC_LED- 这类带 VCC 字样的 LED 驱动 OVP 分压中点只有
+                # 4 个位号，按名字判电源会误杀。
+                _EN_NET_KW = ("en", "enable", "ena")
                 has_fb = False
                 for name in my_nets:
-                    if not _net_kw_hit(str(name), _FB_NET_KW):
-                        continue
-                    r_refs = {
+                    name_s = str(name)
+                    pin_refs = {
                         str(p).split(".")[0].strip().upper()
-                        for p in net_pins[name]
-                        if "".join(c for c in str(p).split(".")[0] if c.isalpha()).upper()
+                        for p in net_pins[name]}
+                    r_refs = {
+                        r for r in pin_refs
+                        if "".join(c for c in r if c.isalpha()).upper()
                         in ("R", "RN", "RNC", "RP")}
-                    if len(r_refs) >= 2:   # 分压上下臂各出一脚
+                    if len(r_refs) < 2:   # 分压上下臂各出一脚
+                        continue
+                    if _net_kw_hit(name_s, _FB_NET_KW):
+                        has_fb = True
+                        break
+                    if _net_kw_hit(name_s, _EN_NET_KW):
+                        continue
+                    if len(pin_refs) <= 5:
                         has_fb = True
                         break
                 if not has_fb:
                     violations.append(RuleViolation(
                         rule_name="DC-DC 反馈网络检查",
                         description=(f"开关稳压器 {ref}({pn}) 反馈网络未检出：其 {len(my_nets)} 个网络中"
-                                     f"未见 FB/FEEDBACK/VSENSE 网络上挂两个分压电阻（FB 分压电阻缺失）"),
+                                     f"未见挂两个分压电阻的反馈网络（FB/FEEDBACK/VSENSE 命名网或"
+                                     f"匿名分压中点，FB 分压电阻缺失）"),
                         severity=RuleSeverity.ERROR, location=ref,
                         suggestion=f"Vout=Vref×(1+R1/R2)。Vref 通常 0.6V/0.8V/1.25V(查数据手册)。R2 通常取 10kΩ 左右。",
                         theory="开关稳压器通过比较 FB 电压与内部基准 Vref 来调节占空比→稳定 Vout。无 FB 网络则输出电压不受控,可能升至输入电压致负载烧毁。R1/R2 精度影响 Vout 精度—建议用 ±1% 电阻。",

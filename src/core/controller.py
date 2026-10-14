@@ -5,8 +5,10 @@ All business logic lives here. GUI and CLI consume this single API,
 so feature parity is guaranteed across interfaces.
 """
 
+import inspect
 import json
 import logging
+import re
 import sys
 import threading
 from contextlib import contextmanager
@@ -22,6 +24,7 @@ from src.bom.merger import BOMMerger
 from src.bom.parser import BOMItem, BOMParser
 from src.bom.validator import BOMValidator
 from src.config import config
+from src.exceptions import BOMEmptyError
 from src.html_bom.generator import HTMLBOMConfig, HTMLBOMGenerator
 from src.interfaces.eda_adapter import LCEDAAdapter, PCBData
 from src.rag.indexer import RAGIndexer, DEFAULT_PERSIST_DIR
@@ -134,6 +137,9 @@ class AppController:
         self._rag_index_checked = False  # RAG 索引是否已检查/建立
         # 启动线程（后台预热）和首次查询可能同时进来，双检加锁避免建两遍索引
         self._rag_index_lock = threading.Lock()
+        # NLU 引擎懒加载同口径（启动预热与首次消息并发）
+        self._nlu_lock = threading.Lock()
+        self._nlu_ready = False  # 失败也不重试（与旧 hasattr 口径一致）
 
     def reconfigure_llm(self, provider: str, api_key: str, base_url: str, model: str):
         """热重载 LLM 客户端 — 用户通过设置面板修改配置后调用。"""
@@ -677,6 +683,17 @@ class AppController:
         if operation == "generate_drc_rule":
             return self._generate_drc_rule(params.get("rule_description", ""))
 
+        # 走线宽度计算 — LLM 以结构化参数给出电流/温升/铜厚；
+        # 参数缺失时 handler 内部用 raw_input 兜底解析或返回引导
+        if operation == "calc_trace_width":
+            return self._calc_trace_width_handler(
+                raw_input=str(params.get("raw_input") or ""),
+                current_a=params.get("current_a"),
+                temp_rise_c=params.get("temp_rise"),
+                copper_oz=params.get("copper_oz"),
+                is_inner=params.get("is_inner"),
+            )
+
         # 从 ToolRegistry 获取 handler 映射（带懒加载降级）
         dispatch = self._build_dispatch_map()
         handler = dispatch.get(operation)
@@ -969,16 +986,40 @@ class AppController:
     # ── AI helpers ──
 
     def _get_nlu_engine(self):
-        """lazy init NLU 引擎（获取或创建）"""
-        if not hasattr(self, '_nlu_engine'):
+        """lazy init NLU 引擎（获取或创建；双检锁，见 __init__ 注释）"""
+        if self._nlu_ready:
+            return self._nlu_engine
+        with self._nlu_lock:
+            if self._nlu_ready:
+                return self._nlu_engine
             try:
                 from src.agent.nlu_engine import NLUEngine
-                self._nlu_engine = NLUEngine()
-                logger.info("NLU Engine ready (embedding: %s)", self._nlu_engine.embedding_available)
+                engine = NLUEngine()
+                logger.info("NLU Engine ready (embedding: %s)", engine.embedding_available)
+                self._nlu_engine = engine
             except Exception as e:
                 logger.warning("NLU Engine init failed: %s", e)
                 self._nlu_engine = None
+            self._nlu_ready = True
         return self._nlu_engine
+
+    def warm_up_models(self) -> dict:
+        """预热本地 ML 模型（启动 boot 线程调用）。
+
+        元件分类 TextCNN（torch 导入 + 权重，首次 DRC 的一次性大头）+
+        意图 TextCNN（首次对话分类路径）。懒加载内部均有双检锁，与用户
+        操作并发安全；预热完成后首次分析即走稳态。
+
+        Returns:
+            {"component_model": bool, "intent_model": bool} 各自是否就绪
+        """
+        from src.rules import base as rule_base
+        component_ready = rule_base.warm_up()
+        engine = self._get_nlu_engine()
+        intent_ready = bool(engine and engine.warm_up())
+        logger.info("ML warmup: component_model=%s intent_model=%s",
+                    component_ready, intent_ready)
+        return {"component_model": component_ready, "intent_model": intent_ready}
 
     def _intent_to_system_type(self, intent: TaskIntent) -> str:
         """将 TaskIntent 映射到 system prompt 类型
@@ -1231,15 +1272,68 @@ class AppController:
         except ImportError:
             return ()
 
+    # 生成意图句式：生成/创建/编写…规则|脚本 → generate_drc_rule。
+    # 动作词组比 check_rule 的「规则/drc」更能代表 CODE_RULE_GEN 语义，
+    # 在关键词匹配前判断，避免「写一个去耦电容检查的DRC规则」被执行 DRC。
+    _RULE_GEN_PATTERN = re.compile(
+        r"(?:生成|创建|编写|新增|写一?[个条]).{0,12}(?:规则|脚本)"
+    )
+
+    # 知识问句句式（句首问词或句尾问式）。命中且 NLU 高置信 TEXT_CHAT 时，
+    # 本地降级不再执行动作工具（原先「什么是去耦电容？」会触发全量 DRC 扫描）。
+    _QUESTION_PATTERN = re.compile(
+        r"^(?:什么[是叫]|为什么|如何|怎么|介绍|讲解?|解释)|"
+        r"(?:是什么|有什么区别|的区别|有什么用)$"
+    )
+
+    def _local_chat_guard(self, user_input: str) -> Optional[str]:
+        """知识问句守卫（仅本地降级路径）— 问句式开头/结尾且本地 NLU 高置信
+        判为通用对话时，不执行动作工具，返回指引文案。
+
+        无 NLU（打包缺 torch）或 NLU 判断为操作意图时放行，不影响指令路由。
+        """
+        if not self._QUESTION_PATTERN.search(user_input.strip()):
+            return None
+        engine = self._get_nlu_engine()
+        if engine is None:
+            return None
+        try:
+            intent, confidence, _ = engine.classify(user_input)
+        except Exception:
+            return None
+        if intent != "TEXT_CHAT" or confidence < 0.8:
+            return None
+        return (
+            " 这看起来是一个知识型问题。本地模式（未配置 AI 模型）无法详细解答，你可以：\n"
+            "• 在设置中配置 API Key 后直接提问，我会结合知识库详细回答\n"
+            "• 或输入操作指令，如：合并BOM / 检查设计规则 / 走线宽度 1A"
+        )
+
     def _match_keyword(self, user_input: str) -> Optional[Callable[[], str]]:
         """关键词匹配 — 从 ToolRegistry 派生（精确子串 → 模糊 n-gram 降级）"""
         lowered = user_input.lower()
 
-        # 第一轮：精确子串匹配（ToolRegistry 关键词，优先顺序已内置）
+        # 第零轮：规则/脚本生成句式（generate_drc_rule）
+        if self._RULE_GEN_PATTERN.search(lowered):
+            handler = self._resolve_handler_by_tool("generate_drc_rule")
+            if handler:
+                logger.debug("Rule-gen pattern: '%s' → generate_drc_rule", user_input[:30])
+                return handler
+
+        # 第一轮：精确子串匹配 — 最长关键词优先，同长取注册序靠前。
+        # 2026-10-14 修复：原先按注册顺序先到先得，短关键词会抢占长关键词
+        # （check_rule「线宽」⊂ calc_trace_width「走线宽度」，导致
+        # 「帮我计算1A电流的走线宽度」被路由到全量 DRC 扫描）。
+        best_tool: Optional[str] = None
+        best_len = 0
         for keywords, tool_name in self._get_keyword_map():
-            if any(kw in lowered for kw in keywords):
-                logger.debug("Keyword match: '%s' → %s", user_input[:30], tool_name)
-                return self._resolve_handler_by_tool(tool_name)
+            for kw in keywords:
+                if kw and kw in lowered and len(kw) > best_len:
+                    best_len = len(kw)
+                    best_tool = tool_name
+        if best_tool:
+            logger.debug("Keyword match: '%s' → %s (kw_len=%d)", user_input[:30], best_tool, best_len)
+            return self._resolve_handler_by_tool(best_tool)
 
         # 第二轮：汉字 bigram 模糊匹配
         best_tool: Optional[str] = None
@@ -1266,7 +1360,7 @@ class AppController:
         # 特殊处理：需要参数或特殊逻辑的工具
         # 所有 filter/search/lookup 类工具都使用 _filter_input_handler
         filter_tools = {"filter_components", "search_component", "component_lookup"}
-        analysis_tools = {"pcb_analysis", "calc_trace_width"}
+        analysis_tools = {"pcb_analysis"}  # calc_trace_width 有本地真实计算，走 ToolDef handler
         health_tools = {"bom_health", "find_alternatives", "supply_risk", "bom_cost_summary"}
         report_tools = {"generate_html_bom"}
         rule_tools = {"check_rule", "explain_design_rule"}
@@ -1310,6 +1404,29 @@ class AppController:
             return self._pcb_analysis_handler
         return getattr(self, method_name, None)
 
+    @staticmethod
+    def _call_route_handler(handler: Callable, user_input: str) -> str:
+        """调用路由 handler — 声明了一个形参的 handler（如走线宽度计算）
+        绑定原始用户输入传入，零参 handler 保持原样调用。
+
+        原先 _local_fallback 一律 handler()，路由层拿不到句子，
+        需要从输入提取参数的工具只能返回引导文案。
+        """
+        try:
+            inspect.signature(handler).bind(user_input)
+        except TypeError:
+            args: tuple = ()
+        except ValueError:  # 无签名的内建/包装 — 保守走零参
+            args = ()
+        else:
+            args = (user_input,)
+        try:
+            return handler(*args)
+        except BOMEmptyError:
+            # chat 入口（chat_message_stream）不要求预载 BOM，本地降级命中
+            # 需要数据的工具（合并/校验/查重…）时给友好提示而非抛异常
+            return " 请先导入 BOM 文件再执行该操作。"
+
     def _filter_input_handler(self) -> str:
         """处理用户的筛选/搜索请求（从输入中提取关键词）"""
         # 这个方法在本地降级时被调用，但我们没有保存原始输入
@@ -1332,6 +1449,86 @@ class AppController:
             PromptTemplates.get("pcb_analysis", pcb_summary=summary),
             system_prompt=PromptTemplates.get_system_prompt("pcb"),
         )
+
+    # ── 走线宽度计算（IPC-2221 本地真实计算，无 LLM/无 BOM 可用）──
+
+    _CALC_WIDTH_TABLE_MM = (0.3, 0.5, 0.8, 1.0, 1.5, 2.0)
+
+    def _calc_trace_width_handler(
+        self,
+        raw_input: str = "",
+        current_a: Optional[float] = None,
+        temp_rise_c: Optional[float] = None,
+        copper_oz: Optional[float] = None,
+        is_inner: Optional[bool] = None,
+    ) -> str:
+        """走线宽度计算 — 双入口：
+        - headless 关键词路由：raw_input 为原始句子，正则抽电流/温升/铜厚
+        - Agent Loop（calc_trace_width 工具）：_dispatch_operation 传结构化参数
+
+        2026-10-14 修复：原先关键词命中后映射到 _pcb_analysis_handler
+        （无 LLM 时只回「需要 AI 支持」），本地从未真正算过。
+        """
+        import re as _re
+        from src.pcb.calculator import ipc2221_current_capacity, ipc2221_trace_width
+
+        text = raw_input or ""
+
+        def _num(pattern: str) -> Optional[float]:
+            m = _re.search(pattern, text, re.IGNORECASE)
+            return float(m.group(1)) if m else None
+
+        if current_a is None:
+            ma = _num(r"(\d+(?:\.\d+)?)\s*(?:ma|毫安)")
+            if ma is not None:
+                current_a = ma / 1000.0
+        if current_a is None:
+            current_a = _num(r"(\d+(?:\.\d+)?)\s*(?:a\b|安)")
+        if current_a is None:
+            current_a = _num(r"(\d+(?:\.\d+)?)")  # 无单位兜底取第一个数
+        if current_a is None or current_a <= 0:
+            return (
+                " 请在句子里带上电流，例如：\n"
+                "• \"走线宽度 1A\"\n"
+                "• \"帮我计算 1A 电流的走线宽度\"\n"
+                "• \"2A 温升20 1oz 的线宽要多少\"（温升默认 10°C，铜厚默认 1oz）"
+            )
+
+        if temp_rise_c is None:
+            temp_rise_c = _num(r"温升\s*(\d+(?:\.\d+)?)")
+            if temp_rise_c is None:
+                temp_rise_c = _num(r"(\d+(?:\.\d+)?)\s*(?:°\s*c|℃|度)")
+        if temp_rise_c is None or temp_rise_c <= 0:
+            temp_rise_c = 10.0
+
+        if copper_oz is None:
+            copper_oz = _num(r"(\d+(?:\.\d+)?)\s*(?:oz|盎司)")
+        if copper_oz is None or copper_oz <= 0:
+            copper_oz = 1.0
+
+        if is_inner is None:
+            is_inner = "内层" in text
+
+        width_mm = ipc2221_trace_width(current_a, copper_oz, temp_rise_c, is_inner)
+        width_mil = width_mm * 39.37
+
+        table_lines = ["| 走线宽度 | 实际载流能力 |", "|---|---|"]
+        for w in self._CALC_WIDTH_TABLE_MM:
+            cap = ipc2221_current_capacity(w, copper_oz, temp_rise_c, is_inner)
+            mark = " ✓" if cap >= current_a else ""
+            table_lines.append(f"| {w:.1f} mm | {cap:.2f} A{mark} |")
+
+        return (
+            f"## 走线宽度计算（IPC-2221）\n\n"
+            f"**输入**：电流 {current_a:g} A · 温升 {temp_rise_c:g} °C · "
+            f"铜厚 {copper_oz:g} oz · {'内层' if is_inner else '外层'}\n\n"
+            f"### 所需最小走线宽度：**{width_mm:.3f} mm**（约 {width_mil:.1f} mil）\n\n"
+            f"常用线宽在相同参数下的载流能力（✓ 表示满足 {current_a:g} A）：\n\n"
+            + "\n".join(table_lines)
+            + "\n\n> 依据 IPC-2221 §6.2 载流经验公式反解；实际布线请再留 20%~50% 余量，"
+              "并考虑压降与散热条件。"
+        )
+
 
     @staticmethod
     def _char_ngram_similarity(a: str, b: str, n: int = 2) -> float:
@@ -1379,9 +1576,13 @@ class AppController:
         # 建议列表一直显示裸 tool_name。提升到方法入口统一 import。
         from src.agent.tools import ToolRegistry
 
+        guard = self._local_chat_guard(user_input)
+        if guard:
+            return guard
+
         handler = self._match_keyword(user_input)
         if handler:
-            return handler()
+            return self._call_route_handler(handler, user_input)
 
         # 未匹配 → 查找最相似的指令给出建议
         suggestions = self._get_closest_commands(user_input, top=3)

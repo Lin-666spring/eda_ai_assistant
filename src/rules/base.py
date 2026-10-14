@@ -9,6 +9,7 @@ import math
 import os
 import re
 import sys
+import threading
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import Enum
@@ -153,41 +154,87 @@ _COMPONENT_MODEL_PATH = os.path.join(_model_dir(), "component_model.pt")
 _COMPONENT_VOCAB_PATH = os.path.join(_model_dir(), "vocab.json")
 _ML_CONFIDENCE_THRESHOLD = 0.45  # 低于此阈值回退规则
 
+# 启动预热线程与首次 DRC 并发到达时串行化加载（2026-10-13 预热批）
+_component_model_lock = threading.Lock()
+
+
+def warm_up() -> bool:
+    """预热元件分类模型（启动后台线程调用；并发安全，成功返回 True）。"""
+    return _init_component_model()
+
 
 def _init_component_model() -> bool:
-    """懒加载元件分类模型，成功返回 True。"""
+    """懒加载元件分类模型，成功返回 True。
+
+    2026-10-13 预热批：旧实现先置 attempted 再加载且无锁——boot 预热线程
+    加载期间用户点 DRC，用户线程看到 attempted=True 但模型未就绪，会永久
+    静默回退规则分类。改双检锁；attempted 在加载结论（成功或确认失败）
+    出来后才置位。
+    """
     global _component_predictor, _component_model_attempted
     if _component_model_attempted:
         return _component_predictor is not None
-    _component_model_attempted = True
+    with _component_model_lock:
+        if _component_model_attempted:
+            return _component_predictor is not None
+        predictor = None
+        if os.path.exists(_COMPONENT_MODEL_PATH):
+            try:
+                from src.ml.component_classifier import ComponentPredictor
+                predictor = ComponentPredictor.from_path(
+                    _COMPONENT_MODEL_PATH, _COMPONENT_VOCAB_PATH
+                )
+                if predictor:
+                    logger.info("本地元件分类模型加载成功 (~600K TextCNN)")
+            except Exception as e:
+                logger.warning("元件分类模型加载失败: %s，回退规则", e)
+        else:
+            logger.info("元件分类模型文件不存在，使用规则分类")
+        _component_predictor = predictor
+        _component_model_attempted = True
+        # 分类缓存按内容键，与模型版本（进程内一次性加载）绑定；加载点清空
+        # 只是保险——杜绝"先回退后加载"时序下把回退结果当 ML 结果缓存住
+        _fine_cls_cache.clear()
+        _coarse_cls_cache.clear()
+    return _component_predictor is not None
 
-    if not os.path.exists(_COMPONENT_MODEL_PATH):
-        logger.info("元件分类模型文件不存在，使用规则分类")
-        return False
 
-    try:
-        from src.ml.component_classifier import ComponentPredictor
-        _component_predictor = ComponentPredictor.from_path(
-            _COMPONENT_MODEL_PATH, _COMPONENT_VOCAB_PATH
-        )
-        if _component_predictor:
-            logger.info("本地元件分类模型加载成功 (~600K TextCNN)")
-            return True
-    except Exception as e:
-        logger.warning("元件分类模型加载失败: %s，回退规则", e)
-    return False
+# ── 分类结果缓存（2026-10-13 性能批）──
+# 一次 check_all 里同一 BOM 行会被多条规则各自分类（实测 93 行板 ~650 次
+# torch 前向，占稳态 DRC 耗时大头）。分类是内容 (reference/pn/value/desc/
+# package) 的纯函数、模型进程内单例，故用内容键缓存即可跨规则/跨轮复用，
+# 输出逐位一致；不持 BOMItem 强引用，无跨板内存滞留。
+_fine_cls_cache: dict = {}
+_coarse_cls_cache: dict = {}
+
+
+def _cls_cache_key(item) -> tuple:
+    """分类输入的完备内容键（_build_input_text 消费的全部字段）。"""
+    return (
+        getattr(item, "reference", ""),
+        getattr(item, "part_number", ""),
+        getattr(item, "value", ""),
+        getattr(item, "description", ""),
+        getattr(item, "package", ""),
+    )
 
 
 def _classify_component_fine(item) -> tuple[str, float]:
     """细粒度 ML 分类，返回 (12类名, 置信度)。ML 不可用时返回 ("", 0.0)。"""
+    key = _cls_cache_key(item)
+    cached = _fine_cls_cache.get(key)
+    if cached is not None:
+        return cached
+    result = ("", 0.0)
     if _init_component_model() and _component_predictor is not None:
         try:
             fine_type, confidence, _debug = _component_predictor.classify(item)
             if confidence >= _ML_CONFIDENCE_THRESHOLD:
-                return fine_type, confidence
+                result = (fine_type, confidence)
         except Exception:
             pass
-    return ("", 0.0)
+    _fine_cls_cache[key] = result
+    return result
 
 
 def _parse_capacitance(val_str: str) -> Optional[float]:
@@ -396,20 +443,60 @@ _DCDC_PN_PREFIXES: tuple = (
     "XL4", "XL6", "SY7", "SY8", "MT3", "RT8", "AP2", "AP3", "LMR", "SGM",
     "TD1", "TMI", "ETA",
 )
-# ② 描述关键词走 _kw_hit（≤3 字母的 ASCII 短词要求词边界），避免裸子串误命中
+# ② 描述关键词走 _kw_hit（≤3 字母的 ASCII 短词要求词边界），避免裸子串误命中。
+#    「稳压器」「regulator」2026-10-13 判据批删去：它们命中「线性稳压器 /
+#    linear regulator」的 LDO 描述——LDO 没有开关节点，反馈网络/开关回路
+#    检查对它无意义（金样里 TPS78x/TPS7xx/SGM20xx 全族误报）。开关语义由
+#    dc-dc/buck/boost/降压/升压/开关稳压/开关电源/converter 覆盖。
 _DCDC_DESC_KW = ("dc-dc", "dc/dc", "buck", "boost", "降压", "升压", "开关稳压",
-                 "开关电源", "稳压器", "regulator", "converter")
+                 "开关电源", "converter")
+# ③ LDO/负载开关族前置排除（2026-10-13 判据批）：裸 "TPS"/"SGM" 前缀会吞掉
+#    TPS78x/TPS7xx LDO、TPS2051/TPS22xx 负载开关、SGM20xx/SGM15xx LDO——
+#    这些是线性器件，无 FB 分压/开关回路可言。必须先于开关前缀表判定。
+_DCDC_LDO_PREFIXES: tuple = ("TPS7", "TPS2", "SGM20", "SGM21", "SGM15")
+# ④ 无外反馈环节的变换器（2026-10-13 判据批）：固定输出（内部分压，如
+#    AP6320x 固定 3.3V/5V 降压、XL1509-5.0 的数字后缀档）与全集成隔离模块
+#    （B0505S/B1212S 一类 1W 模块，连 FB 引脚都没有）——外部 FB 分压检查与
+#    开关回路布局建议对它们均无意义。XL1509-ADJ 可调版不受影响。
+_DCDC_NO_FB_PN_RE = re.compile(r"^(?:AP6320\d|B\d{4}S|X{1,2}L1509-\d)")
 
 
 def _is_dcdc_part(item) -> bool:
     """按统一口径判定一个 BOM 行是否为开关稳压器（料号前缀或描述关键词）。"""
     pn = (getattr(item, "part_number", "") or "").strip().upper()
+    if any(pn.startswith(p) for p in _DCDC_LDO_PREFIXES):
+        return False
+    if _DCDC_NO_FB_PN_RE.match(pn):
+        return False
     if any(pn.startswith(p) for p in _DCDC_PN_PREFIXES):
         return True
     desc = (
         f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')}"
     ).lower()
     return _kw_hit(desc, _DCDC_DESC_KW)
+
+
+# ── U 前缀「模组/连接器」描述二次否决（2026-10-13 判据批，去耦两条规则用）──
+# U 前缀不在 _non_ic_prefixes 安全网内（连接器/咪头/OLED 模组在真实立创 BOM
+# 里常用 U 位号），ML 和规则回退两条路都会把它们判成 ic——金样 135 条去耦
+# 电容检查里有 ≥11 个这种假 IC 目标（0.96寸OLED 显示屏、WAFER/XT30 连接器、
+# 麦克风，金样全量实测 16 个，无一是真驱动 IC）。此表在分类结果之上按描述
+# 词二次否决，只在去耦目标收集处调用，不动全局分类口径（控制快照漂移面）。
+# 词走 _kw_hit：mic 这类 ≤3 字母短词词边界——TF 卡座的 "MicroSD" 不被 mic
+# 子串捞进来，由「卡座」词接管。
+_NON_IC_U_DESC_KW = ("连接器", "排针", "排母", "端子", "插座", "卡座", "排线",
+                     "wafer", "connector", "header", "socket",
+                     "oled", "lcd", "显示屏", "屏幕", "显示器", "display",
+                     "麦克风", "咪头", "microphone", "mic")
+
+
+def _is_module_not_ic(item) -> bool:
+    """U 前缀模组/连接器的描述二次否决：去耦规则的 IC 目标收集处专用。"""
+    desc = (
+        f"{getattr(item, 'part_number', '')} {getattr(item, 'description', '')} "
+        f"{getattr(item, 'value', '')}"
+    ).lower()
+    return _kw_hit(desc, _NON_IC_U_DESC_KW)
 
 
 def _is_power_or_ground_net(name: str) -> bool:
@@ -451,11 +538,22 @@ def _net_class(name: str, diff_members) -> str:
 
 
 def _classify_component(item) -> str:
-    """按位号前缀 + 描述关键词分类：'ic' | 'cap' | 'passive' | 'other'。
+    """按位号前缀 + 描述关键词分类：'ic' | 'cap' | 'passive' | 'other'（带缓存）。
 
     优先使用自研 ML 模型（12 细类 → 粗类映射），
     不可用时回退到位号前缀 + 描述关键词规则。
     """
+    key = _cls_cache_key(item)
+    cached = _coarse_cls_cache.get(key)
+    if cached is not None:
+        return cached
+    result = _classify_component_uncached(item)
+    _coarse_cls_cache[key] = result
+    return result
+
+
+def _classify_component_uncached(item) -> str:
+    """_classify_component 的原始实现（无缓存，勿直接调用）。"""
     from src.ml.component_classifier import FINE_TO_COARSE
 
     # ── ① ML 模型优先 ──

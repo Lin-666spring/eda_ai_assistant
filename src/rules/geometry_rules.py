@@ -199,10 +199,16 @@ class GeometryRulesMixin:
         pcb = self._pcb_data
         if not pcb or not pcb.traces: return []
         violations = []
+        # 2026-10-13 判据批：使能/状态网排除——POWER_EN 因 "POWER" 子串被当
+        # 电源轨，按 ~1A 启发式需求套 IPC 载流；实际使能网只走 µA 级栅极电流。
+        # 词边界匹配天然防 PGND/SENSOR 误伤（"en" 前有字母不命中），PWREN/
+        # PGOOD 这类复合词单列（≤4 字母短词才走词边界）。
+        en_net_kw = ("en", "enable", "ena", "pwren", "pgood")
         pw_traces = [t for t in pcb.traces
-                     if t.net_name and t.width_mm > 0 and any(
-                     kw.upper() in t.net_name.upper()
-                     for kw in PCB.POWER_NET_KEYWORDS)]
+                     if t.net_name and t.width_mm > 0
+                     and any(kw.upper() in t.net_name.upper()
+                             for kw in PCB.POWER_NET_KEYWORDS)
+                     and not _net_kw_hit(t.net_name, en_net_kw)]
         if not pw_traces: return violations
 
         # 从 BOM 估算电源电流；电机驱动电流单独取出，在 _estimate_net_current
@@ -586,18 +592,27 @@ class GeometryRulesMixin:
         return violations
 
 
-    # ── 差分对内等长公差分档（mm，2026-10-10 标准表批）──
+    # ── 差分对内等长公差分档（mm，2026-10-10 标准表批；2026-10-13 判据批改版）──
     # FR4 ≈6.7ps/mm。USB2.0 位周期 2.08ns，2mm≈13ps，版图指南普遍放宽到
-    # 1~2mm；HDMI/LVDS/MIPI/PCIE/SATA 与以太网 MDI 对内等长常用 0.5mm 档。
-    # 表外差分组（RS485/CAN/SDIO 等工程声明的「差分组」）没有严格等长要求，
-    # 沿用旧判据 2.0mm 绝对 + 10% 相对。描述文案与判据同取这一张表。
+    # 1~2mm；高速串行/以太网 MDI/存储器对内等长常用 0.5mm 档。
+    # 2026-10-13 判据批（1761 条违规评审）：
+    # ① 新增存储器档（LPDDR/DDR/SDRAM 0.5mm）——LPDDR5_WCK 对 0.96mm 失配
+    #    原先落表外 2.0mm 口径，门限与接口性质不符；
+    # ② 接口词匹配改 _net_kw_hit 词边界（与阻抗规则同口径）；
+    # ③ 表外组分流：guess 后缀配对（MIC_P/MIC_N、SPKL+/- 类音频对）没有受控
+    #    等长要求，直接跳过；engine 声明组（设计者写了 differentialName）保留
+    #    判定但降 INFO 并注明「接口未识别，参考判定」——SPK_IN 类不再 WARNING；
+    # ④ 表外组门限从「2.0mm 绝对 OR 10% 相对」双量则（消息只印 2.0mm，金样
+    #    5 条 diff<2.0 的自相矛盾报告全源于此）改为单量则
+    #    min(2.0, 10%×组内平均长)——印什么就判什么。
     _DIFF_SKEW_BANDS: tuple[tuple[tuple[str, ...], float, str], ...] = (
         (("USB",), 2.0, "USB2.0"),
         (("HDMI", "LVDS", "MIPI", "PCIE", "SATA"), 0.5, "高速串行"),
         (("ETH", "LAN", "RGMII"), 0.5, "以太网 MDI"),
+        (("LPDDR", "DDR", "SDRAM"), 0.5, "存储器"),
     )
     _DIFF_SKEW_DEFAULT_MM = 2.0
-    _DIFF_SKEW_DEFAULT_REL = 0.10   # 表外组附加相对判据（组内长度差 ≥10%）
+    _DIFF_SKEW_DEFAULT_REL = 0.10   # 表外组相对判据（长度差 >10% 组内平均长）
 
     def _check_diff_pair_length(self, bom_items, positions, netlist):
         """差分对等长：按接口分档取对内长度差公差（_DIFF_SKEW_BANDS）。
@@ -613,6 +628,7 @@ class GeometryRulesMixin:
         信号实际走过的距离，支路越多差分差越虚高。现按 chain_segments
         串成折线，再在折线端点图上取**最长路径**（树直径；贯通结点的
         路径跨折线拼接，闭合环组件按全环长保守计）。
+        2026-10-13 判据批：见 _DIFF_SKEW_BANDS 注释 ①~④。
         """
         pcb = self._pcb_data
         if not pcb or not pcb.traces: return []
@@ -634,29 +650,38 @@ class GeometryRulesMixin:
                 continue
             diff_mm = round(max(lens) - min(lens), 4)
             avg_len = sum(lens) / len(lens)
-            # 接口分档：label+网络名命中哪档就用哪档公差。
-            # 几何批修正：text 已 lower，关键词也必须 lower——旧写法
-            # `kw in text`（大写关键词 vs 小写文本）恒 False，整张
-            # _DIFF_SKEW_BANDS 是死代码，所有组都落表外口径
-            # （金样两批 0 条分档文案，29b9766 引入时未暴露）。
-            text = f"{label} {' '.join(nets)}".lower()
-            tol, band = next(
-                ((t, name) for kws, t, name in self._DIFF_SKEW_BANDS
-                 if any(kw.lower() in text for kw in kws)),
-                (self._DIFF_SKEW_DEFAULT_MM, "表外差分组"))
-            over = diff_mm > tol
-            if band == "表外差分组":
-                over = over or diff_mm >= self._DIFF_SKEW_DEFAULT_REL * avg_len
-            if not over:
-                continue
+            # 接口分档：组名/网络名按词边界命中哪档就用哪档公差
+            # （几何批修正是关键词大小写口径；判据批再统一成 _net_kw_hit，
+            # 与阻抗规则同口径，顺带消除 RUSB 类子串误命中）
+            names = [str(label), *(str(n) for n in nets)]
+            hit = next(((t, name) for kws, t, name in self._DIFF_SKEW_BANDS
+                        if any(_net_kw_hit(x, kws) for x in names)), None)
+            if hit is not None:
+                tol, band = hit
+                if diff_mm <= tol:
+                    continue
+                severity = (RuleSeverity.WARNING if source == "engine"
+                            else RuleSeverity.INFO)
+                extra = ""
+            else:
+                # 表外组（无接口词）：guess 后缀配对跳过，engine 声明组降 INFO
+                if source != "engine":
+                    continue
+                tol_eff = min(self._DIFF_SKEW_DEFAULT_MM,
+                              self._DIFF_SKEW_DEFAULT_REL * avg_len)
+                if diff_mm <= tol_eff:
+                    continue
+                tol, band = tol_eff, "表外差分组"
+                severity = RuleSeverity.INFO
+                extra = "；接口未识别，参考判定"
             violations.append(RuleViolation(
                 rule_name="差分对等长检查",
                 description=(f"差分/等长组 [{label}] 走线长度差 {diff_mm}mm "
-                             f"({band}判据门限 {tol}mm，组内平均长 {avg_len:.1f}mm): "
-                             + ", ".join(nets[:4])),
-                severity=(RuleSeverity.WARNING if source == "engine" else RuleSeverity.INFO),
+                             f"({band}判据门限 {tol:.2f}mm，组内平均长 {avg_len:.1f}mm)"
+                             + extra + ": " + ", ".join(nets[:4])),
+                severity=severity,
                 location=label,
-                    suggestion=(f"差分对走线长度差应 ≤{tol}mm（{band}档）。"
+                    suggestion=(f"差分对走线长度差应 ≤{tol:.2f}mm（{band}档）。"
                                 "用蛇形走线补偿短的一侧。蛇形幅度≥3W,间距≥2S。"),
                     theory="差分信号依赖两条线同时到达接收端来维持共模抑制。长度不匹配→到达时间差→差模分量→共模噪声↑、眼图闭合。FR4 中约 6.7ps/mm。",
                 ))

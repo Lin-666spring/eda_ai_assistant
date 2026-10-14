@@ -26,6 +26,7 @@ from .base import (
     _init_component_model,
     _is_dcdc_part,
     _is_inner_layer,
+    _is_module_not_ic,
     _is_power_or_ground_net,
     _kw_hit,
     _net_class,
@@ -149,8 +150,17 @@ _CRYSTAL_FREQ_RE = re.compile(
 _CRYSTAL_TIGHT_KW = ("晶振", "crystal", "谐振器")
 
 
+# 同一 check_all 里晶振布局/温敏布局两条规则各扫一遍全 BOM（2026-10-13 性能批）。
+# id + 强引用 memo：强引用保证缓存期间 id 不被 GC 复用；设上限防实验脚本
+# 单进程跑千板时滞留列表。
+_crystal_refs_memo: dict = {}
+
+
 def _identify_crystal_refs(bom_items) -> list:
     """识别晶振 BOM 行 → [(item, 首位号), ...]（三证据口径，同 bom_rules）。"""
+    cached = _crystal_refs_memo.get(id(bom_items))
+    if cached is not None and cached[0] is bom_items:
+        return cached[1]
     out = []
     for item in bom_items:
         ref = getattr(item, "reference", "").split(",")[0].strip()
@@ -171,6 +181,9 @@ def _identify_crystal_refs(bom_items) -> list:
         if any(k in text for k in ("内置", "集成", "internal")) and pfx not in ("X", "Y"):
             continue  # 片内振荡源（RTC/模组），底板无需外部晶振布局约束
         out.append((item, ref))
+    if len(_crystal_refs_memo) > 32:
+        _crystal_refs_memo.clear()
+    _crystal_refs_memo[id(bom_items)] = (bom_items, out)
     return out
 
 
@@ -374,7 +387,9 @@ class LayoutRulesMixin:
             kind = _classify_component(item)
             if kind == "cap":
                 caps.append((ref, positions[ref]))
-            elif kind == "ic":
+            # 2026-10-13 判据批：U 前缀模组/连接器描述二次否决（同
+            # _check_decoupling_caps 口径，OLED/连接器/麦克风不是距离目标）
+            elif kind == "ic" and not _is_module_not_ic(item):
                 ics.append((ref, positions[ref]))
         if not ics: return violations
         md = PCB.LAYOUT_DECOUPLE_MAX_DIST_MM

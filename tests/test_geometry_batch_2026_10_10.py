@@ -278,4 +278,5 @@ def test_diff_bands_actually_fire():
     pcb = _diff_pcb(traces, {"HDMI_A": ["HDMI_CLK_P", "HDMI_CLK_N"]})
     v = _run_diff_rule(checker, pcb)
     assert len(v) == 1
-    assert "高速串行" in v[0].description and "0.5mm" in v[0].description
+    # 判据批 2026-10-13：门限文案统一两位小数（0.5 → 0.50），档位命中不变
+    assert "高速串行" in v[0].description and "0.50mm" in v[0].description
