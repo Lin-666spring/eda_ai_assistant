@@ -1,6 +1,6 @@
 {
   "model": "IntentClassifier (TextCNN)",
-  "timestamp": "2026-08-04T17:36:25.154608",
+  "timestamp": "2026-10-14T08:48:36.542392",
   "config": {
     "vocab_size": 1468,
     "embed_dim": 96,
@@ -21,149 +21,182 @@
     "batch_size": 32,
     "learning_rate": 0.001,
     "weight_decay": 0.0001,
-    "train_samples": 590,
-    "val_samples": 110,
-    "best_epoch": 6,
-    "best_val_acc": 0.9909
+    "train_samples": 790,
+    "val_samples": 150,
+    "best_epoch": 8,
+    "best_val_acc": 0.9933
   },
   "results": {
-    "train_loss_final": 0.0162,
-    "val_loss_final": 0.0661,
-    "val_acc_final": 0.9818,
+    "train_loss_final": 0.0095,
+    "val_loss_final": 0.0283,
+    "val_acc_final": 0.9933,
     "per_class": {
       "TEXT_CHAT": {
-        "total": 11,
-        "correct": 10,
-        "accuracy": 0.9091
+        "total": 15,
+        "correct": 15,
+        "accuracy": 1.0
       },
       "BOM_ANALYSIS": {
-        "total": 11,
-        "correct": 11,
+        "total": 15,
+        "correct": 15,
         "accuracy": 1.0
       },
       "BOM_HEALTH": {
-        "total": 11,
-        "correct": 10,
-        "accuracy": 0.9091
-      },
-      "RULE_CHECK": {
-        "total": 11,
-        "correct": 11,
+        "total": 15,
+        "correct": 15,
         "accuracy": 1.0
       },
+      "RULE_CHECK": {
+        "total": 15,
+        "correct": 14,
+        "accuracy": 0.9333
+      },
       "PCB_ANALYSIS": {
-        "total": 11,
-        "correct": 11,
+        "total": 15,
+        "correct": 15,
         "accuracy": 1.0
       },
       "CODE_RULE_GEN": {
-        "total": 11,
-        "correct": 11,
+        "total": 15,
+        "correct": 15,
         "accuracy": 1.0
       },
       "REPORT_GEN": {
-        "total": 11,
-        "correct": 11,
+        "total": 15,
+        "correct": 15,
         "accuracy": 1.0
       },
       "COMPONENT_LOOKUP": {
-        "total": 11,
-        "correct": 11,
+        "total": 15,
+        "correct": 15,
         "accuracy": 1.0
       },
       "VISUAL": {
-        "total": 11,
-        "correct": 11,
+        "total": 15,
+        "correct": 15,
         "accuracy": 1.0
       },
       "LOCAL_ONLY": {
-        "total": 11,
-        "correct": 11,
+        "total": 15,
+        "correct": 15,
         "accuracy": 1.0
       }
+    },
+    "eval_set": {
+      "path": "data/nlu_eval.json",
+      "total": 84,
+      "correct": 79,
+      "accuracy": 0.9405,
+      "errors": [
+        {
+          "text": "层叠结构有没有问题",
+          "expected": "PCB_ANALYSIS",
+          "predicted": "RULE_CHECK"
+        },
+        {
+          "text": "封装匹配检查",
+          "expected": "BOM_ANALYSIS",
+          "predicted": "RULE_CHECK"
+        },
+        {
+          "text": "看看库存还够不够",
+          "expected": "BOM_HEALTH",
+          "predicted": "RULE_CHECK"
+        },
+        {
+          "text": "波形怎么有振铃",
+          "expected": "VISUAL",
+          "predicted": "PCB_ANALYSIS"
+        },
+        {
+          "text": "怎么提高EMC性能",
+          "expected": "TEXT_CHAT",
+          "predicted": "PCB_ANALYSIS"
+        }
+      ]
     }
   },
   "history": {
     "train_loss": [
-      2.2396,
-      1.9943,
-      1.5786,
-      1.0076,
-      0.5418,
-      0.2848,
-      0.1638,
-      0.0985,
-      0.0689,
-      0.0562,
-      0.0428,
-      0.0324,
-      0.0273,
-      0.0248,
-      0.0226,
-      0.0216,
-      0.0192,
-      0.0168,
-      0.0154,
-      0.0165,
-      0.0166,
-      0.0177,
-      0.0156,
-      0.014,
-      0.0162
+      2.2164,
+      1.8526,
+      1.1876,
+      0.5739,
+      0.2614,
+      0.1395,
+      0.0829,
+      0.0546,
+      0.0405,
+      0.0303,
+      0.0245,
+      0.0203,
+      0.0162,
+      0.0162,
+      0.0141,
+      0.0139,
+      0.0115,
+      0.0104,
+      0.0108,
+      0.0126,
+      0.0111,
+      0.0104,
+      0.0113,
+      0.0104,
+      0.0095
     ],
     "val_loss": [
-      2.1289,
-      1.8233,
-      1.3262,
-      0.797,
-      0.4337,
-      0.2679,
-      0.1899,
-      0.1409,
-      0.1139,
-      0.0999,
-      0.0883,
-      0.0812,
-      0.0771,
-      0.0737,
-      0.0704,
-      0.0684,
-      0.0686,
-      0.0683,
-      0.0675,
-      0.0665,
-      0.0664,
-      0.0665,
-      0.0662,
-      0.0661,
-      0.0661
+      2.0701,
+      1.5987,
+      0.9049,
+      0.4513,
+      0.2256,
+      0.1353,
+      0.0906,
+      0.0613,
+      0.0611,
+      0.0467,
+      0.0399,
+      0.0386,
+      0.0358,
+      0.0334,
+      0.0311,
+      0.0318,
+      0.0297,
+      0.0292,
+      0.0289,
+      0.0281,
+      0.0283,
+      0.0282,
+      0.0284,
+      0.0283,
+      0.0283
     ],
     "val_acc": [
-      0.6,
-      0.8273,
-      0.8636,
-      0.8727,
-      0.9545,
-      0.9909,
-      0.9727,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818,
-      0.9818
+      0.74,
+      0.8467,
+      0.9267,
+      0.9467,
+      0.9733,
+      0.9733,
+      0.9867,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933,
+      0.9933
     ]
   }
 }

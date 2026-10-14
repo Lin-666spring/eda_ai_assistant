@@ -55,28 +55,28 @@ class ProviderBinding:
 class RouterConfig:
     """路由配置 — 每种意图绑定哪个厂商"""
     text_chat: ProviderBinding = field(default_factory=lambda: ProviderBinding(
-        name="deepseek", model="deepseek-v4-pro",
+        name="deepseek", model="deepseek-flash",
     ))
     bom_analysis: ProviderBinding = field(default_factory=lambda: ProviderBinding(
-        name="deepseek", model="deepseek-v4-pro",
+        name="deepseek", model="deepseek-flash",
     ))
     rule_check: ProviderBinding = field(default_factory=lambda: ProviderBinding(
-        name="deepseek", model="deepseek-v4-pro",
+        name="deepseek", model="deepseek-flash",
     ))
     pcb_analysis: ProviderBinding = field(default_factory=lambda: ProviderBinding(
-        name="deepseek", model="deepseek-v4-pro",
+        name="deepseek", model="deepseek-flash",
     ))
     code_rule_gen: ProviderBinding = field(default_factory=lambda: ProviderBinding(
-        name="deepseek", model="deepseek-v4-pro",
+        name="deepseek", model="deepseek-flash",
     ))
     bom_health: ProviderBinding = field(default_factory=lambda: ProviderBinding(
-        name="deepseek", model="deepseek-v4-pro",
+        name="deepseek", model="deepseek-flash",
     ))
     report_gen: ProviderBinding = field(default_factory=lambda: ProviderBinding(
-        name="deepseek", model="deepseek-v4-pro",
+        name="deepseek", model="deepseek-flash",
     ))
     component_lookup: ProviderBinding = field(default_factory=lambda: ProviderBinding(
-        name="deepseek", model="deepseek-v4-pro",
+        name="deepseek", model="deepseek-flash",
     ))
     visual: ProviderBinding = field(default_factory=lambda: ProviderBinding(
         name="moonshot", model="kimi-k2.6",
@@ -225,29 +225,37 @@ class LLMRouter:
         """纯关键词意图分类
 
         优先用 ToolRegistry 聚合的关键词，辅以 _INTENT_KEYWORDS 兜底。
-        检查优先级: VISUAL > CODE_RULE_GEN > RULE_CHECK > BOM_ANALYSIS > PCB_ANALYSIS
+        2026-10-14 修复：原先按意图优先序先到先得，短关键词会抢占长关键词
+        （RULE_CHECK「线宽」⊂ PCB_ANALYSIS 经 ToolRegistry 聚合到的
+        calc_trace_width「走线宽度」）→ 跨意图取最长命中关键词，同长按
+        VISUAL > CODE_RULE_GEN > RULE_CHECK > BOM_ANALYSIS > PCB_ANALYSIS 优先。
         """
         lowered = user_input.lower()
 
-        # 优先级顺序（VISUAL 和 CODE_RULE_GEN 无工具但有意图关键词）
         intent_order = [
             TaskIntent.VISUAL, TaskIntent.CODE_RULE_GEN,
             TaskIntent.RULE_CHECK, TaskIntent.BOM_ANALYSIS, TaskIntent.PCB_ANALYSIS,
         ]
 
+        best_intent: Optional[TaskIntent] = None
+        best_len = 0
         for intent in intent_order:
-            # 先查硬编码意图关键词
-            if any(kw in lowered for kw in self._INTENT_KEYWORDS.get(intent, ())):
-                return intent
-            # 再查 ToolRegistry 工具关键词
+            candidates = list(self._INTENT_KEYWORDS.get(intent, ()))
+            # 再拼 ToolRegistry 工具关键词
             try:
                 from .tools import ToolRegistry
-                if any(kw in lowered for kw in ToolRegistry.get_keywords_by_intent(intent.name)):
-                    return intent
+                candidates += ToolRegistry.get_keywords_by_intent(intent.name)
             except ImportError:
                 pass
+            hit_len = max(
+                (len(kw) for kw in candidates if kw and kw in lowered),
+                default=0,
+            )
+            if hit_len > best_len:
+                best_len = hit_len
+                best_intent = intent
 
-        return TaskIntent.TEXT_CHAT
+        return best_intent or TaskIntent.TEXT_CHAT
 
     @property
     def available_intents(self) -> list[TaskIntent]:

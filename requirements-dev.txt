@@ -8,6 +8,8 @@
 # 但跑全量测试/复现实验必须装。
 
 torch>=2.0.0             # src/ml 意图/元件分类模型推理（tests/test_confidence_calibration 等直接依赖）
+sympy                    # torch 2.13 优化器懒加载依赖（train_intent 需要）
+networkx>=2.5.1          # torch 2.13 依赖
 numpy>=1.24.0            # torch/pandas 计算后端
 
 # UI 冒烟（可选，仅跑 tests/ui_smoke.py 85 例时需要）

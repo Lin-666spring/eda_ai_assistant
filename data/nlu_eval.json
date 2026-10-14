@@ -1,0 +1,338 @@
+[
+  {
+    "text": "走线宽度 1A",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "走线宽度 2A 温升20",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "帮我计算1A电流的走线宽度",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "计算1A电流需要的走线宽度",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "1A电流线宽要多少",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "0.5A信号线宽计算",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "2A电流需要多大载流能力",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "帮我算一下1A的走线要多宽",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "计算1A电流需要的线宽",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "检查设计规则",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "运行DRC",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "去耦电容放的位置对不对",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "电源线宽度够不够",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "过孔密度是不是太密了",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "差分对有没有等长",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "模拟数字地要不要分开",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "帮我分析一下PCB布局",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "看看走线是否合理",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "层叠结构有没有问题",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "这块板的阻抗控制得怎么样",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "分析一下布线",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "查看PCB状态",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "导入PCB文件",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "合并BOM",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "帮我合并同类元件",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "整理物料清单",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "AI智能合并元件",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "校验封装",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "检查一下元件的封装对不对",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "封装匹配检查",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "查重",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "看看有没有重复的位号",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "筛选0603封装的电阻",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "过滤出所有电容",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "生成HTML交互式BOM",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "导出网页版BOM",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "导出BOM到CSV",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "统计一下元件分布",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "检查BOM中哪些元件缺货",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "BOM健康检查",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "估算一下所有元件的总成本",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "帮我找更便宜的替代料",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "评估一下供应链风险",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "查询STM32F103C8T6的规格参数",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "0603封装的尺寸是多少",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "找一款5V转3.3V的LDO",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "推荐一款LDO",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "帮我看看这张原理图",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "分析一下这张PCB截图",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "帮我写一个去耦电容检查的DRC规则",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "生成一个检查LED限流电阻的规则",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "编写一个电源线宽检查规则",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "解释一下这条规则的原理",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "验证这条设计建议",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "查询知识库里IPC-2221的载流规定",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "什么是去耦电容？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "STM32和GD32有什么区别",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "0603电阻的功率一般是多少",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "怎么合并BOM",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "跑一下DRC检查",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "全板DRC跑一遍",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "检查模数隔离",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "验证一下这条修改建议",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "帮我查查位号有没有重复",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "BOM里有多少个电阻",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "导出一份Excel格式的BOM",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "做一个成本分布报表",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "看看库存还够不够",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "这料停产没有",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "STM32F103的中文资料手册",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "帮我选一颗LDO",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "这张图的电源部分有什么问题",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "波形怎么有振铃",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "现在系统什么状态",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "打开帮助",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "走线宽度 0.8A 温升15",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "100mA的线宽计算",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "1A电流的线宽要多少",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "知识库里怎么规定阻抗匹配",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "为什么要分模拟地数字地",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "LDO和DCDC怎么选",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "怎么提高EMC性能",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "帮我生成一个过孔密度检查脚本",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "生成一个BOM去重脚本",
+    "intent": "CODE_RULE_GEN"
+  }
+]

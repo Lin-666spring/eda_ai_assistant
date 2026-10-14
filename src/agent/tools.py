@@ -100,8 +100,12 @@ TOOLS: list[ToolDef] = [
         name="validate_package",
         label="校验封装",
         description="逐行检查BOM中每个元件的封装是否与其型号匹配，标记不匹配项",
-        keywords=("校验", "验证", "封装", "validate", "封装检查",
-                  "封装校验", "封装验证", "封装匹配", "封装对不对"),
+        keywords=("校验", "验证", "validate", "封装检查",
+                  "封装校验", "封装验证", "封装匹配", "封装对不对",
+                  "检查封装", "封装是否", "封装正确",
+                  # 注意: 裸"封装"已移除 — 太泛，会把「筛选0603封装的电阻」
+                  # 「0603封装的尺寸是多少」抢到封装校验
+                  ),
         intent="BOM_ANALYSIS",
         handler="validate_packages",  # handler 方法名保持复数
         params_schema={"properties": {}, "required": []},
@@ -173,11 +177,12 @@ TOOLS: list[ToolDef] = [
         name="check_rule",
         label="设计规则检查",
         description="执行PCB设计规则检查(DRC)：去耦电容、信号线宽、电源载流、走线锐角、过孔密度、模数分离等21条规则",
-        keywords=("规则", "rule", "去耦", "信号", "电源", "模数", "drc",
+        keywords=("规则", "rule", "去耦", "信号", "电源", "模数", "模拟数字", "drc",
                   "设计规则", "违规检查", "间距", "安规", "爬电",
                   "过孔", "差分", "线宽检查", "检查规则",
-                  "信号线", "电源线", "线宽",
-                  # 注意: "检查" 不在此列表 — 太通用
+                  "信号线", "电源线",
+                  # 注意: "检查" 不在此列表 — 太通用；"线宽" 同理已移除
+                  # （是 calc_trace_width「走线宽度」的子串，会抢占走线宽度计算）
                   ),
         intent="RULE_CHECK",
         handler="check_design_rules",  # handler 方法名保持
@@ -270,8 +275,10 @@ TOOLS: list[ToolDef] = [
         name="search_component",
         label="搜索元件",
         description="在元件库中搜索符合需求的元件型号（如：找一款5V转3.3V的LDO）",
-        keywords=("找", "搜索", "查找", "选型", "选一个", "找一个",
-                  "有什么", "哪种", "推荐一款", "选型推荐",
+        keywords=("找", "搜索", "查找", "选型", "选一个", "选一颗", "找一个",
+                  "哪种", "推荐一款", "选型推荐",
+                  # 注意: 裸"有什么"已移除 — 太泛，会把「STM32和GD32有什么区别」
+                  # 这类知识问答抢到选型搜索
                   "find", "search", "recommend", "suggest"),
         intent="COMPONENT_LOOKUP",
         handler="_filter_input",
@@ -289,9 +296,10 @@ TOOLS: list[ToolDef] = [
         description="根据电流和温升计算所需PCB走线宽度（IPC-2221标准）",
         keywords=("走线宽度", "线宽计算", "载流计算", "铜厚", "温升",
                   "多宽走线", "线宽要多少", "走多宽", "载流能力",
+                  "计算线宽", "线宽多少", "需要多宽", "要多宽", "需要的线宽",
                   "trace width", "current capacity", "ipc2221"),
         intent="PCB_ANALYSIS",
-        handler="_pcb_analysis_cmd",
+        handler="_calc_trace_width_handler",
         params_schema={
             "properties": {
                 "current_a": {"type": "number", "description": "电流(A)"},
@@ -366,7 +374,7 @@ TOOLS: list[ToolDef] = [
         label="闭环验证",
         description="对PCB设计建议执行闭环验证：LLM建议 → DRC规则引擎实时检查 → 发现新违规 → LLM自动修正 → 迭代至收敛（最多3轮）。确保任何AI建议不会引入新的设计违规",
         keywords=("闭环验证", "验证建议", "检查建议", "设计验证", "建议验证",
-                  "闭环检查", "校验建议", "确认建议", "设计审查验证",
+                  "设计建议", "闭环检查", "校验建议", "确认建议", "设计审查验证",
                   "verify", "validation", "闭环", "设计规则验证",
                   "drc验证", "规则验证", "设计建议检查"),
         intent="RULE_CHECK",
@@ -386,6 +394,7 @@ TOOLS: list[ToolDef] = [
         description="根据自然语言描述自动生成PCB设计规则检查代码，返回完整的RuleViolation格式Python代码",
         keywords=("生成规则", "创建规则", "编写drc", "写一个检查", "新增规则",
                   "自定义规则", "生成drc", "dr规则生成", "写规则",
+                  "生成一个", "写一个", "脚本", "自动化", "规则代码",
                   "generate rule", "create rule", "new drc"),
         intent="CODE_RULE_GEN",
         handler="_generate_drc_rule",

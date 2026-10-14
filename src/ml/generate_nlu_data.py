@@ -62,6 +62,14 @@ _TERMS = {
         "立创商城", "得捷", "贸泽", "云汉芯城", "硬之城", "华秋",
         "淘宝", "Arrow", "Farnell",
     ],
+    # 电流/电压 — 走线宽度计算句式（2026-10-14 误路由批：数字+单位句式零覆盖
+    # 导致 calc 类句子全灭，被 RULE_CHECK 的「宽度+电流」模板抢走）
+    "{current}": [
+        "1A", "2A", "0.5A", "500mA", "1.5A", "3A", "100mA", "5A", "10A", "800mA",
+    ],
+    "{voltage}": [
+        "5V", "3.3V", "12V", "24V", "1.8V", "9V",
+    ],
 }
 
 
@@ -124,6 +132,12 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "有没有位号重复的情况？",
         "帮我查一下这个BOM的元件数量",
         "把{component}都筛选出来",
+        # ── 筛选句式变体（「筛选0603封装的电阻」类原本判成 TEXT_CHAT）──
+        "筛选{package}封装的{component}",
+        "筛选所有{package}{component}",
+        "过滤出所有{component}",
+        "过滤{package}的电容",
+        "找出所有{package}电阻",
     ],
     "BOM_HEALTH": [
         "检查BOM中哪些元件缺货",
@@ -146,6 +160,12 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "找一下封装兼容的替代料",
         "把成本高的元件都标出来",
         "查一下立创商城的库存",
+        # ── 健康/供应链检查入口句式 ──
+        "BOM健康检查",
+        "检查BOM健康状态",
+        "跑一下BOM健康",
+        "评估供应链风险",
+        "供应链风险评估",
     ],
     "RULE_CHECK": [
         "检查设计规则",
@@ -172,6 +192,16 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "这个设计有什么隐患？",
         "帮我跑一下所有DRC规则",
         "看看我的PCB过EMC有没有问题",
+        # ── 模数分离检查句式（与 TEXT_CHAT 的「为什么要分开」知识问句区分）──
+        "模拟数字地要不要分开",
+        "检查模数分离",
+        "检查一下模拟数字隔离",
+        "模拟地和数字地区分了吗",
+        # ── 闭环验证句式（verify_suggestion 挂在 RULE_CHECK 意图下）──
+        "验证这条设计建议",
+        "帮我验证这个设计建议",
+        "闭环验证这个修改",
+        "验证一下这条修改建议",
     ],
     "PCB_ANALYSIS": [
         "帮我分析一下PCB布局",
@@ -195,6 +225,31 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "这个层叠方案可以吗？",
         "帮我评估一下PCB设计质量",
         "多智能体审查一下这块板",
+        # ── 走线宽度计算句式（2026-10-14 误路由批补齐：数字电流句式
+        #    原本零覆盖，被 RULE_CHECK 的「宽度+电流」模板整体抢走）──
+        "走线宽度 {current}",
+        "帮我计算{current}电流的走线宽度",
+        "计算走线宽度",
+        "{current}线宽要多少",
+        "{current}信号线宽计算",
+        "{current}电流需要多大载流能力",
+        "{current}的走线要多宽",
+        "帮我算一下{current}的走线要多宽",
+        "计算{current}需要的线宽",
+        "{current}走多宽的线",
+        "{current}要用多宽的铜线",
+        # ── PCB 导入/状态 ──
+        "导入PCB文件",
+        "加载PCB",
+        "打开PCB文件",
+        "查看PCB状态",
+        "PCB导入了吗",
+        # ── 知识库查询（rag_query 挂在 PCB_ANALYSIS 意图下）──
+        "查询知识库里IPC-2221的载流规定",
+        "知识库里怎么规定{rule}",
+        "查一下规范里{rule}的要求",
+        "IPC标准对{issue}有什么规定",
+        "设计指南里{rule}怎么说的",
     ],
     "CODE_RULE_GEN": [
         "帮我写一个{rule}的DRC规则",
@@ -230,6 +285,10 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "生成{board}的检测报告",
         "给我一份完整的评估报表",
         "导出当前的BOM数据",
+        # ── 统计入口句式（「统计一下元件分布」原本判成 BOM_ANALYSIS）──
+        "统计一下元件分布",
+        "统计元件类型分布",
+        "做一个元件分布统计",
     ],
     "COMPONENT_LOOKUP": [
         "查询{mcu}的规格参数",
@@ -248,6 +307,13 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "帮我搜一下{component}的替代型号",
         "看看这个元件有没有RoHS认证",
         "查一下这个料的工作温度范围",
+        # ── 选型请求句式（「找一款/推荐一款」原本判成 TEXT_CHAT）──
+        "找一款{voltage}转3.3V的LDO",
+        "推荐一款{component}",
+        "推荐个{voltage}的LDO",
+        "有没有{voltage}转3.3V的LDO",
+        "选一款{mcu}",
+        "帮忙推荐个{component}型号",
     ],
     "VISUAL": [
         "帮我看看这张原理图",
@@ -338,6 +404,10 @@ def generate_data(
     random.seed(seed)
 
     # 生成全量样本
+    # 注意：不要往训练里加乱码/域外负例 —— 曾实验把乱码标 TEXT_CHAT，
+    # 模型把「运行DRC」这类短指令也学成 TEXT_CHAT（评估集 94%→89%）。
+    # 乱码过度自信由 nlu_engine 的 OOD 置信门（关键词零交集→压回
+    # 关键词路径）确定性兜底，比表征层面的硬负例更精准。
     total_per_class = int(count_per_class / (1 - val_split))
     all_samples = _expand_templates(_RAW_TEMPLATES, total_per_class)
 

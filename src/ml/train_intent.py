@@ -83,12 +83,54 @@ class NLUDataset(Dataset):
 
 # ── 训练 ──
 
+def evaluate_eval_set(model, vocab, eval_path: str, device: str = "cpu") -> dict:
+    """在固定评估集（与训练模板分布解耦）上评估，返回汇总+错例。
+
+    评估集由 scripts 探针句式 + 真实长尾句构成（data/nlu_eval.json），
+    反映真实措辞下的精度 —— 模板验证集 99% 时它可能只有 70%。
+    """
+    logger.info("加载评估集: %s", eval_path)
+    with open(eval_path, "r", encoding="utf-8") as f:
+        eval_samples = json.load(f)
+
+    model.eval()
+    correct = 0
+    errors = []
+    with torch.no_grad():
+        for s in eval_samples:
+            ids = vocab.encode(s["text"])
+            ids = ids[:DEFAULT_CONFIG["max_len"]]
+            ids = ids + [vocab.pad_id] * (DEFAULT_CONFIG["max_len"] - len(ids))
+            logits = model(torch.tensor([ids], dtype=torch.long, device=device))
+            pred = INTENT_CLASSES[logits.argmax(dim=1).item()]
+            if pred == s["intent"]:
+                correct += 1
+            else:
+                errors.append({"text": s["text"], "expected": s["intent"], "predicted": pred})
+
+    result = {
+        "path": eval_path,
+        "total": len(eval_samples),
+        "correct": correct,
+        "accuracy": round(correct / max(len(eval_samples), 1), 4),
+        "errors": errors,
+    }
+    logger.info(
+        "评估集精度: %d/%d = %.1f%%（错 %d 条）",
+        correct, len(eval_samples), result["accuracy"] * 100, len(errors),
+    )
+    for e in errors:
+        logger.info("  错例: '%s' 期望 %s 预测 %s", e["text"], e["expected"], e["predicted"])
+    return result
+
+
 def train(
     train_path: str = "data/nlu_train_train.json",
     val_path: str = "data/nlu_train_val.json",
     model_output: str = "data/intent_model.pt",
     vocab_output: str = "data/vocab.json",
     report_output: str = "data/nlu_train_report.json",
+    eval_set: str = "",
     epochs: int = 25,
     batch_size: int = 32,
     lr: float = 0.001,
@@ -247,6 +289,11 @@ def train(
         per_class[name] = {"total": total, "correct": correct, "accuracy": round(acc, 4)}
         logger.info("  %-20s  %2d/%2d  %.1f%%", name, correct, total, acc * 100)
 
+    # ── 固定评估集（分布外真实句式）──
+    eval_result = None
+    if eval_set:
+        eval_result = evaluate_eval_set(model, vocab, eval_set, device)
+
     # ── 报告 ──
     report = {
         "model": "IntentClassifier (TextCNN)",
@@ -267,6 +314,7 @@ def train(
             "val_loss_final": history["val_loss"][-1],
             "val_acc_final": history["val_acc"][-1],
             "per_class": per_class,
+            "eval_set": eval_result,
         },
         "history": history,
     }
@@ -295,6 +343,8 @@ def main():
                         help="词表输出路径")
     parser.add_argument("--report-output", default="data/nlu_train_report.json",
                         help="训练报告路径")
+    parser.add_argument("--eval-set", default="",
+                        help="固定评估集路径（分布外真实句式 JSON，可选）")
     parser.add_argument("--epochs", type=int, default=25,
                         help="训练轮数 (default: 25)")
     parser.add_argument("--batch-size", type=int, default=32,
@@ -319,6 +369,7 @@ def main():
         model_output=args.model_output,
         vocab_output=args.vocab_output,
         report_output=args.report_output,
+        eval_set=args.eval_set,
         epochs=args.epochs,
         batch_size=args.batch_size,
         lr=args.lr,

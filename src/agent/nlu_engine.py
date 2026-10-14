@@ -21,6 +21,7 @@
 import logging
 import math
 import os
+import threading
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -290,6 +291,11 @@ LOW_CONFIDENCE_FLOOR = 0.15
 _LOCAL_MODEL_PATH = "data/intent_model.pt"
 _LOCAL_VOCAB_PATH = "data/vocab.json"
 
+# 启动预热线程与首次 NLU classify 并发到达时串行化加载（2026-10-13 预热批）。
+# 类级锁：NLUEngine 可有多实例（controller 缓存一个、测试/脚本另建），
+# torch 导入 + 权重加载是一次性进程级开销，全局串行即可。
+_LOCAL_MODEL_LOCK = threading.Lock()
+
 
 # ══════════════════════════════════════════════════════
 #  NLUEngine
@@ -357,6 +363,11 @@ class NLUEngine:
 
         模型文件路径：data/intent_model.pt + data/vocab.json（相对项目根目录）
 
+        2026-10-13 预热批：旧实现先置 attempted 再加载且无锁——boot 预热
+        期间用户发消息，用户线程看到 attempted=True 但模型未就绪，会永久
+        静默走 embedding+关键词。改双检锁；attempted 在加载结论（成功或
+        确认失败）出来后才置位。
+
         Returns:
             True 如果本地模型加载成功
         """
@@ -365,31 +376,50 @@ class NLUEngine:
         if self._local_model_attempted:
             return False
 
-        self._local_model_attempted = True
-
-        try:
-            from ..ml.intent_classifier import IntentPredictor
-
-            # 确定文件路径（相对于项目根目录）
-            import os
-            project_root = os.path.join(os.path.dirname(__file__), "..", "..")
-            model_path = os.path.join(project_root, _LOCAL_MODEL_PATH)
-            vocab_path = os.path.join(project_root, _LOCAL_VOCAB_PATH)
-
-            predictor = IntentPredictor.from_path(model_path, vocab_path)
-            if predictor is not None:
-                self._local_predictor = predictor
-                logger.info("NLU local model loaded: TextCNN IntentClassifier")
+        with _LOCAL_MODEL_LOCK:
+            if self._local_predictor is not None:
                 return True
-            else:
-                logger.info("NLU local model not found, using embedding+keyword")
+            if self._local_model_attempted:
                 return False
-        except ImportError as e:
-            logger.info("NLU local model unavailable (torch not installed?): %s", e)
+            try:
+                from ..ml.intent_classifier import IntentPredictor
+
+                # 确定文件路径（相对于项目根目录）
+                project_root = os.path.join(os.path.dirname(__file__), "..", "..")
+                model_path = os.path.join(project_root, _LOCAL_MODEL_PATH)
+                vocab_path = os.path.join(project_root, _LOCAL_VOCAB_PATH)
+
+                predictor = IntentPredictor.from_path(model_path, vocab_path)
+                self._local_model_attempted = True
+                if predictor is not None:
+                    self._local_predictor = predictor
+                    logger.info("NLU local model loaded: TextCNN IntentClassifier")
+                    return True
+                else:
+                    logger.info("NLU local model not found, using embedding+keyword")
+                    return False
+            except ImportError as e:
+                self._local_model_attempted = True
+                logger.info("NLU local model unavailable (torch not installed?): %s", e)
+                return False
+            except Exception as e:
+                self._local_model_attempted = True
+                logger.warning("NLU local model init failed: %s", e)
+                return False
+
+    def warm_up(self) -> bool:
+        """预热本地意图模型（启动后台线程调用；并发安全，成功返回 True）。
+
+        成功后再补一次空推理，把 torch 卷积内核的懒初始化也一并做掉，
+        用户首次消息的分类路径完全无一次性开销。
+        """
+        if not self._init_local_model():
             return False
-        except Exception as e:
-            logger.warning("NLU local model init failed: %s", e)
+        try:
+            self._local_predictor.classify("预热")
+        except Exception:
             return False
+        return True
 
     # ── 公开 API ──
 
@@ -421,6 +451,23 @@ class NLUEngine:
             debug["embedding_score"] = confidence
             debug["embedding_used"] = False
             debug["model"] = "local_textcnn"
+
+            # OOD 门：输入与全部意图关键词无直击交集时，TextCNN 的中高置信
+            # 不可信（重训曾出现乱码 0.79 判 BOM_ANALYSIS）——压回关键词路径，
+            # 无有效证据自然落 TEXT_CHAT 兜底。conf ≥ 0.9 的强预测仍放行。
+            # 用原始直击关键词判定而非归一化 kw_scores：后者按意图关键词数
+            # 稀释，「查重」这类合法 2 字命中在大意图下只有 0.092 会被误拦；
+            # 例句 bigram 碎片噪声则不计入。
+            if confidence < 0.9:
+                lowered = user_input.lower()
+                has_kw_evidence = any(
+                    kw.lower() in lowered
+                    for desc in self._descriptors.values()
+                    for kw in desc.keywords
+                )
+                if not has_kw_evidence:
+                    confidence = 0.0
+                    debug["ood_gate"] = True
 
             # 低置信度时回退到关键词评分（模型对未知输入可能不可靠）
             if confidence < MEDIUM_CONFIDENCE:
@@ -583,10 +630,14 @@ class NLUEngine:
             score = 0.0
             total_possible = len(desc.keywords) + len(desc.examples)
 
-            # 核心关键词子串匹配
+            # 核心关键词子串匹配 — 按关键词长度加权：
+            # 「走线宽度」(4字) 是比「线宽」(2字) 更强的意图证据，等权相加时
+            # 泛短词会与专属长词同分碰撞（2026-10-14 路由批同款修复：
+            # controller._match_keyword 最长匹配优先）。len=2 时权重恰为
+            # DIRECT_KEYWORD_WEIGHT，与旧口径兼容。
             for kw in desc.keywords:
                 if kw.lower() in lowered:
-                    score += DIRECT_KEYWORD_WEIGHT
+                    score += DIRECT_KEYWORD_WEIGHT * max(len(kw), 1) / 2
 
             # 例句中的关键短语匹配
             for ex in desc.examples:
