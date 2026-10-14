@@ -1,5 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec — EDA AI 智能助手 单文件打包"""
+"""PyInstaller spec — EDA AI 智能助手 onedir 分发打包
+
+2026-10-14 分发拍板：onefile 无签名 exe 被 Defender 行为拦截（引导器解压
+%TEMP%\\_MEIxxxx 被拒，静默死无日志），不可分发 ⇒ 正式分发走 onedir
+（zip / Inno Setup 装机二选一）。exe 映像名保持 EDA_AI_Assistant.exe，
+与用户侧 `Add-MpPreference -ExclusionProcess` 排除名对上（onedir 诊断版
+的 _onedir 后缀名不要再出现）。
+"""
 
 import sys
 from pathlib import Path
@@ -80,19 +87,20 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
+# onedir：EXE 只含引导器+脚本（exclude_binaries），二进制/数据落 COLLECT 的
+# _internal\。主进程红线不变：main.py 顶部 --eda-bridge-slave 分发、
+# 托盘/热键在桥接子进程，spec 侧无需感知。
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='EDA_AI_Assistant',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
     upx_exclude=[],
-    runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -100,4 +108,14 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=None,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='EDA_AI_Assistant',
 )
