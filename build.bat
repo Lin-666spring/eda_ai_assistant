@@ -24,4 +24,16 @@ if errorlevel 1 (
     exit /b 1
 )
 echo === 分发包：dist\EDA_AI_Assistant_v%VER%_win64.zip ===
+rem 装机形态：检测到 Inno Setup 编译器就出 setup 包（eda_ai_assistant.iss；
+rem 未装 ISCC 时跳过，zip 即分发物）
+set ISCC=
+if exist "C:\Users\lin\Tools\Inno Setup 5\ISCC.exe" set ISCC=C:\Users\lin\Tools\Inno Setup 5\ISCC.exe
+if exist "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" set ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe
+if exist "%ProgramFiles%\Inno Setup 6\ISCC.exe" set ISCC=%ProgramFiles%\Inno Setup 6\ISCC.exe
+if defined ISCC (
+    "%ISCC%" /DAPP_VERSION=%VER% eda_ai_assistant.iss
+    echo === 装机包：dist\EDA_AI_Assistant_v%VER%_setup.exe ===
+) else (
+    echo === 未检测到 Inno Setup，跳过装机包 ===
+)
 pause
