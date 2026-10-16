@@ -20,7 +20,7 @@ from reportlab.pdfgen import canvas
 # ===== 申请信息（改这里） =====
 SOFTWARE_NAME = "智绘PCB——AI智能PCB设计助手"
 VERSION = "V1.0"
-COMPLETION_DATE = "2026-10-13"
+COMPLETION_DATE = "2026-10-16"
 # =============================
 
 REPO = Path(__file__).resolve().parent.parent
