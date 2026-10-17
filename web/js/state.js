@@ -6,14 +6,14 @@
 // ═══════════════════════════════════════════
 
 /* ═══════════════════════════════════════════
-   EDA AI 智能助手 — Cherry Studio Frontend
+   TraceWise — Cherry Studio Frontend
    ═══════════════════════════════════════════ */
 
 // ═══════════ State ═══════════
 
 const ASSISTANT_TYPES = {
   'eda-general': {
-    typeId: 'eda-general', name: 'EDA 通用助手', icon: '(´｡• ᵕ •｡`)',
+    typeId: 'eda-general', name: 'TraceWise 通用助手', icon: '(´｡• ᵕ •｡`)',
     systemPrompt: 'general',
     quickActions: ['合并 BOM', '校验封装', '设计规则', 'BOM健康', '查询知识库'],
     description: 'BOM管理、设计规则检查、PCB分析的通用助手',

@@ -25,7 +25,7 @@ def app_home() -> Path:
 # 启动界面 / 标题栏 / 关于信息共用一处，别再各写各的版本号。
 # （web/index.html 的 <title> 是静态 HTML，改版本时记得一起改。）
 
-APP_NAME = "EDA AI 智能助手"
+APP_NAME = "TraceWise"
 APP_TAGLINE = "面向立创EDA的智能辅助设计"
 APP_VERSION = "0.8.0"
 

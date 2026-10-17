@@ -1,5 +1,5 @@
 ﻿; -*- coding: utf-8 -*-
-; EDA AI 智能助手 — Inno Setup 装机脚本（onedir 分发的安装器形态）
+; TraceWise — Inno Setup 装机脚本（onedir 分发的安装器形态）
 ;
 ; 2026-10-14 分发拍板配套：onefile 无签名不可分发 ⇒ onedir（zip 或本装机包）。
 ; 版本号唯一来源 src/constants.py 的 APP_VERSION，由 build.bat 经
@@ -16,8 +16,8 @@
 #define APP_VERSION "0.8.0"
 #endif
 
-#define MyAppName "EDA AI Assistant"
-#define MyAppNameCn "EDA AI 智能助手"
+#define MyAppName "TraceWise"
+#define MyAppNameCn "TraceWise"
 #define MyAppExeName "EDA_AI_Assistant.exe"
 
 [Setup]
@@ -28,6 +28,7 @@ AppPublisher=智绘PCB 项目组
 DefaultDirName={pf}\EDA_AI_Assistant
 DefaultGroupName={#MyAppNameCn}
 UninstallDisplayIcon={app}\{#MyAppExeName}
+SetupIconFile=web\img\app_icon.ico
 OutputDir=dist
 OutputBaseFilename=EDA_AI_Assistant_v{#APP_VERSION}_setup
 Compression=lzma2/normal

@@ -407,7 +407,7 @@ class CLIPrototype:
     def _print_help(self):
         print("""
 ╔══════════════════════════════════════════════════╗
-║            EDA AI 智能助手 — 使用帮助              ║
+║            TraceWise — 使用帮助              ║
 ╠══════════════════════════════════════════════════╣
 ║  load bom.csv    加载立创EDA导出的BOM文件         ║
 ║  pos pos.csv     加载坐标文件(Pick & Place)       ║
@@ -442,7 +442,7 @@ class CLIPrototype:
 
     def _print_welcome(self):
         print("\n" + "=" * 55)
-        print("  🤖 EDA AI 智能助手 — 命令行原型")
+        print("  🤖 TraceWise — 命令行原型")
         print("=" * 55)
         for cmd in self._shell.values():
             print(f"  {cmd.name:<14s} {cmd.help_text}")

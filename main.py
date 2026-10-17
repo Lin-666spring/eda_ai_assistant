@@ -1,5 +1,5 @@
 """
-EDA AI 智能助手 — Eel 应用入口
+TraceWise — Eel 应用入口
 面向立创EDA的AI智能辅助设计软件
 """
 

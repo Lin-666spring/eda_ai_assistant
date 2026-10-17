@@ -244,9 +244,16 @@ def _slave_tray(bridge_dir: Path) -> None:
         from pystray import Icon, Menu, MenuItem
         from PIL import Image, ImageDraw
 
-        img = Image.new("RGB", (64, 64), "#5b8def")
-        draw = ImageDraw.Draw(img)
-        draw.text((14, 18), "EDA", fill="white")
+        # 应用图标（web/img/app_icon.png，eel 资源在 frozen 下随 _MEIPASS 解包）
+        root = Path(sys._MEIPASS) if getattr(sys, "frozen", False) \
+            else Path(__file__).resolve().parents[2]
+        icon_file = root / "web" / "img" / "app_icon.png"
+        if icon_file.is_file():
+            img = Image.open(icon_file)
+        else:                       # 兜底：PCB 绿底字标
+            img = Image.new("RGB", (64, 64), "#0b542a")
+            draw = ImageDraw.Draw(img)
+            draw.text((20, 20), "TW", fill="white")
 
         def _show_hide(icon, item):
             _write_flag(_TOGGLE_FLAG)
@@ -264,7 +271,7 @@ def _slave_tray(bridge_dir: Path) -> None:
             Menu.SEPARATOR,
             MenuItem("退出", _exit),
         )
-        icon = Icon("eda_ai_assistant", img, "EDA AI 智能助手", menu)
+        icon = Icon("eda_ai_assistant", img, "TraceWise", menu)
         logging.getLogger(__name__).info("System tray started")
         icon.run()
     except ImportError:

@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec — EDA AI 智能助手 onedir 分发打包
+"""PyInstaller spec — TraceWise onedir 分发打包
 
 2026-10-14 分发拍板：onefile 无签名 exe 被 Defender 行为拦截（引导器解压
 %TEMP%\\_MEIxxxx 被拒，静默死无日志），不可分发 ⇒ 正式分发走 onedir
@@ -107,7 +107,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon='web/img/app_icon.ico',
 )
 
 coll = COLLECT(
