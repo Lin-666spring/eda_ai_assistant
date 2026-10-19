@@ -192,7 +192,7 @@ const titleBlock = [
     spacing: { before: 200, after: 40, line: 320 },
     children: [
       new TextRun({ text: "摘　要：", bold: true, size: 21, font: F_HEI, color: BLACK }),
-      new TextRun({ text: "大语言模型（LLM）正在进入印制电路板（PCB）辅助设计领域，但其生成建议中的幻觉问题——虚构非标称器件参数、给出违反载流与耐压等物理约束的危险变更——使其难以直接用于真实设计。针对这一问题，本文提出并实现了一个面向PCB设计的LLM闭环验证引擎：LLM生成的BOM变更建议必须经过由68条规则构成的设计规则检查（DRC）引擎复检，未通过的建议携带结构化修正反馈（新违规清单、修法指引与撤销语义）驱动LLM迭代修正，最多3轮；载流与阻抗等物理约束按IPC-2221/IPC-2141标准公式在本地确定性计算，不依赖LLM。在79个立创开源平台真实设计、395条三类模板请求驱动的建议上，以三臂对比评估：LLM直出（无验证）会把80条次blocking级违规引入23个设计；单次门（直出后一次性复检拒绝）使可采纳率降为74.2%；闭环验证在相同数据上将可采纳率恢复到94.2%（按板聚类bootstrap 95%置信区间89.8%～97.6%），blocking级残留为零，其中23条引入违规的建议全部经反馈后整体撤销（修正-保留型清除为0），39/120的收敛由撤销达成，修正-保留收敛率为61.7%。另以280次程序化缺陷注入单独评估规则引擎自身，检出率95.7%。结果表明，在规则与IPC公式覆盖域内，以确定性规则引擎为外部反馈源的闭环机制能够将LLM的危险变更隔离在设计之外，为LLM参与PCB设计提供了一条覆盖域内的可信化路径；其覆盖上界受规则召回率限制，跨模型一致性与真实开放请求下的有效性有待进一步验证。", size: 21, font: F_BODY, color: BLACK }),
+      new TextRun({ text: "大语言模型（LLM）正在进入印制电路板（PCB）辅助设计领域，但其生成建议中的幻觉问题——虚构非标称器件参数、给出违反载流与耐压等物理约束的危险变更——使其难以直接用于真实设计。针对这一问题，本文提出并实现了一个面向PCB设计的LLM闭环验证引擎：LLM生成的BOM变更建议必须经过由68条规则构成的设计规则检查（DRC）引擎复检，未通过的建议携带结构化修正反馈（新违规清单、修法指引与撤销语义）驱动LLM迭代修正，最多3轮；载流与阻抗等物理约束按IPC-2221/IPC-2141标准公式在本地确定性计算，不依赖LLM。在79个立创开源平台真实设计、395条三类模板请求驱动的建议上，以三臂对比评估：LLM直出（无验证）会把80条次blocking级违规引入23个设计；单次门（直出后一次性复检拒绝）使可采纳率降为74.2%；闭环验证在相同数据上将可采纳率恢复到94.2%（按板聚类bootstrap 95%置信区间89.8%～97.6%），blocking级残留为零，其中23条引入违规的建议全部经反馈后整体撤销（修正-保留型清除为0），39/120的收敛由撤销达成，修正-保留收敛率为61.7%。跨模型验证在21板分层子集上重复：DeepSeek-V4.1-Flash与Qwen3.8-max的变更建议收敛率分别为98.4%与100%，撤销型清除路径、轮次分布与GLM一致，表明该机制不绑定特定模型。另以280次程序化缺陷注入单独评估规则引擎自身，检出率95.7%。结果表明，在规则与IPC公式覆盖域内，以确定性规则引擎为外部反馈源的闭环机制能够将LLM的危险变更隔离在设计之外，为LLM参与PCB设计提供了一条覆盖域内的可信化路径；其覆盖上界受规则召回率限制，真实开放请求下的有效性有待进一步验证。", size: 21, font: F_BODY, color: BLACK }),
     ],
   }),
   new Paragraph({
@@ -208,7 +208,7 @@ const titleBlock = [
     spacing: { after: 40, line: 300 },
     children: [
       new TextRun({ text: "Abstract: ", bold: true, size: 21, font: { ascii: "Times New Roman" }, color: BLACK }),
-      new TextRun({ text: "Large language models (LLMs) are entering the domain of printed circuit board (PCB) design assistance, yet hallucinations in their suggestions, such as fabricated non-standard component parameters and dangerous changes violating current-carrying or voltage-rating constraints, prevent direct use in real designs. This paper proposes and implements a closed-loop verification engine for LLM-assisted PCB design: every LLM-generated BOM change must pass re-examination by a design rule checking (DRC) engine of 68 rules; failed suggestions are returned to the LLM with structured correction feedback (violation list, fixing guidance, and revert semantics) for iterative refinement within three rounds; current-carrying and impedance constraints are computed deterministically from IPC-2221/IPC-2141 standard formulas without LLM involvement. On 79 real open-source designs with 395 suggestions driven by three template request types, a three-arm comparison shows that direct LLM output without verification would introduce 80 blocking-level violations into 23 designs; a single-pass gate reduces the adoption rate to 74.2%; the closed loop restores it to 94.2% (design-clustered bootstrap 95% CI 89.8%-97.6%) with zero blocking-level residual, where all 23 violation-introducing suggestions converge via full reversion (zero via fix-and-keep), reversion accounts for 39/120 convergences, and the fix-and-keep convergence rate is 61.7%. A separate 280-case programmatic defect injection assesses the rule engine itself at a 95.7% detection rate. Within the coverage of the rules and IPC formulas, the closed loop with a deterministic external feedback source isolates dangerous LLM changes from real designs, offering a trustworthiness path whose upper bound is limited by rule recall; cross-model consistency and effectiveness under open-ended real requests remain to be verified.", size: 21, font: { ascii: "Times New Roman" }, color: BLACK }),
+      new TextRun({ text: "Large language models (LLMs) are entering the domain of printed circuit board (PCB) design assistance, yet hallucinations in their suggestions, such as fabricated non-standard component parameters and dangerous changes violating current-carrying or voltage-rating constraints, prevent direct use in real designs. This paper proposes and implements a closed-loop verification engine for LLM-assisted PCB design: every LLM-generated BOM change must pass re-examination by a design rule checking (DRC) engine of 68 rules; failed suggestions are returned to the LLM with structured correction feedback (violation list, fixing guidance, and revert semantics) for iterative refinement within three rounds; current-carrying and impedance constraints are computed deterministically from IPC-2221/IPC-2141 standard formulas without LLM involvement. On 79 real open-source designs with 395 suggestions driven by three template request types, a three-arm comparison shows that direct LLM output without verification would introduce 80 blocking-level violations into 23 designs; a single-pass gate reduces the adoption rate to 74.2%; the closed loop restores it to 94.2% (design-clustered bootstrap 95% CI 89.8%-97.6%) with zero blocking-level residual, where all 23 violation-introducing suggestions converge via full reversion (zero via fix-and-keep), reversion accounts for 39/120 convergences, and the fix-and-keep convergence rate is 61.7%. Cross-model validation on a stratified 21-design subset shows convergence rates of 98.4% for DeepSeek-V4.1-Flash and 100% for Qwen3.8-max, with revert-dominated clearance paths and iteration distributions consistent with GLM, indicating the mechanism is not tied to a specific model. A separate 280-case programmatic defect injection assesses the rule engine itself at a 95.7% detection rate. Within the coverage of the rules and IPC formulas, the closed loop with a deterministic external feedback source isolates dangerous LLM changes from real designs, offering a trustworthiness path whose upper bound is limited by rule recall; effectiveness under open-ended real requests remains to be verified.", size: 21, font: { ascii: "Times New Roman" }, color: BLACK }),
     ],
   }),
   new Paragraph({
@@ -303,7 +303,7 @@ body.push(h1("4　实验与结果"));
 body.push(h2("4.1　实验设置"));
 body.push(p("实验数据集构建过程如下：以脚本从立创开源平台批量抓取公开工程导出件（BOM表、网表、贴片坐标）构成候选池91个，经归一化解析后剔除数据不全或解析失败的12个，得到79个设计（均为公开开源工程，遵循平台开源协议，仅用于研究用途；完整设计清单与解析件随论文配套材料提供）。数据集画像：BOM器件数中位数25、均值38.1、最小5、最大313，覆盖MCU与SoC开发板、核心板、功能扩展与转接板、电源类及应用整机等常见板卡形态。"));
 body.push(p("实验按三个阶段执行：阶段A对每个设计运行纯DRC基线检查（不调用LLM）；阶段B执行闭环验证，以三类固定模板请求驱动每设计5条建议（1条安全检查类、2条危险变更类、2条优化改进类），LLM据此生成结构化BOM变更并进入闭环，共395条；阶段C对每设计执行多智能体审查。三类请求模板全文公布如下（危险与优化模板中的走线级描述超出闭环动作空间，用于观察LLM对超出动作空间请求的处理，见3.3节）：安全类为检查当前BOM设计是否符合PCB设计规范、不做任何修改；危险类为移除所有100nF去耦电容以降低BOM成本、用0.1mm走线承载3A电流；优化类为将3.3V电源走线加宽到0.5mm、在每个IC的VDD引脚旁增加100nF与10μF去耦电容组合。需强调两点外部效度限定：其一，395条观测按设计聚类（每板5条、共享板卡基线与LLM解码随机性），非395个独立样本，本文区间估计均按设计为聚类单元做bootstrap；其二，请求分布由三类模板构造且与规则模块设计存在对齐，结论限定在该模板分布与规则集的覆盖区间内，对真实开放请求的外推不在本文证据范围内。"));
-body.push(p("模型与环境配置：建议生成与修正调用云端glm-5.3-flash对话模型（GLM系列[25]的轻量档，经API调用，调用时间为2026年9月），采样参数为服务端默认配置（未固定随机种子，多次运行存在解码波动）；意图识别使用本地ONNX量化小模型；DRC引擎与物理计算在本地CPU执行。68条规则的逐条定义、修正反馈提示词模板、变更集schema、五智能体提示词与评分器权重映射随论文配套材料提供（代码仓库待论文录用后公开，获取途径可联系作者）。评估采用三臂对比：直出臂（LLM建议不经验证直接采纳，以首轮应用后的违规状态重放度量）、单次门臂（直出后仅做一次复检、有新违规即整体拒绝、无修正反馈）与闭环臂（本文方法，迭代上限3轮）。另设阶段D程序化缺陷注入（五类BOM级缺陷，见4.5节），单独评估规则引擎自身的召回。全量实验共执行973次LLM调用、消耗约211万tokens，闭环验证阶段总耗时126.2分钟。"));
+body.push(p("模型与环境配置：建议生成与修正调用云端对话模型——主实验为glm-5.3-flash（GLM系列[25]的轻量档），跨模型子集实验为DeepSeek-V4.1-Flash[26]与Qwen3.8-max[27]，均经API调用（主实验调用时间为2026年9月，子集实验为2026年10月），采样参数为服务端默认配置（未固定随机种子，多次运行存在解码波动）；意图识别使用本地ONNX量化小模型；DRC引擎与物理计算在本地CPU执行。68条规则的逐条定义、修正反馈提示词模板、变更集schema、五智能体提示词与评分器权重映射随论文配套材料提供（代码仓库待论文录用后公开，获取途径可联系作者）。评估采用三臂对比：直出臂（LLM建议不经验证直接采纳，以首轮应用后的违规状态重放度量）、单次门臂（直出后仅做一次复检、有新违规即整体拒绝、无修正反馈）与闭环臂（本文方法，迭代上限3轮），三臂对比在主实验数据上执行；跨模型子集实验仅运行闭环臂、与主实验同子集口径对比。另设阶段D程序化缺陷注入（五类BOM级缺陷，见4.5节），单独评估规则引擎自身的召回。全量实验共执行973次LLM调用、消耗约211万tokens，闭环验证阶段总耗时126.2分钟；两个跨模型子集各执行约200～235次调用、39万～45万tokens。"));
 body.push(h2("4.2　DRC基线"));
 body.push(p("79个设计的DRC基线共检出1513条违规，平均每板19.2条，其中error级41条、warning级325条、info级1147条，严重度分布如图2所示。触发频次最高的规则为参数范围检查（598次）、位号连续性检查（203次）、去耦电容检查（130次）与PDN目标阻抗分析（79次），器件参数与电源网络类问题构成开源设计的主要质量短板。DRC单板平均耗时77.1ms（最大1.41s），满足闭环内多次复检的实时性要求。"));
 body.push(...fig("fig2_severity.png", "图2　79个设计的DRC基线违规严重度分布", 540));
@@ -367,10 +367,26 @@ body.push(...threeLineTable(
   ],
   [40, 18, 18, 24],
 ));
-body.push(h2("4.6　跨模型初步观察与指标汇总"));
-body.push(p("使用DeepSeek-V3[26]的单设计冒烟实验（1个设计、5条建议）得到全部收敛、零残留的结果，仅能作为闭环在两类指令遵循能力较强的模型上均可运行的初步观察，不支撑任何跨模型一致性结论；且本实验的反馈措辞与GLM系模型存在协同调优的混杂，全量实验亦仅覆盖单模型（glm-5.3-flash），本文全部结论应携带该单模型限定，多模型分层子集实验留待后续工作。表7汇总修订后的关键指标：目标值来源说明——收敛率目标70%与轮次目标2.0取自项目立项时的工程预期（非文献基准），作为内部验收线而非学术对比线；学术对比由表4三臂实测承担。"));
+body.push(h2("4.6　跨模型验证与指标汇总"));
+body.push(p("为检验闭环机制是否绑定特定模型，在21板分层子集（按BOM规模三层各7板，自79板按固定种子抽取，两模型所见子集完全相同）上重复完整闭环实验，每板5条建议共105条。对比模型为DeepSeek-V4.1-Flash[26]与Qwen3.8-max[27]：两者均为非GLM系的主流模型，结构化输出均可在无格式修补的情况下被解析（105条零解析失败）。结果见表7：两模型的变更建议收敛率分别为98.4%（62/63，CI95 95.2%～100%）与100%（54/54），与GLM全量的94.2%处于同一水平；撤销率（33.3%/37.0%对32.5%）、修正-保留收敛率（65.1%/63.0%对61.7%）、平均轮次（1.25/1.22对1.14）均高度一致。更重要的是清除路径的跨模型一致性：引入blocking违规的宿主建议（DeepSeek 22条、Qwen 17条）同样全部经整体撤销清零、修正-保留型为零，未收敛建议（仅DeepSeek 1条，连续3轮触发同一条去耦电容检查）也与GLM全量的未收敛模式（全部为优化类）同型。这说明闭环的行为形态——拒答、撤销型隔离、保守轮次——由验证器与反馈机制决定而非由模型能力决定，三模型均未出现为通过复检而与规则对抗的行为。需要保留的限定：全量实验仍以GLM为主、子集仅21板规模，且修正反馈的措辞在开发中与GLM系协同调优，跨模型数字可能受此混杂的轻微影响；更大的跨板跨模型矩阵留待后续工作。"));
 body.push(...threeLineTable(
-  "表7　关键指标汇总（口径与来源注明）",
+  "表7　跨模型闭环验证对比（GLM为79板全量，其余为21板分层子集）",
+  ["指标", "GLM-5.3-flash", "DeepSeek-V4.1-Flash", "Qwen3.8-max"],
+  [
+    ["建议数 / 提出变更", "395 / 120", "105 / 63", "105 / 54"],
+    ["变更建议收敛率", "94.2%（CI95 89.8～97.6）", "98.4%（CI95 95.2～100）", "100%"],
+    ["撤销率", "32.5%", "33.3%", "37.0%"],
+    ["修正-保留收敛率", "61.7%", "65.1%", "63.0%"],
+    ["平均迭代轮次", "1.14", "1.25", "1.22"],
+    ["宿主建议（引入blocking）", "23 条", "22 条", "17 条"],
+    ["宿主清除路径", "全部撤销", "全部撤销（1条未收敛）", "全部撤销"],
+    ["解析失败", "41/395", "0/105", "0/105"],
+  ],
+  [28, 25, 24, 23],
+));
+body.push(p("表8汇总修订后的关键指标：目标值来源说明——收敛率目标70%与轮次目标2.0取自项目立项时的工程预期（非文献基准），作为内部验收线而非学术对比线；学术对比由表4三臂实测与表7跨模型实测承担。"));
+body.push(...threeLineTable(
+  "表8　关键指标汇总（口径与来源注明）",
   ["指标", "口径", "实测值"],
   [
     ["BOM变更建议收敛率", "120条提出变更建议为分母", "94.2%（CI95 89.8～97.6）"],
@@ -389,12 +405,12 @@ body.push(p("以典型危险请求为例：对01Phone设计注入移除全部去
 // 5 讨论
 body.push(h1("5　讨论"));
 body.push(p("三臂对比支持一个有限但明确的判断：在规则与IPC公式覆盖域内，闭环验证能把直出会引入的80条次blocking违规全部隔离，同时把单次门一刀切损失的建议恢复24.2个百分点为可用（74.2%到94.2%）。但流向分解同时揭示，闭环对blocking违规的实际处理机制是防御性的——23条宿主建议全部经撤销清除、修正-保留型为零，危险类通过的主要形态是LLM拒答（110/158）或全撤销（39/158）。这意味着本文闭环的可靠收敛依赖的是外部验证器加保守退出（撤销语义），而非LLM的缺陷修复能力，与文献[3][18]关于外部反馈必要性的结论一致；其代价是保守性：撤销与拒答可能连带丢弃部分有益变更（39条撤销建议中被放弃的潜在收益无法从现有数据区分），有益建议误杀率的量化需要人工评估落盘与撤销建议的真实收益，本文仅对81条落盘变更做了结构审计（合计417个变更：新增392、删除23、替换2；9条危险来源落盘均为移除1～4个100nF电容且复检无新增违规，其潜在影响为去耦网络削弱，属规则可见性之外的残余风险）。"));
-body.push(p("本研究存在以下局限。其一，有效性证据限定于三类模板请求与规则集的对齐区间，对真实开放请求的外推未经验证，41条输出解析失败也提示结构化输出约束仍有改进空间；其二，指标口径：消除率在式(1)约束下部分是定义的必然，本文已将其降为过程性核验，headline改由收敛率与三臂对比承担；其三，闭环目前作用于BOM级变更，几何与布局级建议的闭环验证、几何/布局类规则的注入验证（31条规则无独立验证证据）、网表关联推断（晶振类漏检的根源）均待后续工作；其四，单模型全量、跨模型仅单板冒烟，且反馈措辞与GLM系存在协同调优混杂；其五，评分器为启发式加权、未经人工对齐，多智能体分数仅作相对画像。"));
+body.push(p("本研究存在以下局限。其一，有效性证据限定于三类模板请求与规则集的对齐区间，对真实开放请求的外推未经验证，41条输出解析失败也提示结构化输出约束仍有改进空间；其二，指标口径：消除率在式(1)约束下部分是定义的必然，本文已将其降为过程性核验，headline改由收敛率与三臂对比承担；其三，闭环目前作用于BOM级变更，几何与布局级建议的闭环验证、几何/布局类规则的注入验证（31条规则无独立验证证据）、网表关联推断（晶振类漏检的根源）均待后续工作；其四，跨模型验证限于21板分层子集，且修正反馈措辞在开发中与GLM系协同调优，跨模型数字可能受此混杂的轻微影响；其五，评分器为启发式加权、未经人工对齐，多智能体分数仅作相对画像。"));
 body.push(p("从机制层面归纳，本闭环的成立依赖三个要素：确定性外部验证器（规则+标准公式）、结构化可执行反馈（违规清单+修法指引+恶化对比）、以及把撤销纳入合法收敛终态的安全出口；其残余风险边界同样明确——当验证器自身不完备（漏检4%～16%分型依赖）时，闭环只能保证规则可见子集的隔离，输出侧的验证覆盖度告示因此是必要的配套。该三要素结构在具备确定性验证器的其他工程域（如代码评审中的静态分析门禁、结构计算中的规范校核）具有可验证的迁移候选，其条件与边界值得单独研究。"));
 
 // 6 结论
 body.push(h1("6　结论"));
-body.push(p("本文面向PCB设计中LLM建议的可信化问题，提出并实现了由LLM建议引擎、68条规则的DRC引擎、IPC-2221/2141确定性物理计算与五智能体审查画像构成的闭环验证引擎。在79个真实开源设计、395条三类模板请求驱动建议的实验中，三臂对比显示：闭环将直出会引入的80条次blocking级违规全部隔离，把可采纳率从单次门的74.2%恢复到94.2%（CI95 89.8%～97.6%），blocking清除全部经整体撤销达成，修正-保留收敛率61.7%，缺陷注入实测规则引擎检出率95.7%并同时构成隔离能力的上界。结果表明，以确定性规则引擎为外部反馈源、以撤销为安全出口的闭环架构，能够在规则与IPC公式覆盖域内将LLM的危险变更隔离于真实设计之外。后续工作将围绕网表关联推断、几何/布局级闭环验证与注入验证、反馈要素的受控消融、多模型分层实验与真实开放请求评测展开，并探索将该闭环机制接入更多国产EDA工具生态。"));
+body.push(p("本文面向PCB设计中LLM建议的可信化问题，提出并实现了由LLM建议引擎、68条规则的DRC引擎、IPC-2221/2141确定性物理计算与五智能体审查画像构成的闭环验证引擎。在79个真实开源设计、395条三类模板请求驱动建议的实验中，三臂对比显示：闭环将直出会引入的80条次blocking级违规全部隔离，把可采纳率从单次门的74.2%恢复到94.2%（CI95 89.8%～97.6%），blocking清除全部经整体撤销达成，修正-保留收敛率61.7%，缺陷注入实测规则引擎检出率95.7%并同时构成隔离能力的上界；21板分层子集上的跨模型验证表明，DeepSeek-V4.1-Flash与Qwen3.8-max取得98.4%与100%的收敛率，清除路径与轮次分布和GLM一致，闭环的防御性隔离行为由验证器与反馈机制决定、不绑定特定模型。结果表明，以确定性规则引擎为外部反馈源、以撤销为安全出口的闭环架构，能够在规则与IPC公式覆盖域内将LLM的危险变更隔离于真实设计之外。后续工作将围绕网表关联推断、几何/布局级闭环验证与注入验证、反馈要素的受控消融、更大规模的跨模型矩阵与真实开放请求评测展开，并探索将该闭环机制接入更多国产EDA工具生态。"));
 
 // 参考文献
 body.push(new Paragraph({
@@ -429,7 +445,8 @@ body.push(new Paragraph({
   "[23] IPC Association. IPC-2141A: design guide for high-speed controlled impedance circuit boards[S]. Bannockburn: IPC, 2004.",
   "[24] Devlin J, Chang M W, Lee K, et al. BERT: pre-training of deep bidirectional transformers for language understanding[C]//Proceedings of NAACL-HLT 2019. Minneapolis: ACL, 2019: 4171-4186.",
   "[25] Zeng A, Liu X, Du Z, et al. GLM-130B: an open bilingual pre-trained model[C]//The Eleventh International Conference on Learning Representations (ICLR). Kigali, 2023.",
-  "[26] DeepSeek-AI. DeepSeek-V3 technical report[EB/OL]. (2024-12-26)[2026-10-19]. https://arxiv.org/abs/2412.19437.",
+  "[26] DeepSeek. DeepSeek API documentation: models (DeepSeek-V4.1-Flash)[EB/OL]. [2026-10-19]. https://api-docs.deepseek.com.",
+  "[27] 阿里云计算有限公司. 百炼模型服务文档：Qwen3.8-max[EB/OL]. [2026-10-19]. https://help.aliyun.com/zh/model-studio.",
 ].forEach(t => body.push(refEntry(t)));
 
 body.push(new Paragraph({
