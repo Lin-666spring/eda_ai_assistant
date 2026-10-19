@@ -187,6 +187,13 @@ pyinstaller --onefile --windowed --name "ED Aid_PCB" ^
 > 全文含图6幅/表5张/公式4条/参考文献16条，指标全部取自 run_thing_full_glm53 实测；
 > 生成流水线 `论文/generate_paper.js`（docx-js），图2 由 `scripts/paper_fig2_severity.py` 重出；
 > postcheck 0 错误，visual-judge 全页通过。投稿前须补：作者/单位信息、跨模型全量对比（可选）、目标期刊模板套排。
+>
+> **2026-10-19 五席模拟评审 + 修订稿已出**：评审结论 Major Revision（论文/review/editorial_decision.md，19 项 must-fix）。
+> 修订稿 `论文/论文修订稿_面向PCB设计的LLM闭环验证引擎.docx`（22页，图6/表7/文献26，visual-judge 22/22 通过）+
+> 逐项回复信 `论文/review/response_to_reviewers.md`。核心重构：headline 改三臂对比（直出80条次残留/单次门74.2%/闭环94.2%，CI95 89.8~97.6）；
+> 流向对账 79+196+120=395；23条blocking宿主全部经撤销清零（修正-保留0）；主张收缩至规则覆盖域；文献更正（ChipNeMo=2311.00176）。
+> 数据重放口径：`scripts/paper_revision_replay.py` → `论文/review/revision_metrics.json`；图4 重制 `scripts/paper_fig4_revision.py`。
+> 遗留（降级路径已披露）：受控消融/多模型子集/自由格式请求/人工双评/几何布局注入/两标准翻转比对。
 
 ---
 

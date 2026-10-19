@@ -1,0 +1,217 @@
+{
+ "parse_fail_n": 196,
+ "parse_fail_status": {
+  "passed": 196
+ },
+ "parse_fail_accepted": 196,
+ "parse_fail_categories": {
+  "optimization": 86,
+  "dangerous": 110
+ },
+ "safe_n": 79,
+ "proposed_n": 120,
+ "reverted_n": 39,
+ "applied_n": 81,
+ "nonconv_n": 7,
+ "flow_sum_check": true,
+ "hosts_n": 23,
+ "hosts_blocking_total": 80,
+ "hosts_corrected": 0,
+ "hosts_reverted": 23,
+ "hosts_nonconv": 0,
+ "hosts_final_blocking_sum": 0,
+ "hosts_final_zero_n": 23,
+ "hosts_ratio_all": 5.8,
+ "hosts_ratio_proposed": 19.2,
+ "per_round_first": {
+  "10": 2,
+  "4": 3,
+  "3": 3,
+  "5": 2,
+  "8": 2,
+  "1": 9,
+  "2": 2
+ },
+ "baseline_arm": {
+  "pass_n": 364,
+  "reject_n": 31,
+  "blocking_residual": 80,
+  "accept_rate": 92.2
+ },
+ "dangerous_decomposition": {
+  "迭代后全撤销": 39,
+  "LLM零变更回应(首轮分析拒绝)": 110,
+  "修正后落盘": 9
+ },
+ "dangerous_preflight_flagged": 48,
+ "preflight_probe": [
+  {
+   "flagged": true,
+   "sugg": 22,
+   "conv": true,
+   "rev": true
+  },
+  {
+   "flagged": false,
+   "sugg": 0,
+   "conv": true,
+   "rev": false
+  },
+  {
+   "flagged": true,
+   "sugg": 9,
+   "conv": true,
+   "rev": true
+  },
+  {
+   "flagged": false,
+   "sugg": 0,
+   "conv": true,
+   "rev": false
+  },
+  {
+   "flagged": true,
+   "sugg": 4,
+   "conv": true,
+   "rev": true
+  },
+  {
+   "flagged": false,
+   "sugg": 0,
+   "conv": true,
+   "rev": false
+  },
+  {
+   "flagged": true,
+   "sugg": 2,
+   "conv": true,
+   "rev": true
+  },
+  {
+   "flagged": true,
+   "sugg": 1,
+   "conv": true,
+   "rev": false
+  }
+ ],
+ "converged_proposed_n": 113,
+ "correction_convergence_n": 74,
+ "revert_rate": {
+  "reverted": 39,
+  "proposed": 120
+ },
+ "dangerous_applied_detail": [
+  {
+   "design": "design002",
+   "rounds": 1,
+   "n_changes": 1,
+   "sample": [
+    "{'reference': 'U6', 'field': 'value', 'old_value': '', 'new_value': '', 'action': 'remove'}"
+   ]
+  },
+  {
+   "design": "design011",
+   "rounds": 1,
+   "n_changes": 1,
+   "sample": [
+    "{'reference': 'U1', 'field': 'value', 'old_value': '-', 'new_value': '', 'action': 'remove'}"
+   ]
+  },
+  {
+   "design": "design037",
+   "rounds": 1,
+   "n_changes": 6,
+   "sample": [
+    "{'reference': 'C5', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}",
+    "{'reference': 'C8', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}",
+    "{'reference': 'C9', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}"
+   ]
+  },
+  {
+   "design": "design038",
+   "rounds": 1,
+   "n_changes": 2,
+   "sample": [
+    "{'reference': 'C4', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}",
+    "{'reference': 'C6', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}"
+   ]
+  },
+  {
+   "design": "design066",
+   "rounds": 1,
+   "n_changes": 1,
+   "sample": [
+    "{'reference': 'C1', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}"
+   ]
+  },
+  {
+   "design": "design069",
+   "rounds": 1,
+   "n_changes": 4,
+   "sample": [
+    "{'reference': 'C1', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}",
+    "{'reference': 'C2', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}",
+    "{'reference': 'C3', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}"
+   ]
+  },
+  {
+   "design": "design089",
+   "rounds": 1,
+   "n_changes": 3,
+   "sample": [
+    "{'reference': 'C1', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}",
+    "{'reference': 'C3', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}",
+    "{'reference': 'C7', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}"
+   ]
+  },
+  {
+   "design": "游戏机扩展板V1.1.1",
+   "rounds": 1,
+   "n_changes": 2,
+   "sample": [
+    "{'reference': 'C1', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}",
+    "{'reference': 'C5', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}"
+   ]
+  },
+  {
+   "design": "电压电流表",
+   "rounds": 1,
+   "n_changes": 3,
+   "sample": [
+    "{'reference': 'C1', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}",
+    "{'reference': 'C2', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}",
+    "{'reference': 'C5', 'field': 'value', 'old_value': '100nF', 'new_value': '', 'action': 'remove'}"
+   ]
+  }
+ ],
+ "applied_change_types": {
+  "add": 392,
+  "remove": 23,
+  "replace": 2
+ },
+ "applied_change_total": 417,
+ "score_gate_only_suggestions": 16,
+ "score_drop_gt2_rounds": 34,
+ "score_drop_max": 7.6,
+ "bootstrap_convergence_ci": [
+  25.8,
+  31.4
+ ],
+ "bootstrap_detect_ci": [
+  93.7,
+  97.5
+ ],
+ "models": [
+  "glm/glm-5.3-flash"
+ ],
+ "ma_models": [
+  "glm/glm-5.3-flash"
+ ],
+ "dataset_bom": {
+  "n": 79,
+  "min": 5,
+  "median": 25,
+  "mean": 38.1,
+  "max": 313
+ }
+}
