@@ -156,12 +156,12 @@ pyinstaller --onefile --windowed --name "ED Aid_PCB" ^
 
 ### P0: 论文实验（7 月完成）
 
-- [ ] **3.1** 从立创开源广场收集 5-10 个真实 PCB 设计
-- [ ] **3.2** 编写自动化实验脚本 `tests/paper_experiments.py`
+- [x] **3.1** 从立创开源广场收集 5-10 个真实 PCB 设计 → 实收 79 个（run_thing_full_glm53, 2026-09-13）
+- [x] **3.2** 编写自动化实验脚本 `tests/paper_experiments.py`
   - 对每个设计运行：纯LLM / 纯DRC / 闭环验证
   - 自动记录：幻觉数、修正轮次、耗时、多智能体评分
-- [ ] **3.3** 跑 3+ LLM 对比（DeepSeek / Qwen / GLM）
-- [ ] **3.4** 生成实验数据表 + 图表（matplotlib）
+- [~] **3.3** 跑 3+ LLM 对比（DeepSeek / Qwen / GLM）→ GLM 全量 + DeepSeek 单板冒烟；全量对比待补
+- [x] **3.4** 生成实验数据表 + 图表（matplotlib, `scripts/paper_charts.py`）
 
 ### P1: 软著材料（7-8 月）
 
@@ -177,11 +177,16 @@ pyinstaller --onefile --windowed --name "ED Aid_PCB" ^
 
 ### P3: 论文写作（8 月）
 
-- [ ] **6.1** 绘制系统架构图（draw.io or Python tikz）
-- [ ] **6.2** 写 Method 章节
-- [ ] **6.3** 写 Experiment 章节
-- [ ] **6.4** 写 Introduction + Related Work
+- [x] **6.1** 绘制系统架构图（`scripts/paper_arch_diagram.py` → 论文/figures/fig1）
+- [x] **6.2** 写 Method 章节
+- [x] **6.3** 写 Experiment 章节
+- [x] **6.4** 写 Introduction + Related Work
 - [ ] **6.5** 导师审阅 + 修改
+
+> **2026-10-19 论文初稿已产出**：`论文/论文初稿_面向PCB设计的LLM闭环验证引擎.docx`（18页，中文期刊口径）。
+> 全文含图6幅/表5张/公式4条/参考文献16条，指标全部取自 run_thing_full_glm53 实测；
+> 生成流水线 `论文/generate_paper.js`（docx-js），图2 由 `scripts/paper_fig2_severity.py` 重出；
+> postcheck 0 错误，visual-judge 全页通过。投稿前须补：作者/单位信息、跨模型全量对比（可选）、目标期刊模板套排。
 
 ---
 
@@ -202,3 +207,4 @@ pyinstaller --onefile --windowed --name "ED Aid_PCB" ^
 
 > 更新日志:
 > - 2026-07-09: 初版，设定论文+软著目标，制定 7-9 月路线图
+> - 2026-10-19: 论文初稿产出（软著线已于 10-17 完结）；实验指标定格：79设计/395建议、收敛94.2%、平均1.14轮、blocking消除率100%、MA均分94.2、缺陷注入95.7%
