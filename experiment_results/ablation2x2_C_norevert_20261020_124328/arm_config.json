@@ -1,0 +1,10 @@
+{
+  "arm": "C_norevert",
+  "flags": {
+    "guidance": true,
+    "revert": false
+  },
+  "model": "glm-5.3-flash",
+  "designs": 21,
+  "started": "2026-10-20T12:43:28.785804"
+}

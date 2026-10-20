@@ -595,6 +595,12 @@ class ExperimentRunner:
         self.ma_results: list[MultiAgentResult] = []
         self.defect_results: list[DefectInjectionResult] = []
 
+        # 消融开关（论文 R3 受控 2×2）：None = 完整闭环；
+        # {"guidance": bool, "revert": bool} 分别剥离修法指引/撤销语义。
+        # revert=False 时修正轮返回的空变更集会被拒绝（保持原变更），
+        # 与 prompt 侧的撤销授权移除保持机制一致。
+        self.ablation: Optional[dict] = None
+
         # Logging
         self._log_lines: list[str] = []
 
@@ -944,6 +950,7 @@ class ExperimentRunner:
                     modified_counts_by_rule[v.rule_name] = modified_counts_by_rule.get(v.rule_name, 0) + 1
 
                 # 本轮尝试摘要（供下一轮历史，避免重复无效策略）
+                abl = self.ablation or {}
                 correction_prompt = build_correction_prompt(
                     suggestion=suggestion.text,
                     current_changes=current_changes,
@@ -959,6 +966,8 @@ class ExperimentRunner:
                     round_num=round_num + 1,
                     max_rounds=MAX_ROUNDS,
                     history=round_history,
+                    include_guidance=abl.get("guidance", True),
+                    include_revert=abl.get("revert", True),
                 )
                 round_history.append({
                     "round": round_num,
@@ -978,10 +987,15 @@ class ExperimentRunner:
                         )
                         for w in corr_warnings:
                             self._log(f"    ⚠️  {w}")
-                        if len(valid_corr) < len(current_changes):
-                            self._log(f"    ↩️  LLM 撤销部分变更: "
-                                      f"{len(current_changes)} → {len(valid_corr)} 条")
-                        current_changes = valid_corr
+                        # 消融臂（revert=False）：撤销路径被禁用，空变更集
+                        # 不被接受——保持原变更，迫使 LLM 只能修正不能放弃。
+                        if not abl.get("revert", True) and not valid_corr:
+                            self._log("    ✂️  消融臂禁用撤销：空变更集被拒绝，保持原变更")
+                        else:
+                            if len(valid_corr) < len(current_changes):
+                                self._log(f"    ↩️  LLM 撤销部分变更: "
+                                          f"{len(current_changes)} → {len(valid_corr)} 条")
+                            current_changes = valid_corr
                 except Exception:
                     pass  # keep current_changes if correction call fails
 

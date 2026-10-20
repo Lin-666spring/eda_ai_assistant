@@ -1,0 +1,10 @@
+{
+  "arm": "B_noguid",
+  "flags": {
+    "guidance": false,
+    "revert": true
+  },
+  "model": "glm-5.3-flash",
+  "designs": 21,
+  "started": "2026-10-20T12:43:28.786914"
+}

@@ -1,0 +1,10 @@
+{
+  "arm": "A_full",
+  "flags": {
+    "guidance": true,
+    "revert": true
+  },
+  "model": "glm-5.3-flash",
+  "designs": 21,
+  "started": "2026-10-19T22:47:13.735006"
+}

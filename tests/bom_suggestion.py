@@ -116,16 +116,25 @@ def build_correction_prompt(
     round_num: int = 1,
     max_rounds: int = 3,
     history: Optional[list] = None,
+    include_guidance: bool = True,
+    include_revert: bool = True,
 ) -> str:
     """构建修正轮 prompt — 给 LLM 足以收敛的完整反馈。
 
     相比旧版（只拼规则名+描述），新版提供：
     1. 每条违规的 suggestion 字段（checker.py 生成的修复指引，含参数值）
-    2. 同规则恶化对比（去耦检查等基线已有规则在删电容后暴增，旧版不可见）
+    2. 同规则恶化对比（去耦检查等基线已有的规则在删电容后暴增，旧版不可见）
     3. 全量替换语义 + 撤销授权（危险建议的正确修法是删掉变更条目，而非打补丁）
     4. action: add 文档化（补回被删除的电容是新元件，不是字段修改）
     5. 轮次历史（防止 LLM 重复上一轮已被证明无效的策略）
     6. 评分信号（cw32l010 型"0 新违规但评分下降"用例的可执行反馈）
+
+    消融开关（论文 R3 受控 2×2，同期同子集对照）：
+    include_guidance=False 剥离每条违规的"修法"指引行与策略第 2 条的指引引用，
+    其余反馈（恶化对比/轮次历史/评分信号）保持不变，用于单独隔离修法指引轴；
+    include_revert=False 移除撤销授权（策略第 1 条、"空 changes 合法"输出约定、
+    末轮撤销提示），用于单独隔离撤销语义轴——调用方（paper_experiments）须同步
+    拒绝空变更修正，保证 prompt 语义与机制行为一致。
 
     Args:
         suggestion: 原始建议文本
@@ -139,6 +148,8 @@ def build_correction_prompt(
         round_num: 当前修正轮次（从 2 开始，1 是首轮）
         max_rounds: 最大轮次
         history: 前几轮摘要 [(轮次, 变更数, 新违规数, 尝试摘要), ...]
+        include_guidance: 是否提供每条违规的修法指引（消融轴 1）
+        include_revert: 是否提供撤销语义授权（消融轴 2）
     """
     # ── 当前变更表（含 old_value，供恢复原值）──
     # 2026-09-10：改用人类可读的操作标签。此前把 canonical 变更渲染成
@@ -170,12 +181,17 @@ def build_correction_prompt(
         "| 位号 | 原始值 | 封装 |\n|------|--------|------|\n"
         + "\n".join(original_rows)
     )
+    original_caption = ("## 原始 BOM 中相关元件的原始参数（撤销 = 恢复这里的值）"
+                        if include_revert else
+                        "## 原始 BOM 中相关元件的原始参数（参考）")
 
     # ── 新违规明细（含修复指引）──
     def _violation_line(v) -> str:
         sev = v.severity.value if hasattr(v.severity, "value") else str(v.severity)
         loc = f" @ {v.location}" if getattr(v, "location", "") else ""
-        fix = f"\n    修法: {v.suggestion}" if getattr(v, "suggestion", "") else ""
+        fix = ""
+        if include_guidance and getattr(v, "suggestion", ""):
+            fix = f"\n    修法: {v.suggestion}"
         return f"- [{sev}] {v.rule_name}{loc}: {v.description}{fix}"
     violation_desc = "\n".join(_violation_line(v) for v in new_violations[:15]) or "(无)"
 
@@ -220,22 +236,68 @@ def build_correction_prompt(
     # ── 决策指引 ──
     parts = []
     if round_num >= max_rounds:
-        parts.append(
-            f"这是最后一轮修正机会（第 {round_num}/{max_rounds} 轮）。"
-            "如果无法通过局部修改消除违规，请直接撤销全部有问题的变更（返回空 changes）。"
+        if include_revert:
+            parts.append(
+                f"这是最后一轮修正机会（第 {round_num}/{max_rounds} 轮）。"
+                "如果无法通过局部修改消除违规，请直接撤销全部有问题的变更（返回空 changes）。"
+            )
+        else:
+            parts.append(
+                f"这是最后一轮修正机会（第 {round_num}/{max_rounds} 轮）。"
+                "请尽可能通过调整参数消除违规；无法消除的变更不会被接受。"
+            )
+    strategies = []
+    if include_revert:
+        strategies.append(
+            "1. **撤销**：从 changes 中删除导致违规的条目，即恢复该元件原值。变更列表是全量替换语义——"
+            "输出不含某条目 = 该元件恢复原状。若上表里某条是\"删除该元件\"，**不输出它**就是让该元件保留原值，"
+            "这是撤销删除的正确做法；如果整个建议方向有误（如删除了必要的去耦电容），"
+            "撤销相关条目是正确做法，不要为了保留变更成果而打补丁。"
         )
-    parts.append(
-        "修复策略（按优先级）：\n"
-        "1. **撤销**：从 changes 中删除导致违规的条目，即恢复该元件原值。变更列表是全量替换语义——"
-        "输出不含某条目 = 该元件恢复原状。若上表里某条是\"删除该元件\"，**不输出它**就是让该元件保留原值，"
-        "这是撤销删除的正确做法；如果整个建议方向有误（如删除了必要的去耦电容），"
-        "撤销相关条目是正确做法，不要为了保留变更成果而打补丁。\n"
-        "2. **修正**：按每条违规的'修法'指引调整 new_value（如恢复 100nF、改回耐压足够的型号）。\n"
+    if include_guidance:
+        strategies.append(
+            "2. **修正**：按每条违规的'修法'指引调整 new_value（如恢复 100nF、改回耐压足够的型号）。"
+            if include_revert else
+            "**修正**：按每条违规的'修法'指引调整 new_value（如恢复 100nF、改回耐压足够的型号）。"
+        )
+    else:
+        strategies.append(
+            "2. **修正**：自行判断并调整 new_value 以消除违规（变更中不再出现引发违规的参数）。"
+            if include_revert else
+            "**修正**：自行判断并调整 new_value 以消除违规（变更中不再出现引发违规的参数）。"
+        )
+    strategies.append(
         "3. **补充**：用 action: \"add\" 新增元件修复缺失（如新增 100nF 去耦电容，位号从 C101 起；"
         "新增 10kΩ 上拉电阻，位号从 R101 起）。add 的 field 填 value，new_value 填完整参数"
         "（如 \"100nF 10V X7R 0603\"）。"
+        if include_revert else
+        "**补充**：用 action: \"add\" 新增元件修复缺失（如新增 100nF 去耦电容，位号从 C101 起；"
+        "新增 10kΩ 上拉电阻，位号从 R101 起）。add 的 field 填 value，new_value 填完整参数"
+        "（如 \"100nF 10V X7R 0603\"）。"
     )
+    if include_revert:
+        parts.append("修复策略（按优先级）：\n" + "\n".join(strategies))
+    else:
+        parts.append("修复策略：\n" + "\n".join(strategies))
     guidance = "\n".join(parts)
+
+    if include_revert:
+        output_rules = (
+            "只输出一个 JSON 对象，格式与之前相同：{{\"changes\": [...]}}。\n"
+            "- 这是替换语义：输出的 changes 列表就是下一轮的全部变更。要撤销某条变更，就不要输出它。\n"
+            "- 要全部撤销（建议本身有害），输出 {{\"changes\": []}}，这是合法且推荐的收敛方式。\n"
+            "- 每条变更的 action 必须显式写出（replace / add / remove），field 不能是 \"reference\"。\n"
+            "- 不要输出任何解释文字。"
+        )
+    else:
+        output_rules = (
+            "只输出一个 JSON 对象，格式与之前相同：{{\"changes\": [...]}}。\n"
+            "- 这是替换语义：输出的 changes 列表就是下一轮的全部变更。\n"
+            "- changes 列表**不能为空**：每条已提出的变更都必须保留并给出修正后的参数；"
+            "空列表不会被接受，也不要通过清空变更来规避违规。\n"
+            "- 每条变更的 action 必须显式写出（replace / add / remove），field 不能是 \"reference\"。\n"
+            "- 不要输出任何解释文字。"
+        )
 
     prompt = f"""你之前提出的 PCB BOM 变更建议经过 DRC 规则引擎检查，发现了问题，需要修正。
 
@@ -245,7 +307,7 @@ def build_correction_prompt(
 ## 你当前提出的变更（注意：下一轮输出是**全量替换**这份列表，不是追加）
 {changes_table}
 
-## 原始 BOM 中相关元件的原始参数（撤销 = 恢复这里的值）
+{original_caption}
 {original_table}
 
 ## DRC 检出的新违规（相对变更前基线）
@@ -255,11 +317,7 @@ def build_correction_prompt(
 {guidance}
 
 ## 输出要求
-只输出一个 JSON 对象，格式与之前相同：{{"changes": [...]}}。
-- 这是替换语义：输出的 changes 列表就是下一轮的全部变更。要撤销某条变更，就不要输出它。
-- 要全部撤销（建议本身有害），输出 {{"changes": []}}，这是合法且推荐的收敛方式。
-- 每条变更的 action 必须显式写出（replace / add / remove），field 不能是 "reference"。
-- 不要输出任何解释文字。
+{output_rules}
 """
     return prompt
 

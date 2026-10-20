@@ -1,0 +1,70 @@
+{
+  "A_full": {
+    "n": 105,
+    "converged": 103,
+    "conv_rate": 98.1,
+    "ci95": [
+      95.2,
+      100.0
+    ],
+    "fully_reverted": 19,
+    "revert_rate": 18.1,
+    "fix_kept": 84,
+    "fix_kept_rate": 80.0,
+    "parse_fail": 0,
+    "avg_rounds": 1.26,
+    "stalled_unconverged": 2,
+    "unconverged": 2
+  },
+  "B_noguid": {
+    "n": 105,
+    "converged": 103,
+    "conv_rate": 98.1,
+    "ci95": [
+      95.2,
+      100.0
+    ],
+    "fully_reverted": 18,
+    "revert_rate": 17.1,
+    "fix_kept": 85,
+    "fix_kept_rate": 81.0,
+    "parse_fail": 0,
+    "avg_rounds": 1.26,
+    "stalled_unconverged": 2,
+    "unconverged": 2
+  },
+  "C_norevert": {
+    "n": 105,
+    "converged": 91,
+    "conv_rate": 86.7,
+    "ci95": [
+      80.0,
+      92.4
+    ],
+    "fully_reverted": 0,
+    "revert_rate": 0.0,
+    "fix_kept": 91,
+    "fix_kept_rate": 86.7,
+    "parse_fail": 0,
+    "avg_rounds": 1.37,
+    "stalled_unconverged": 13,
+    "unconverged": 14
+  },
+  "D_neither": {
+    "n": 105,
+    "converged": 87,
+    "conv_rate": 82.9,
+    "ci95": [
+      75.2,
+      89.5
+    ],
+    "fully_reverted": 0,
+    "revert_rate": 0.0,
+    "fix_kept": 87,
+    "fix_kept_rate": 82.9,
+    "parse_fail": 0,
+    "avg_rounds": 1.4,
+    "stalled_unconverged": 16,
+    "unconverged": 18
+  }
+}

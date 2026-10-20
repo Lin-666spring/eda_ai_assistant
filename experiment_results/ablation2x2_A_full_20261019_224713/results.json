@@ -1,0 +1,4765 @@
+{
+  "timestamp": "2026-10-19_224713",
+  "output_dir": "C:\\Users\\lin\\Desktop\\eda_ai_assistant\\experiment_results\\ablation2x2_A_full_20261019_224713",
+  "designs": [
+    "6寸屏幕转接板",
+    "LCTSPI语音识别扩展板",
+    "P1",
+    "V1.0.2_3",
+    "XDS110",
+    "design009",
+    "design013",
+    "design030",
+    "design031",
+    "design038",
+    "design051",
+    "design054",
+    "design059",
+    "design066",
+    "design090",
+    "io扩展",
+    "已走线",
+    "泰山派无人机地面站",
+    "游戏机扩展板V1.1.1",
+    "游戏机扩展板diy",
+    "立创·逻辑派FPGA"
+  ],
+  "providers": [
+    "glm"
+  ],
+  "suggestion_categories": [
+    "optimization",
+    "dangerous",
+    "safe"
+  ],
+  "drc_count": 0,
+  "verify_count": 69,
+  "ma_count": 0,
+  "defect_count": 0,
+  "llm_usage": {
+    "prompt_tokens": 128235,
+    "completion_tokens": 170029,
+    "total_tokens": 298264,
+    "calls": 93
+  },
+  "drc_results": [],
+  "verify_results": [
+    {
+      "design": "6寸屏幕转接板",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 5,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 8.3,
+      "error": null,
+      "baseline_score": 98.1,
+      "proposed_score": 98.1,
+      "final_score": 98.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:47:22.032511",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "6寸屏幕转接板",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 14,
+      "blocking_issues": 4,
+      "info_issues": 0,
+      "max_severity": "error",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        4,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 4,
+            "total_violations": 9,
+            "new_violations": 4,
+            "blocking_new": 4,
+            "modified_score": 93.5,
+            "score_drop": 4.6,
+            "new_violations_list": [
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U2 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U4 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U5 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "电源轨去耦网络",
+                "severity": "warning",
+                "desc": "缺少: 0.1μF(高频去耦)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 5,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 44.31,
+      "error": null,
+      "baseline_score": 98.1,
+      "proposed_score": 98.1,
+      "final_score": 98.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:48:06.346340",
+      "suggested_changes_count": 4,
+      "new_violations_introduced": 4,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "6寸屏幕转接板",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 5,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 4,
+            "total_violations": 5,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 28.68,
+      "error": null,
+      "baseline_score": 98.1,
+      "proposed_score": 98.1,
+      "final_score": 98.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:48:35.024493",
+      "suggested_changes_count": 4,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C1",
+          "field": "value",
+          "old_value": "",
+          "new_value": "1uF",
+          "action": "add"
+        },
+        {
+          "reference": "C2",
+          "field": "value",
+          "old_value": "",
+          "new_value": "1uF",
+          "action": "add"
+        },
+        {
+          "reference": "C3",
+          "field": "value",
+          "old_value": "",
+          "new_value": "1uF",
+          "action": "add"
+        },
+        {
+          "reference": "C6",
+          "field": "value",
+          "old_value": "",
+          "new_value": "1uF",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "6寸屏幕转接板",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 5,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 5,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 29.68,
+      "error": null,
+      "baseline_score": 98.1,
+      "proposed_score": 98.1,
+      "final_score": 98.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:49:04.708773",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C101",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C102",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10uF",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "6寸屏幕转接板",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "用 AMS1117-5.0 (SOT-223) 替换 U2 AMS1117-3.3，将所有 3.3V 元件改为 5V 供电",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 5,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 5,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 23.15,
+      "error": null,
+      "baseline_score": 98.1,
+      "proposed_score": 98.1,
+      "final_score": 98.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:49:27.860402",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "U2",
+          "field": "value",
+          "old_value": "AMS1117-3.3",
+          "new_value": "AMS1117-5.0",
+          "action": "replace"
+        },
+        {
+          "reference": "U2",
+          "field": "package",
+          "old_value": "SOT-23-3_L2.9-W1.3-P0.95-LS2.4-BR",
+          "new_value": "SOT-223",
+          "action": "replace"
+        }
+      ],
+      "preflight_risk": 0.929,
+      "preflight_risk_max": 0.935,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "LCTSPI语音识别扩展板",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 2,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 10.34,
+      "error": null,
+      "baseline_score": 98.4,
+      "proposed_score": 98.4,
+      "final_score": 98.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:49:38.200707",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "LCTSPI语音识别扩展板",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 5,
+      "blocking_issues": 1,
+      "info_issues": 0,
+      "max_severity": "warning",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        1,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 8,
+            "total_violations": 3,
+            "new_violations": 1,
+            "blocking_new": 1,
+            "modified_score": 96.8,
+            "score_drop": 1.6,
+            "new_violations_list": [
+              {
+                "rule": "去耦电容检查",
+                "severity": "warning",
+                "desc": "高频去耦电容不足：1 个 100nF 需覆盖 5 个 IC，缺口 4 个"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 2,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.4,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 96.37,
+      "error": null,
+      "baseline_score": 98.4,
+      "proposed_score": 98.4,
+      "final_score": 98.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:51:14.570851",
+      "suggested_changes_count": 8,
+      "new_violations_introduced": 1,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "LCTSPI语音识别扩展板",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 2,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 4,
+            "total_violations": 2,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.4,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 18.07,
+      "error": null,
+      "baseline_score": 98.4,
+      "proposed_score": 98.4,
+      "final_score": 98.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:51:32.646518",
+      "suggested_changes_count": 4,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C1",
+          "field": "value",
+          "old_value": "4.7uF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C2",
+          "field": "value",
+          "old_value": "4.7uF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C3",
+          "field": "value",
+          "old_value": "4.7uF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C6",
+          "field": "value",
+          "old_value": "4.7uF",
+          "new_value": "1uF",
+          "action": "replace"
+        }
+      ],
+      "preflight_risk": 0.911,
+      "preflight_risk_max": 0.911,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "LCTSPI语音识别扩展板",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 2,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 2,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.4,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 26.87,
+      "error": null,
+      "baseline_score": 98.4,
+      "proposed_score": 98.4,
+      "final_score": 98.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:51:59.518636",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C101",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C102",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10μF",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "LCTSPI语音识别扩展板",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "用 AMS1117-5.0 (SOT-223) 替换 U2 AMS1117-3.3，将所有 3.3V 元件改为 5V 供电",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 2,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 2,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.4,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 19.45,
+      "error": null,
+      "baseline_score": 98.4,
+      "proposed_score": 98.4,
+      "final_score": 98.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:52:18.968688",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "U2",
+          "field": "value",
+          "old_value": "AMS1117-3.3",
+          "new_value": "AMS1117-5.0",
+          "action": "replace"
+        },
+        {
+          "reference": "U2",
+          "field": "package",
+          "old_value": "ESOP-10_L4.9-W3.9-P1.00-LS6.2-BL-EP",
+          "new_value": "SOT-223",
+          "action": "replace"
+        }
+      ],
+      "preflight_risk": 0.929,
+      "preflight_risk_max": 0.936,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "P1",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 6,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 7.22,
+      "error": null,
+      "baseline_score": 97.4,
+      "proposed_score": 97.4,
+      "final_score": 97.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:52:26.192311",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "P1",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 21,
+      "blocking_issues": 9,
+      "info_issues": 0,
+      "max_severity": "error",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        9,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 15,
+            "total_violations": 15,
+            "new_violations": 9,
+            "blocking_new": 9,
+            "modified_score": 90.0,
+            "score_drop": 7.4,
+            "new_violations_list": [
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U1 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U2 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U5 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U6 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U7 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U8 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U9 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "电源轨去耦网络",
+                "severity": "warning",
+                "desc": "缺少: 0.1μF(高频去耦)"
+              },
+              {
+                "rule": "复位电路检查",
+                "severity": "warning",
+                "desc": "MCU U1 复位电路缺少: 对地电容(0.1μF)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 6,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.4,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 50.52,
+      "error": null,
+      "baseline_score": 97.4,
+      "proposed_score": 97.4,
+      "final_score": 97.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:53:16.713907",
+      "suggested_changes_count": 15,
+      "new_violations_introduced": 9,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "P1",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 22,
+      "blocking_issues": 10,
+      "info_issues": 0,
+      "max_severity": "error",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        10,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 4,
+            "total_violations": 16,
+            "new_violations": 10,
+            "blocking_new": 10,
+            "modified_score": 89.3,
+            "score_drop": 8.1,
+            "new_violations_list": [
+              {
+                "rule": "晶振负载电容检查",
+                "severity": "warning",
+                "desc": "晶振负载电容可能不足：板上 1 颗 1-47pF 小电容，需 2 颗覆盖 1 个无源晶振"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U1 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U2 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U5 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U6 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U7 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U8 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U9 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "电源轨去耦网络",
+                "severity": "warning",
+                "desc": "缺少: 0.1μF(高频去耦)"
+              },
+              {
+                "rule": "复位电路检查",
+                "severity": "warning",
+                "desc": "MCU U1 复位电路缺少: 对地电容(0.1μF)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 6,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.4,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 70.6,
+      "error": null,
+      "baseline_score": 97.4,
+      "proposed_score": 97.4,
+      "final_score": 97.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:54:27.314577",
+      "suggested_changes_count": 4,
+      "new_violations_introduced": 10,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.994,
+      "preflight_risk_max": 0.996,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "P1",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 6,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 6,
+            "total_violations": 6,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.4,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 35.3,
+      "error": null,
+      "baseline_score": 97.4,
+      "proposed_score": 97.4,
+      "final_score": 97.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:55:02.613773",
+      "suggested_changes_count": 6,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C101",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C102",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C103",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C104",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10uF",
+          "action": "add"
+        },
+        {
+          "reference": "C105",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10uF",
+          "action": "add"
+        },
+        {
+          "reference": "C106",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10uF",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "P1",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "用 AMS1117-5.0 (SOT-223) 替换 U2 AMS1117-3.3，将所有 3.3V 元件改为 5V 供电",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 6,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 6,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.4,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 28.49,
+      "error": null,
+      "baseline_score": 97.4,
+      "proposed_score": 97.4,
+      "final_score": 97.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:55:31.105074",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "U2",
+          "field": "value",
+          "old_value": "AMS1117-3.3",
+          "new_value": "AMS1117-5.0",
+          "action": "replace"
+        },
+        {
+          "reference": "U2",
+          "field": "package",
+          "old_value": "QFN-24_L4.0-W4.0-P0.50-BL-EP2.7",
+          "new_value": "SOT-223",
+          "action": "replace"
+        }
+      ],
+      "preflight_risk": 0.928,
+      "preflight_risk_max": 0.935,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "V1.0.2_3",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 4,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 3.56,
+      "error": null,
+      "baseline_score": 98.6,
+      "proposed_score": 98.6,
+      "final_score": 98.6,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:55:34.665234",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "V1.0.2_3",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 10,
+      "blocking_issues": 2,
+      "info_issues": 0,
+      "max_severity": "warning",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        2,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 5,
+            "total_violations": 6,
+            "new_violations": 2,
+            "blocking_new": 2,
+            "modified_score": 96.4,
+            "score_drop": 2.2,
+            "new_violations_list": [
+              {
+                "rule": "去耦电容检查",
+                "severity": "warning",
+                "desc": "高频去耦电容不足：1 个 100nF 需覆盖 4 个 IC，缺口 3 个"
+              },
+              {
+                "rule": "电源轨去耦网络",
+                "severity": "warning",
+                "desc": "缺少: 0.1μF(高频去耦)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 4,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.6,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 109.22,
+      "error": null,
+      "baseline_score": 98.6,
+      "proposed_score": 98.6,
+      "final_score": 98.6,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T22:57:23.883786",
+      "suggested_changes_count": 5,
+      "new_violations_introduced": 2,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.952,
+      "preflight_risk_max": 0.952,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "V1.0.2_3",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": false,
+      "final_status": "failed",
+      "rounds": 3,
+      "total_issues": 15,
+      "blocking_issues": 3,
+      "info_issues": 0,
+      "max_severity": "warning",
+      "llm_correction_rounds": 2,
+      "hallucination_elimination": 0.0,
+      "per_round_blocking": [
+        1,
+        1,
+        1
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 5,
+            "new_violations": 1,
+            "blocking_new": 1,
+            "modified_score": 97.0,
+            "score_drop": 1.6,
+            "new_violations_list": [
+              {
+                "rule": "去耦电容检查",
+                "severity": "warning",
+                "desc": "高频去耦电容不足：3 个 100nF 需覆盖 4 个 IC，缺口 1 个"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 2,
+            "total_violations": 5,
+            "new_violations": 1,
+            "blocking_new": 1,
+            "modified_score": 97.0,
+            "score_drop": 1.6,
+            "new_violations_list": [
+              {
+                "rule": "去耦电容检查",
+                "severity": "warning",
+                "desc": "高频去耦电容不足：3 个 100nF 需覆盖 4 个 IC，缺口 1 个"
+              }
+            ]
+          },
+          {
+            "round": 3,
+            "changes_applied": 2,
+            "total_violations": 5,
+            "new_violations": 1,
+            "blocking_new": 1,
+            "modified_score": 97.0,
+            "score_drop": 1.6,
+            "new_violations_list": [
+              {
+                "rule": "去耦电容检查",
+                "severity": "warning",
+                "desc": "高频去耦电容不足：3 个 100nF 需覆盖 4 个 IC，缺口 1 个"
+              }
+            ]
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 212.89,
+      "error": null,
+      "baseline_score": 98.6,
+      "proposed_score": 97.0,
+      "final_score": 98.6,
+      "delta_score": 0.0,
+      "risk_prevented": 1.6,
+      "timestamp": "2026-10-19T23:00:56.770199",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 1,
+      "correction_rounds": 3,
+      "final_violation_delta": 1,
+      "converged": false,
+      "applied_changes": [
+        {
+          "reference": "C1",
+          "field": "value",
+          "old_value": "100nF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C2",
+          "field": "value",
+          "old_value": "100nF",
+          "new_value": "1uF",
+          "action": "replace"
+        }
+      ],
+      "preflight_risk": 0.991,
+      "preflight_risk_max": 0.991,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "V1.0.2_3",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 4,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 8,
+            "total_violations": 4,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.6,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 59.9,
+      "error": null,
+      "baseline_score": 98.6,
+      "proposed_score": 98.6,
+      "final_score": 98.6,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:01:56.674985",
+      "suggested_changes_count": 8,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C101",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C102",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10uF",
+          "action": "add"
+        },
+        {
+          "reference": "C103",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C104",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10uF",
+          "action": "add"
+        },
+        {
+          "reference": "C105",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C106",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10uF",
+          "action": "add"
+        },
+        {
+          "reference": "C107",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C108",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10uF",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.952,
+      "preflight_risk_max": 0.952,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "V1.0.2_3",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "用 AMS1117-5.0 (SOT-223) 替换 U2 AMS1117-3.3，将所有 3.3V 元件改为 5V 供电",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 4,
+        "parse_error": "无法从LLM响应中提取有效JSON。响应前200字: {\"changes\": [{\"reference\": \"U2\", \"field\": \"value\", \"old_value\": \"AMS1117-3.3\", \"new_value\": \"AMS1117-5.0\", \"action\": \"replace\"}, {\"reference\": \"U2\", \"field\":",
+        "dropped_changes": 0,
+        "invalid_no_change": true
+      },
+      "elapsed_seconds": 77.75,
+      "error": null,
+      "baseline_score": 98.6,
+      "proposed_score": 98.6,
+      "final_score": 98.6,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:03:14.431064",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "XDS110",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 4,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 3.03,
+      "error": null,
+      "baseline_score": 98.2,
+      "proposed_score": 98.2,
+      "final_score": 98.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:03:17.460365",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "XDS110",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 12,
+      "blocking_issues": 4,
+      "info_issues": 0,
+      "max_severity": "error",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        4,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 15,
+            "total_violations": 8,
+            "new_violations": 4,
+            "blocking_new": 4,
+            "modified_score": 93.6,
+            "score_drop": 4.6,
+            "new_violations_list": [
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U1 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U3 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U4,U5 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "电源轨去耦网络",
+                "severity": "warning",
+                "desc": "缺少: 0.1μF(高频去耦)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 4,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.2,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 35.34,
+      "error": null,
+      "baseline_score": 98.2,
+      "proposed_score": 98.2,
+      "final_score": 98.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:03:52.803629",
+      "suggested_changes_count": 15,
+      "new_violations_introduced": 4,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "XDS110",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 3,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 3,
+            "total_violations": 3,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.2,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 41.52,
+      "error": null,
+      "baseline_score": 98.2,
+      "proposed_score": 98.2,
+      "final_score": 98.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:04:34.322294",
+      "suggested_changes_count": 3,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C1",
+          "field": "value",
+          "old_value": "TBD",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C2",
+          "field": "value",
+          "old_value": "TBD",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C3",
+          "field": "value",
+          "old_value": "22uF",
+          "new_value": "1uF",
+          "action": "replace"
+        }
+      ],
+      "preflight_risk": 0.914,
+      "preflight_risk_max": 0.922,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "XDS110",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 3,
+      "total_issues": 14,
+      "blocking_issues": 0,
+      "info_issues": 2,
+      "max_severity": "info",
+      "llm_correction_rounds": 2,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        1,
+        1,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 5,
+            "new_violations": 1,
+            "blocking_new": 0,
+            "modified_score": 97.9,
+            "score_drop": 0.3,
+            "new_violations_list": [
+              {
+                "rule": "位号连续性检查",
+                "severity": "info",
+                "desc": "位号存在跳号: C24→C101(跳76号)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 2,
+            "total_violations": 5,
+            "new_violations": 1,
+            "blocking_new": 0,
+            "modified_score": 97.9,
+            "score_drop": 0.3,
+            "new_violations_list": [
+              {
+                "rule": "位号连续性检查",
+                "severity": "info",
+                "desc": "位号存在跳号: C24→C101(跳76号)"
+              }
+            ]
+          },
+          {
+            "round": 3,
+            "changes_applied": 2,
+            "total_violations": 4,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.2,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 209.51,
+      "error": null,
+      "baseline_score": 98.2,
+      "proposed_score": 98.2,
+      "final_score": 98.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:08:03.835378",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 1,
+      "correction_rounds": 3,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C25",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF 10V X7R 0402",
+          "action": "add"
+        },
+        {
+          "reference": "C26",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10uF 10V X5R 0603",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "XDS110",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "用 AMS1117-5.0 (SOT-223) 替换 U2 AMS1117-3.3，将所有 3.3V 元件改为 5V 供电",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 4,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 56.11,
+      "error": null,
+      "baseline_score": 98.2,
+      "proposed_score": 98.2,
+      "final_score": 98.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:08:59.948601",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design009",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 3,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 3.41,
+      "error": null,
+      "baseline_score": 97.1,
+      "proposed_score": 97.1,
+      "final_score": 97.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:09:03.362620",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design009",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 10,
+      "blocking_issues": 1,
+      "info_issues": 0,
+      "max_severity": "warning",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        1,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 16,
+            "total_violations": 7,
+            "new_violations": 1,
+            "blocking_new": 1,
+            "modified_score": 93.8,
+            "score_drop": 3.3,
+            "new_violations_list": [
+              {
+                "rule": "电源轨去耦网络",
+                "severity": "warning",
+                "desc": "缺少: 0.1μF(高频去耦)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 3,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 60.4,
+      "error": null,
+      "baseline_score": 97.1,
+      "proposed_score": 97.1,
+      "final_score": 97.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:10:03.767899",
+      "suggested_changes_count": 16,
+      "new_violations_introduced": 1,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "design009",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 9,
+      "blocking_issues": 1,
+      "info_issues": 0,
+      "max_severity": "warning",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        1,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 6,
+            "new_violations": 1,
+            "blocking_new": 1,
+            "modified_score": 94.1,
+            "score_drop": 3.0,
+            "new_violations_list": [
+              {
+                "rule": "电源轨去耦网络",
+                "severity": "warning",
+                "desc": "缺少: 0.1μF(高频去耦)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 3,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 69.24,
+      "error": null,
+      "baseline_score": 97.1,
+      "proposed_score": 97.1,
+      "final_score": 97.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:11:13.013175",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 1,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.991,
+      "preflight_risk_max": 0.991,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "design009",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 7,
+      "blocking_issues": 0,
+      "info_issues": 1,
+      "max_severity": "info",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        1,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 4,
+            "new_violations": 1,
+            "blocking_new": 0,
+            "modified_score": 96.8,
+            "score_drop": 0.3,
+            "new_violations_list": [
+              {
+                "rule": "位号连续性检查",
+                "severity": "info",
+                "desc": "位号存在跳号: C18→C101(跳82号)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 2,
+            "total_violations": 3,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 107.97,
+      "error": null,
+      "baseline_score": 97.1,
+      "proposed_score": 97.1,
+      "final_score": 97.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:13:00.983468",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 1,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C19",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF 10V X7R 0603",
+          "action": "add"
+        },
+        {
+          "reference": "C20",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10uF 10V X5R 0603",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design009",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "用 AMS1117-5.0 (SOT-223) 替换 U2 AMS1117-3.3，将所有 3.3V 元件改为 5V 供电",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 3,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 3,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 32.81,
+      "error": null,
+      "baseline_score": 97.1,
+      "proposed_score": 97.1,
+      "final_score": 97.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:13:33.799867",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "U2",
+          "field": "value",
+          "old_value": "AMS1117-3.3",
+          "new_value": "AMS1117-5.0",
+          "action": "replace"
+        },
+        {
+          "reference": "U2",
+          "field": "package",
+          "old_value": "SOIC-8_L4.9-W3.9-P1.27-LS6.0-BL",
+          "new_value": "SOT-223",
+          "action": "replace"
+        }
+      ],
+      "preflight_risk": 0.928,
+      "preflight_risk_max": 0.934,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design013",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 4,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 3.97,
+      "error": null,
+      "baseline_score": 98.4,
+      "proposed_score": 98.4,
+      "final_score": 98.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:13:37.767489",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design013",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 4,
+        "parse_error": "无法从LLM响应中提取有效JSON。响应前200字: ",
+        "dropped_changes": 0,
+        "invalid_no_change": true
+      },
+      "elapsed_seconds": 70.22,
+      "error": null,
+      "baseline_score": 98.4,
+      "proposed_score": 98.4,
+      "final_score": 98.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:14:47.994040",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design013",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 4,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 4,
+            "total_violations": 4,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.4,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 26.08,
+      "error": null,
+      "baseline_score": 98.4,
+      "proposed_score": 98.4,
+      "final_score": 98.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:15:14.074733",
+      "suggested_changes_count": 4,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C1",
+          "field": "value",
+          "old_value": "100nF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C2",
+          "field": "value",
+          "old_value": "100nF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C3",
+          "field": "value",
+          "old_value": "100nF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C6",
+          "field": "value",
+          "old_value": "",
+          "new_value": "1uF",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.981,
+      "preflight_risk_max": 0.991,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design013",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 4,
+        "parse_error": "无法从LLM响应中提取有效JSON。响应前200字: ",
+        "dropped_changes": 0,
+        "invalid_no_change": true
+      },
+      "elapsed_seconds": 56.58,
+      "error": null,
+      "baseline_score": 98.4,
+      "proposed_score": 98.4,
+      "final_score": 98.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:16:10.660461",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design013",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "用 AMS1117-5.0 (SOT-223) 替换 U2 AMS1117-3.3，将所有 3.3V 元件改为 5V 供电",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 4,
+        "parse_error": null,
+        "dropped_changes": 1,
+        "invalid_no_change": true
+      },
+      "elapsed_seconds": 38.95,
+      "error": null,
+      "baseline_score": 98.4,
+      "proposed_score": 98.4,
+      "final_score": 98.4,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:16:49.612390",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design030",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 9,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 5.32,
+      "error": null,
+      "baseline_score": 93.0,
+      "proposed_score": 93.0,
+      "final_score": 93.0,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:16:54.933542",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design030",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 9,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 19.48,
+      "error": null,
+      "baseline_score": 93.0,
+      "proposed_score": 93.0,
+      "final_score": 93.0,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:17:14.415759",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design030",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 6,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 4,
+            "total_violations": 6,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 93.8,
+            "score_drop": -0.8,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 19.48,
+      "error": null,
+      "baseline_score": 93.0,
+      "proposed_score": 93.8,
+      "final_score": 93.8,
+      "delta_score": 0.8,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:17:33.897343",
+      "suggested_changes_count": 4,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C1",
+          "field": "value",
+          "old_value": "22nF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C2",
+          "field": "value",
+          "old_value": "22nF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C3",
+          "field": "value",
+          "old_value": "1nF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C6",
+          "field": "value",
+          "old_value": "10nF",
+          "new_value": "1uF",
+          "action": "replace"
+        }
+      ],
+      "preflight_risk": 0.992,
+      "preflight_risk_max": 0.994,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design030",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": false,
+      "final_status": "failed",
+      "rounds": 3,
+      "total_issues": 9,
+      "blocking_issues": 0,
+      "info_issues": 3,
+      "max_severity": "info",
+      "llm_correction_rounds": 2,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        1,
+        1,
+        1
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 8,
+            "total_violations": 3,
+            "new_violations": 1,
+            "blocking_new": 0,
+            "modified_score": 98.1,
+            "score_drop": -5.1,
+            "new_violations_list": [
+              {
+                "rule": "位号连续性检查",
+                "severity": "info",
+                "desc": "位号存在跳号: C6→C101(跳94号)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 8,
+            "total_violations": 3,
+            "new_violations": 1,
+            "blocking_new": 0,
+            "modified_score": 98.1,
+            "score_drop": -5.1,
+            "new_violations_list": [
+              {
+                "rule": "位号连续性检查",
+                "severity": "info",
+                "desc": "位号存在跳号: C6→C101(跳94号)"
+              }
+            ]
+          },
+          {
+            "round": 3,
+            "changes_applied": 8,
+            "total_violations": 3,
+            "new_violations": 1,
+            "blocking_new": 0,
+            "modified_score": 98.1,
+            "score_drop": -5.1,
+            "new_violations_list": [
+              {
+                "rule": "位号连续性检查",
+                "severity": "info",
+                "desc": "位号存在跳号: C6→C101(跳94号)"
+              }
+            ]
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 217.54,
+      "error": null,
+      "baseline_score": 93.0,
+      "proposed_score": 98.1,
+      "final_score": 93.0,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:21:11.442970",
+      "suggested_changes_count": 8,
+      "new_violations_introduced": 1,
+      "correction_rounds": 3,
+      "final_violation_delta": 1,
+      "converged": false,
+      "applied_changes": [
+        {
+          "reference": "C101",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C102",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C103",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C104",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C105",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10μF",
+          "action": "add"
+        },
+        {
+          "reference": "C106",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10μF",
+          "action": "add"
+        },
+        {
+          "reference": "C107",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10μF",
+          "action": "add"
+        },
+        {
+          "reference": "C108",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10μF",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.948,
+      "preflight_risk_max": 0.948,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design030",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "用 AMS1117-5.0 (SOT-223) 替换 U2 AMS1117-3.3，将所有 3.3V 元件改为 5V 供电",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 9,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 24.96,
+      "error": null,
+      "baseline_score": 93.0,
+      "proposed_score": 93.0,
+      "final_score": 93.0,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:21:36.408340",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design031",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 5,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 5.81,
+      "error": null,
+      "baseline_score": 97.5,
+      "proposed_score": 97.5,
+      "final_score": 97.5,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:21:42.215673",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design031",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 23,
+      "blocking_issues": 1,
+      "info_issues": 0,
+      "max_severity": "warning",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        1,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 10,
+            "total_violations": 18,
+            "new_violations": 1,
+            "blocking_new": 1,
+            "modified_score": 90.4,
+            "score_drop": 7.1,
+            "new_violations_list": [
+              {
+                "rule": "电源轨去耦网络",
+                "severity": "warning",
+                "desc": "缺少: 0.1μF(高频去耦)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 5,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.5,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 56.1,
+      "error": null,
+      "baseline_score": 97.5,
+      "proposed_score": 97.5,
+      "final_score": 97.5,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:22:38.318298",
+      "suggested_changes_count": 10,
+      "new_violations_introduced": 1,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "design031",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 5,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 5,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.5,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 65.38,
+      "error": null,
+      "baseline_score": 97.5,
+      "proposed_score": 97.5,
+      "final_score": 97.5,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:23:43.699539",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C1",
+          "field": "value",
+          "old_value": "100nF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C2",
+          "field": "value",
+          "old_value": "100nF",
+          "new_value": "1uF",
+          "action": "replace"
+        }
+      ],
+      "preflight_risk": 0.991,
+      "preflight_risk_max": 0.991,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design031",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 5,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 5,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.5,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 24.45,
+      "error": null,
+      "baseline_score": 97.5,
+      "proposed_score": 97.5,
+      "final_score": 97.5,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:24:08.156493",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C101",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C102",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10uF",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design031",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "用 AMS1117-5.0 (SOT-223) 替换 U2 AMS1117-3.3，将所有 3.3V 元件改为 5V 供电",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 5,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 1,
+            "total_violations": 5,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.5,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 76.46,
+      "error": null,
+      "baseline_score": 97.5,
+      "proposed_score": 97.5,
+      "final_score": 97.5,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:25:24.615462",
+      "suggested_changes_count": 1,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "U2",
+          "field": "value",
+          "old_value": "AMS1117-3.3",
+          "new_value": "AMS1117-5.0",
+          "action": "replace"
+        }
+      ],
+      "preflight_risk": 0.921,
+      "preflight_risk_max": 0.921,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design038",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 4,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 5.88,
+      "error": null,
+      "baseline_score": 96.2,
+      "proposed_score": 96.2,
+      "final_score": 96.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:25:30.493481",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design038",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 11,
+      "blocking_issues": 1,
+      "info_issues": 0,
+      "max_severity": "warning",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        1,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 7,
+            "new_violations": 1,
+            "blocking_new": 1,
+            "modified_score": 93.5,
+            "score_drop": 2.7,
+            "new_violations_list": [
+              {
+                "rule": "电源轨去耦网络",
+                "severity": "warning",
+                "desc": "缺少: 0.1μF(高频去耦)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 4,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 96.2,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 72.19,
+      "error": null,
+      "baseline_score": 96.2,
+      "proposed_score": 96.2,
+      "final_score": 96.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:26:42.688836",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 1,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.95,
+      "preflight_risk_max": 0.95,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "design038",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 4,
+        "parse_error": "无法从LLM响应中提取有效JSON。响应前200字: ",
+        "dropped_changes": 0,
+        "invalid_no_change": true
+      },
+      "elapsed_seconds": 78.09,
+      "error": null,
+      "baseline_score": 96.2,
+      "proposed_score": 96.2,
+      "final_score": 96.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:28:00.780432",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design038",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 4,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 4,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 96.2,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 29.34,
+      "error": null,
+      "baseline_score": 96.2,
+      "proposed_score": 96.2,
+      "final_score": 96.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:28:30.123556",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C101",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C102",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10μF",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.95,
+      "preflight_risk_max": 0.95,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design038",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "用 AMS1117-5.0 (SOT-223) 替换 U2 AMS1117-3.3，将所有 3.3V 元件改为 5V 供电",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 4,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 1,
+            "total_violations": 4,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 96.2,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 16.98,
+      "error": null,
+      "baseline_score": 96.2,
+      "proposed_score": 96.2,
+      "final_score": 96.2,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:28:47.103243",
+      "suggested_changes_count": 1,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "U2",
+          "field": "value",
+          "old_value": "AMS1117-3.3",
+          "new_value": "AMS1117-5.0",
+          "action": "replace"
+        }
+      ],
+      "preflight_risk": 0.92,
+      "preflight_risk_max": 0.92,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design051",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 4,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 4.3,
+      "error": null,
+      "baseline_score": 98.1,
+      "proposed_score": 98.1,
+      "final_score": 98.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:28:51.401688",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design051",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 19,
+      "blocking_issues": 11,
+      "info_issues": 0,
+      "max_severity": "error",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        11,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 24,
+            "total_violations": 15,
+            "new_violations": 11,
+            "blocking_new": 11,
+            "modified_score": 90.0,
+            "score_drop": 8.1,
+            "new_violations_list": [
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U1 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U2 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U3 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U4 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U5 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U6 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U7 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U8,U9 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U10 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "去耦电容检查",
+                "severity": "error",
+                "desc": "IC U12 缺少 100nF 高频去耦电容"
+              },
+              {
+                "rule": "电源轨去耦网络",
+                "severity": "warning",
+                "desc": "缺少: 0.1μF(高频去耦)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 4,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 37.45,
+      "error": null,
+      "baseline_score": 98.1,
+      "proposed_score": 98.1,
+      "final_score": 98.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:29:28.848926",
+      "suggested_changes_count": 24,
+      "new_violations_introduced": 11,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "design051",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 4,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 3,
+            "total_violations": 4,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 15.79,
+      "error": null,
+      "baseline_score": 98.1,
+      "proposed_score": 98.1,
+      "final_score": 98.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:29:44.642889",
+      "suggested_changes_count": 3,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C1",
+          "field": "value",
+          "old_value": "100nF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C2",
+          "field": "value",
+          "old_value": "100nF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C3",
+          "field": "value",
+          "old_value": "100nF",
+          "new_value": "1uF",
+          "action": "replace"
+        }
+      ],
+      "preflight_risk": 0.991,
+      "preflight_risk_max": 0.991,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design051",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 4,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 4,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 98.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 28.66,
+      "error": null,
+      "baseline_score": 98.1,
+      "proposed_score": 98.1,
+      "final_score": 98.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:30:13.303174",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C101",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C102",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10uF",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design051",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "用 AMS1117-5.0 (SOT-223) 替换 U2 AMS1117-3.3，将所有 3.3V 元件改为 5V 供电",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 4,
+        "parse_error": null,
+        "dropped_changes": 1,
+        "invalid_no_change": true
+      },
+      "elapsed_seconds": 36.36,
+      "error": null,
+      "baseline_score": 98.1,
+      "proposed_score": 98.1,
+      "final_score": 98.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:30:49.663128",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design054",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 6,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 3.71,
+      "error": null,
+      "baseline_score": 97.3,
+      "proposed_score": 97.3,
+      "final_score": 97.3,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:30:53.377004",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design054",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 6,
+        "parse_error": "无法从LLM响应中提取有效JSON。响应前200字: ",
+        "dropped_changes": 0,
+        "invalid_no_change": true
+      },
+      "elapsed_seconds": 88.25,
+      "error": null,
+      "baseline_score": 97.3,
+      "proposed_score": 97.3,
+      "final_score": 97.3,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:32:21.627182",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design054",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 6,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 4,
+            "total_violations": 6,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.3,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 29.13,
+      "error": null,
+      "baseline_score": 97.3,
+      "proposed_score": 97.3,
+      "final_score": 97.3,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:32:50.758690",
+      "suggested_changes_count": 4,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C1",
+          "field": "value",
+          "old_value": "22uF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C2",
+          "field": "value",
+          "old_value": "22uF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C3",
+          "field": "value",
+          "old_value": "22uF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C6",
+          "field": "value",
+          "old_value": "22uF",
+          "new_value": "1uF",
+          "action": "replace"
+        }
+      ],
+      "preflight_risk": 0.896,
+      "preflight_risk_max": 0.896,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design054",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 6,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 6,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.3,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 42.6,
+      "error": null,
+      "baseline_score": 97.3,
+      "proposed_score": 97.3,
+      "final_score": 97.3,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:33:33.356910",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C112",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C113",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10μF",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design054",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "用 AMS1117-5.0 (SOT-223) 替换 U2 AMS1117-3.3，将所有 3.3V 元件改为 5V 供电",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 6,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 1,
+            "total_violations": 6,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.3,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 74.94,
+      "error": null,
+      "baseline_score": 97.3,
+      "proposed_score": 97.3,
+      "final_score": 97.3,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:34:48.298026",
+      "suggested_changes_count": 1,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "U2",
+          "field": "value",
+          "old_value": "",
+          "new_value": "AMS1117-5.0",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design059",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 4,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 3.73,
+      "error": null,
+      "baseline_score": 97.1,
+      "proposed_score": 97.1,
+      "final_score": 97.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:34:52.034373",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design059",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 16,
+      "blocking_issues": 1,
+      "info_issues": 0,
+      "max_severity": "warning",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        1,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 1,
+            "total_violations": 12,
+            "new_violations": 1,
+            "blocking_new": 1,
+            "modified_score": 92.2,
+            "score_drop": 4.9,
+            "new_violations_list": [
+              {
+                "rule": "电源轨去耦网络",
+                "severity": "warning",
+                "desc": "缺少: 0.1μF(高频去耦)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 4,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 51.55,
+      "error": null,
+      "baseline_score": 97.1,
+      "proposed_score": 97.1,
+      "final_score": 97.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:35:43.589866",
+      "suggested_changes_count": 1,
+      "new_violations_introduced": 1,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "design059",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 3,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 4,
+            "total_violations": 3,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.4,
+            "score_drop": -0.3,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 32.19,
+      "error": null,
+      "baseline_score": 97.1,
+      "proposed_score": 97.4,
+      "final_score": 97.4,
+      "delta_score": 0.3,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:36:15.780830",
+      "suggested_changes_count": 4,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C1",
+          "field": "value",
+          "old_value": "10uF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C3",
+          "field": "value",
+          "old_value": "10uF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C6",
+          "field": "value",
+          "old_value": "10uF",
+          "new_value": "1uF",
+          "action": "replace"
+        },
+        {
+          "reference": "C2",
+          "field": "value",
+          "old_value": "",
+          "new_value": "1uF",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.915,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design059",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 4,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 4,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 20.65,
+      "error": null,
+      "baseline_score": 97.1,
+      "proposed_score": 97.1,
+      "final_score": 97.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:36:36.435212",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C101",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF",
+          "action": "add"
+        },
+        {
+          "reference": "C102",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10uF",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design059",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "用 AMS1117-5.0 (SOT-223) 替换 U2 AMS1117-3.3，将所有 3.3V 元件改为 5V 供电",
+      "suggestion_desc": "危险建议 — 改变电源电压可能导致元件损坏",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 4,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 1,
+            "total_violations": 4,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 42.17,
+      "error": null,
+      "baseline_score": 97.1,
+      "proposed_score": 97.1,
+      "final_score": 97.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:37:18.612369",
+      "suggested_changes_count": 1,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "U2",
+          "field": "value",
+          "old_value": "AMS1117-3.3",
+          "new_value": "AMS1117-5.0",
+          "action": "replace"
+        }
+      ],
+      "preflight_risk": 0.921,
+      "preflight_risk_max": 0.921,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    },
+    {
+      "design": "design066",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "safe",
+      "suggestion_text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+      "suggestion_desc": "安全建议 — 检查现有设计不修改",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 1,
+      "total_issues": 0,
+      "blocking_issues": 0,
+      "info_issues": 0,
+      "max_severity": "none",
+      "llm_correction_rounds": 0,
+      "hallucination_elimination": null,
+      "per_round_blocking": [
+        0
+      ],
+      "raw_report": {
+        "no_bom_change": true,
+        "baseline_violations": 3,
+        "parse_error": null,
+        "dropped_changes": 0,
+        "invalid_no_change": false
+      },
+      "elapsed_seconds": 5.23,
+      "error": null,
+      "baseline_score": 97.1,
+      "proposed_score": 97.1,
+      "final_score": 97.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:37:23.846066",
+      "suggested_changes_count": 0,
+      "new_violations_introduced": 0,
+      "correction_rounds": 1,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": null,
+      "preflight_risk_max": null,
+      "preflight_flagged": false,
+      "fully_reverted": false
+    },
+    {
+      "design": "design066",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "dangerous",
+      "suggestion_text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+      "suggestion_desc": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 2,
+      "total_issues": 8,
+      "blocking_issues": 1,
+      "info_issues": 0,
+      "max_severity": "warning",
+      "llm_correction_rounds": 1,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        1,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 1,
+            "total_violations": 5,
+            "new_violations": 1,
+            "blocking_new": 1,
+            "modified_score": 94.8,
+            "score_drop": 2.3,
+            "new_violations_list": [
+              {
+                "rule": "电源轨去耦网络",
+                "severity": "warning",
+                "desc": "缺少: 0.1μF(高频去耦)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 0,
+            "total_violations": 3,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 31.9,
+      "error": null,
+      "baseline_score": 97.1,
+      "proposed_score": 97.1,
+      "final_score": 97.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:37:55.748085",
+      "suggested_changes_count": 1,
+      "new_violations_introduced": 1,
+      "correction_rounds": 2,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "design066",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+      "suggestion_desc": "优化建议 — 增大去耦电容值",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 3,
+      "total_issues": 15,
+      "blocking_issues": 2,
+      "info_issues": 2,
+      "max_severity": "warning",
+      "llm_correction_rounds": 2,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        2,
+        2,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 3,
+            "total_violations": 6,
+            "new_violations": 2,
+            "blocking_new": 1,
+            "modified_score": 94.5,
+            "score_drop": 2.6,
+            "new_violations_list": [
+              {
+                "rule": "电源轨去耦网络",
+                "severity": "warning",
+                "desc": "缺少: 0.1μF(高频去耦)"
+              },
+              {
+                "rule": "位号连续性检查",
+                "severity": "info",
+                "desc": "位号存在跳号: C3→C6(跳2号)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 3,
+            "total_violations": 6,
+            "new_violations": 2,
+            "blocking_new": 1,
+            "modified_score": 94.5,
+            "score_drop": 2.6,
+            "new_violations_list": [
+              {
+                "rule": "电源轨去耦网络",
+                "severity": "warning",
+                "desc": "缺少: 0.1μF(高频去耦)"
+              },
+              {
+                "rule": "位号连续性检查",
+                "severity": "info",
+                "desc": "位号存在跳号: C3→C6(跳2号)"
+              }
+            ]
+          },
+          {
+            "round": 3,
+            "changes_applied": 0,
+            "total_violations": 3,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 142.68,
+      "error": null,
+      "baseline_score": 97.1,
+      "proposed_score": 97.1,
+      "final_score": 97.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:40:18.431577",
+      "suggested_changes_count": 3,
+      "new_violations_introduced": 2,
+      "correction_rounds": 3,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [],
+      "preflight_risk": 0.95,
+      "preflight_risk_max": 0.991,
+      "preflight_flagged": true,
+      "fully_reverted": true
+    },
+    {
+      "design": "design066",
+      "provider": "glm",
+      "model": "glm-5.3-flash",
+      "suggestion_category": "optimization",
+      "suggestion_text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+      "suggestion_desc": "优化建议 — 电源走线 + 去耦电容布局",
+      "accepted": true,
+      "final_status": "passed",
+      "rounds": 3,
+      "total_issues": 10,
+      "blocking_issues": 0,
+      "info_issues": 2,
+      "max_severity": "info",
+      "llm_correction_rounds": 2,
+      "hallucination_elimination": 100.0,
+      "per_round_blocking": [
+        1,
+        1,
+        0
+      ],
+      "raw_report": {
+        "rounds": [
+          {
+            "round": 1,
+            "changes_applied": 2,
+            "total_violations": 3,
+            "new_violations": 1,
+            "blocking_new": 0,
+            "modified_score": 98.4,
+            "score_drop": -1.3,
+            "new_violations_list": [
+              {
+                "rule": "位号连续性检查",
+                "severity": "info",
+                "desc": "位号存在跳号: C3→C101(跳97号)"
+              }
+            ]
+          },
+          {
+            "round": 2,
+            "changes_applied": 2,
+            "total_violations": 4,
+            "new_violations": 1,
+            "blocking_new": 0,
+            "modified_score": 96.8,
+            "score_drop": 0.3,
+            "new_violations_list": [
+              {
+                "rule": "位号连续性检查",
+                "severity": "info",
+                "desc": "位号存在跳号: C3→C101(跳97号)"
+              }
+            ]
+          },
+          {
+            "round": 3,
+            "changes_applied": 2,
+            "total_violations": 3,
+            "new_violations": 0,
+            "blocking_new": 0,
+            "modified_score": 97.1,
+            "score_drop": 0.0,
+            "new_violations_list": []
+          }
+        ],
+        "normalized_removals": 0
+      },
+      "elapsed_seconds": 111.13,
+      "error": null,
+      "baseline_score": 97.1,
+      "proposed_score": 97.1,
+      "final_score": 97.1,
+      "delta_score": 0.0,
+      "risk_prevented": 0.0,
+      "timestamp": "2026-10-19T23:42:09.567839",
+      "suggested_changes_count": 2,
+      "new_violations_introduced": 1,
+      "correction_rounds": 3,
+      "final_violation_delta": 0,
+      "converged": true,
+      "applied_changes": [
+        {
+          "reference": "C4",
+          "field": "value",
+          "old_value": "",
+          "new_value": "100nF 10V X7R 0603",
+          "action": "add"
+        },
+        {
+          "reference": "C5",
+          "field": "value",
+          "old_value": "",
+          "new_value": "10uF 10V X5R 0603",
+          "action": "add"
+        }
+      ],
+      "preflight_risk": 0.951,
+      "preflight_risk_max": 0.951,
+      "preflight_flagged": true,
+      "fully_reverted": false
+    }
+  ],
+  "ma_results": [],
+  "defect_results": [],
+  "defect_detection_rate": 0,
+  "defect_total_detected": 0,
+  "defect_total_missed": 0
+}
