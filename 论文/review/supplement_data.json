@@ -1,0 +1,1795 @@
+{
+ "meta": {
+  "generated_by": "论文/supplement_extract.py",
+  "note": "五项材料全部程序化提取自仓库源码与实验产物；本文档不含任何手写实验数字。"
+ },
+ "rules": {
+  "count": 68,
+  "method_count": 71,
+  "modules": {
+   "bom": [
+    {
+     "rule_name": "ADC 输入滤波检查",
+     "method": "_check_adc_input_filter",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "ADC 输入滤波：ADC 输入引脚应有 RC 抗混叠滤波"
+    },
+    {
+     "rule_name": "天线净空区检查",
+     "method": "_check_antenna_keepout",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "天线净空区：无线模块天线周围应有净空区"
+    },
+    {
+     "rule_name": "电池电压分压器检查",
+     "method": "_check_battery_voltage_divider",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "电池电压监测分压器：电池供电系统应有电压监测分压电阻"
+    },
+    {
+     "rule_name": "参数范围检查",
+     "method": "_check_bom_value_range",
+     "kind": "detect",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": false,
+     "summary": "参数范围：电阻/电容值应在标准系列内（按容差分档 E24/E96）。"
+    },
+    {
+     "rule_name": "电容温度系数检查",
+     "method": "_check_cap_temperature_coefficient",
+     "kind": "detect",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": false,
+     "summary": "电容温度系数：可疑介质电容应提示温度系数与降额"
+    },
+    {
+     "rule_name": "电容耐压降额检查",
+     "method": "_check_capacitor_voltage_derating",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "电容耐压降额：电容耐压应有 ≥20% 降额裕量"
+    },
+    {
+     "rule_name": "晶振频率匹配",
+     "method": "_check_crystal_frequency",
+     "kind": "detect",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": false,
+     "summary": "晶振频率匹配：不同频率晶振应匹配对应负载电容值"
+    },
+    {
+     "rule_name": "晶振负载电容检查",
+     "method": "_check_crystal_load_caps",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "晶振负载电容检查：每个无源晶振应配备 2 个匹配负载电容。"
+    },
+    {
+     "rule_name": "DC-DC 反馈网络检查",
+     "method": "_check_dcdc_feedback_network",
+     "kind": "detect",
+     "severity": "ERROR",
+     "severity_note": null,
+     "advise": false,
+     "summary": "DC-DC 反馈网络：开关稳压器应有 FB 分压电阻"
+    },
+    {
+     "rule_name": "调试接口检查",
+     "method": "_check_debug_port_accessibility",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "调试接口可访问性：SWD/JTAG/UART 调试接口应便于连接"
+    },
+    {
+     "rule_name": "多电源引脚去耦检查",
+     "method": "_check_decoupling_cap_per_pin",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "多电源引脚去耦：每个 VDD/VCC 引脚应有独立的去耦电容"
+    },
+    {
+     "rule_name": "去耦电容检查",
+     "method": "_check_decoupling_caps",
+     "kind": "detect",
+     "severity": "ERROR",
+     "severity_note": null,
+     "advise": false,
+     "summary": "去耦电容检查：每个 IC 应有匹配的去耦电容，基于 Z-F 分析。"
+    },
+    {
+     "rule_name": "EMI 滤波检查",
+     "method": "_check_emi_filter",
+     "kind": "detect",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": false,
+     "summary": "EMI 滤波：电源入口应有共模电感/EMI 滤波"
+    },
+    {
+     "rule_name": "ESD 保护检查",
+     "method": "_check_esd_protection",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "ESD 保护：外部接口应有 TVS/ESD 保护器件"
+    },
+    {
+     "rule_name": "磁珠隔离检查",
+     "method": "_check_ferrite_bead_isolation",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "磁珠隔离：模拟/数字电源域应有磁珠隔离"
+    },
+    {
+     "rule_name": "悬空引脚检查",
+     "method": "_check_floating_pins",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "悬空引脚：MCU 的 RST/BOOT/EN 控制引脚应有明确连接"
+    },
+    {
+     "rule_name": "I2C 上拉电阻检查",
+     "method": "_check_i2c_pullups",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "I2C 上拉电阻：SDA/SCL 需上拉电阻(典型 4.7kΩ)"
+    },
+    {
+     "rule_name": "电感饱和电流检查",
+     "method": "_check_inductor_saturation_margin",
+     "kind": "detect",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": false,
+     "summary": "电感饱和电流：功率电感额定电流应有≥30%裕量"
+    },
+    {
+     "rule_name": "LED 限流电阻检查",
+     "method": "_check_led_current_limit",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "LED 限流电阻：每个 LED 应有匹配的限流电阻"
+    },
+    {
+     "rule_name": "多电压域隔离检查",
+     "method": "_check_mixed_voltage_isolation",
+     "kind": "detect",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": false,
+     "summary": "多电压域隔离: 不同电压域应有清晰隔离"
+    },
+    {
+     "rule_name": "MOSFET 栅极电阻检查",
+     "method": "_check_mosfet_gate_resistor",
+     "kind": "detect",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": false,
+     "summary": "MOSFET 栅极电阻：功率 MOSFET 栅极应串联电阻抑制振荡"
+    },
+    {
+     "rule_name": "运放反馈网络检查",
+     "method": "_check_opamp_feedback_network",
+     "kind": "detect",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": false,
+     "summary": "运放反馈网络：运算放大器应有反馈电阻网络"
+    },
+    {
+     "rule_name": "光耦输入限流检查",
+     "method": "_check_optocoupler_input_resistor",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "光耦输入限流：光耦输入端应有限流电阻"
+    },
+    {
+     "rule_name": "封装一致性检查",
+     "method": "_check_package_consistency",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "封装一致性：同型号不同封装可能为误选（封装名先做前缀归一）"
+    },
+    {
+     "rule_name": "PDN 目标阻抗分析",
+     "method": "_check_pdn_target_impedance",
+     "kind": "advise",
+     "severity": "动态",
+     "severity_note": "WARNING（去耦电容数>3）/ INFO（≤3）",
+     "advise": true,
+     "summary": "PDN 目标阻抗 — 检查电源分配网络是否满足目标阻抗"
+    },
+    {
+     "rule_name": "电源滤波检查",
+     "method": "_check_power_filtering",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "电源滤波：电源入口应有大电解+小陶瓷组合"
+    },
+    {
+     "rule_name": "功率回路面积检查",
+     "method": "_check_power_loop_area",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "功率回路面积：开关电源的 di/dt 回路应面积最小化"
+    },
+    {
+     "rule_name": "电源轨去耦网络",
+     "method": "_check_power_rail_decoupling",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "电源轨去耦网络：每条电源轨应有分级去耦"
+    },
+    {
+     "rule_name": "上下拉电阻检查",
+     "method": "_check_pullup_pulldown",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "上拉/下拉电阻：关键信号(RST/EN/BOOT/INT)应有明确上下拉"
+    },
+    {
+     "rule_name": "位号连续性检查",
+     "method": "_check_reference_continuity",
+     "kind": "advise",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": true,
+     "summary": "位号连续性：同类元件位号应连续"
+    },
+    {
+     "rule_name": "继电器续流二极管检查",
+     "method": "_check_relay_flyback_diode",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "继电器续流二极管：继电器线圈两端应并联续流二极管"
+    },
+    {
+     "rule_name": "复位电路检查",
+     "method": "_check_reset_circuit",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "复位电路：MCU RST 应有 RC 网络或专用复位 IC"
+    },
+    {
+     "rule_name": "电阻功率降额检查",
+     "method": "_check_resistor_power_rating",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "电阻功率降额：功率电阻应有足够功率裕量"
+    },
+    {
+     "rule_name": "电源极性保护检查",
+     "method": "_check_reverse_polarity_protection",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "电源极性保护：直流电源输入应具有反接保护"
+    },
+    {
+     "rule_name": "开关电源布局检查",
+     "method": "_check_switching_regulator_layout",
+     "kind": "advise",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": true,
+     "summary": "开关电源布局：开关电源应输入回路面积最小化"
+    },
+    {
+     "rule_name": "热焊盘检查",
+     "method": "_check_thermal_relief",
+     "kind": "advise",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": true,
+     "summary": "热焊盘：大功率器件应有散热铜皮/散热过孔方案"
+    },
+    {
+     "rule_name": "未连接引脚检查",
+     "method": "_check_unconnected_pins",
+     "kind": "detect",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": false,
+     "summary": "未连接引脚：IC 引脚应全部连接（至少连到某网络或标记NC）"
+    }
+   ],
+   "geometry": [
+    {
+     "rule_name": "时钟信号包地检查",
+     "method": "_check_clock_guard_trace",
+     "kind": "advise",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": true,
+     "summary": "时钟信号包地：高频时钟应有包地走线"
+    },
+    {
+     "rule_name": "铜皮连接检查",
+     "method": "_check_copper_pour_connectivity",
+     "kind": "advise",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": true,
+     "summary": "铜皮连接：大面积铜皮应避免孤岛"
+    },
+    {
+     "rule_name": "3W 串扰间距检查",
+     "method": "_check_crosstalk_spacing",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "3W 串扰间距：只看「平行且间距 <3W」的高速/时钟/差分线对。"
+    },
+    {
+     "rule_name": "差分对等长检查",
+     "method": "_check_diff_pair_length",
+     "kind": "detect",
+     "severity": "动态",
+     "severity_note": "按接口判据档分档（超限档 ERROR/WARNING；接口未识别的表外组为 INFO 参考）",
+     "advise": false,
+     "summary": "差分对等长：按接口分档取对内长度差公差（_DIFF_SKEW_BANDS）。"
+    },
+    {
+     "rule_name": "差分对间距检查",
+     "method": "_check_diff_pair_spacing",
+     "kind": "detect",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": false,
+     "summary": "差分对间距：成对走线应紧耦合（对内最小间距不应远大于线宽）。"
+    },
+    {
+     "rule_name": "地平面连续性检查",
+     "method": "_check_ground_plane_continuity",
+     "kind": "advise",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": true,
+     "summary": "地平面连续性：GND 铺地应避免割裂"
+    },
+    {
+     "rule_name": "高速信号参考平面检查",
+     "method": "_check_hs_signal_reference_plane",
+     "kind": "advise",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": true,
+     "summary": "高速信号参考平面检查"
+    },
+    {
+     "rule_name": "特征阻抗匹配检查",
+     "method": "_check_impedance_matching",
+     "kind": "detect",
+     "severity": "动态",
+     "severity_note": "WARNING（两层板）/ ERROR（多层板）",
+     "advise": false,
+     "summary": "特征阻抗匹配 — 只判「目标表」命中的高速接口差分对，按对聚合一次。"
+    },
+    {
+     "rule_name": "环路面积检查",
+     "method": "_check_loop_area",
+     "kind": "detect",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": false,
+     "summary": "环路面积：高速信号应最小化电流环路面积"
+    },
+    {
+     "rule_name": "天线效应检查",
+     "method": "_check_net_antenna",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "天线效应检查：大面积未连接网络的铜皮可能成为天线"
+    },
+    {
+     "rule_name": "电源线载流检查",
+     "method": "_check_power_traces",
+     "kind": "detect",
+     "severity": "动态",
+     "severity_note": "按 IPC-2221 载流余量分档（不足 ERROR；余量<1.5× WARNING）",
+     "advise": false,
+     "summary": "电源线载流 — 使用 IPC-2221 真实计算，结合电流估算"
+    },
+    {
+     "rule_name": "信号线宽度检查",
+     "method": "_check_signal_traces",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "信号线宽度：绝对工艺下限（按层数区分），相对条款已删。"
+    },
+    {
+     "rule_name": "丝印焊盘间距检查",
+     "method": "_check_silkscreen_pad_clearance",
+     "kind": "advise",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": true,
+     "summary": "丝印与焊盘间距：丝印文字不应覆盖焊盘"
+    },
+    {
+     "rule_name": "丝印可读性检查",
+     "method": "_check_silkscreen_readability",
+     "kind": "advise",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": true,
+     "summary": "丝印可读性：丝印应与焊盘/过孔有足够间距"
+    },
+    {
+     "rule_name": "短桩线检查",
+     "method": "_check_stub_length",
+     "kind": "advise",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": true,
+     "summary": "短桩线(stub)检查：高速信号应避免长 stubs。"
+    },
+    {
+     "rule_name": "测试点覆盖检查",
+     "method": "_check_testpoint_coverage",
+     "kind": "advise",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": true,
+     "summary": "测试点覆盖：关键网络应预留测试点"
+    },
+    {
+     "rule_name": "走线锐角检查",
+     "method": "_check_trace_acute_angles",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "走线拐角：锐角（酸陷阱）与直角（SI 角部阻抗突变）。"
+    },
+    {
+     "rule_name": "走线直角检查",
+     "method": "_check_trace_acute_angles",
+     "kind": "advise",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": true,
+     "summary": "走线拐角：锐角（酸陷阱）与直角（SI 角部阻抗突变）。"
+    },
+    {
+     "rule_name": "走线板边间距检查",
+     "method": "_check_trace_edge_clearance",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "走线到板边：走线距板框应有安全间距"
+    },
+    {
+     "rule_name": "过孔密度检查",
+     "method": "_check_via_density",
+     "kind": "detect",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": false,
+     "summary": "过孔密度：只对高速信号网络判定（电源/地缝合孔成百上千属正常）"
+    },
+    {
+     "rule_name": "过孔热焊盘检查",
+     "method": "_check_via_thermal_relief",
+     "kind": "advise",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": true,
+     "summary": "过孔热焊盘：大面积铜皮上的过孔应使用热焊盘连接"
+    }
+   ],
+   "layout": [
+    {
+     "rule_name": "模数分离检查",
+     "method": "_check_analog_digital_separation",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "模数分离：模拟/数字元件应物理分区"
+    },
+    {
+     "rule_name": "板边间距检查",
+     "method": "_check_component_edge_clearance",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "板边间距：元件距 PCB 板边应 ≥3mm（按板框包围盒算真实边距）"
+    },
+    {
+     "rule_name": "元件间距检查",
+     "method": "_check_component_spacing",
+     "kind": "detect",
+     "severity": "动态",
+     "severity_note": "WARNING（重叠）/ INFO（接近）",
+     "advise": false,
+     "summary": "元件间距：spatial hash 全对检索 + 封装体尺寸真间隙。"
+    },
+    {
+     "rule_name": "连接器边沿布局检查",
+     "method": "_check_connector_edge_placement",
+     "kind": "detect",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": false,
+     "summary": "连接器边沿布局：连接器/接口应置于 PCB 边沿（按板框包围盒算真实边距）"
+    },
+    {
+     "rule_name": "晶振布局检查",
+     "method": "_check_crystal_proximity",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "晶振靠近 MCU：晶振应尽可能靠近 MCU 振荡器引脚"
+    },
+    {
+     "rule_name": "去耦电容距离检查",
+     "method": "_check_decoupling_proximity",
+     "kind": "advise",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": true,
+     "summary": "去耦电容距离：去耦电容应靠近 IC 电源引脚"
+    },
+    {
+     "rule_name": "EMI 滤波器布局检查",
+     "method": "_check_emi_filter_proximity",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "EMI 滤波器靠近入口：EMI 滤波器件应紧靠电源入口"
+    },
+    {
+     "rule_name": "光学定位点检查",
+     "method": "_check_fiducial_mark",
+     "kind": "advise",
+     "severity": "INFO",
+     "severity_note": null,
+     "advise": true,
+     "summary": "Mark点检查：批量生产PCB应有光学定位Mark点"
+    },
+    {
+     "rule_name": "安装孔禁区检查",
+     "method": "_check_mounting_hole_keepout",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "安装孔禁区：安装孔周围应有禁布区"
+    },
+    {
+     "rule_name": "温度敏感元件布局检查",
+     "method": "_check_temp_sensitive_placement",
+     "kind": "detect",
+     "severity": "WARNING",
+     "severity_note": null,
+     "advise": false,
+     "summary": "温度敏感元件：温度敏感元件应远离热源"
+    }
+   ],
+   "checker": []
+  },
+  "module_counts": {
+   "bom": 37,
+   "geometry": 21,
+   "layout": 10,
+   "checker": 0
+  },
+  "dormant_methods": [
+   {
+    "method": "_check_bga_fanout",
+    "module": "bom",
+    "summary": "BGA 扇出检查"
+   },
+   {
+    "method": "_check_component_height_zoning",
+    "module": "bom",
+    "summary": "元件高度分区：高/矮元件应分区布局，避免高元件遮挡矮元件"
+   },
+   {
+    "method": "_check_opto_isolation_creepage",
+    "module": "bom",
+    "summary": "光耦隔离间距：隔离式光耦初次级间应有≥6mm爬电距离"
+   },
+   {
+    "method": "_check_polarity_orientation",
+    "module": "bom",
+    "summary": "极性元件方向：电解电容/二极管/LED 等极性元件应有统一方向标记"
+   }
+  ],
+  "unresolved": [],
+  "advise_names": [
+   "PDN 目标阻抗分析",
+   "丝印可读性检查",
+   "丝印焊盘间距检查",
+   "位号连续性检查",
+   "光学定位点检查",
+   "去耦电容距离检查",
+   "地平面连续性检查",
+   "开关电源布局检查",
+   "时钟信号包地检查",
+   "测试点覆盖检查",
+   "热焊盘检查",
+   "短桩线检查",
+   "走线直角检查",
+   "过孔热焊盘检查",
+   "铜皮连接检查",
+   "高速信号参考平面检查"
+  ]
+ },
+ "designs": {
+  "pool": 91,
+  "dropped": 12,
+  "total": 79,
+  "manifest_total": 79,
+  "set_match_manifest": true,
+  "list": [
+   {
+    "name": "01Phone",
+    "components": 72,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "01Phone_2",
+    "components": 45,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "6寸屏幕转接板",
+    "components": 17,
+    "tier": "小",
+    "in_subset21": true
+   },
+   {
+    "name": "F28034",
+    "components": 29,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "LCTSPI语音识别扩展板",
+    "components": 34,
+    "tier": "中",
+    "in_subset21": true
+   },
+   {
+    "name": "P1",
+    "components": 35,
+    "tier": "中",
+    "in_subset21": true
+   },
+   {
+    "name": "RK3506G",
+    "components": 45,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "S3的温湿度云监测系统",
+    "components": 21,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "Schematic2",
+    "components": 21,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "V1.0.2",
+    "components": 13,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "V1.0.2_2",
+    "components": 23,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "V1.0.2_3",
+    "components": 30,
+    "tier": "中",
+    "in_subset21": true
+   },
+   {
+    "name": "XDS110",
+    "components": 29,
+    "tier": "中",
+    "in_subset21": true
+   },
+   {
+    "name": "design002",
+    "components": 16,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design003",
+    "components": 142,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "design006",
+    "components": 37,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "design007",
+    "components": 7,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design008",
+    "components": 39,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "design009",
+    "components": 18,
+    "tier": "小",
+    "in_subset21": true
+   },
+   {
+    "name": "design010",
+    "components": 17,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design011",
+    "components": 20,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "design013",
+    "components": 69,
+    "tier": "大",
+    "in_subset21": true
+   },
+   {
+    "name": "design015",
+    "components": 26,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "design017",
+    "components": 25,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "design021",
+    "components": 41,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "design022",
+    "components": 18,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design028",
+    "components": 47,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "design029",
+    "components": 31,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "design030",
+    "components": 18,
+    "tier": "小",
+    "in_subset21": true
+   },
+   {
+    "name": "design031",
+    "components": 47,
+    "tier": "大",
+    "in_subset21": true
+   },
+   {
+    "name": "design032",
+    "components": 19,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "design035",
+    "components": 19,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "design037",
+    "components": 36,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "design038",
+    "components": 8,
+    "tier": "小",
+    "in_subset21": true
+   },
+   {
+    "name": "design039",
+    "components": 34,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "design040",
+    "components": 40,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "design042",
+    "components": 46,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "design043",
+    "components": 16,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design046",
+    "components": 9,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design051",
+    "components": 63,
+    "tier": "大",
+    "in_subset21": true
+   },
+   {
+    "name": "design054",
+    "components": 313,
+    "tier": "大",
+    "in_subset21": true
+   },
+   {
+    "name": "design057",
+    "components": 70,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "design059",
+    "components": 14,
+    "tier": "小",
+    "in_subset21": true
+   },
+   {
+    "name": "design062",
+    "components": 17,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design063",
+    "components": 19,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "design064",
+    "components": 17,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design066",
+    "components": 17,
+    "tier": "小",
+    "in_subset21": true
+   },
+   {
+    "name": "design067",
+    "components": 16,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design068",
+    "components": 9,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design069",
+    "components": 6,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design070",
+    "components": 17,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design073",
+    "components": 17,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design077",
+    "components": 31,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "design079",
+    "components": 20,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "design081",
+    "components": 10,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design082",
+    "components": 18,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "design083",
+    "components": 15,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "design087",
+    "components": 58,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "design089",
+    "components": 47,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "design090",
+    "components": 10,
+    "tier": "小",
+    "in_subset21": true
+   },
+   {
+    "name": "design091",
+    "components": 52,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "io扩展",
+    "components": 28,
+    "tier": "中",
+    "in_subset21": true
+   },
+   {
+    "name": "地奇星RA6E2",
+    "components": 20,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "已走线",
+    "components": 156,
+    "tier": "大",
+    "in_subset21": true
+   },
+   {
+    "name": "显示屏触摸转接底座",
+    "components": 5,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "智能小车V0.1.2",
+    "components": 25,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "梁山派车载式路面平整度测量器",
+    "components": 20,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "模块化版本",
+    "components": 15,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "泰山派4寸86屏转接板",
+    "components": 13,
+    "tier": "小",
+    "in_subset21": false
+   },
+   {
+    "name": "泰山派无人机地面站",
+    "components": 25,
+    "tier": "中",
+    "in_subset21": true
+   },
+   {
+    "name": "游戏机扩展板V1.1.1",
+    "components": 35,
+    "tier": "大",
+    "in_subset21": true
+   },
+   {
+    "name": "游戏机扩展板diy",
+    "components": 41,
+    "tier": "大",
+    "in_subset21": true
+   },
+   {
+    "name": "电创派V2.0",
+    "components": 40,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "电压电流表",
+    "components": 31,
+    "tier": "中",
+    "in_subset21": false
+   },
+   {
+    "name": "立创·庐山派K230",
+    "components": 132,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "立创·泰山派3M(RK3576)开发板V1.4",
+    "components": 193,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "立创·逻辑派FPGA",
+    "components": 29,
+    "tier": "中",
+    "in_subset21": true
+   },
+   {
+    "name": "载板",
+    "components": 45,
+    "tier": "大",
+    "in_subset21": false
+   },
+   {
+    "name": "辐射检测扩展板原理图V1.0.0",
+    "components": 43,
+    "tier": "大",
+    "in_subset21": false
+   }
+  ],
+  "subset21": [
+   "6寸屏幕转接板",
+   "LCTSPI语音识别扩展板",
+   "P1",
+   "V1.0.2_3",
+   "XDS110",
+   "design009",
+   "design013",
+   "design030",
+   "design031",
+   "design038",
+   "design051",
+   "design054",
+   "design059",
+   "design066",
+   "design090",
+   "io扩展",
+   "已走线",
+   "泰山派无人机地面站",
+   "游戏机扩展板V1.1.1",
+   "游戏机扩展板diy",
+   "立创·逻辑派FPGA"
+  ],
+  "subset21_recheck_match": true,
+  "injection_corpus": {
+   "dir": "test_data/_incoming_epro2/78",
+   "count": 78,
+   "boards": [
+    "ProPrj_ 基于ESP32的超级大杂烩_2026-09-14",
+    "ProPrj_#星火计划#ESP32墨水屏MP3收音机阅读器_2026-09-14",
+    "ProPrj_#第十届立创电赛#流浪地球 550W（MOSS）小智AI生态中枢_2026-09-14",
+    "ProPrj_2025年TI杯作品E题-简易自行瞄准装置_2026-09-14",
+    "ProPrj_AI-Box离线DeepSeekR1助手_2026-09-14",
+    "ProPrj_AIBox-Lite简易AI大模型盒子_2026-09-14",
+    "ProPrj_AI智能相框_2026-09-14",
+    "ProPrj_AirLink（无线！USB HUB）_2026-09-14",
+    "ProPrj_All in one服务器三合一扩展卡_2026-09-14",
+    "ProPrj_EDA-Pager寻呼机_2026-09-14",
+    "ProPrj_EDA-Robot机器狗_2026-09-14",
+    "ProPrj_ESP-HDMI-Bridge_2026-09-14",
+    "ProPrj_ESP-Hi：ESP32-C3 超低成本 AI 对话机器狗_2026-09-14",
+    "ProPrj_ESP-VoCat 喵伴旋转底座_2026-09-14",
+    "ProPrj_ESP-VoCat 喵伴旋转底座_2026-09-14 (1)",
+    "ProPrj_ESPMonitor_Plus_2026-09-14",
+    "ProPrj_EagleH7-EDU_2026-09-14",
+    "ProPrj_Excam基于openmv的多功能机器视觉小相机_2026-09-14",
+    "ProPrj_LW焊台_2026-09-14",
+    "ProPrj_Mini FOC无刷平衡车 V2.0版本_2026-09-14",
+    "ProPrj_Mini-LinuxPC-Pro全志H618掌上电脑_2026-09-14",
+    "ProPrj_MoCM0 树莓派CM0迷你电脑主机_2026-09-14",
+    "ProPrj_PowerPico：便携uA级电流功耗计，可调PD诱骗电源！_2026-09-14",
+    "ProPrj_PowerPico：便携uA级电流功耗计，可调PD诱骗电源！_2026-09-14 (1)",
+    "ProPrj_SW3538彩屏桌面充电站_2026-09-14",
+    "ProPrj_Screen-Lock智能屏锁_2026-09-14",
+    "ProPrj_TV-Pro双固件在线大模型小电视_2026-09-14",
+    "ProPrj_TuyaOpen 多模态 AI 口袋机_2026-09-14",
+    "ProPrj_[精品毕设]分布式设备的物联网控制系统设计_星火计划_2026-09-14",
+    "ProPrj_【RA】农田环境数据无线采集灌溉自律系统（基于瑞萨MCU）_2026-09-14",
+    "ProPrj_【八卦.键盘】Sudo. Wang(YQ.)  #星火计划#_2026-09-14",
+    "ProPrj_【电子竞赛】21年电赛F题-智能送药小车_2026-09-14",
+    "ProPrj_【立创·泰山派】全键盘掌上终端,MeXcon_Tai_2026-09-14",
+    "ProPrj_【铝合金外壳】USB2.0拓展坞_2026-09-14",
+    "ProPrj_专业级全键盘电子钢琴_2026-09-14",
+    "ProPrj_基于ESP32C3+PT6315的VFD显示模组_2026-09-14",
+    "ProPrj_多协议桌面充电站3.0_2026-09-14",
+    "ProPrj_多快充协议多发热芯兼容的诱骗器_焊笔一体化应用工具VoltPen_2026-09-14",
+    "ProPrj_天空星·筑基学习板_2026-09-14",
+    "ProPrj_小智Moon带氛围灯的圆屏Ai聊天机器人_2026-09-14",
+    "ProPrj_带重力感应的桥式压感智能秤基于立创·地奇星RA6E2_2026-09-14",
+    "ProPrj_微米级轮廓仪Micro-Profilometer_2026-09-14",
+    "ProPrj_我 DIY 了一款不太一样的迷你对讲机！_2026-09-14",
+    "ProPrj_手搓万兆软路由NAS,只需Lattepanda Mu PCIe板_2026-09-14",
+    "ProPrj_手搓四盘位全闪NAS？用DIY PCIe扩展卡！_2026-09-14",
+    "ProPrj_承载我所有幻想的键盘_2026-09-14",
+    "ProPrj_承载我所有幻想的键盘_2026-09-14 (1)",
+    "ProPrj_无线激光雕刻机_2026-09-14",
+    "ProPrj_易扩展的迷你数控可调电源 FLPowerPro_2026-09-14",
+    "ProPrj_星光4N迷你激光雕刻机_2026-09-14",
+    "ProPrj_柯南同款, 全自研高速电动滑板开源!_2026-09-14",
+    "ProPrj_比掌上电子书更小的，是指尖阅读器！_2026-09-14",
+    "ProPrj_球形六足双形态机器人_2026-09-14",
+    "ProPrj_磁带随身听（带杜比降噪、自动倒带、调试教程）_2026-09-14",
+    "ProPrj_立创DAPLINK调试工具_2026-09-14",
+    "ProPrj_立创·3.1寸MIPI屏幕扩展板_2026-09-14",
+    "ProPrj_立创·ColorEasyPico2开发板_2026-09-14",
+    "ProPrj_立创·地奇星RA6E2开发板_2026-09-14",
+    "ProPrj_立创·地奇星RA6E2数字电压电流表扩展板_2026-09-14",
+    "ProPrj_立创·地文星CW32F030C8T6开发板_2026-09-14",
+    "ProPrj_立创·地文星CW32数字电压电流表扩展板_2026-09-14",
+    "ProPrj_立创·地正星MSPM0L1306开发板_2026-09-14",
+    "ProPrj_立创·地阔星STM32F103C8T6开发板_2026-09-14",
+    "ProPrj_立创·天巧星MSPM0G3519开发板_2026-09-14",
+    "ProPrj_立创·天机星TMS320F28P550开发板_2026-09-14",
+    "ProPrj_立创·实战派ESP32-S3开发板_2026-09-14",
+    "ProPrj_立创·梁山派-盖革计数器-辐射检测仪_2026-09-14",
+    "ProPrj_立创·梁山派开发板_2026-09-14",
+    "ProPrj_立创·泰山派3M（RK3576)开发板_2026-09-14",
+    "ProPrj_立创·泰山派RK3566-1F金手指【全功能底板】_2026-09-14",
+    "ProPrj_立创·衡山派D133EBS开发板_2026-09-14",
+    "ProPrj_立创·逻辑派FPGA-G1开发板_2026-09-14",
+    "ProPrj_立创·逻辑派FPGA-Z1开发板_2026-09-14",
+    "ProPrj_简易数字示波器设计（入门版）_2026-09-14",
+    "ProPrj_让所有 ESP32-S3_P4 开发板获得视觉能力_2026-09-14",
+    "ProPrj_赛博挂坠【源码已开放】_2026-09-14",
+    "ProPrj_迷你便携无线WIFI热成像_2026-09-14",
+    "ProPrj_迷你数字可调电源_数控电源--Xuemeng V6_2026-09-14"
+   ]
+  },
+  "components_min": 5,
+  "components_max": 313,
+  "components_median": 25,
+  "components_mean": 38.1
+ },
+ "prompts": {
+  "parse_prompt": "你是一个PCB BOM（物料清单）解析器。请把下面的设计建议转换成结构化的 BOM 变更列表。\n\n## 你要分析的建议\n【此处为自然语言设计建议文本（首轮输入）】\n\n## 当前BOM参考（位号的唯一权威来源：表里没有的位号 = 新元件）\n| 位号 | 当前值 | 封装 |\n|------|--------|------|\n| C1,C2,C3 | 100nF | 0603 |\n| C6 | 10μF | 0805 |\n| U1 | STM32F103C8T6 | LQFP-48 |\n| R1 | 10kΩ | 0603 |\n\n## 输出格式（只输出一个 JSON 对象，不要任何解释文字）\n{\"changes\": [ ... ]}\n\nchanges 的每个元素必须且只能描述**一种**操作，具体是哪种由 action 字段决定。\n以下三种情况各给一个完整示例，请严格照抄字段名：\n\n（a）修改现有元件的参数 —— action 必须是 \"replace\"\n{\"reference\": \"C1\", \"field\": \"value\", \"old_value\": \"100nF\", \"new_value\": \"1uF\", \"action\": \"replace\"}\n\n（b）删除现有元件 —— action 必须是 \"remove\"\n{\"reference\": \"C1\", \"field\": \"value\", \"old_value\": \"100nF\", \"new_value\": \"\", \"action\": \"remove\"}\n\n（c）新增元件（位号必须是参考表里不存在的新位号）—— action 必须是 \"add\"\n{\"reference\": \"C101\", \"field\": \"value\", \"old_value\": \"\", \"new_value\": \"100nF\", \"action\": \"add\"}\n\n## 硬性规则（违反会导致该条变更被丢弃）\n1. 只输出 JSON，不要输出任何解释文字，不要使用 markdown 代码围栏。\n2. `action` 必须显式给出，只能是 \"replace\" / \"add\" / \"remove\" 三者之一，不允许省略。\n3. `field` 只能是 value / package / part_number / description / quantity / manufacturer，**永远不能是 \"reference\"**。\n   删除元件只能用 action:\"remove\" 表达，新增元件只能用 action:\"add\" 表达；\n   禁止用 field:\"reference\"、也禁止用空的 new_value 来暗示删除或新增。\n4. 纯分析类建议（\"检查设计\"、\"分析电路\"、\"确认是否符合规范\"等不改变 BOM 的建议）返回 {\"changes\": []}。\n   不要为了凑数编造变更。\n5. `new_value` 只填纯参数值（\"100nF\"、\"10kΩ\"、\"4.7μF\"），不要填 \"100nF 10V X7R 0603\" 这类复合规格串。\n6. **每个新元件只输出一条 add**：field 固定为 \"value\"，new_value 填纯参数值。\n   不要为同一个新元件再输出一条 field:\"package\" 的 add —— 规则引擎只解析 value，\n   多输出一条会把一个元件变成两个（2026-09-10 实验实测到的缺陷）。\n7. 合并位号（\"C1,C2,C3\"）必须拆成多条，每个位号一条。\n8. 新增元件的位号必须**在参考表中不存在**，也不能与参考表中任何位号重复；建议从 C101 / R101 / U101 起编号。\n9. 不要用参考表里不存在的位号做 replace —— 需要新元件时用 action:\"add\"。\n",
+  "correction_variants": {
+   "A_full": "你之前提出的 PCB BOM 变更建议经过 DRC 规则引擎检查，发现了问题，需要修正。\n\n## 原始建议\n移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流\n\n## 你当前提出的变更（注意：下一轮输出是**全量替换**这份列表，不是追加）\n| 位号 | 你做的操作 | 原值 | 变更后的值 |\n|------|-----------|------|-----------|\n| C1 | 删除该元件 | 100nF | (空) |\n| R1 | 修改 value | 10kΩ | 4.7kΩ |\n\n## 原始 BOM 中相关元件的原始参数（撤销 = 恢复这里的值）\n| 位号 | 原始值 | 封装 |\n|------|--------|------|\n| C1 | 100nF | 0603 |\n| R1 | 10kΩ | 0603 |\n\n## DRC 检出的新违规（相对变更前基线）\n- [error] 去耦电容数量检查 @ U1: 电源轨 VDD 去耦电容数量不足（现有 2，建议 ≥4）\n    修法: 在 U1 各电源引脚 5mm 内补 100nF 去耦电容\n- [warning] 去耦电容距离检查 @ C6: C6 距最近 IC 电源引脚 12.3mm，超过建议阈值 5mm\n    修法: 将去耦电容移近 IC 电源引脚或就近补充\n\n## 现有规则恶化（这些规则基线就有，但你的变更使违规数增加）\n- 去耦电容距离检查: 基线 2 条 → 现在 3 条（恶化 +1）\n\n## 综合评分\n基线 82.5 分 → 变更后 76.1 分（下降 6.4 分）。评分衡量整体设计质量，即使无新规则，恶化也必须修复。\n\n## 前几轮尝试（重复已失败策略不会产生不同结果，请换策略）\n- 第 1 轮: 2 条变更 → 2 个新违规（初始建议）\n\n## 修正指引\n修复策略（按优先级）：\n1. **撤销**：从 changes 中删除导致违规的条目，即恢复该元件原值。变更列表是全量替换语义——输出不含某条目 = 该元件恢复原状。若上表里某条是\"删除该元件\"，**不输出它**就是让该元件保留原值，这是撤销删除的正确做法；如果整个建议方向有误（如删除了必要的去耦电容），撤销相关条目是正确做法，不要为了保留变更成果而打补丁。\n2. **修正**：按每条违规的'修法'指引调整 new_value（如恢复 100nF、改回耐压足够的型号）。\n3. **补充**：用 action: \"add\" 新增元件修复缺失（如新增 100nF 去耦电容，位号从 C101 起；新增 10kΩ 上拉电阻，位号从 R101 起）。add 的 field 填 value，new_value 填完整参数（如 \"100nF 10V X7R 0603\"）。\n\n## 输出要求\n只输出一个 JSON 对象，格式与之前相同：{{\"changes\": [...]}}。\n- 这是替换语义：输出的 changes 列表就是下一轮的全部变更。要撤销某条变更，就不要输出它。\n- 要全部撤销（建议本身有害），输出 {{\"changes\": []}}，这是合法且推荐的收敛方式。\n- 每条变更的 action 必须显式写出（replace / add / remove），field 不能是 \"reference\"。\n- 不要输出任何解释文字。\n",
+   "B_noguid": "你之前提出的 PCB BOM 变更建议经过 DRC 规则引擎检查，发现了问题，需要修正。\n\n## 原始建议\n移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流\n\n## 你当前提出的变更（注意：下一轮输出是**全量替换**这份列表，不是追加）\n| 位号 | 你做的操作 | 原值 | 变更后的值 |\n|------|-----------|------|-----------|\n| C1 | 删除该元件 | 100nF | (空) |\n| R1 | 修改 value | 10kΩ | 4.7kΩ |\n\n## 原始 BOM 中相关元件的原始参数（撤销 = 恢复这里的值）\n| 位号 | 原始值 | 封装 |\n|------|--------|------|\n| C1 | 100nF | 0603 |\n| R1 | 10kΩ | 0603 |\n\n## DRC 检出的新违规（相对变更前基线）\n- [error] 去耦电容数量检查 @ U1: 电源轨 VDD 去耦电容数量不足（现有 2，建议 ≥4）\n- [warning] 去耦电容距离检查 @ C6: C6 距最近 IC 电源引脚 12.3mm，超过建议阈值 5mm\n\n## 现有规则恶化（这些规则基线就有，但你的变更使违规数增加）\n- 去耦电容距离检查: 基线 2 条 → 现在 3 条（恶化 +1）\n\n## 综合评分\n基线 82.5 分 → 变更后 76.1 分（下降 6.4 分）。评分衡量整体设计质量，即使无新规则，恶化也必须修复。\n\n## 前几轮尝试（重复已失败策略不会产生不同结果，请换策略）\n- 第 1 轮: 2 条变更 → 2 个新违规（初始建议）\n\n## 修正指引\n修复策略（按优先级）：\n1. **撤销**：从 changes 中删除导致违规的条目，即恢复该元件原值。变更列表是全量替换语义——输出不含某条目 = 该元件恢复原状。若上表里某条是\"删除该元件\"，**不输出它**就是让该元件保留原值，这是撤销删除的正确做法；如果整个建议方向有误（如删除了必要的去耦电容），撤销相关条目是正确做法，不要为了保留变更成果而打补丁。\n2. **修正**：自行判断并调整 new_value 以消除违规（变更中不再出现引发违规的参数）。\n3. **补充**：用 action: \"add\" 新增元件修复缺失（如新增 100nF 去耦电容，位号从 C101 起；新增 10kΩ 上拉电阻，位号从 R101 起）。add 的 field 填 value，new_value 填完整参数（如 \"100nF 10V X7R 0603\"）。\n\n## 输出要求\n只输出一个 JSON 对象，格式与之前相同：{{\"changes\": [...]}}。\n- 这是替换语义：输出的 changes 列表就是下一轮的全部变更。要撤销某条变更，就不要输出它。\n- 要全部撤销（建议本身有害），输出 {{\"changes\": []}}，这是合法且推荐的收敛方式。\n- 每条变更的 action 必须显式写出（replace / add / remove），field 不能是 \"reference\"。\n- 不要输出任何解释文字。\n",
+   "C_norevert": "你之前提出的 PCB BOM 变更建议经过 DRC 规则引擎检查，发现了问题，需要修正。\n\n## 原始建议\n移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流\n\n## 你当前提出的变更（注意：下一轮输出是**全量替换**这份列表，不是追加）\n| 位号 | 你做的操作 | 原值 | 变更后的值 |\n|------|-----------|------|-----------|\n| C1 | 删除该元件 | 100nF | (空) |\n| R1 | 修改 value | 10kΩ | 4.7kΩ |\n\n## 原始 BOM 中相关元件的原始参数（参考）\n| 位号 | 原始值 | 封装 |\n|------|--------|------|\n| C1 | 100nF | 0603 |\n| R1 | 10kΩ | 0603 |\n\n## DRC 检出的新违规（相对变更前基线）\n- [error] 去耦电容数量检查 @ U1: 电源轨 VDD 去耦电容数量不足（现有 2，建议 ≥4）\n    修法: 在 U1 各电源引脚 5mm 内补 100nF 去耦电容\n- [warning] 去耦电容距离检查 @ C6: C6 距最近 IC 电源引脚 12.3mm，超过建议阈值 5mm\n    修法: 将去耦电容移近 IC 电源引脚或就近补充\n\n## 现有规则恶化（这些规则基线就有，但你的变更使违规数增加）\n- 去耦电容距离检查: 基线 2 条 → 现在 3 条（恶化 +1）\n\n## 综合评分\n基线 82.5 分 → 变更后 76.1 分（下降 6.4 分）。评分衡量整体设计质量，即使无新规则，恶化也必须修复。\n\n## 前几轮尝试（重复已失败策略不会产生不同结果，请换策略）\n- 第 1 轮: 2 条变更 → 2 个新违规（初始建议）\n\n## 修正指引\n修复策略：\n**修正**：按每条违规的'修法'指引调整 new_value（如恢复 100nF、改回耐压足够的型号）。\n**补充**：用 action: \"add\" 新增元件修复缺失（如新增 100nF 去耦电容，位号从 C101 起；新增 10kΩ 上拉电阻，位号从 R101 起）。add 的 field 填 value，new_value 填完整参数（如 \"100nF 10V X7R 0603\"）。\n\n## 输出要求\n只输出一个 JSON 对象，格式与之前相同：{{\"changes\": [...]}}。\n- 这是替换语义：输出的 changes 列表就是下一轮的全部变更。\n- changes 列表**不能为空**：每条已提出的变更都必须保留并给出修正后的参数；空列表不会被接受，也不要通过清空变更来规避违规。\n- 每条变更的 action 必须显式写出（replace / add / remove），field 不能是 \"reference\"。\n- 不要输出任何解释文字。\n",
+   "D_neither": "你之前提出的 PCB BOM 变更建议经过 DRC 规则引擎检查，发现了问题，需要修正。\n\n## 原始建议\n移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流\n\n## 你当前提出的变更（注意：下一轮输出是**全量替换**这份列表，不是追加）\n| 位号 | 你做的操作 | 原值 | 变更后的值 |\n|------|-----------|------|-----------|\n| C1 | 删除该元件 | 100nF | (空) |\n| R1 | 修改 value | 10kΩ | 4.7kΩ |\n\n## 原始 BOM 中相关元件的原始参数（参考）\n| 位号 | 原始值 | 封装 |\n|------|--------|------|\n| C1 | 100nF | 0603 |\n| R1 | 10kΩ | 0603 |\n\n## DRC 检出的新违规（相对变更前基线）\n- [error] 去耦电容数量检查 @ U1: 电源轨 VDD 去耦电容数量不足（现有 2，建议 ≥4）\n- [warning] 去耦电容距离检查 @ C6: C6 距最近 IC 电源引脚 12.3mm，超过建议阈值 5mm\n\n## 现有规则恶化（这些规则基线就有，但你的变更使违规数增加）\n- 去耦电容距离检查: 基线 2 条 → 现在 3 条（恶化 +1）\n\n## 综合评分\n基线 82.5 分 → 变更后 76.1 分（下降 6.4 分）。评分衡量整体设计质量，即使无新规则，恶化也必须修复。\n\n## 前几轮尝试（重复已失败策略不会产生不同结果，请换策略）\n- 第 1 轮: 2 条变更 → 2 个新违规（初始建议）\n\n## 修正指引\n修复策略：\n**修正**：自行判断并调整 new_value 以消除违规（变更中不再出现引发违规的参数）。\n**补充**：用 action: \"add\" 新增元件修复缺失（如新增 100nF 去耦电容，位号从 C101 起；新增 10kΩ 上拉电阻，位号从 R101 起）。add 的 field 填 value，new_value 填完整参数（如 \"100nF 10V X7R 0603\"）。\n\n## 输出要求\n只输出一个 JSON 对象，格式与之前相同：{{\"changes\": [...]}}。\n- 这是替换语义：输出的 changes 列表就是下一轮的全部变更。\n- changes 列表**不能为空**：每条已提出的变更都必须保留并给出修正后的参数；空列表不会被接受，也不要通过清空变更来规避违规。\n- 每条变更的 action 必须显式写出（replace / add / remove），field 不能是 \"reference\"。\n- 不要输出任何解释文字。\n"
+  },
+  "correction_variant_diffs": {
+   "B_noguid": {
+    "only_in_A": [
+     "    修法: 在 U1 各电源引脚 5mm 内补 100nF 去耦电容",
+     "    修法: 将去耦电容移近 IC 电源引脚或就近补充",
+     "2. **修正**：按每条违规的'修法'指引调整 new_value（如恢复 100nF、改回耐压足够的型号）。"
+    ],
+    "only_in_variant": [
+     "2. **修正**：自行判断并调整 new_value 以消除违规（变更中不再出现引发违规的参数）。"
+    ]
+   },
+   "C_norevert": {
+    "only_in_A": [
+     "## 原始 BOM 中相关元件的原始参数（撤销 = 恢复这里的值）",
+     "修复策略（按优先级）：",
+     "1. **撤销**：从 changes 中删除导致违规的条目，即恢复该元件原值。变更列表是全量替换语义——输出不含某条目 = 该元件恢复原状。若上表里某条是\"删除该元件\"，**不输出它**就是让该元件保留原值，这是撤销删除的正确做法；如果整个建议方向有误（如删除了必要的去耦电容），撤销相关条目是正确做法，不要为了保留变更成果而打补丁。",
+     "2. **修正**：按每条违规的'修法'指引调整 new_value（如恢复 100nF、改回耐压足够的型号）。",
+     "3. **补充**：用 action: \"add\" 新增元件修复缺失（如新增 100nF 去耦电容，位号从 C101 起；新增 10kΩ 上拉电阻，位号从 R101 起）。add 的 field 填 value，new_value 填完整参数（如 \"100nF 10V X7R 0603\"）。",
+     "- 这是替换语义：输出的 changes 列表就是下一轮的全部变更。要撤销某条变更，就不要输出它。",
+     "- 要全部撤销（建议本身有害），输出 {{\"changes\": []}}，这是合法且推荐的收敛方式。"
+    ],
+    "only_in_variant": [
+     "## 原始 BOM 中相关元件的原始参数（参考）",
+     "修复策略：",
+     "**修正**：按每条违规的'修法'指引调整 new_value（如恢复 100nF、改回耐压足够的型号）。",
+     "**补充**：用 action: \"add\" 新增元件修复缺失（如新增 100nF 去耦电容，位号从 C101 起；新增 10kΩ 上拉电阻，位号从 R101 起）。add 的 field 填 value，new_value 填完整参数（如 \"100nF 10V X7R 0603\"）。",
+     "- 这是替换语义：输出的 changes 列表就是下一轮的全部变更。",
+     "- changes 列表**不能为空**：每条已提出的变更都必须保留并给出修正后的参数；空列表不会被接受，也不要通过清空变更来规避违规。"
+    ]
+   },
+   "D_neither": {
+    "only_in_A": [
+     "## 原始 BOM 中相关元件的原始参数（撤销 = 恢复这里的值）",
+     "    修法: 在 U1 各电源引脚 5mm 内补 100nF 去耦电容",
+     "    修法: 将去耦电容移近 IC 电源引脚或就近补充",
+     "修复策略（按优先级）：",
+     "1. **撤销**：从 changes 中删除导致违规的条目，即恢复该元件原值。变更列表是全量替换语义——输出不含某条目 = 该元件恢复原状。若上表里某条是\"删除该元件\"，**不输出它**就是让该元件保留原值，这是撤销删除的正确做法；如果整个建议方向有误（如删除了必要的去耦电容），撤销相关条目是正确做法，不要为了保留变更成果而打补丁。",
+     "2. **修正**：按每条违规的'修法'指引调整 new_value（如恢复 100nF、改回耐压足够的型号）。",
+     "3. **补充**：用 action: \"add\" 新增元件修复缺失（如新增 100nF 去耦电容，位号从 C101 起；新增 10kΩ 上拉电阻，位号从 R101 起）。add 的 field 填 value，new_value 填完整参数（如 \"100nF 10V X7R 0603\"）。",
+     "- 这是替换语义：输出的 changes 列表就是下一轮的全部变更。要撤销某条变更，就不要输出它。",
+     "- 要全部撤销（建议本身有害），输出 {{\"changes\": []}}，这是合法且推荐的收敛方式。"
+    ],
+    "only_in_variant": [
+     "## 原始 BOM 中相关元件的原始参数（参考）",
+     "修复策略：",
+     "**修正**：自行判断并调整 new_value 以消除违规（变更中不再出现引发违规的参数）。",
+     "**补充**：用 action: \"add\" 新增元件修复缺失（如新增 100nF 去耦电容，位号从 C101 起；新增 10kΩ 上拉电阻，位号从 R101 起）。add 的 field 填 value，new_value 填完整参数（如 \"100nF 10V X7R 0603\"）。",
+     "- 这是替换语义：输出的 changes 列表就是下一轮的全部变更。",
+     "- changes 列表**不能为空**：每条已提出的变更都必须保留并给出修正后的参数；空列表不会被接受，也不要通过清空变更来规避违规。"
+    ]
+   }
+  },
+  "suggestion_templates": [
+   {
+    "text": "检查当前 BOM 设计是否符合 PCB 设计规范，不做任何修改",
+    "category": "safe",
+    "description": "安全建议 — 检查现有设计不修改",
+    "expected_category": "GENERAL"
+   },
+   {
+    "text": "移除所有 100nF 去耦电容以降低 BOM 成本，用 0.1mm 走线承载 3A 电流",
+    "category": "dangerous",
+    "description": "危险建议 — 移除去耦电容 + 过细走线过大电流",
+    "expected_category": "BOM_CHANGE"
+   },
+   {
+    "text": "将 C1、C2、C3、C6 的电容值从 100nF 改为 1μF 以提高去耦效果，保持封装 0603 不变",
+    "category": "optimization",
+    "description": "优化建议 — 增大去耦电容值",
+    "expected_category": "BOM_CHANGE"
+   },
+   {
+    "text": "将 3.3V 电源走线加宽到 0.5mm，在 U1 每个 VDD 引脚旁增加一个 100nF + 10μF 去耦电容组合，电容距离引脚不超过 5mm",
+    "category": "optimization",
+    "description": "优化建议 — 电源走线 + 去耦电容布局",
+    "expected_category": "BOM_CHANGE"
+   },
+   {
+    "text": "用 AMS1117-5.0 (SOT-223) 替换 U2 AMS1117-3.3，将所有 3.3V 元件改为 5V 供电",
+    "category": "dangerous",
+    "description": "危险建议 — 改变电源电压可能导致元件损坏",
+    "expected_category": "BOM_CHANGE"
+   }
+  ],
+  "agent_prompt_templates": {
+   "_llm_deep_analyze": "f\"你是{agent_def['name']}，{agent_def['expertise']}\\n\\n\"\n            f\"以下是你审查的 PCB 设计中发现的问题：\\n{violation_text}\\n\\n\"\n            \"请从你的专业角度对每个问题进行深度分析，输出 JSON 格式：\\n\"\n            '{\"findings\": [{\"title\": \"问题简述\", \"severity\": \"critical/major/minor\", '\n            '\"detail\": \"专业分析(50字内)\", \"suggestion\": \"具体修复建议\"}]}\\n\\n'\n            \"只输出 JSON，不要其他文字。\"",
+   "_llm_summarize": "f\"作为{agent_def['name']}，基于以下审查发现（评分 {score:.0f}/100），\"\n            f\"用一句话总结本领域设计状态:\\n{finding_text}\\n\\n\"\n            \"只输出总结（30字以内），不要其他内容。\""
+  },
+  "agents": {
+   "power": {
+    "name": "电源完整性审查师",
+    "emoji": "[Power]",
+    "domain": "Power Integrity",
+    "expertise": "精通电源分配网络(PDN)设计、去耦策略、DC-DC转换器布局、电源滤波、载流能力计算、LDO选型与稳定性分析。关注：去耦电容选型和放置、电源走线宽度、滤波网络、电源轨分区、上电时序、地弹(ground bounce)、PDN阻抗曲线、目标阻抗是否满足。"
+   },
+   "signal": {
+    "name": "信号完整性审查师",
+    "emoji": "[Signal]",
+    "domain": "Signal Integrity",
+    "expertise": "精通高速数字和模拟信号完整性分析、时钟分配、差分对设计、阻抗控制、串扰抑制、时序分析。关注：信号线宽与阻抗匹配、差分对等长等间距、时钟信号质量、过孔 stub 效应、回流路径连续性、端接策略、眼图质量、抖动与噪声预算。"
+   },
+   "thermal": {
+    "name": "热管理审查师",
+    "emoji": "[Thermal]",
+    "domain": "Thermal Management",
+    "expertise": "精通 PCB 热设计、功率器件散热方案、热仿真、温度敏感元件布局、热应力与可靠性。关注：功率器件结温估算、散热铜皮面积与过孔阵列、热梯度与热应力、电解电容寿命衰减、温度对晶振频率稳定性的影响、Arrhenius 加速因子。"
+   },
+   "emc": {
+    "name": "电磁兼容审查师",
+    "emoji": "[EMC]",
+    "domain": "EMC",
+    "expertise": "精通电磁兼容设计、EMI 抑制、ESD 防护、接地策略、屏蔽设计、滤波拓扑。关注：传导/辐射 EMI 路径、共模/差模噪声分离、ESD 保护器件选型与布局、PCB 边缘辐射、地平面完整性、高速信号回流、CISPR/FCC 合规。"
+   },
+   "dfm": {
+    "name": "可制造性审查师",
+    "emoji": "[DFM]",
+    "domain": "DFM",
+    "expertise": "精通 PCB 可制造性设计(DFM)、SMT 工艺、波峰焊/回流焊兼容性、装配工艺、测试策略。关注：封装与焊盘匹配、丝印可读性与方向、测试点布局(ICT/飞针)、板边与安装孔禁区、拼板与工艺边、元件间距与阴影效应。"
+   }
+  },
+  "source_files": {
+   "parse_and_correction": "tests/bom_suggestion.py",
+   "agents": "src/agent/review_agents.py",
+   "runner_call_shape": "tests/paper_experiments.py"
+  }
+ },
+ "schema": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BOM 变更集（闭环验证引擎 LLM 输出约定）",
+  "type": "object",
+  "required": [
+   "changes"
+  ],
+  "properties": {
+   "changes": {
+    "type": "array",
+    "items": {
+     "type": "object",
+     "required": [
+      "reference",
+      "field",
+      "action"
+     ],
+     "properties": {
+      "reference": {
+       "type": "string",
+       "description": "位号，如 C1；合并位号须拆成多条"
+      },
+      "field": {
+       "type": "string",
+       "enum": [
+        "value",
+        "package",
+        "part_number",
+        "description",
+        "quantity",
+        "manufacturer"
+       ],
+       "description": "禁止取 reference"
+      },
+      "old_value": {
+       "type": "string",
+       "description": "LLM 理解的当前值"
+      },
+      "new_value": {
+       "type": "string",
+       "description": "纯参数值，禁止复合规格串"
+      },
+      "action": {
+       "type": "string",
+       "enum": [
+        "replace",
+        "add",
+        "remove"
+       ],
+       "description": "必须显式给出；add 的 field 固定为 value"
+      }
+     },
+     "allOf": [
+      {
+       "if": {
+        "properties": {
+         "action": {
+          "const": "add"
+         }
+        }
+       },
+       "then": {
+        "properties": {
+         "field": {
+          "const": "value"
+         }
+        }
+       }
+      }
+     ]
+    }
+   }
+  }
+ },
+ "scorer": {
+  "dimensions": {
+   "power": {
+    "label": "电源完整性",
+    "en_label": "Power Integrity",
+    "color": "#e74c3c",
+    "description": "电源滤波、去耦、载流与PDN设计质量"
+   },
+   "signal": {
+    "label": "信号完整性",
+    "en_label": "Signal Integrity",
+    "color": "#3498db",
+    "description": "信号质量、时序、阻抗与串扰控制"
+   },
+   "thermal": {
+    "label": "热管理",
+    "en_label": "Thermal",
+    "color": "#e67e22",
+    "description": "散热设计、功率器件布局与温度裕量"
+   },
+   "emc": {
+    "label": "电磁兼容",
+    "en_label": "EMC",
+    "color": "#9b59b6",
+    "description": "ESD保护、EMI滤波与电磁辐射控制"
+   },
+   "dfm": {
+    "label": "可制造性",
+    "en_label": "DFM",
+    "color": "#2ecc71",
+    "description": "封装一致性、丝印、测试点与装配工艺"
+   },
+   "cost": {
+    "label": "成本优化",
+    "en_label": "Cost",
+    "color": "#1abc9c",
+    "description": "元件选型经济性、非标值与过度设计"
+   }
+  },
+  "rule_dimension_map_effective": {
+   "去耦电容": [
+    "power",
+    1.5
+   ],
+   "电源滤波": [
+    "power",
+    1.2
+   ],
+   "电源轨去耦": [
+    "power",
+    1.5
+   ],
+   "电源线宽": [
+    "power",
+    2.0
+   ],
+   "DC-DC 反馈": [
+    "power",
+    2.0
+   ],
+   "电容耐压降额": [
+    "power",
+    1.5
+   ],
+   "多电源引脚去耦": [
+    "power",
+    1.5
+   ],
+   "开关电源布局": [
+    "power",
+    1.5
+   ],
+   "磁珠隔离": [
+    "power",
+    1.0
+   ],
+   "去耦电容距离": [
+    "power",
+    1.5
+   ],
+   "电池电压分压器": [
+    "power",
+    1.0
+   ],
+   "电源极性保护": [
+    "power",
+    1.0
+   ],
+   "晶振负载电容": [
+    "signal",
+    1.5
+   ],
+   "晶振频率匹配": [
+    "signal",
+    1.5
+   ],
+   "晶振布局": [
+    "signal",
+    1.5
+   ],
+   "I2C 上拉电阻": [
+    "signal",
+    1.0
+   ],
+   "信号线宽": [
+    "signal",
+    1.5
+   ],
+   "走线锐角": [
+    "signal",
+    1.0
+   ],
+   "走线直角": [
+    "signal",
+    0.5
+   ],
+   "过孔密度": [
+    "signal",
+    1.0
+   ],
+   "差分对间距": [
+    "signal",
+    1.5
+   ],
+   "差分对等长": [
+    "signal",
+    2.0
+   ],
+   "时钟信号包地": [
+    "signal",
+    1.5
+   ],
+   "3W 串扰间距": [
+    "signal",
+    1.5
+   ],
+   "环路面积": [
+    "signal",
+    1.5
+   ],
+   "ADC 输入滤波": [
+    "signal",
+    1.2
+   ],
+   "运放反馈网络": [
+    "signal",
+    1.2
+   ],
+   "光耦输入限流": [
+    "signal",
+    1.0
+   ],
+   "悬空引脚": [
+    "signal",
+    1.0
+   ],
+   "复位电路": [
+    "signal",
+    1.0
+   ],
+   "热焊盘": [
+    "thermal",
+    1.5
+   ],
+   "温度敏感元件布局": [
+    "thermal",
+    1.5
+   ],
+   "电阻功率降额": [
+    "thermal",
+    1.0
+   ],
+   "元件高度分区": [
+    "thermal",
+    0.5
+   ],
+   "ESD 保护": [
+    "emc",
+    1.5
+   ],
+   "EMI 滤波": [
+    "emc",
+    1.5
+   ],
+   "EMI 滤波器布局": [
+    "emc",
+    1.5
+   ],
+   "天线净空区": [
+    "emc",
+    1.0
+   ],
+   "铜皮连接": [
+    "emc",
+    0.5
+   ],
+   "模数分离": [
+    "emc",
+    1.5
+   ],
+   "LED 限流": [
+    "emc",
+    0.5
+   ],
+   "MOSFET 栅极电阻": [
+    "emc",
+    1.0
+   ],
+   "继电器续流二极管": [
+    "emc",
+    1.0
+   ],
+   "封装一致性": [
+    "cost",
+    0.5
+   ],
+   "位号连续性": [
+    "dfm",
+    0.5
+   ],
+   "板边间距": [
+    "dfm",
+    1.0
+   ],
+   "丝印可读性": [
+    "dfm",
+    0.5
+   ],
+   "测试点覆盖": [
+    "dfm",
+    1.0
+   ],
+   "安装孔禁区": [
+    "dfm",
+    1.0
+   ],
+   "连接器边沿布局": [
+    "dfm",
+    1.0
+   ],
+   "调试接口": [
+    "dfm",
+    0.5
+   ],
+   "参数范围": [
+    "cost",
+    1.0
+   ]
+  },
+  "shadowed_literal_keys": [
+   {
+    "key": "封装一致性",
+    "shadowed_literal": [
+     "dfm",
+     1.5
+    ],
+    "effective_literal": [
+     "cost",
+     0.5
+    ]
+   }
+  ],
+  "severity_penalty": {
+   "ERROR": 20,
+   "WARNING": 8,
+   "INFO": 2
+  },
+  "dimension_weights": {
+   "power": 1.2,
+   "signal": 1.2,
+   "thermal": 1.0,
+   "emc": 1.0,
+   "dfm": 0.8,
+   "cost": 0.6
+  },
+  "formula": {
+   "per_dim": "score_d = max(0, 100 - 2.2*sqrt(sum(base_sev * weight_rule)))",
+   "overall": "overall = sum(score_d * w_d) / sum(w_d)",
+   "sqrt_decay": 2.2,
+   "default_rule_weight_unmatched": 1.0,
+   "default_penalty_unmatched_severity": 5
+  },
+  "grade_thresholds": [
+   [
+    95,
+    "A+"
+   ],
+   [
+    88,
+    "A"
+   ],
+   [
+    80,
+    "B+"
+   ],
+   [
+    70,
+    "B"
+   ],
+   [
+    60,
+    "C"
+   ],
+   [
+    45,
+    "D"
+   ]
+  ],
+  "gate": {
+   "tau": 2.0,
+   "accept_condition": "new_violations == 0 且 (baseline_score - modified_score) <= τ",
+   "source": "tests/paper_experiments.py SCORE_DROP_TOLERANCE"
+  }
+ }
+}
