@@ -248,10 +248,15 @@ class AppController:
             yield client
         finally:
             turns = client.get_history()
-            if (merge_history and generation == self._history_generation
-                    and len(turns) > len(snapshot)):
+            if merge_history and len(turns) > len(snapshot):
                 with self._history_lock:
-                    shared.extend_history(turns[len(snapshot):])
+                    # P1-9（验收 2026-10-24）：generation 复核原来在锁外 ——
+                    # 比对通过后、拿锁前 clear_conversation/切助手/重配置可能
+                    # 已清空共享历史并 +1（FastAPI 线程池并发），旧轮次随即
+                    # "复活"进已清空的对话（TOCTOU）。复核移进锁内，
+                    # 比对与合并对清空操作原子。
+                    if generation == self._history_generation:
+                        shared.extend_history(turns[len(snapshot):])
 
     # ══════════════════════════════════════════════════
     #  File I/O
@@ -424,6 +429,19 @@ class AppController:
         logger.info("HTML BOM generated: %s", output_path)
         return f" HTML BOM 已生成:\n{output_path}"
 
+    # P1-20（验收 2026-10-24）：CSV 公式注入防护（OWASP CSV Injection）——
+    # Excel/WPS 打开 CSV 时把以 = + - @（及 TAB/CR）开头的单元格当公式/
+    # 命令执行（如 =cmd|' /C calc'!A0、=HYPERLINK(...)）。导出侧对危险
+    # 前缀的文本单元格统一前置 ' 转义成纯文本；数值列（int）不处理。
+    _CSV_DANGEROUS_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+    @classmethod
+    def _csv_formula_safe(cls, value) -> object:
+        """中和 CSV 公式注入：危险前缀的文本单元格前置 ' 转义。"""
+        if isinstance(value, str) and value.startswith(cls._CSV_DANGEROUS_PREFIXES):
+            return "'" + value
+        return value
+
     def export_bom_csv(self, output_path: Optional[str] = None) -> str:
         """导出 BOM 为 UTF-8-BOM CSV 文件（Excel 兼容中文）"""
         if not self.context.bom_items:
@@ -447,13 +465,13 @@ class AppController:
                 writer.writerow(["位号", "参数值", "封装", "型号", "描述", "数量", "制造商"])
                 for item in self.context.bom_items:
                     writer.writerow([
-                        item.reference,
-                        item.value,
-                        item.package,
-                        item.part_number,
-                        item.description,
+                        self._csv_formula_safe(item.reference),
+                        self._csv_formula_safe(item.value),
+                        self._csv_formula_safe(item.package),
+                        self._csv_formula_safe(item.part_number),
+                        self._csv_formula_safe(item.description),
                         item.quantity,
-                        item.manufacturer,
+                        self._csv_formula_safe(item.manufacturer),
                     ])
             logger.info("BOM CSV exported: %s", output_path)
             return (
@@ -473,6 +491,92 @@ class AppController:
             pcb_data=self.context.pcb_data,
         )
         return checker.get_report(violations)
+
+    # 3D 预览载荷上限：走线段/过孔超限时截断（前端照常渲染 + counts 里标注）。
+    # 泰山派 3M 实测 24122 段 / 2052 孔，离上限还有量级差；上限只防极端缝合孔板
+    _3D_MAX_SEGMENTS = 200_000
+    _3D_MAX_VIAS = 20_000
+
+    def get_board_3d_data(self) -> dict:
+        """3D 板卡预览数据 — 前端 board3d.js（three.js）渲染用。
+
+        载荷全部来自 ctx.pcb_data（.epro2 解析最全：板框/元件坐标/正反面/
+        走线线宽/过孔俱全；旧格式导入时相应字段缺省，前端按空渲染并提示）。
+        坐标一律绝对 mm、保留 3 位小数（1µm 精度足够，同时压 JSON 体积）。
+
+        Returns:
+            dict: ``{ok, reason?, format, board, components, traces, vias,
+            layers, counts}``；无工程数据时 ``reason='no_data'``。
+        """
+        ctx = self.context
+        pcb = ctx.pcb_data
+        if pcb is None:
+            return {"ok": True, "reason": "no_data", "board": None,
+                    "components": [], "traces": [], "vias": [], "layers": [],
+                    "counts": {}}
+
+        bo = dict(pcb.board_outline or {})
+        rings = bo.get("outline_rings_mm") or []
+        bo["rings"] = [
+            [[round(float(x), 3), round(float(y), 3)] for x, y in ring]
+            for ring in rings
+        ]
+
+        components = [
+            {
+                "ref": ref,
+                "x": round(float(e.get("x") or 0), 3),
+                "y": round(float(e.get("y") or 0), 3),
+                "rotation": e.get("rotation") or 0,
+                "side": e.get("side") or "",
+                "footprint_name": e.get("footprint_name") or "",
+                "value": e.get("value") or "",
+                "in_bom": bool(e.get("in_bom", True)),
+            }
+            for ref, e in (pcb.component_positions or {}).items()
+        ]
+
+        seg_count = 0
+        traces = []
+        for t in pcb.traces or []:
+            flat = []
+            for x1, y1, x2, y2 in t.segments or []:
+                flat.extend((round(float(x1), 3), round(float(y1), 3),
+                             round(float(x2), 3), round(float(y2), 3)))
+                seg_count += 1
+                if seg_count >= self._3D_MAX_SEGMENTS:
+                    break
+            if flat:
+                traces.append({
+                    "net": t.net_name, "layer": t.layer,
+                    "width_mm": round(float(t.width_mm or 0), 3), "segs": flat,
+                })
+            if seg_count >= self._3D_MAX_SEGMENTS:
+                break
+
+        vias = [
+            [round(float(v.position[0]), 3), round(float(v.position[1]), 3),
+             round(float(v.pad_mm or 0), 3)]
+            for v in (pcb.vias or [])[: self._3D_MAX_VIAS]
+        ]
+
+        return {
+            "ok": True,
+            "reason": "",
+            "format": pcb.format,
+            "board": bo if bo else None,
+            "components": components,
+            "traces": traces,
+            "vias": vias,
+            "layers": list(pcb.layers or []),
+            "counts": {
+                "components": len(components),
+                "trace_segments": sum(len(t["segs"]) // 4 for t in traces),
+                "vias": len(vias),
+                "segments_truncated": seg_count >= self._3D_MAX_SEGMENTS,
+                "vias_truncated": len(pcb.vias or []) > self._3D_MAX_VIAS,
+            },
+        }
 
     def get_drc_heatmap(self, grid_size_mm: float = 5.0) -> dict:
         """DRC 违规热力图数据 — Eel / FastAPI / 前端共用的唯一实现。
@@ -514,6 +618,62 @@ class AppController:
         else:
             reason = ""
         return {"ok": True, "reason": reason, **result}
+
+    def get_drc_violations(self) -> dict:
+        """DRC 违规坐标化清单 — 3D 板视图（board3d.js）违规标记层的数据源。
+
+        check_all 出口已把每条违规的 location 解析成板面坐标（``v.coords``，
+        优先级同热力图：PCB 元件坐标 > 坐标文件）。这里跑一遍 DRC 并序列化
+        成前端可渲染的数组；坐标与 3D 预览同一绝对 mm 坐标系。
+
+        Returns:
+            dict: ``{ok, reason, source, violation_count, mapped, items}``；
+            ``items[i] = {rule, severity, description, location, suggestion,
+            coords: [[x, y], ...]}``；``reason`` 语义同热力图
+            （``no_data`` / ``no_positions`` / ``no_violations`` / ``unmapped``）。
+        """
+        ctx = self.context
+        empty = {
+            "ok": True, "reason": "", "source": "",
+            "violation_count": 0, "mapped": 0, "items": [],
+        }
+
+        if not ctx.has_data and not ctx.pcb_data:
+            empty["reason"] = "no_data"
+            return empty
+        if not ctx.pcb_data and not ctx.positions:
+            empty["reason"] = "no_positions"
+            return empty
+
+        checker = DesignRuleChecker()
+        violations = checker.check_all(
+            ctx.bom_items, ctx.positions, ctx.netlist, ctx.pcb_data
+        )
+        _, source = checker._resolve_positions()
+        mapped = sum(1 for v in violations if v.coords)
+        if source == "":
+            reason = "no_positions"
+        elif not violations:
+            reason = "no_violations"
+        elif mapped == 0:
+            reason = "unmapped"
+        else:
+            reason = ""
+        items = [
+            {
+                "rule": v.rule_name,
+                "severity": v.severity.value,
+                "description": v.description,
+                "location": v.location,
+                "suggestion": v.suggestion,
+                "coords": [[round(float(x), 3), round(float(y), 3)]
+                           for x, y in v.coords],
+            }
+            for v in violations
+        ]
+        return {"ok": True, "reason": reason, "source": source,
+                "violation_count": len(violations), "mapped": mapped,
+                "items": items}
 
     def review_design_multi_agent(self) -> str:
         """多智能体协同设计审查 — 5 个专业 Agent 并行审查 + 合成报告
@@ -654,6 +814,13 @@ class AppController:
     # ── Operation dispatch table (strategy pattern) ──
 
     def _dispatch_operation(self, operation: str, params: dict) -> str:
+        # P1-5（验收 2026-10-24）：LLM 的 arguments 不可信 —— OpenAI 路径
+        # json.loads("null") 得 None、Anthropic 路径 tool_input 可为 None，
+        # 下面所有参数化特判的 params.get 都会 AttributeError 炸掉整个
+        # Agent Loop。先归一成 dict 再分发。
+        if not isinstance(params, dict):
+            params = {}
+
         # 处理 LLM 返回的追问
         if operation == "__clarify__":
             question = params.get("question", "不太确定您的意思，能再说详细一点吗？")
@@ -694,6 +861,17 @@ class AppController:
                 is_inner=params.get("is_inner"),
             )
 
+        # 图片分析 — 需要 image_data 参数（P1-5，验收 2026-10-24）：
+        # 原先无特判，落进通用 dispatch 表后零参调用双参的
+        # _analyze_image(text, image_b64) 必 TypeError，Agent Loop 一旦
+        # 选中该工具整个循环即崩。schema 键 image_data → 形参 image_b64
+        # 名字对不上，只能在 dispatch 层显式适配。
+        if operation == "analyze_image":
+            image_data = params.get("image_data") or ""
+            if not image_data:
+                return self._analyze_image_handler()
+            return self._analyze_image(str(params.get("text") or ""), image_data)
+
         # 从 ToolRegistry 获取 handler 映射（带懒加载降级）
         dispatch = self._build_dispatch_map()
         handler = dispatch.get(operation)
@@ -716,6 +894,12 @@ class AppController:
                     handlers[name] = self._filter_input_handler
                 elif handler_name == "_pcb_analysis_cmd":
                     handlers[name] = self._pcb_analysis_handler
+                elif handler_name == "_analyze_image":
+                    # P1-5（验收 2026-10-24）：dispatch 表值约定为 Callable[[], str]，
+                    # 原样绑定双参的 _analyze_image(text, image_b64)，任何零参
+                    # 调用路径（工具箱按钮/本地路由）都必 TypeError ——
+                    # 换成零参引导入口；带图路径走 _dispatch_operation 特判。
+                    handlers[name] = self._analyze_image_handler
                 else:
                     method = getattr(self, handler_name, None)
                     if method:
@@ -1241,6 +1425,19 @@ class AppController:
                 "• API 额度充足"
             )
 
+    def _analyze_image_handler(self) -> str:
+        """analyze_image 的零参入口（P1-5，验收 2026-10-24）。
+
+        本地路由/工具箱等零参调用路径拿不到图片数据，返回上传引导；
+        真正的图片分析走 process_image_input 或 Agent Loop 的
+        _dispatch_operation("analyze_image", {image_data...}) 特判。
+        """
+        return (
+            " 图片分析需要图片数据。\n\n"
+            "请通过聊天输入框的图片上传入口发送 PCB 截图 / 原理图 / 波形图，"
+            "并附上想分析的问题（布局缺陷、元件识别等）。"
+        )
+
     def _filter_components(self, params: dict) -> str:
         keyword = (params.get("keyword") or "").lower()
         if not keyword:
@@ -1368,6 +1565,10 @@ class AppController:
         code_gen_tools = {"generate_drc_rule"}
         review_tools = {"review_multi_agent"}
         verify_tools = {"verify_suggestion"}
+        # P1-5（验收 2026-10-24）：本地关键词路由零参调用 —— "图片"关键词
+        # 命中 analyze_image 时原样返回双参 _analyze_image，绑定用户句子
+        # 失败后零参调用必 TypeError。走零参引导入口。
+        vision_tools = {"analyze_image"}
 
         if tool_name in filter_tools:
             return self._filter_input_handler
@@ -1385,6 +1586,8 @@ class AppController:
             return self.review_design_multi_agent
         if tool_name in verify_tools:
             return self.verify_suggestion_handler
+        if tool_name in vision_tools:
+            return self._analyze_image_handler
 
         # 标准工具：从 Registry 获取 handler 名称
         try:

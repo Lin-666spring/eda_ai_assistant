@@ -8,7 +8,6 @@ verification_map.html 展示 "问题在哪里、AI 发现了什么、AI 建议�
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -84,12 +83,13 @@ class VerificationMapGenerator:
         board_stats = calculate_board_stats(positions)
 
         template = self._env.get_template("verification_map.html")
+        # 2026-10-24 修复（验收 A-1）：模板内 |tojson 取代手工 dumps + |safe，
+        # 防止 BOM/LLM 文本闭合 </script> 注入（overlay 含 LLM 生成内容）。
         html = template.render(
             config=self.config,
             components=components,
             board_stats=board_stats,
-            components_json=json.dumps(components, ensure_ascii=False),
-            overlay_json=json.dumps(overlay_data, ensure_ascii=False),
+            overlay=overlay_data,
         )
 
         if output_path:

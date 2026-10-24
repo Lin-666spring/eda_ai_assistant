@@ -1,0 +1,201 @@
+{
+  "model": "IntentBertClassifier (hfl/rbt3 ONNX)",
+  "timestamp": "2026-10-24T11:03:59.397906",
+  "config": {
+    "epochs": 20,
+    "batch_size": 16,
+    "lr": 2e-05,
+    "weight_decay": 0.01,
+    "llrd_decay": 0.7,
+    "patience": 6,
+    "max_len": 32,
+    "seed": 42,
+    "device": "cpu",
+    "precision": "fp16",
+    "skipped_training": false
+  },
+  "training": {
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 2.377,
+        "val_loss": 2.2741,
+        "val_acc": 0.06
+      },
+      {
+        "epoch": 2,
+        "train_loss": 2.1845,
+        "val_loss": 2.1438,
+        "val_acc": 0.22
+      },
+      {
+        "epoch": 3,
+        "train_loss": 1.9115,
+        "val_loss": 1.9756,
+        "val_acc": 0.34
+      },
+      {
+        "epoch": 4,
+        "train_loss": 1.5387,
+        "val_loss": 1.7251,
+        "val_acc": 0.44
+      },
+      {
+        "epoch": 5,
+        "train_loss": 1.1585,
+        "val_loss": 1.4957,
+        "val_acc": 0.48
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.8546,
+        "val_loss": 1.3275,
+        "val_acc": 0.56
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.6047,
+        "val_loss": 1.1959,
+        "val_acc": 0.62
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.4399,
+        "val_loss": 1.0584,
+        "val_acc": 0.66
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.3114,
+        "val_loss": 1.0,
+        "val_acc": 0.7
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.2305,
+        "val_loss": 0.8656,
+        "val_acc": 0.74
+      },
+      {
+        "epoch": 11,
+        "train_loss": 0.1732,
+        "val_loss": 0.9114,
+        "val_acc": 0.76
+      },
+      {
+        "epoch": 12,
+        "train_loss": 0.1402,
+        "val_loss": 0.8905,
+        "val_acc": 0.76
+      },
+      {
+        "epoch": 13,
+        "train_loss": 0.1097,
+        "val_loss": 0.8496,
+        "val_acc": 0.74
+      },
+      {
+        "epoch": 14,
+        "train_loss": 0.0962,
+        "val_loss": 0.8215,
+        "val_acc": 0.76
+      },
+      {
+        "epoch": 15,
+        "train_loss": 0.0895,
+        "val_loss": 0.8587,
+        "val_acc": 0.76
+      },
+      {
+        "epoch": 16,
+        "train_loss": 0.0763,
+        "val_loss": 0.8547,
+        "val_acc": 0.76
+      },
+      {
+        "epoch": 17,
+        "train_loss": 0.0725,
+        "val_loss": 0.8448,
+        "val_acc": 0.76
+      }
+    ],
+    "best_epoch": 11,
+    "best_val_acc": 0.76,
+    "stopped_early": true
+  },
+  "calibration": {
+    "temperature": 0.95,
+    "ece_before": 0.2318,
+    "ece_after": 0.2677
+  },
+  "results": {
+    "val_acc": 0.76,
+    "eval_acc": 0.9762,
+    "eval_total": 84,
+    "per_class": {
+      "BOM_ANALYSIS": {
+        "correct": 14,
+        "total": 14
+      },
+      "BOM_HEALTH": {
+        "correct": 7,
+        "total": 7
+      },
+      "CODE_RULE_GEN": {
+        "correct": 5,
+        "total": 5
+      },
+      "COMPONENT_LOOKUP": {
+        "correct": 6,
+        "total": 6
+      },
+      "LOCAL_ONLY": {
+        "correct": 1,
+        "total": 2
+      },
+      "PCB_ANALYSIS": {
+        "correct": 21,
+        "total": 21
+      },
+      "REPORT_GEN": {
+        "correct": 6,
+        "total": 6
+      },
+      "RULE_CHECK": {
+        "correct": 13,
+        "total": 13
+      },
+      "TEXT_CHAT": {
+        "correct": 5,
+        "total": 6
+      },
+      "VISUAL": {
+        "correct": 4,
+        "total": 4
+      }
+    },
+    "errors": [
+      {
+        "text": "打开帮助",
+        "expected": "LOCAL_ONLY",
+        "predicted": "PCB_ANALYSIS",
+        "confidence": 0.5291
+      },
+      {
+        "text": "为什么要分模拟地数字地",
+        "expected": "TEXT_CHAT",
+        "predicted": "PCB_ANALYSIS",
+        "confidence": 0.3877
+      }
+    ]
+  },
+  "artifacts": {
+    "model": "C:\\Users\\ASUS\\Desktop\\eda_ai_assistant\\data\\models\\intent_bert\\model.onnx",
+    "parity": {
+      "n_samples": 134,
+      "argmax_agreement": 1.0,
+      "max_prob_diff": 0.001322,
+      "precision": "fp16"
+    }
+  }
+}

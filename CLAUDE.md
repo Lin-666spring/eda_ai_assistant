@@ -45,7 +45,7 @@ pyinstaller --noconfirm --clean eda_ai_assistant.spec
 
 ### Entry point → Eel bridge
 
-`main.py` is the Eel application entry. It exposes 49 `@eel.expose` functions that the JS frontend calls (批3 2026-10-10 清退了 14 个被 `run_tool` 取代的重复入口；数量变化时同步改这里)。These thin wrappers delegate to `AppController` — never put business logic in `main.py`.
+`main.py` is the Eel application entry. It exposes 51 `@eel.expose` functions that the JS frontend calls (批3 2026-10-10 清退了 14 个被 `run_tool` 取代的重复入口；数量变化时同步改这里)。These thin wrappers delegate to `AppController` — never put business logic in `main.py`.
 
 ### Controller (the brain)
 
@@ -148,6 +148,7 @@ pyinstaller --noconfirm --clean eda_ai_assistant.spec
 - **`.env` never committed**: API keys go in `.env` (gitignored) or `~/.eda_ai_assistant/settings.json`.
 - **`CommandContext` is mutable session state**: BOM items, positions, PCB data live here with a single `has_data` gate.
 - **DRC 热力图是「违规计数网格」，不是图像**：`violation.location` 正则抠位号 → 查坐标 → 按 `grid_size_mm` 分桶计数，全程不解析原理图/位图。位置来源优先级 **PCB `component_positions` > 坐标文件(`ctx.positions`)**（`DesignRuleChecker.build_heatmap` 统一处理，`get_heatmap_data` 是它的兼容壳）。入口只有 `AppController.get_drc_heatmap()`，Eel 与 FastAPI 都委托它；空结果必须带 `reason`（`no_data`/`no_positions`/`no_violations`/`unmapped`），前端据此给不同文案 —— 不要退回「只认 PCB 坐标」的老写法，那会让一键演示永远显示"无位置数据"。
+- **违规在 `check_all` 出口统一坐标化**（2026-10-24）：每条违规自带 `v.coords`（绝对 mm，多位号保序去重；板级/未定位为空列表），位号→坐标与热力图共用 `DesignRuleChecker._violation_xy`，优先级同上 —— 两处口径永远一致，别在别处再写一份位号解析。3D 板视图的违规标记层吃 `AppController.get_drc_violations()`（Eel/FastAPI 同名入口），`reason` 语义与热力图对齐。
 - **NLU is lazy-init**: Embedding model loads on first classification call, not at import time.
 - **Three chat paths**: `send_message` (NLU pipeline → dispatch), `send_message_stream` (freeform chat), `send_message_agent` (Function Calling Agent Loop).
 - **Persistence is fire-and-forget**: JS calls `_persist*` helpers without `await` — DB writes are best-effort, not blocking.

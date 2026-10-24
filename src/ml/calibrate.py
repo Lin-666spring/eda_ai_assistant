@@ -201,6 +201,14 @@ def learn_temperature(
     optimizer.step(closure)
 
     optimal_t = temperature_param.item()
+    # P1-24（验收 2026-10-24）：无界 LBFGS 可能学出负/零温度（同仓库 BERT 脚本
+    # 曾见 T=-34250），logits 除以负 T 会翻转预测。越界回退 T=1（等效不校准）并如实记录。
+    if not (0.05 <= optimal_t <= 10.0):
+        logger.warning(
+            "Optimal temperature %.4f 越界 [0.05, 10]，回退 T=1.0（等效不校准）",
+            optimal_t,
+        )
+        optimal_t = 1.0
     final_nll = nll_criterion(all_logits / optimal_t, all_labels).item()
 
     logger.info("Optimal temperature: %.4f, NLL: %.4f", optimal_t, final_nll)

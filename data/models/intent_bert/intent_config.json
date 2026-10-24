@@ -20,7 +20,7 @@
     "LOCAL_ONLY"
   ],
   "max_len": 32,
-  "temperature": 0.7,
+  "temperature": 1.2,
   "tokenizer": {
     "type": "bert-wordpiece",
     "lowercase": true,
@@ -33,13 +33,13 @@
     "token_type_ids"
   ],
   "output": "logits",
-  "exported_at": "2026-10-14T11:41:17.067369",
-  "val_acc": 0.98,
-  "eval_acc": 0.9643,
+  "exported_at": "2026-10-24T15:39:45.847975",
+  "val_acc": 0.9323,
+  "eval_acc": 0.9762,
   "onnx_parity": {
-    "n_samples": 234,
+    "n_samples": 217,
     "argmax_agreement": 1.0,
-    "max_prob_diff": 0.00068,
+    "max_prob_diff": 0.002209,
     "precision": "fp16"
   }
 }

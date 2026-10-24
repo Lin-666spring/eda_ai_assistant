@@ -260,8 +260,8 @@
 // ═══════════════════════════════════════════════════════════════
 //  Data
 // ═══════════════════════════════════════════════════════════════
-const components = {{ components_json | safe }};
-const overlay = {{ overlay_json | safe }};
+const components = {{ components | tojson }};
+const overlay = {{ overlay | tojson }};
 
 // ═══════════════════════════════════════════════════════════════
 //  View State

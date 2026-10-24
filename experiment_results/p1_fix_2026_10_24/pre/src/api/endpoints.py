@@ -1,0 +1,744 @@
+"""
+REST API endpoints — thin wrappers around AppController.
+
+Every endpoint delegates to the same AppController methods that
+main.py's @eel.expose functions use.  Zero business logic here.
+
+Response convention:  { ok: bool, ...data }
+"""
+
+from __future__ import annotations
+
+import base64
+import logging
+import tempfile
+import threading
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, Query
+
+from src.api.models import (
+    AssistantRequest,
+    BOMFromLCEDARequest,
+    BOMImportResponse,
+    ChatRequest,
+    ChatResponse,
+    FileImportRequest,
+    ImageRequest,
+    KnowledgeQueryRequest,
+    KnowledgeQueryResponse,
+    LLMConfigRequest,
+    LLMConfigResponse,
+    VerifySuggestionRequest,
+    LLMTestRequest,
+    LLMTestResponse,
+    OkResponse,
+    PCBImportResponse,
+    PositionImportResponse,
+    ReportResponse,
+    ReportWithPathResponse,
+    ReviewResponse,
+    SettingsRequest,
+    StatusResponse,
+    SummaryResponse,
+    AssistantSaveRequest,
+    ConversationSaveRequest,
+    MessageSaveRequest,
+    ActiveStateRequest,
+    DemoLoadResponse,
+    ChatStreamRequest,
+)
+from src.api.server import get_controller
+from src.core.controller import AppController, default_output_dir
+from src.core.persistence import SessionStore
+from src.bom.parser import BOMItem
+from src.config import load_settings, save_settings
+from src.constants import get_provider_preset
+from src import settings_facade as facade
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+# ═══════════════════════════════════════════════════════════════
+#  Helpers
+# ═══════════════════════════════════════════════════════════════
+
+
+def _bom_item_to_dict(item: BOMItem) -> dict:
+    """薄委托：实现在 src/settings_facade.py（P1-7 双入口收编）。"""
+    return facade.bom_item_to_dict(item)
+
+
+def _bom_items() -> list[dict]:
+    return facade.bom_items(get_controller())
+
+
+def _write_temp(name: str, b64: str) -> str:
+    """Decode base64 content, write to temp dir, return file path."""
+    content = base64.b64decode(b64)
+    tmp = Path(tempfile.gettempdir()) / "eda_ai_assistant"
+    tmp.mkdir(parents=True, exist_ok=True)
+    # 2026-10-07 修复：filename 原样来自请求体，带「..\\」时可拼出临时目录
+    # 之外的路径（REST 端点 CORS 全开，浏览器里任意页面都能打）。只保留
+    # 文件名本身，非法名让后续按扩展名分发的解析器去拒绝。
+    file_path = tmp / Path(name).name
+    file_path.write_bytes(content)
+    return str(file_path)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Health / Status
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.get("/health")
+def health_check():
+    """Server discovery endpoint — pinged by the LCEDA plugin."""
+    return {"status": "ok"}
+
+
+@router.get("/status", response_model=StatusResponse)
+def get_status():
+    """Return whether BOM and PCB data are loaded."""
+    ctrl = get_controller()
+    pcb_info = None
+    pcb = ctrl.context.pcb_data
+    if pcb:
+        pcb_info = {
+            "format": pcb.format,
+            "net_count": pcb.net_count,
+            "trace_count": pcb.trace_count,
+            "via_count": pcb.via_count,
+            "layers": pcb.layers,
+        }
+    return StatusResponse(
+        ok=True,
+        has_bom=ctrl.context.has_data,
+        has_pcb=pcb is not None,
+        pcb_info=pcb_info,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════
+#  File import (base64-encoded)
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.post("/bom/import", response_model=BOMImportResponse)
+def import_bom(req: FileImportRequest):
+    """Import BOM from a base64-encoded CSV/Excel file."""
+    try:
+        ctrl = get_controller()
+        path = _write_temp(req.filename, req.content_base64)
+        count, msg = ctrl.load_bom(path)
+        return BOMImportResponse(ok=True, count=count, msg=msg, items=_bom_items())
+    except Exception as e:
+        return BOMImportResponse(ok=False, msg=str(e))
+
+
+@router.post("/pos/import", response_model=PositionImportResponse)
+def import_positions(req: FileImportRequest):
+    """Import Pick & Place positions from a base64-encoded CSV file."""
+    try:
+        ctrl = get_controller()
+        path = _write_temp(req.filename, req.content_base64)
+        count, msg = ctrl.load_positions(path)
+        return PositionImportResponse(ok=True, count=count, msg=msg)
+    except Exception as e:
+        return PositionImportResponse(ok=False, msg=str(e))
+
+
+@router.post("/pcb/import", response_model=PCBImportResponse)
+def import_pcb(req: FileImportRequest):
+    """Import PCB layout from a base64-encoded JSON/.epro/.epro2 file."""
+    try:
+        ctrl = get_controller()
+        path = _write_temp(req.filename, req.content_base64)
+        count, msg = ctrl.load_pcb(path)
+        pcb = ctrl.context.pcb_data
+        info = None
+        if pcb:
+            info = {
+                "format": pcb.format,
+                "net_count": pcb.net_count,
+                "trace_count": pcb.trace_count,
+                "via_count": pcb.via_count,
+                "layers": pcb.layers,
+            }
+        return PCBImportResponse(ok=True, count=count, msg=msg, pcb=info)
+    except Exception as e:
+        return PCBImportResponse(ok=False, msg=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════
+#  BOM import from LCEDA (direct — no manual file export)
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.post("/bom/import-from-lceda", response_model=BOMImportResponse)
+def import_bom_from_lceda(req: BOMFromLCEDARequest):
+    """Import BOM directly from LCEDA plugin — no file export needed.
+
+    The plugin reads BOM data via SCH_ManufactureData.getBomFile(),
+    converts to JSON, and sends it here.  We write a temp CSV and
+    feed it through the standard load_bom() pipeline.
+    """
+    import csv
+
+    ctrl = get_controller()
+    if not req.components:
+        return BOMImportResponse(ok=False, msg="No components provided")
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".csv", delete=False, encoding="utf-8-sig", newline=""
+        ) as f:
+            writer = csv.writer(f)
+            writer.writerow(["位号", "参数", "封装", "型号", "描述", "数量", "制造商"])
+            for c in req.components:
+                writer.writerow([
+                    c.reference,
+                    c.value,
+                    c.package,
+                    c.part_number,
+                    c.description,
+                    c.quantity,
+                    c.manufacturer,
+                ])
+            temp_path = f.name
+
+        count, msg = ctrl.load_bom(temp_path)
+        return BOMImportResponse(ok=True, count=count, msg=msg, items=_bom_items())
+    except Exception as e:
+        return BOMImportResponse(ok=False, msg=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════
+#  BOM operations
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.post("/bom/merge", response_model=ReportResponse)
+def merge_bom():
+    """Rule-based BOM merge."""
+    ctrl = get_controller()
+    try:
+        report = ctrl.merge_bom()
+        return ReportResponse(ok=True, report=report)
+    except Exception as e:
+        return ReportResponse(ok=False, report=str(e))
+
+
+@router.post("/bom/ai-merge", response_model=ReportResponse)
+def ai_merge_bom():
+    """AI-assisted BOM merge."""
+    ctrl = get_controller()
+    try:
+        report = ctrl.ai_merge_bom()
+        return ReportResponse(ok=True, report=report)
+    except Exception as e:
+        return ReportResponse(ok=False, report=str(e))
+
+
+@router.post("/bom/validate-packages", response_model=ReportResponse)
+def validate_packages():
+    """Validate package names against part numbers."""
+    ctrl = get_controller()
+    report = ctrl.validate_packages()
+    return ReportResponse(ok=True, report=report)
+
+
+@router.post("/bom/check-duplicates", response_model=ReportResponse)
+def check_duplicates():
+    """Detect duplicate reference designators."""
+    ctrl = get_controller()
+    report = ctrl.check_duplicates()
+    return ReportResponse(ok=True, report=report)
+
+
+@router.post("/bom/summary", response_model=SummaryResponse)
+def bom_summary():
+    """Get BOM component count and prefix distribution."""
+    ctrl = get_controller()
+    try:
+        summary = ctrl.get_bom_summary()
+        return SummaryResponse(ok=True, summary=summary)
+    except Exception as e:
+        return SummaryResponse(ok=False)
+
+
+@router.post("/bom/export-csv", response_model=ReportResponse)
+def export_bom_csv():
+    """Export BOM as UTF-8-BOM CSV. Returns report + file path."""
+    ctrl = get_controller()
+    try:
+        report = ctrl.export_bom_csv()
+        return ReportResponse(ok=True, report=report)
+    except Exception as e:
+        return ReportResponse(ok=False, report=str(e))
+
+
+@router.post("/bom/generate-html", response_model=ReportWithPathResponse)
+def generate_html_bom():
+    """Generate interactive HTML BOM."""
+    ctrl = get_controller()
+    try:
+        report = ctrl.generate_html_bom()
+        # 与 controller.generate_html_bom() 的落盘目录同源（default_output_dir）。
+        # 这里曾用 Path.cwd() 反推 —— 服务不在项目根启动时 path 恒为空串。
+        html_path = default_output_dir() / "ibom.html"
+        path_str = str(html_path) if html_path.exists() else ""
+        return ReportWithPathResponse(ok=True, report=report, path=path_str)
+    except Exception as e:
+        return ReportWithPathResponse(ok=False, report=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Design review
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.post("/rules/check", response_model=ReportResponse)
+def check_rules():
+    """Run 71-rule DRC check."""
+    ctrl = get_controller()
+    report = ctrl.check_design_rules()
+    return ReportResponse(ok=True, report=report)
+
+
+@router.post("/health/check", response_model=ReportResponse)
+def check_bom_health():
+    """Check BOM health via LCSC API (stock, lifecycle, alternatives, cost)."""
+    ctrl = get_controller()
+    report = ctrl.check_bom_health()
+    return ReportResponse(ok=True, report=report)
+
+
+@router.get("/drc/heatmap")
+def get_drc_heatmap(grid_size_mm: float = Query(default=5.0)):
+    """Generate heatmap data: DRC violations mapped to component positions.
+
+    Returns [[x_bin, y_bin, count], ...] for ECharts heatmap rendering, plus
+    ``source`` (``pcb`` / ``positions``) and ``reason`` when nothing can be drawn.
+    Empty list if no positions are loaded or no violation maps to a component.
+    """
+    return get_controller().get_drc_heatmap(grid_size_mm)
+
+
+@router.get("/drc/violations")
+def get_drc_violations():
+    """Coordinatized DRC violation list for the 3D viewer marker layer.
+
+    Each item carries ``coords: [[x, y], ...]`` in absolute mm (same frame as
+    ``/board/3d``), resolved from the violation's referenced designators —
+    PCB component positions take priority over Pick & Place files. ``reason``
+    semantics match ``/drc/heatmap``.
+    """
+    return get_controller().get_drc_violations()
+
+
+@router.get("/board/3d")
+def get_board_3d_data():
+    """3D board preview payload for the frontend three.js viewer (board3d.js).
+
+    Board outline rings, component positions (with side T/B), trace segments
+    per (net, layer) and via positions — all in absolute mm. ``reason='no_data'``
+    when no PCB/project is loaded.
+    """
+    return get_controller().get_board_3d_data()
+
+
+@router.post("/verify/suggestion")
+def verify_suggestion(body: VerifySuggestionRequest):
+    """Closed-loop verification — validate LLM design suggestion against rules engine.
+
+    Request body: { "suggestion": "..." }
+    Returns: VerificationReport JSON with rounds, issues, and final status.
+    """
+    import json
+    ctrl = get_controller()
+    result = ctrl.verify_suggestion(body.suggestion)
+    return json.loads(result)
+
+
+@router.post("/health/electrical")
+def run_electrical_health():
+    """Electrical health check using real circuit calculations.
+
+    Covers: impedance, PDN, decoupling, current capacity, thermal, crosstalk.
+    No LLM dependency — pure engineering math based on IPC standards.
+    """
+    import json
+    ctrl = get_controller()
+    result = ctrl.run_electrical_health_check()
+    return json.loads(result)
+
+
+@router.post("/review/multi-agent", response_model=ReviewResponse)
+def review_design_multi_agent():
+    """Run 5-agent collaborative review (power, signal, thermal, EMC, DFM).
+    Returns raw JSON with radar chart data and agent reports.
+    """
+    ctrl = get_controller()
+    try:
+        report = ctrl.review_design_multi_agent()
+        return ReviewResponse(ok=True, report=report)
+    except Exception as e:
+        return ReviewResponse(ok=False, report=str(e))
+
+
+@router.get("/design-suggestions")
+def get_design_suggestions():
+    """Design intent recognition — scan BOM for missing components.
+    Returns Markdown text.
+    """
+    ctrl = get_controller()
+    try:
+        result = ctrl.get_design_suggestions()
+        return {"ok": True, "result": result}
+    except Exception as e:
+        return {"ok": False, "result": str(e)}
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Chat / AI
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.post("/chat/send", response_model=ChatResponse)
+def chat_send(req: ChatRequest):
+    """Non-streaming chat via NLU pipeline (process_input)."""
+    ctrl = get_controller()
+    try:
+        result = ctrl.process_input(req.text)
+        return ChatResponse(ok=True, result=result)
+    except Exception as e:
+        return ChatResponse(ok=False, result=str(e))
+
+
+@router.post("/image/analyze", response_model=ChatResponse)
+def analyze_image(req: ImageRequest):
+    """Analyze a multimodal image (PCB screenshot, schematic)."""
+    ctrl = get_controller()
+    try:
+        result = ctrl.process_image_input(req.text, req.image_base64)
+        return ChatResponse(ok=True, result=result)
+    except Exception as e:
+        return ChatResponse(ok=False, result=str(e))
+
+
+@router.post("/chat/clear", response_model=OkResponse)
+def clear_chat():
+    """Clear conversation history."""
+    ctrl = get_controller()
+    ctrl.clear_conversation()
+    return OkResponse(ok=True)
+
+
+@router.post("/assistant/set-active", response_model=OkResponse)
+def set_active_assistant(req: AssistantRequest):
+    """Switch active assistant persona."""
+    ctrl = get_controller()
+    try:
+        ctrl.set_active_assistant(req.assistant_id)
+        return OkResponse(ok=True)
+    except Exception as e:
+        return OkResponse(ok=False, msg=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════
+#  SSE streaming endpoints
+# ═══════════════════════════════════════════════════════════════
+
+from src.api.streaming import stream_chat_handler  # noqa: E402
+
+
+@router.get("/chat/stream")
+def chat_stream(text: str = Query(default=""), agent_mode: bool = Query(default=False)):
+    """Streaming chat via SSE.
+
+    Query params:
+      text:        the user message
+      agent_mode:  if true, use agent_loop (Function Calling); else freeform chat
+    """
+    return stream_chat_handler(text=text, agent_mode=agent_mode)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  LLM configuration
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.get("/llm/config", response_model=LLMConfigResponse)
+def get_llm_config():
+    """Get current LLM configuration."""
+    from src.config import config
+
+    return LLMConfigResponse(
+        ok=True,
+        provider=config.llm.provider,
+        model=config.llm.model,
+        is_configured=config.llm.is_configured,
+        provider_label=config.llm.provider_label,
+    )
+
+
+@router.post("/llm/config", response_model=OkResponse)
+def update_llm_config(req: LLMConfigRequest):
+    """Update LLM provider, key, URL, and model. Persisted to settings.json."""
+    ctrl = get_controller()
+    try:
+        ctrl.reconfigure_llm(req.provider, req.api_key, req.base_url, req.model)
+        saved = load_settings()
+        saved["llm_provider"] = req.provider
+        saved["llm_api_key"] = req.api_key
+        saved["llm_base_url"] = req.base_url
+        saved["llm_model"] = req.model
+        save_settings(saved)
+        return OkResponse(ok=True)
+    except Exception as e:
+        return OkResponse(ok=False, msg=str(e))
+
+
+@router.post("/llm/test")
+def test_llm_connection(req: LLMTestRequest):
+    """Test LLM connection with a minimal chat request.
+
+    薄委托：实现在 facade.test_llm_connection（含 openai SDK 时代的历史注释）。
+    2026-10-08（P1-7）收编：此函数曾与 Eel 侧 main.py 各写一份并发生漂移
+    （f3a27e4：REST 侧漏改仍依赖 openai SDK；错误文案也一度中英不一）。
+    """
+    return facade.test_llm_connection(req.provider, req.api_key, req.base_url, req.model)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Settings
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.get("/settings")
+def get_settings():
+    """薄委托：取值口径在 facade.settings_view（曾与 Eel 侧各写一份）。
+
+    mask_secrets=True：REST 响应不含明文 API Key（2026-10-10 安全批）。
+    """
+    return {"ok": True, **facade.settings_view(mask_secrets=True)}
+
+
+@router.post("/settings", response_model=OkResponse)
+def save_all_settings(req: SettingsRequest):
+    """Save all settings and reconfigure LLM（薄委托 facade.persist_all_settings）。
+
+    空 api_key = 保留已存 Key：GET 已脱敏（api_key 恒空串），客户端回填
+    表单原样提交时不该把真 Key 清掉（2026-10-10 安全批）。
+    """
+    ctrl = get_controller()
+    try:
+        api_key = req.api_key
+        if not api_key:
+            api_key = load_settings().get("llm_api_key", "")
+        facade.persist_all_settings(
+            ctrl, req.provider, api_key, req.base_url, req.model,
+            req.temperature, req.theme, req.accent, font_size=req.font_size,
+        )
+        return OkResponse(ok=True)
+    except Exception as e:
+        return OkResponse(ok=False, msg=str(e))
+
+
+@router.post("/clear-all-data", response_model=OkResponse)
+def clear_all_data():
+    """Remove all local settings and database.
+
+    2026-10-24 修复（验收 A-5）：与 main.py 同步 —— 保留 logs/（Windows 下
+    FileHandler 持有句柄，整目录 rmtree 必失败）、重置本进程 controller
+    单例、清空内存 LLM Key。
+    """
+    from src.api.server import reset_controller
+    from src.config import clear_local_data
+
+    try:
+        clear_local_data()
+        reset_controller()
+        return OkResponse(ok=True)
+    except Exception as e:
+        return OkResponse(ok=False, msg=str(e))
+
+
+@router.post("/knowledge/query", response_model=KnowledgeQueryResponse)
+def knowledge_query(req: KnowledgeQueryRequest):
+    """查询 RAG 知识库 — 获取 IPC 标准、高速设计、SI/PI、EMC 等专业工程知识。
+
+    查询 PCB 设计知识库，返回语义匹配的专业文档片段。
+    """
+    ctrl = get_controller()
+    try:
+        result = ctrl.query_knowledge_base(req.query)
+
+        # 同时获取结构化来源用于前端展示
+        sources: list[dict] = []
+        try:
+            from src.rag.retriever import RAGRetriever
+            retriever = RAGRetriever()
+            raw = retriever.query(req.query, top_k=req.top_k)
+            sources = [
+                {
+                    "title": r["title"],
+                    "content": r["content"][:200] + ("..." if len(r["content"]) > 200 else ""),
+                    "score": r["score"],
+                    "source": r.get("source", ""),
+                }
+                for r in raw
+            ]
+        except Exception:
+            pass  # 结构化来源非必须，降级为空列表
+
+        return KnowledgeQueryResponse(ok=True, result=result, sources=sources)
+    except Exception as e:
+        return KnowledgeQueryResponse(ok=False, result=str(e), sources=[])
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Persistence (SQLite session store) — thin wrappers over SessionStore
+# ═══════════════════════════════════════════════════════════════
+
+_store: "SessionStore | None" = None
+_store_lock = threading.Lock()
+
+
+def _get_store() -> SessionStore:
+    """惰性单例：不要在 import 时打开数据库。
+
+    模块级 SessionStore() 会在「导入 src.api.endpoints」这一步就去创建
+    ~/.eda_ai_assistant/sessions.db（含 WAL 文件），只读/受限环境下 import
+    直接失败，把整包测试的收集都拖垮。改成首次用时才建 —— 端点跑在线程池
+    线程里，并发首请求会撞车，与 get_controller 一样双检加锁。
+    """
+    global _store
+    if _store is None:
+        with _store_lock:
+            if _store is None:
+                _store = SessionStore()
+    return _store
+
+
+@router.get("/persist/load-all")
+def persist_load_all():
+    """Startup snapshot: assistants, conversations, active state."""
+    try:
+        return {"ok": True, "data": _get_store().load_all()}
+    except Exception as e:
+        logger.exception("persist_load_all failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@router.post("/persist/assistant")
+def persist_save_assistant(req: AssistantSaveRequest):
+    try:
+        _get_store().save_assistant(req.instance_id, req.type_id, req.name, req.sort_order)
+        _get_store().save_state("active_assistant", req.instance_id)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@router.delete("/persist/assistant/{instance_id}")
+def persist_delete_assistant(instance_id: str):
+    try:
+        _get_store().delete_assistant(instance_id)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@router.post("/persist/conversation")
+def persist_save_conversation(req: ConversationSaveRequest):
+    try:
+        _get_store().save_conversation(req.conv_id, req.instance_id, req.title,
+                                workspace_id=req.workspace_id)
+        _get_store().save_state("active_conv", req.conv_id)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@router.delete("/persist/conversation/{conv_id}")
+def persist_delete_conversation(conv_id: str):
+    try:
+        _get_store().delete_conversation(conv_id)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@router.post("/persist/message")
+def persist_save_message(req: MessageSaveRequest):
+    try:
+        _get_store().save_message(req.conv_id, req.role, req.content, req.image or None, req.seq)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@router.get("/persist/messages/{conv_id}")
+def persist_load_messages(conv_id: str):
+    try:
+        messages = _get_store().load_messages(conv_id)
+        return {
+            "ok": True,
+            "messages": [
+                {"role": m.role, "content": m.content, "image": m.image or ""}
+                for m in messages
+            ],
+        }
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@router.post("/persist/active-state")
+def persist_save_active_state(req: ActiveStateRequest):
+    try:
+        if req.active_assistant:
+            _get_store().save_state("active_assistant", req.active_assistant)
+        if req.active_conv:
+            _get_store().save_state("active_conv", req.active_conv)
+        if req.active_workspace:
+            _get_store().save_state("active_workspace", req.active_workspace)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Demo data
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.post("/demo/load", response_model=DemoLoadResponse)
+def load_demo():
+    """一键演示：加载内置示例数据（有缺陷的 MCU 板 BOM + 坐标）。"""
+    ctrl = get_controller()
+    project_root = Path(__file__).parent.parent.parent
+    bom_path = project_root / "tests" / "sample_bom_bad.csv"
+    pos_path = project_root / "tests" / "sample_positions.csv"
+    try:
+        count, msg = ctrl.load_bom(str(bom_path))
+        pos_count = 0
+        if pos_path.exists():
+            pos_count, _ = ctrl.load_positions(str(pos_path))
+        return DemoLoadResponse(
+            ok=True, count=count, pos_count=pos_count, msg=msg, items=_bom_items(),
+        )
+    except Exception as e:
+        return DemoLoadResponse(ok=False, msg=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════
+#  Chat streaming (POST body variant — cleaner for long Chinese prompts)
+# ═══════════════════════════════════════════════════════════════
+
+
+@router.post("/chat/stream")
+def chat_stream_post(req: ChatStreamRequest):
+    return stream_chat_handler(text=req.text, agent_mode=req.agent_mode)

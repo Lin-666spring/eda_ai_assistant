@@ -13,6 +13,13 @@ function newConversation() {
     showNewAssistantDialog();
     return;
   }
+  // P1-22(a)（验收 2026-10-24）：建新对话即离开当前流的显示现场，在途流
+  // 必须先作废（后端代次 +1，其后的 token/done/error 不再下发），半截回复
+  // 由 clearChatMessages → _abortActiveStream 按发起会话定格落库 —— 否则
+  // 旧流完成回调会把回复落进刚建的新会话。
+  if (_activeStreamBubble) {
+    try { eel.cancel_stream()(); } catch (e) {}
+  }
   if (!conversations[currentAssistantInstance]) conversations[currentAssistantInstance] = [];
   const convs = conversations[currentAssistantInstance];
   convCounter++;
@@ -38,6 +45,14 @@ function newConversation() {
 }
 
 async function switchConversation(convId) {
+  // P1-22(a)（验收 2026-10-24）：流式进行中切换会话必须先作废在途流 ——
+  // 不作废时旧流完成回调把回复落进刚切走的活动会话（落错会话），或因
+  // 气泡已被 clearChatMessages 置空而整条丢失。半截回复按发起会话定格
+  // 落库（与停止生成同口径，clearChatMessages → _abortActiveStream 执行），
+  // cancel_stream 使后端代次 +1，旧流其后的 token/done/error 不再下发。
+  if (_activeStreamBubble) {
+    try { eel.cancel_stream()(); } catch (e) {}
+  }
   activeConvId = convId;
   _persistState();
   renderConversations();

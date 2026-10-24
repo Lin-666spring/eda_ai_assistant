@@ -19,7 +19,13 @@ from fastapi.testclient import TestClient
 
 from src.api.server import app
 
-client = TestClient(app)
+# P1-18（验收 2026-10-24）：服务端加了 TrustedHostMiddleware（只认 127.0.0.1/
+# localhost），测试客户端的 Host 必须落到真实回环地址而不是默认的 "testserver"。
+client = TestClient(app, base_url="http://127.0.0.1:8710")
+
+# P1-18（验收 2026-10-24）：破坏性端点（/settings /llm/config 等覆盖已存配置）
+# 要求反 CSRF 头；给无关端点带上也无副作用，统一挂给本客户端。
+_AJAX = {"X-Requested-With": "XMLHttpRequest"}
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -283,7 +289,8 @@ class TestLLMConfig:
 
     def test_update_config_no_key(self):
         """Update with empty key — should still succeed (settings are saved)."""
-        resp = client.post("/api/v1/llm/config", json={
+        # P1-18（验收 2026-10-24）：/llm/config 属破坏性端点，须携带反 CSRF 头
+        resp = client.post("/api/v1/llm/config", headers=_AJAX, json={
             "provider": "deepseek",
             "api_key": "",
             "base_url": "https://api.deepseek.com/v1",
@@ -348,7 +355,8 @@ class TestSettings:
         saved = load_settings()
         save_settings({**saved, "llm_api_key": "sk-keep-me"})
         try:
-            resp = client.post("/api/v1/settings", json={
+            # P1-18（验收 2026-10-24）：/settings 属破坏性端点，须携带反 CSRF 头
+            resp = client.post("/api/v1/settings", headers=_AJAX, json={
                 "provider": "deepseek", "api_key": "", "base_url": "",
                 "model": "", "temperature": 0.7, "theme": "light",
                 "accent": "#5b8def", "font_size": 13, "data_dir": "",
@@ -360,7 +368,8 @@ class TestSettings:
             save_settings(saved)
 
     def test_save_settings_minimal(self):
-        resp = client.post("/api/v1/settings", json={
+        # P1-18（验收 2026-10-24）：/settings 属破坏性端点，须携带反 CSRF 头
+        resp = client.post("/api/v1/settings", headers=_AJAX, json={
             "provider": "openai", "api_key": "", "base_url": "",
             "model": "", "temperature": 0.7, "theme": "dark",
             "accent": "#5b8def", "font_size": 14, "data_dir": "",
@@ -705,7 +714,8 @@ class TestLazySingletonThreadsafe:
 
 class TestSettingsFontSizePersisted:
     def test_font_size_round_trip(self):
-        resp = client.post("/api/v1/settings", json={
+        # P1-18（验收 2026-10-24）：/settings 属破坏性端点，须携带反 CSRF 头
+        resp = client.post("/api/v1/settings", headers=_AJAX, json={
             "provider": "deepseek", "api_key": "", "base_url": "",
             "model": "", "temperature": 0.7, "theme": "light",
             "accent": "#5b8def", "font_size": 15, "data_dir": "",

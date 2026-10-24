@@ -7,7 +7,7 @@ PCB 文件监听器 — 立创 EDA 项目目录自动同步。
 
 import logging
 import os
-import time
+import threading
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -35,13 +35,21 @@ PCB_EXTENSIONS = WatcherConstants.PCB_EXTENSIONS
 
 
 class PCBFileHandler(FileSystemEventHandler):
-    """监听 PCB 文件变化，带防抖。"""
+    """监听 PCB 文件变化，trailing 防抖。
+
+    P1-12（验收 2026-10-24）：防抖必须尾部触发 —— 原实现是前置触发
+    （首个事件立即回调、防抖窗口内的后续事件全部丢弃）：大文件写一半就
+    回调（读到半截数据），而代表"完整写入"的最后一个 modify 事件反被
+    抑制。改为每次事件重置该文件的静默计时器，写入静默 debounce_sec
+    后才回调一次，回调时文件已写完。
+    """
 
     def __init__(self, callback: Callable[[str], None], debounce_sec: float = 2.0):
         super().__init__()
         self._callback = callback
         self._debounce_sec = debounce_sec
-        self._last_events: dict[str, float] = {}
+        self._timers: dict[str, threading.Timer] = {}
+        self._lock = threading.Lock()
 
     def on_modified(self, event):
         if event.is_directory:
@@ -49,17 +57,39 @@ class PCBFileHandler(FileSystemEventHandler):
         src = event.src_path
         if not src.endswith(PCB_EXTENSIONS):
             return
-        now = time.time()
-        last = self._last_events.get(src, 0)
-        if now - last < self._debounce_sec:
-            return
-        self._last_events[src] = now
-        logger.info("PCB file changed: %s", src)
-        self._callback(src)
+        with self._lock:
+            old = self._timers.pop(src, None)
+            if old is not None:
+                old.cancel()
+            timer = threading.Timer(self._debounce_sec, self._fire, args=(src,))
+            timer.daemon = True
+            self._timers[src] = timer
+        timer.start()
 
     def on_created(self, event):
         if not event.is_directory and event.src_path.endswith(PCB_EXTENSIONS):
             self.on_modified(event)
+
+    def _fire(self, src: str):
+        # 用计时器线程自身做身份核对：cancel 无法拦住已过静默期的计时器，
+        # 陈旧计时器靠 "dict 里不是自己" 退避，不会误吞新计时器或双触发。
+        with self._lock:
+            if self._timers.get(src) is not threading.current_thread():
+                return
+            del self._timers[src]
+        logger.info("PCB file changed: %s", src)
+        try:
+            self._callback(src)
+        except Exception:
+            logger.exception("PCB file watcher callback failed: %s", src)
+
+    def cancel_pending(self):
+        """丢弃尚未触发的静默计时器（停止监听时调用，防 stop 后仍回调）。"""
+        with self._lock:
+            timers = list(self._timers.values())
+            self._timers.clear()
+        for t in timers:
+            t.cancel()
 
 
 class FileWatcher:
@@ -67,6 +97,7 @@ class FileWatcher:
 
     def __init__(self):
         self._observer: Optional[PollingObserver] = None
+        self._handler: Optional[PCBFileHandler] = None
         self._watched_path: Optional[str] = None
 
     @property
@@ -84,8 +115,9 @@ class FileWatcher:
             logger.warning("Watch path does not exist: %s", path)
             return False
         self._observer = PollingObserver()
+        self._handler = PCBFileHandler(on_changed)
         self._observer.schedule(
-            PCBFileHandler(on_changed), str(path), recursive=True,
+            self._handler, str(path), recursive=True,
         )
         self._observer.start()
         self._watched_path = path
@@ -101,6 +133,10 @@ class FileWatcher:
         except Exception:
             logger.debug("Observer stop raised, ignored", exc_info=True)
         finally:
+            # P1-12：trailing 防抖计时器随监听一并取消，避免 stop 后仍回调
+            if self._handler is not None:
+                self._handler.cancel_pending()
+            self._handler = None
             self._observer = None
             self._watched_path = None
             logger.info("File watcher stopped")

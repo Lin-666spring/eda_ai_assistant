@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TraceWise v0.8.0</title>
+<link rel="icon" href="img/app_icon.png">
+<link rel="stylesheet" href="css/style.css">
+<!-- 本地 vendor（2026-10-10 前端批）：echarts 此前走 jsdelivr CDN，打包版
+     断网时热力图直接不可用。Inter 字体同步撤下 —— 系统字体栈（Segoe UI/
+     PingFang/雅黑，见 style.css --font）就近回落，离线不再有外部依赖。 -->
+<script src="vendor/echarts.min.js"></script>
+<script src="/eel.js"></script>
+<script>
+// ── 首屏前的主题引导（必须内联、必须早于样式表）──
+// 主题存在 localStorage 里，所以能在第一帧之前就把 data-theme 定下来，
+// 启动动画期间不会闪一下白色再变深色。默认浅色：只有明确选过深色才用深色。
+(function () {
+  try {
+    if (localStorage.getItem('eda-theme') === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (e) {}
+})();
+</script>
+</head>
+<body data-theme="light">
+
+<!-- ═══════════ 启动界面（两段式启动的第一段）═══════════
+     小窗（480×340，见 main.py 的 _window_args）秒开 → 首帧就渲染这块内容 →
+     首屏 + 后端关键步骤就绪后 resizeTo 展开成 1300×840 → 本遮罩淡出。
+     想单独看这块界面：URL 后面加 #boot-hold（停在启动界面不动）。
+     换成自己生成的 logo：把方形图存成 web/img/logo-mark.png，重启自动启用；
+     没有这个文件时用下面这枚内联 SVG 标记（不会去抓 404）。 -->
+<div id="appSplash" role="status" aria-live="polite">
+  <div class="splash-glow" aria-hidden="true"></div>
+  <!-- 电路粒子场背景（js/particles.js）：过孔节点 + 45° 走线 + 信号脉冲 -->
+  <canvas id="splashParticles" class="particle-field" aria-hidden="true"></canvas>
+  <div class="splash-inner">
+    <div class="splash-logo">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8.8 6.8v18.4"/><path d="M8.8 6.8h9.4"/><path d="M8.8 16h6.6"/><path d="M8.8 25.2h9.4"/>
+        </g>
+        <g fill="currentColor">
+          <circle cx="20.9" cy="6.8" r="2.2"/><circle cx="18.1" cy="16" r="2.2"/><circle cx="20.9" cy="25.2" r="2.2"/>
+        </g>
+      </svg>
+      <img id="appSplashLogoImg" alt="" hidden>
+    </div>
+    <div class="splash-title">TraceWise</div>
+    <div class="splash-sub">面向立创EDA的智能辅助设计</div>
+    <div class="splash-progress" aria-hidden="true"><span class="splash-progress-fill" id="appSplashFill"></span></div>
+    <div class="splash-status" id="appSplashStatus">正在启动…</div>
+  </div>
+  <div class="splash-foot"><span id="appSplashVersion">v0.8.0</span></div>
+</div>
+
+<div id="appShell">
+<!-- ═══════════ Left Sidebar: 工作区 + 对话 ═══════════ -->
+<aside id="sidebar">
+  <div class="sb-brand">
+    <span class="topbar-logo">TW</span>
+    <span class="sb-brand-name">TraceWise</span>
+  </div>
+
+  <!-- 工作区选择 -->
+  <div class="sb-workspace" id="workspaceWrap">
+    <button class="sb-workspace-btn" id="workspaceChip" onclick="toggleWorkspaceMenu(event)" title="切换工作区">
+      <svg class="sb-ws-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <span class="sb-workspace-name" id="workspaceChipName">默认工作区</span>
+      <svg class="session-caret" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4,6 8,10 12,6"/></svg>
+    </button>
+    <div class="sb-workspace-menu" id="workspaceMenu">
+      <div class="sb-menu-head">
+        <span>工作区</span>
+        <button class="sb-menu-new" onclick="openWorkspaceDialog(event)">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+          新建
+        </button>
+      </div>
+      <div class="sb-ws-list" id="workspaceList"></div>
+    </div>
+  </div>
+
+  <button class="sb-new-chat" id="newChatBtn" onclick="newConversation()">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+    <span>新建对话</span>
+  </button>
+
+  <div class="sb-section-head">
+    <span>对话</span>
+    <span class="sb-conv-count" id="conversationCount"></span>
+  </div>
+  <div class="sb-conv-list" id="conversationList"></div>
+
+  <div class="sb-foot">
+    <div class="sb-assistant-wrap" id="assistantWrap">
+      <button class="sb-assistant" id="assistantChip" onclick="toggleAssistantMenu(event)" title="切换助手实例">
+        <span class="sb-assistant-dot"></span>
+        <span class="sb-assistant-name" id="assistantChipName">未创建助手</span>
+        <svg class="session-caret" width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4,6 8,10 12,6"/></svg>
+      </button>
+      <div class="sb-assistant-menu" id="assistantMenu">
+        <div class="sb-menu-head">
+          <span>助手实例</span>
+          <button class="sb-menu-new" onclick="showNewAssistantDialog(); closeAssistantMenu();">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="3" x2="8" y2="13"/><line x1="3" y1="8" x2="13" y2="8"/></svg>
+            新建
+          </button>
+        </div>
+        <div class="sb-asst-list" id="assistantList"></div>
+      </div>
+    </div>
+    <button class="header-icon-btn" onclick="toggleSettings()" title="设置">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
+  </div>
+</aside>
+
+<!-- ═══════════ Main Column ═══════════ -->
+<div id="mainCol">
+<!-- ═══════════ TopBar: 模式入口 + 窗口控制 ═══════════ -->
+<header id="topBar">
+  <nav class="topbar-nav">
+    <button class="nav-item" data-view="bom" onclick="switchView('bom')">BOM 分析</button>
+    <button class="nav-item" data-view="review" onclick="switchView('review')">设计审查</button>
+    <button class="nav-item" data-view="tools" onclick="switchView('tools')">工具箱</button>
+    <button class="nav-item" data-view="report" onclick="switchView('report')">报告中心</button>
+    <button class="nav-item" data-view="config" onclick="switchView('config')">配置管理</button>
+  </nav>
+  <div class="topbar-right">
+    <!-- LLM 配置状态徽标：已配置显示模型名，未配置显示警示（点击进设置）。
+         updateLLMStatus 的展示挂点（2026-10-10 前端批，此前该函数未定义）。 -->
+    <button id="llmStatusBadge" class="llm-status-badge hidden" onclick="toggleSettings()"></button>
+    <!-- 全局忙碌状态：运行中的动词短语（带 spinner），完成后短暂显示 ✓ -->
+    <div id="statusPill" class="status-pill hidden" aria-live="polite">
+      <span class="status-spinner"></span>
+      <span id="statusPillText" class="status-pill-text"></span>
+    </div>
+    <button class="header-icon-btn" id="modeToggleBtn" onclick="toggleWindowMode()" title="切换伴生模式">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="16" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
+    </button>
+    <button id="agentToggle" class="agent-toggle" onclick="toggleAgentMode()" title="Agent 模式 — LLM 自主规划调用工具">
+      <span class="agent-toggle-dot"></span>
+      <span class="agent-toggle-label">Agent</span>
+    </button>
+    <button class="header-icon-btn" id="settingsBtn" onclick="toggleSettings()" title="设置">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
+    <button class="header-icon-btn" id="panelToggleTop" onclick="toggleRightPanel()" title="展开/折叠任务面板">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="15" y1="4" x2="15" y2="20"/></svg>
+    </button>
+  </div>
+  <!-- 顶部不确定进度条：有任何后端任务在跑时滑动 -->
+  <div id="topProgress" class="top-progress" aria-hidden="true"></div>
+</header>
+
+<!-- ═══════════ Body Row: Chat + Right Panel ═══════════ -->
+<div id="bodyRow">
+<main id="chatArea">
+  <!-- 功能子页面：点击顶栏模式入口后，在此展示该模式的工具卡片。
+       默认隐藏 —— 软件主页面默认就是对话界面。 -->
+  <div id="subPage" class="hidden">
+    <div class="subpage-bar">
+      <button class="subpage-back" onclick="closeSubPage()">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="10,3 5,8 10,13"/></svg>
+        返回对话
+      </button>
+      <span class="subpage-crumb" id="subpageCrumb"></span>
+      <span class="subpage-hint">点击卡片直接运行，结果回到当前对话</span>
+    </div>
+    <div id="viewContainer"></div>
+  </div>
+
+  <!-- 消息/结果流（主页面的主体） -->
+  <div id="chatMessages">
+    <!-- 空态背景粒子画布：tools.js 清屏时按 id 保留（见其白名单注释） -->
+    <canvas id="chatEmptyParticles" class="particle-field" aria-hidden="true"></canvas>
+    <div id="chatEmpty">
+      <div class="chat-empty-icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 20h8M12 18v2"/></svg>
+      </div>
+      <div class="chat-empty-title">开始你的 <span class="accent-text">EDA</span> 审查</div>
+      <div class="chat-empty-desc">输入指令，或从功能卡片选择一项开始</div>
+      <div class="chat-empty-chips">
+        <button class="qa-btn" onclick="startDemo()">一键演示</button>
+        <button class="qa-btn" onclick="document.getElementById('bomFileInput').click()">导入 BOM</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 输入区域 · 命令栏 -->
+  <div id="chatFooter">
+    <!-- 图片预览 -->
+    <div id="imagePreviewBar" style="display:none">
+      <img id="imagePreviewThumb" src="" alt="预览">
+      <button class="img-remove" onclick="removeImage()">
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+      </button>
+    </div>
+    <!-- 快捷操作 -->
+    <div id="quickActions" class="quick-actions"></div>
+    <!-- 输入行 -->
+    <div class="input-row">
+      <input type="file" id="imageFileInput" accept="image/*" style="display:none" onchange="onImageFileSelected(this)">
+      <button class="img-btn" onclick="document.getElementById('imageFileInput').click()" title="添加图片 (可 Ctrl+V 粘贴)">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
+      </button>
+      <textarea id="chatInput" placeholder="输入审查指令或问题... (Enter 发送, Shift+Enter 换行)" rows="1" autofocus></textarea>
+      <button id="stopBtn" class="img-btn" onclick="stopGeneration()" title="停止生成" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1.5"/></svg>
+      </button>
+      <button id="sendBtn" onclick="sendChat()" title="发送">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+</main>
+<!-- ═══════════ Right Panel (折叠) ═══════════ -->
+<aside id="rightPanel" class="collapsed">
+  <div class="panel-tabs">
+    <button class="tab-btn active" data-tab="bom">BOM 表格</button>
+    <button class="tab-btn" data-tab="report">报告</button>
+    <button class="tab-btn" data-tab="review">审查</button>
+    <button class="tab-btn" data-tab="board3d">3D 预览</button>
+    <button class="tab-btn" data-tab="html">HTML 预览</button>
+  </div>
+  <div class="panel-content">
+    <div id="tab-bom" class="tab-panel active">
+      <table id="bomTable"><thead><tr><th>#</th><th>位号</th><th>值</th><th>封装</th><th>型号</th><th>数量</th></tr></thead><tbody></tbody></table>
+      <div id="bomEmpty" class="empty-hint">尚未导入 BOM — 使用顶部按钮导入</div>
+    </div>
+    <div id="tab-report" class="tab-panel">
+      <div id="reportStack"></div>
+      <div id="reportEmpty" class="empty-hint">执行操作后报告显示于此</div>
+    </div>
+    <div id="tab-review" class="tab-panel">
+      <div id="reviewContent">
+        <button class="review-start-btn" onclick="runMultiAgentReview()">
+          <span class="review-start-icon">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="9" cy="8" r="3.2"/><path d="M3 19a6 6 0 0 1 12 0M16.5 5.5a3 3 0 0 1 0 6M15 13.5a5.5 5.5 0 0 1 6 5.5"/></svg>
+          </span>
+          <span>启动多智能体协同审查</span>
+          <span class="review-start-hint">5 个专业 AI Agent 并行审查</span>
+        </button>
+        <!-- 审查进行中的骨架屏（5 位专家 → 5 张卡片占位） -->
+        <div id="reviewLoading" class="review-loading" style="display:none"></div>
+        <div id="reviewResult" style="display:none">
+          <div class="review-score-bar">
+            <div class="review-score-main">
+              <canvas id="radarChart" width="200" height="200"></canvas>
+              <div class="review-overall">
+                <div class="score-ring-wrap">
+                  <svg class="score-ring" viewBox="0 0 120 120">
+                    <circle class="score-ring-track" cx="60" cy="60" r="52"/>
+                    <circle class="score-ring-fill" id="scoreRing" cx="60" cy="60" r="52"/>
+                  </svg>
+                  <div class="score-ring-inner">
+                    <span id="reviewGrade" class="review-grade">A+</span>
+                    <span id="reviewScore" class="review-score-num">96.5</span>
+                  </div>
+                </div>
+                <span class="review-score-label">综合评分</span>
+              </div>
+            </div>
+          </div>
+          <div id="reviewConsensus" class="review-consensus"></div>
+          <div id="reviewAgentCards" class="review-agent-cards"></div>
+          <div id="reviewRoadmap" class="review-roadmap"></div>
+        </div>
+      </div>
+      <div id="reviewEmpty" class="empty-hint">导入 BOM 后启动多智能体审查</div>
+      <div id="drcHeatmapSection" class="heatmap-section" style="display:none">
+        <div class="heatmap-header">
+          <h4><span class="heatmap-title-icon" id="heatmapTitleIcon"></span>DRC 违规热力图</h4>
+          <span class="heatmap-desc" id="drcHeatmapDesc">违规计数网格 · 颜色越深违规越密</span>
+          <label class="heatmap-grid-label" title="网格边长：板子小就调小，板子大就调大">
+            网格
+            <select id="drcHeatmapGrid" class="heatmap-grid-select" onchange="loadDrcHeatmap()">
+              <option value="2">2 mm</option>
+              <option value="5" selected>5 mm</option>
+              <option value="10">10 mm</option>
+              <option value="20">20 mm</option>
+            </select>
+          </label>
+          <button class="heatmap-load-btn" onclick="loadDrcHeatmap()">加载热力图</button>
+        </div>
+        <div id="drcHeatmapLoading" class="panel-loading" style="display:none">
+          <span class="status-spinner"></span>
+          <span class="panel-loading-text">正在统计违规热力图…</span>
+        </div>
+        <div id="drcHeatmapChart" style="width:100%;height:300px;"></div>
+        <div id="drcHeatmapEmpty" class="empty-hint" style="display:none">无元件坐标 — 请导入 PCB 文件或坐标文件(Pick &amp; Place)后重试</div>
+      </div>
+    </div>
+    <!-- ═══ 3D 板卡预览（js/board3d.js + vendor three.js，懒加载）═══
+         数据来自 get_board_3d_data（.epro2 最全：板框环/元件正反面/走线/过孔）。
+         元件为估算尺寸（封装名/位号推断），仅作视觉呈现。 -->
+    <div id="tab-board3d" class="tab-panel">
+      <div class="b3d-toolbar">
+        <button class="b3d-btn" id="b3dViewTop" title="俯视（看布局）">顶视</button>
+        <button class="b3d-btn" id="b3dViewTilt" title="斜视（默认）">斜视</button>
+        <button class="b3d-btn" id="b3dViewSide" title="侧视（看高度）">侧视</button>
+        <button class="b3d-btn" id="b3dViewBottom" title="从板底看 B 面">翻面</button>
+        <span class="b3d-sep"></span>
+        <button class="b3d-btn on" id="b3dToggleTraces">走线</button>
+        <button class="b3d-btn on" id="b3dToggleVias">过孔</button>
+        <button class="b3d-btn" id="b3dToggleDrc" title="DRC 违规标记（按违规涉及的元件坐标落点，点击标记看详情）">违规</button>
+        <button class="b3d-btn" id="b3dReload" title="重新拉取当前工程的 3D 数据">刷新</button>
+      </div>
+      <div id="b3dWrap">
+        <canvas id="b3dCanvas"></canvas>
+        <div id="b3dLoading" class="b3d-loading" style="display:none">
+          <span class="status-spinner"></span><span>正在构建 3D 场景…</span>
+        </div>
+        <div id="b3dBadge" class="b3d-badge"></div>
+      </div>
+      <div id="b3dEmpty" class="empty-hint">导入 .epro2 工程文件后可预览 3D 板卡</div>
+    </div>
+    <div id="tab-html" class="tab-panel">
+      <iframe id="htmlFrame" style="width:100%;height:100%;border:none;display:none;"></iframe>
+      <div id="htmlEmpty" class="empty-hint">HTML BOM 预览将在生成后显示</div>
+    </div>
+  </div>
+</aside>
+</div><!-- /#bodyRow -->
+</div><!-- /#mainCol -->
+</div><!-- /#appShell -->
+
+<!-- ═══════════ Hidden file inputs ═══════════ -->
+<input type="file" id="bomFileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="onFileSelected('bom', this)">
+<input type="file" id="pcbFileInput" accept=".json,.epro,.epro2" style="display:none" onchange="onFileSelected('pcb', this)">
+<input type="file" id="posFileInput" accept=".csv" style="display:none" onchange="onFileSelected('pos', this)">
+
+<!-- ═══════════ Workspace Dialog ═══════════ -->
+<div id="workspaceOverlay" class="modal-overlay" onclick="closeWorkspaceDialog()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2 id="workspaceDialogTitle">新建工作区</h2>
+    <p class="modal-desc">工作区是一组对话的工程上下文，可选绑定一个本地工程目录。</p>
+    <label class="settings-field-label">名称</label>
+    <input type="text" id="wsNameInput" class="settings-input" placeholder="例如：MCU 主板 v2">
+    <label class="settings-field-label" style="margin-top:14px">工程目录 <span class="label-hint">可选</span></label>
+    <div class="settings-path-row">
+      <input type="text" id="wsPathInput" class="settings-input" placeholder="C:\Projects\mcu-board">
+      <button class="btn-sm" onclick="browseWorkspaceDir()">浏览…</button>
+      <button class="btn-sm" id="wsOpenBtn" onclick="openWorkspacePath()">打开</button>
+    </div>
+    <div id="wsDialogError" class="settings-note" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeWorkspaceDialog()">取消</button>
+      <button class="btn-primary" onclick="saveWorkspaceFromDialog()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ Settings Modal (Premium) ═══════════ -->
+<div id="settingsOverlay" class="modal-overlay" onclick="closeSettings(event)">
+  <div class="settings-dialog" onclick="event.stopPropagation()">
+    <!-- Sidebar nav -->
+    <nav class="settings-nav">
+      <div class="settings-nav-title">设置</div>
+      <button class="settings-nav-item active" data-tab="s-ai">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a4 4 0 014 4c0 1.1-.4 2.1-1.2 2.8l2.7 2.7a4 4 0 11-1.4 1.4l-2.7-2.7A4 4 0 0112 2z"/><circle cx="8.5" cy="8.5" r="1.5"/></svg>
+        <span>AI 模型</span>
+      </button>
+      <button class="settings-nav-item" data-tab="s-appearance">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 010 20"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+        <span>外观</span>
+      </button>
+      <button class="settings-nav-item" data-tab="s-general">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <span>通用</span>
+      </button>
+      <button class="settings-nav-item" data-tab="s-about">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <span>关于</span>
+      </button>
+    </nav>
+
+    <!-- Content area -->
+    <div class="settings-content">
+      <button class="settings-close-btn" onclick="closeSettings()">✕</button>
+
+      <!-- ═══ Tab: AI Model ═══ -->
+      <div id="s-ai" class="settings-tab active">
+        <h3 class="settings-tab-title">AI 模型配置</h3>
+        <p class="settings-tab-desc">选择 AI 服务商并配置 API 密钥</p>
+
+        <!-- Provider cards -->
+        <label class="settings-field-label">服务商</label>
+        <div id="providerCards" class="provider-cards"></div>
+
+        <!-- Model -->
+        <div style="margin-top:18px">
+          <div class="settings-label-row">
+            <label class="settings-field-label">模型</label>
+            <span id="modelSourceBadge" class="model-source-badge">离线兜底</span>
+          </div>
+          <div class="settings-combo-row">
+            <select id="setModelSelect" class="settings-combo-select" onchange="onModelSelectChange()"></select>
+            <input type="text" id="setModelCustom" class="settings-input" placeholder="自定义模型..." style="display:none">
+          </div>
+          <div class="settings-model-actions">
+            <button class="btn-sm" id="fetchModelsBtn" onclick="fetchModelsForProvider()">拉取最新模型</button>
+            <!-- 初始隐藏：href 由 selectProvider 填充后再显示，避免异步加载窗口期的死链 -->
+            <a class="settings-key-link" id="providerKeyLink" href="#" target="_blank" rel="noopener" style="display:none">获取 API Key →</a>
+          </div>
+          <div id="providerNote" class="settings-note" style="display:none"></div>
+        </div>
+
+        <!-- API Key + Base URL -->
+        <div class="settings-double" style="margin-top:16px">
+          <div>
+            <label class="settings-field-label">API Key</label>
+            <div class="settings-input-icon">
+              <input type="password" id="setApiKey" class="settings-input" placeholder="sk-...">
+              <button class="input-eye-btn" onclick="toggleApiKeyVisibility(this)" title="显示/隐藏">Show</button>
+            </div>
+          </div>
+          <div>
+            <label class="settings-field-label">Base URL <span class="label-hint">可选</span></label>
+            <input type="text" id="setBaseUrl" class="settings-input" placeholder="自动填充">
+          </div>
+        </div>
+
+        <!-- Temperature -->
+        <div style="margin-top:18px">
+          <label class="settings-field-label">
+            生成温度 <span id="tempDisplay" class="label-badge">0.7</span>
+          </label>
+          <div class="slider-row">
+            <span class="slider-label">精确</span>
+            <input type="range" id="setTemperature" class="settings-slider" min="0" max="1.5" step="0.05" value="0.7" oninput="document.getElementById('tempDisplay').textContent=this.value">
+            <span class="slider-label">创意</span>
+          </div>
+        </div>
+
+        <!-- Connection test -->
+        <div style="margin-top:18px">
+          <button class="btn-test-conn" onclick="testConnection()">
+            <span id="connTestIcon"></span>
+            <span id="connTestText">测试连接</span>
+          </button>
+          <span id="connTestResult" style="margin-left:10px;font-size:12px"></span>
+        </div>
+      </div>
+
+      <!-- ═══ Tab: Appearance ═══ -->
+      <div id="s-appearance" class="settings-tab">
+        <h3 class="settings-tab-title">外观设置</h3>
+        <p class="settings-tab-desc">自定义界面主题和配色方案</p>
+
+        <label class="settings-field-label">主题模式</label>
+        <div class="theme-previews">
+          <label class="theme-card" onclick="applyTheme('light'); saveThemePreference('light')">
+            <input type="radio" name="theme" value="light" checked>
+            <div class="theme-preview light-preview"></div>
+            <span>浅色</span>
+          </label>
+          <label class="theme-card" onclick="applyTheme('dark'); saveThemePreference('dark')">
+            <input type="radio" name="theme" value="dark">
+            <div class="theme-preview dark-preview"></div>
+            <span>深色</span>
+          </label>
+        </div>
+
+        <label class="settings-field-label" style="margin-top:18px">强调色</label>
+        <div class="accent-colors">
+          <button class="accent-dot active" data-accent="#2565fe" style="background:#2565fe" onclick="setAccentColor('#2565fe', this)"></button>
+          <button class="accent-dot" data-accent="#e74c3c" style="background:#e74c3c" onclick="setAccentColor('#e74c3c', this)"></button>
+          <button class="accent-dot" data-accent="#e67e22" style="background:#e67e22" onclick="setAccentColor('#e67e22', this)"></button>
+          <button class="accent-dot" data-accent="#2ecc71" style="background:#2ecc71" onclick="setAccentColor('#2ecc71', this)"></button>
+          <button class="accent-dot" data-accent="#9b59b6" style="background:#9b59b6" onclick="setAccentColor('#9b59b6', this)"></button>
+          <button class="accent-dot" data-accent="#1abc9c" style="background:#1abc9c" onclick="setAccentColor('#1abc9c', this)"></button>
+        </div>
+
+        <label class="settings-field-label" style="margin-top:18px">字体大小</label>
+        <div class="font-size-options">
+          <button class="font-size-btn" data-size="12" onclick="setFontSize('12', this)">小</button>
+          <button class="font-size-btn active" data-size="13" onclick="setFontSize('13', this)">中</button>
+          <button class="font-size-btn" data-size="14" onclick="setFontSize('14', this)">大</button>
+        </div>
+      </div>
+
+      <!-- ═══ Tab: General ═══ -->
+      <div id="s-general" class="settings-tab">
+        <h3 class="settings-tab-title">通用设置</h3>
+        <p class="settings-tab-desc">数据存储和应用行为</p>
+
+        <!-- 「自动保存对话」「发送前确认」两个装饰开关已撤（2026-10-10 前端批）：
+             对话本就每次落库（_persistMessage），无「不保存」模式可切；
+             发送确认从未实现过 gating。 -->
+        <div class="setting-toggle-row">
+          <div>
+            <div class="setting-toggle-label">文件监听</div>
+            <div class="setting-toggle-desc">立创EDA项目文件变更时自动同步</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="setFileWatch" onchange="toggleFileWatch(this)">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <div style="margin-top:18px">
+          <label class="settings-field-label">数据存储位置</label>
+          <div class="settings-path-row">
+            <input type="text" id="setDataDir" class="settings-input" readonly>
+            <button class="btn-sm" onclick="openDataDir()">打开</button>
+          </div>
+        </div>
+
+        <div style="margin-top:18px">
+          <button class="btn-danger-outline" onclick="clearAllData()">
+             清除所有本地数据
+          </button>
+        </div>
+      </div>
+
+      <!-- ═══ Tab: About ═══ -->
+      <div id="s-about" class="settings-tab">
+        <h3 class="settings-tab-title">关于</h3>
+        <div class="about-content">
+          <div class="about-logo">TW</div>
+          <h4>TraceWise</h4>
+          <div class="about-version">v0.8.0-dev</div>
+          <p class="about-desc">
+            基于多智能体协同的 PCB 设计辅助工具<br>
+            71条设计规则 · 3个自研ML模型 · 5个专业审查Agent
+          </p>
+          <div class="about-links">
+            <a href="https://github.com/Lin-666spring/eda_ai_assistant" target="_blank" class="about-link">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+              GitHub
+            </a>
+            <span class="about-link" onclick="navigator.clipboard.writeText('https://github.com/Lin-666spring/eda_ai_assistant')">
+               复制链接
+            </span>
+          </div>
+          <div class="about-meta">
+            <div class="about-meta-row"><span>技术栈</span><span>Python + Eel + SQLite + ChromaDB</span></div>
+            <div class="about-meta-row"><span>LLM 支持</span><span>DeepSeek / OpenAI / 通义千问 / 智谱 / Kimi</span></div>
+            <div class="about-meta-row"><span>设计规则</span><span>71 条 PCB 设计规则 (BOM+PCB+布局)</span></div>
+            <div class="about-meta-row"><span>本地 ML</span><span>意图分类 · 元件识别 · 风险预测 (&lt;1M 参数)</span></div>
+            <div class="about-meta-row"><span>许可证</span><span>MIT</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom bar -->
+      <div class="settings-bottom-bar">
+        <span class="settings-status" id="settingsStatus"></span>
+        <div class="settings-bottom-actions">
+          <button class="btn-secondary" onclick="closeSettings()">取消</button>
+          <button class="btn-primary" onclick="saveAllSettings()">保存设置</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ New Assistant Dialog ═══════════ -->
+<div id="newAssistantOverlay" class="modal-overlay" onclick="closeNewAssistantDialog()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h2>新建助手</h2>
+    <p class="modal-desc">选择助手类型</p>
+    <div id="assistantTypeList" class="assistant-type-grid"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeNewAssistantDialog()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ Confirm Dialog ═══════════ -->
+<div id="confirmOverlay" class="modal-overlay" onclick="closeConfirmDialog()">
+  <div class="modal confirm-modal" onclick="event.stopPropagation()">
+    <button class="confirm-close" onclick="closeConfirmDialog()" title="关闭">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+    </button>
+    <div class="confirm-icon">!</div>
+    <h3 id="confirmTitle">确认操作</h3>
+    <p id="confirmMessage">确定要执行此操作吗？</p>
+    <div class="confirm-actions">
+      <button class="btn-secondary" id="confirmCancelBtn" onclick="closeConfirmDialog()">取消</button>
+      <button class="btn-danger" id="confirmOkBtn">删除</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/marked.min.js"></script>
+<!-- P1-6 阶段C：app.js 拆为 13 个模块。顺序 = 原单文件内的区块顺序，不可调换
+     （经典 script 共享全局作用域，模块间靠顶层 function/const 互相引用）。 -->
+<script src="js/state.js"></script>
+<script src="js/persistence.js"></script>
+<script src="js/assistants.js"></script>
+<script src="js/conversations.js"></script>
+<script src="js/tools.js"></script>
+<script src="js/chat.js"></script>
+<script src="js/imports.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/stream.js"></script>
+<script src="js/review.js"></script>
+<script src="js/heatmap.js"></script>
+<script src="js/misc.js"></script>
+<!-- 粒子场是自包含 IIFE，不依赖上面 13 个模块的任何全局，故排在末尾、顺序无关 -->
+<script src="js/particles.js"></script>
+<!-- 3D 板卡预览同样是自包含模块；three.js 按需懒加载 vendor 脚本 -->
+<script src="js/board3d.js"></script>
+<script>
+// ── 启动收尾（两段式启动的第二段）──
+// 只干两件事：把窗口从小窗展开成正式界面，然后淡出启动遮罩。
+// app.js 的 DOMContentLoaded 处理完首屏渲染后调 boot.finish()。
+// 兜底定时器覆盖「初始化抛错 / 后端不响应」——遮罩不能永远盖住界面，
+// 窗口也不能永远停在 480×340。
+(function () {
+  var HOLD = location.hash.indexOf('boot-hold') >= 0;  // 只想看启动界面时用
+  var EXPAND_OBSERVE_MS = 320;    // resizeTo 之后观察这么久，判断到底生效没有
+  var finishTimer = null;
+
+  function center(w, h) {
+    try {
+      window.moveTo(Math.max(0, Math.round((screen.availWidth - w) / 2)),
+                    Math.max(0, Math.round((screen.availHeight - h) / 2)));
+    } catch (e) {}
+  }
+
+  function reveal() {
+    var splash = document.getElementById('appSplash');
+    if (!splash || splash.classList.contains('is-hiding')) return;
+    splash.classList.add('is-hiding');
+    splash.style.pointerEvents = 'none';   // 淡出期间别挡点击
+    var drop = function () { if (splash.parentNode) splash.parentNode.removeChild(splash); };
+    splash.addEventListener('animationend', drop, { once: true });
+    setTimeout(drop, 700);                 // animationend 不触发时的兜底（reduced-motion）
+    document.body.classList.remove('is-booting');
+  }
+
+  /**
+   * 展开窗口。
+   * resizeTo 在被浏览器拒绝时不能硬撑：观察一下实际尺寸，没变就请后端按正式
+   * 尺寸另开一个窗口（main.py 的 request_main_window）；两条路都不通也照样
+   * 淡出遮罩，界面原地可用 —— 界面可用性永远优先于「窗口长得对不对」。
+   */
+  function expand(done) {
+    var st = window.boot.state;
+    var size = st.mainSize || [1300, 840];
+    var beforeW = window.outerWidth, beforeH = window.outerHeight;
+    var result = 'attempted';
+    try {
+      window.resizeTo(size[0], size[1]);
+      center(size[0], size[1]);
+    } catch (e) {
+      result = 'refused';
+    }
+    setTimeout(function () {
+      if (result === 'attempted') {
+        result = (window.outerWidth > beforeW + 40 || window.outerHeight > beforeH + 40)
+          ? 'ok' : 'refused';
+      }
+      st.resize = result;
+      st.expanded = (result === 'ok');
+      if (result === 'refused' && typeof eel !== 'undefined' &&
+          typeof eel.request_main_window === 'function') {
+        st.fallback = true;                // 冒烟测试盯这个字段（P16）
+        try { eel.request_main_window()(); } catch (e) {}
+      }
+      done();
+    }, EXPAND_OBSERVE_MS);
+  }
+
+  window.boot = {
+    splashMinMs: 800,      // 闪一下就没反而像故障，留一个下限
+    hold: HOLD,
+    state: {finished: false, expanded: false, resize: null, fallback: false, mainSize: null},
+
+    /** 启动界面文案 + 进度（0~1）。app.js 每完成一步调一次。 */
+    step: function (text, ratio) {
+      var statusEl = document.getElementById('appSplashStatus');
+      if (statusEl && text) statusEl.textContent = text;
+      var fill = document.getElementById('appSplashFill');
+      if (fill && typeof ratio === 'number') {
+        fill.style.width = Math.max(4, Math.min(100, ratio * 100)) + '%';
+      }
+    },
+
+    /** 收尾：展开窗口 → 淡出遮罩。幂等，初始化/超时/出错任何一条路径都可以调。 */
+    finish: function () {
+      if (window.boot.state.finished) return;
+      window.boot.state.finished = true;
+      var elapsed = Date.now() - (window.__bootStartedAt || Date.now());
+      var wait = Math.max(0, window.boot.splashMinMs - elapsed);
+      clearTimeout(finishTimer);
+      finishTimer = setTimeout(function () {
+        window.boot.step('准备就绪', 1);
+        expand(reveal);
+      }, wait);
+    }
+  };
+
+  document.body.classList.add('is-booting');
+  window.__bootStartedAt = Date.now();
+
+  // 慢提示：只在还没收尾时提示，别把 app.js 正在写的步骤文案顶掉
+  setTimeout(function () {
+    if (!window.boot.state.finished && !HOLD) window.boot.step('初始化较慢，请稍候…');
+  }, 4000);
+  // 兜底：任何原因导致没走到 finish 都要放行
+  setTimeout(function () { if (!HOLD) window.boot.finish(); }, 12000);
+})();
+
+// ── 热力图标题图标 ──
+// 内联 SVG 统一由 app.js 的 ICONS 提供（不用 emoji 字体图标）
+document.addEventListener('DOMContentLoaded', function () {
+  var slot = document.getElementById('heatmapTitleIcon');
+  if (slot && typeof ICONS !== 'undefined' && ICONS['chart']) slot.innerHTML = ICONS['chart'];
+});
+</script>
+</body>
+</html>

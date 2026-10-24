@@ -48,6 +48,31 @@ check('js_href_neutralized', !/javascript:/i.test(jsOut), jsOut);
 const dataOut = renderMarkdown('[b](data:text/html,<b>x</b>)');
 check('data_href_neutralized', !/href=["']?data:/i.test(dataOut), dataOut);
 
+// 2026-10-24（验收 A-2）：实体编码变体。浏览器解析属性值时先解码 HTML
+// 实体再解析 URL —— 修复前这些全部绕过字面量正则。
+const ent1 = renderMarkdown('[a](javascript&colon;alert(1))');
+check('entity_colon_neutralized', !/javascript/i.test(ent1), ent1);
+const ent2 = renderMarkdown('[b](javascript&#58;alert(1))');
+check('numeric_colon_neutralized', !/javascript/i.test(ent2), ent2);
+const ent3 = renderMarkdown('[c](&#106;avascript&#x3A;alert(1))');
+check('numeric_scheme_neutralized', !/avascript/i.test(ent3), ent3);
+const ent4 = renderMarkdown('[d](java\tscript:alert(1))');
+check('tab_split_neutralized', !/javascript/i.test(ent4.replace(/[\s\S]*href/, 'href')), ent4);
+
+// 白名单必须放行正常链接
+const mail = renderMarkdown('[m](mailto:a@b.c)');
+check('mailto_kept', /href="mailto:a@b\.c"/.test(mail), mail);
+const anch = renderMarkdown('[t](#sec)');
+check('anchor_kept', /href="#sec"/.test(anch), anch);
+const rel = renderMarkdown('[r](docs/readme.md)');
+check('relative_kept', /href="docs\/readme\.md"/.test(rel), rel);
+
+// 图片：data:image 放行，javascript 拒绝
+const imgOk = renderMarkdown('![i](data:image/png;base64,AAAA)');
+check('data_image_src_kept', /src="data:image\/png/.test(imgOk), imgOk);
+const imgJs = renderMarkdown('![i](javascript:alert(2))');
+check('img_js_neutralized', !/javascript/i.test(imgJs), imgJs);
+
 const normal = renderMarkdown('**bold** [ok](https://x.y)\n\n    code block\n\n| a | b |\n| - | - |\n| 1 | 2 |');
 check('bold_kept', normal.includes('<strong>bold</strong>'), normal);
 check('https_kept', normal.includes('href="https://x.y"'), normal);

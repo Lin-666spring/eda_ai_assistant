@@ -278,6 +278,41 @@ class TestAnalogDigitalCheck:
 
 # ══════════════════ RAG Indexer/Retriever ══════════════════
 
+# P1-21 验收配套（2026-10-24）：indexer 移除嵌入失败回退后，单元测试不得
+# 依赖外网嵌入 API（无 SILICONFLOW_API_KEY 时 401、有 Key 时烧配额且结果
+# 不可复现）。用确定性的「ASCII 词 + CJK 字符 bigram」词袋向量代替，保留
+# 「文本重叠多 → 更相近」的语义，检索类断言不受影响。
+class _FakeBagEmbed:
+    DIM = 256
+
+    def embed(self, texts):
+        import hashlib
+        import math
+        import re
+
+        out = []
+        for t in texts:
+            vec = [0.0] * self.DIM
+            tokens = re.findall(r"[A-Za-z0-9.]+", t)
+            compact = re.sub(r"\s", "", t)
+            tokens += [compact[i : i + 2] for i in range(len(compact) - 1)]
+            for tok in tokens:
+                h = int(hashlib.md5(tok.encode("utf-8")).hexdigest(), 16)
+                vec[h % self.DIM] += 1.0
+            norm = math.sqrt(sum(x * x for x in vec)) or 1.0
+            out.append([x / norm for x in vec])
+        return out
+
+
+@pytest.fixture(autouse=True)
+def _offline_embedding(monkeypatch):
+    import src.rag.indexer as indexer_mod
+
+    monkeypatch.setattr(
+        indexer_mod, "_SiliconFlowEmbedding", lambda *a, **k: _FakeBagEmbed()
+    )
+
+
 class TestRAGIndexer:
     @pytest.fixture
     def indexer(self, tmp_path):

@@ -1,22 +1,22 @@
 {
-  "timestamp": "2026-10-14T08:54:00.374086",
+  "timestamp": "2026-10-24T15:40:08.359525",
   "method": "Temperature Scaling (Guo et al. 2017)",
   "results": [
     {
       "model": "IntentClassifier",
-      "n_samples": 150,
-      "temperature": 0.7282,
+      "n_samples": 133,
+      "temperature": 0.9726,
       "before": {
-        "accuracy": 0.9933,
-        "ece": 0.0173,
-        "mce": 0.3845
+        "accuracy": 0.8195,
+        "ece": 0.0454,
+        "mce": 0.7289
       },
       "after": {
-        "accuracy": 0.9933,
-        "ece": 0.0086,
-        "mce": 0.5044
+        "accuracy": 0.8195,
+        "ece": 0.0392,
+        "mce": 0.7252
       },
-      "ece_reduction": 0.0087,
+      "ece_reduction": 0.0062,
       "reliability_before": {
         "perfect": [
           [
@@ -30,29 +30,41 @@
         ],
         "calibrated": [
           [
-            0.3845,
-            0.0
-          ],
-          [
-            0.6954,
+            0.2711,
             1.0
           ],
           [
-            0.744,
-            1.0
+            0.3422,
+            0.2857
           ],
           [
-            0.8269,
-            1.0
+            0.461,
+            0.7
           ],
           [
-            0.9915,
-            1.0
+            0.5618,
+            0.6667
+          ],
+          [
+            0.6511,
+            0.6667
+          ],
+          [
+            0.7606,
+            0.7917
+          ],
+          [
+            0.8534,
+            0.8519
+          ],
+          [
+            0.964,
+            0.9783
           ]
         ],
-        "ece": 0.0173,
-        "mce": 0.3845,
-        "n_samples": 150
+        "ece": 0.0454,
+        "mce": 0.7289,
+        "n_samples": 133
       },
       "reliability_after": {
         "perfect": [
@@ -67,42 +79,58 @@
         ],
         "calibrated": [
           [
-            0.5044,
-            0.0
-          ],
-          [
-            0.7815,
+            0.2748,
             1.0
           ],
           [
-            0.8558,
-            1.0
+            0.3386,
+            0.3333
           ],
           [
-            0.9981,
-            1.0
+            0.4619,
+            0.6364
+          ],
+          [
+            0.5623,
+            0.5714
+          ],
+          [
+            0.6519,
+            0.7273
+          ],
+          [
+            0.7622,
+            0.7368
+          ],
+          [
+            0.8523,
+            0.871
+          ],
+          [
+            0.9663,
+            0.9787
           ]
         ],
-        "ece": 0.0086,
-        "mce": 0.5044,
-        "n_samples": 150
+        "ece": 0.0392,
+        "mce": 0.7252,
+        "n_samples": 133
       }
     },
     {
       "model": "ComponentClassifier",
-      "n_samples": 132,
-      "temperature": 0.7825,
+      "n_samples": 100,
+      "temperature": 0.6687,
       "before": {
-        "accuracy": 0.9924,
-        "ece": 0.009,
-        "mce": 0.4158
+        "accuracy": 0.98,
+        "ece": 0.0467,
+        "mce": 0.4218
       },
       "after": {
-        "accuracy": 0.9924,
-        "ece": 0.0056,
-        "mce": 0.4409
+        "accuracy": 0.98,
+        "ece": 0.0208,
+        "mce": 0.2526
       },
-      "ece_reduction": 0.0034,
+      "ece_reduction": 0.0259,
       "reliability_before": {
         "perfect": [
           [
@@ -116,21 +144,33 @@
         ],
         "calibrated": [
           [
-            0.4158,
-            0.0
+            0.4914,
+            0.6667
           ],
           [
-            0.8588,
+            0.5782,
             1.0
           ],
           [
-            0.9962,
+            0.6286,
+            1.0
+          ],
+          [
+            0.7718,
+            0.75
+          ],
+          [
+            0.8479,
+            1.0
+          ],
+          [
+            0.9828,
             1.0
           ]
         ],
-        "ece": 0.009,
-        "mce": 0.4158,
-        "n_samples": 132
+        "ece": 0.0467,
+        "mce": 0.4218,
+        "n_samples": 100
       },
       "reliability_after": {
         "perfect": [
@@ -145,28 +185,32 @@
         ],
         "calibrated": [
           [
-            0.4409,
-            0.0
+            0.5584,
+            0.75
           ],
           [
-            0.8958,
+            0.7474,
             1.0
           ],
           [
-            0.9985,
+            0.8631,
             1.0
+          ],
+          [
+            0.9921,
+            0.989
           ]
         ],
-        "ece": 0.0056,
-        "mce": 0.4409,
-        "n_samples": 132
+        "ece": 0.0208,
+        "mce": 0.2526,
+        "n_samples": 100
       }
     }
   ],
   "summary": {
     "total_models": 2,
-    "avg_ece_before": 0.0131,
-    "avg_ece_after": 0.0071,
-    "total_ece_reduction": 0.0121
+    "avg_ece_before": 0.046,
+    "avg_ece_after": 0.03,
+    "total_ece_reduction": 0.0321
   }
 }

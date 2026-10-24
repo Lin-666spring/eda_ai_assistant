@@ -720,7 +720,8 @@ class LayoutRulesMixin:
         2026-10-10 几何批重写。旧实现只比 positions 字典里索引相邻的 4 项
         （真实 <1mm 的对只抓到一半），中心距 1.0mm 一刀切（不分封装体大小），
         也不分正反面（正反面元件同 XY 互不算间距）。现在：
-        ① 网格 3×3 邻域全对检索（5mm 网格覆盖所有相关对）；
+        ① 网格 spatial hash 全对检索（5mm 网格；查询范围按元件包围盒
+          覆盖格展开，体长 >10mm 的跨格对不漏检，见 P1-15 注释）；
         ② 体尺寸两路解析（封装名内嵌 _L..-W.. / 片式封装码表），旋转取
           外接框，间隙 = 中心距 − 两体外接框半宽/半高（分离轴取大者）；
         ② 体尺寸两路解析（封装名内嵌 _L..-W.. / 片式封装码表），间隙按
@@ -765,14 +766,28 @@ class LayoutRulesMixin:
         for ref, (x, y, _, _, _, _) in bodies.items():
             grid.setdefault((int(math.floor(x / cell)),
                              int(math.floor(y / cell))), []).append(ref)
+        # P1-15（验收 2026-10-24）：查询范围按「本体外接圆半径 + 全板最大
+        # 外接圆半径 + 间隙阈值」展开——旧 ±1 邻域隐含「体尺寸 ≤ 网格边长
+        # 5mm」，SOIC-16/连接器这类体长 >10mm 的封装跨格对全部漏检（负样本：
+        # _L12.0 封装与 0.1mm 近邻实测不报）。半径上界 r1+rmax+GAP 恰好覆盖
+        # 下方预筛判据「中心距 ≤ r1+r2+GAP」的全部 partner 中心所在格，
+        # 候选对不重（ref2>ref 去重）不漏。站立件（架空模块）不是合法
+        # partner，不参与 rmax。
+        rmax = max((0.5 * math.hypot(l, w)
+                    for _, _, l, w, _, st in bodies.values() if not st),
+                   default=0.0)
         pairs = []           # (gap, ref1, ref2)
         for ref, (x1, y1, l1, w1, s1, st1) in bodies.items():
             if st1:
                 continue
-            cx, cy = int(math.floor(x1 / cell)), int(math.floor(y1 / cell))
-            for dx in (-1, 0, 1):
-                for dy in (-1, 0, 1):
-                    for ref2 in grid.get((cx + dx, cy + dy), ()):
+            reach = 0.5 * math.hypot(l1, w1) + rmax + _COMPONENT_GAP_MIN_MM
+            gx_lo, gx_hi = (int(math.floor((x1 - reach) / cell)),
+                            int(math.floor((x1 + reach) / cell)))
+            gy_lo, gy_hi = (int(math.floor((y1 - reach) / cell)),
+                            int(math.floor((y1 + reach) / cell)))
+            for gx in range(gx_lo, gx_hi + 1):
+                for gy in range(gy_lo, gy_hi + 1):
+                    for ref2 in grid.get((gx, gy), ()):
                         if ref2 <= ref:
                             continue
                         x2, y2, l2, w2, s2, st2 = bodies[ref2]

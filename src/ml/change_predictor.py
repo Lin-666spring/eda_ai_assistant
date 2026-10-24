@@ -31,6 +31,7 @@ from src.ml.component_classifier import (
     ComponentClassifier, ComponentPredictor,
     COMPONENT_CLASSES, NUM_COMPONENT_CLASSES,
 )
+from src.ml.model_paths import calibrated_first
 from src.ml.vocab import PCBVocab
 
 logger = logging.getLogger(__name__)
@@ -113,10 +114,10 @@ class ChangeFeatureExtractor:
         model_path: str = "data/component_model.pt",
         vocab_path: str = "data/vocab.json",
     ) -> "ChangeFeatureExtractor":
-        """从模型文件加载"""
+        """从模型文件加载（校准产物在场则优先，P1-24 2026-10-24）"""
         try:
             vocab = PCBVocab.load(vocab_path)
-            model = ComponentClassifier.load(model_path)
+            model = ComponentClassifier.load(calibrated_first(model_path))
             predictor = ComponentPredictor(model, vocab)
             return cls(component_predictor=predictor)
         except Exception as e:
@@ -391,10 +392,32 @@ def prepare_training_data(
     """从实验 JSON 提取训练数据
 
     Returns:
-        (samples, labels) — 每条样本对应一个变更，label=该建议是否引入新违规
+        (samples, labels) — 每条样本对应一个变更，label=该建议是否引入新违规。
+        每条样本额外携带 existing_violations（该变更目标位号在变更前基线 DRC
+        中已有的违规列表，取自 drc_results.violations_by_component）——
+        P1-25（验收 2026-10-24）修复训练/推理特征不一致：此前训练从不传
+        existing_violations，特征末两维（has_existing_violation /
+        existing_violation_count）恒 0，学出权重 ≈0，推理时传入的真实
+        违规邻近度信号完全失效。基线违规是变更前算出的，不含标签信息，
+        无泄漏。
+
+    Label 注意：label 是 verify_result 级（该轮建议整体是否引入新违规），
+    同轮所有变更共享；这是现有闭环数据唯一可用的监督信号。
     """
     with open(results_path, "r", encoding="utf-8") as f:
         data = json.load(f)
+
+    # 基线违规索引：design → {reference → [violation]}（变更前 DRC 结果）
+    baseline_by_design: dict = {}
+    for d in data.get("drc_results", []) or []:
+        name = d.get("design")
+        if not name:
+            continue
+        vbc = d.get("violations_by_component") or {}
+        if name in baseline_by_design:
+            baseline_by_design[name].update(vbc)
+        else:
+            baseline_by_design[name] = dict(vbc)
 
     samples = []
     labels = []
@@ -406,18 +429,70 @@ def prepare_training_data(
         # 标签：该建议是否引入新违规
         label = 1.0 if v.get("new_violations_introduced", 0) > 0 else 0.0
         baseline_score = v.get("baseline_score", 0.0)
+        design_vbc = baseline_by_design.get(v.get("design", ""), {})
 
         for c in changes:
             samples.append({
                 "change": c,
                 "baseline_score": baseline_score,
+                "existing_violations": list(
+                    design_vbc.get(c.get("reference", "")) or []
+                ),
                 "label": label,
             })
             labels.append(label)
 
-    logger.info("提取训练样本: %d 条变更, 危险比例: %.1f%%",
-                len(samples), sum(labels) / len(labels) * 100 if labels else 0)
+    logger.info("提取训练样本: %d 条变更, 危险比例: %.1f%%, 违规邻近样本: %d",
+                len(samples),
+                sum(labels) / len(labels) * 100 if labels else 0,
+                sum(1 for s in samples if s["existing_violations"]))
     return samples, labels
+
+
+def _fit_logistic(
+    X: np.ndarray,
+    y: np.ndarray,
+    epochs: int = 200,
+    lr: float = 0.5,
+    l2_lambda: float = 1.0,
+) -> tuple[np.ndarray, float]:
+    """L2 正则逻辑回归拟合（小样本防过拟合）。训练与 LOOCV 各折共用同一
+    拟合法，保证评估口径反映的正是落盘模型的训练过程（P1-25）。"""
+    weights = np.zeros(X.shape[1])
+    bias = 0.0
+    for _ in range(epochs):
+        z = X @ weights + bias
+        prob = 1.0 / (1.0 + np.exp(-z))
+        # 梯度
+        grad_w = X.T @ (prob - y) / len(X) + l2_lambda * weights
+        grad_b = np.mean(prob - y)
+        weights -= lr * grad_w
+        bias -= lr * grad_b
+    return weights, bias
+
+
+def _accuracy_at(weights: np.ndarray, bias: float, X: np.ndarray, y: np.ndarray) -> float:
+    pred = 1.0 / (1.0 + np.exp(-(X @ weights + bias)))
+    return float(np.mean((pred >= 0.5).astype(float) == y))
+
+
+def _loocv_accuracy(X: np.ndarray, y: np.ndarray) -> float:
+    """Leave-one-out CV 样本外准确率 —— 73 条小样本的诚实泛化口径。
+
+    P1-25（验收 2026-10-24）：旧行为在训练集上评估并汇报 accuracy（全部
+    样本参与拟合，指标只反映记忆）。LOOCV 每折在 n-1 条上训练、对留出的
+    1 条预测；完全确定性（无随机划分，固定种子即无随机性），同一数据
+    重跑结果恒定。
+    """
+    n = len(X)
+    correct = 0
+    for i in range(n):
+        mask = np.ones(n, dtype=bool)
+        mask[i] = False
+        w, b = _fit_logistic(X[mask], y[mask])
+        p = 1.0 / (1.0 + math.exp(-(float(X[i] @ w) + b)))
+        correct += int((p >= 0.5) == bool(y[i]))
+    return correct / n
 
 
 def train_change_predictor(
@@ -437,7 +512,12 @@ def train_change_predictor(
     y = np.array(labels)
     for s in samples:
         feats = extractor.extract(
-            s["change"], baseline_score=s["baseline_score"]
+            s["change"],
+            baseline_score=s["baseline_score"],
+            # P1-25（验收 2026-10-24）：训练时传入违规邻近度，与推理
+            # （predict 携带 existing_violations）特征口径对齐 —— 否则末两维
+            # 训练恒 0、权重学到 ≈0，推理时该强风险信号被静默丢弃。
+            existing_violations=s.get("existing_violations"),
         )
         X.append(feats.to_vector())
     X = np.array(X)
@@ -445,31 +525,21 @@ def train_change_predictor(
     n_features = X.shape[1]
     logger.info("特征维度: %d, 样本数: %d", n_features, len(X))
 
-    # ── 训练逻辑回归（L2 正则，小样本防过拟合）──
-    weights = np.zeros(n_features)
-    bias = 0.0
-    lr = 0.5
-    l2_lambda = 1.0  # 强正则
-    epochs = 200
+    # ── 训练逻辑回归（全量样本拟合后落盘）──
+    weights, bias = _fit_logistic(X, y)
 
-    for _ in range(epochs):
-        z = X @ weights + bias
-        prob = 1.0 / (1.0 + np.exp(-z))
-        # 梯度
-        grad_w = X.T @ (prob - y) / len(X) + l2_lambda * weights
-        grad_b = np.mean(prob - y)
-        weights -= lr * grad_w
-        bias -= lr * grad_b
-
-    # ── 评估 ──
-    pred = 1.0 / (1.0 + np.exp(-(X @ weights + bias)))
-    pred_binary = (pred >= 0.5).astype(float)
-    accuracy = np.mean(pred_binary == y)
-    # 简单阈值评估
+    # ── 评估（P1-25 诚实口径）──
+    # 泛化指标 = leave-one-out CV（对外汇报口径，存 accuracy / accuracy_loocv）；
+    # 训练集拟合精度另列（accuracy_train_fit）仅供诊断，两者必须分离汇报。
+    train_fit_acc = _accuracy_at(weights, bias, X, y)
+    loocv_acc = _loocv_accuracy(X, y)
     positive = y.sum()
     negative = len(y) - positive
-    logger.info("训练完成: acc=%.3f, 正样本=%d, 负样本=%d",
-                accuracy, int(positive), int(negative))
+    n_violation_samples = sum(1 for s in samples if s.get("existing_violations"))
+    logger.info(
+        "训练完成: loocv_acc=%.3f, train_fit=%.3f, 正样本=%d, 负样本=%d, 违规邻近样本=%d",
+        loocv_acc, train_fit_acc, int(positive), int(negative), n_violation_samples,
+    )
 
     # ── 保存 ──
     predictor = ChangeRiskPredictor(weights=weights, bias=float(bias))
@@ -481,7 +551,14 @@ def train_change_predictor(
         "n_features": n_features,
         "n_positive": int(positive),
         "n_negative": int(negative),
-        "accuracy": round(float(accuracy), 4),
+        # P1-25（验收 2026-10-24）：accuracy 改为 LOOCV 样本外准确率（诚实
+        # 口径），eval_protocol 标明评估方式；训练集拟合值单独存放，不再
+        # 冒充泛化指标。
+        "eval_protocol": "leave_one_out_cv",
+        "accuracy": round(float(loocv_acc), 4),
+        "accuracy_loocv": round(float(loocv_acc), 4),
+        "accuracy_train_fit": round(float(train_fit_acc), 4),
+        "n_existing_violation_samples": int(n_violation_samples),
         "bias": float(bias),
         "weights": weights.tolist(),
         "feature_names": _feature_names(n_features),

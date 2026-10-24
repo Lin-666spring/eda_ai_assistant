@@ -348,6 +348,10 @@ class NLUEngine:
 
         # 从 INTENT_DESCRIPTORS 构建内部描述符表（补充 ToolRegistry 关键词）
         self._descriptors: dict[str, IntentDescriptor] = {}
+        # P1-3（验收 2026-10-24）：归一化分母锚定在补充前的原始关键词表规模
+        # —— ToolRegistry 关键词是补充证据，不应把评分标尺一起放大，否则
+        # 补充得越多、每个命中的归一化权重越被稀释（见 _compute_keyword_score）。
+        self._base_keyword_totals: dict[str, int] = {}
         for d in INTENT_DESCRIPTORS:
             # 拷贝一份，避免修改模块级常量
             enriched = IntentDescriptor(
@@ -358,6 +362,7 @@ class NLUEngine:
                 examples=list(d.examples),
                 negative_keywords=list(d.negative_keywords),
             )
+            self._base_keyword_totals[d.intent_name] = len(d.keywords) + len(d.examples)
             self._descriptors[d.intent_name] = enriched
 
         # 从 ToolRegistry 聚合关键词补充到各意图
@@ -421,12 +426,14 @@ class NLUEngine:
             except Exception as e:
                 logger.warning("NLU BERT model init failed, trying TextCNN: %s", e)
 
-            # 2) TextCNN 兜底（torch 路径，模型文件随仓不在时返回 None）
+            # 2) TextCNN 兜底（torch 路径，模型文件随仓不在时返回 None；
+            #    校准产物在场则优先，P1-24 2026-10-24）
             try:
                 from ..ml.intent_classifier import IntentPredictor
+                from ..ml.model_paths import calibrated_first
 
                 predictor = IntentPredictor.from_path(
-                    os.path.join(data_dir, "intent_model.pt"),
+                    calibrated_first(os.path.join(data_dir, "intent_model.pt")),
                     os.path.join(data_dir, "vocab.json"))
                 self._local_model_attempted = True
                 if predictor is not None:
@@ -665,9 +672,16 @@ class NLUEngine:
         lowered = user_input.lower()
         scores: dict[str, float] = {}
 
-        for desc in INTENT_DESCRIPTORS:
+        # P1-3（验收 2026-10-24）：必须遍历 self._descriptors（含 ToolRegistry
+        # 补充的 45+ 关键词）而非模块级原始表 INTENT_DESCRIPTORS —— 旧实现下
+        # 补充关键词从未参与评分，「计算走线宽度」的 PCB_ANALYSIS 关键词得分
+        # 只有 0.181（< 0.40 门限），本应直接执行的指令被降级追问。分母用
+        # _base_keyword_totals（补充前规模）锚定：评分标尺按原始表校准，
+        # 补充关键词只增分子证据不摊薄归一化得分。
+        for desc in self._descriptors.values():
             score = 0.0
-            total_possible = len(desc.keywords) + len(desc.examples)
+            total_possible = self._base_keyword_totals.get(
+                desc.intent_name, len(desc.keywords) + len(desc.examples))
 
             # 核心关键词子串匹配 — 按关键词长度加权：
             # 「走线宽度」(4字) 是比「线宽」(2字) 更强的意图证据，等权相加时
@@ -718,7 +732,9 @@ class NLUEngine:
         hybrid: dict[str, float] = {}
         has_embedding = bool(emb_scores)
 
-        for desc in INTENT_DESCRIPTORS:
+        # P1-3（验收 2026-10-24）：与 _compute_keyword_score 同源，统一遍历
+        # self._descriptors，保证评分路径只用一份描述符表。
+        for desc in self._descriptors.values():
             name = desc.intent_name
             emb = emb_scores.get(name, 0.0)
             kw = kw_scores.get(name, 0.0)

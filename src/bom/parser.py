@@ -4,6 +4,7 @@ BOM 文件解析器
 """
 
 import logging
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -13,6 +14,22 @@ import pandas as pd
 from ..constants import BOM, SupportedFormat
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_int(value, default: int = 1, ref: str = "") -> int:
+    """容错整数解析：'2 (盘)'/'1,000'/'ABC' 等坏单元格降级为 default。
+
+    2026-10-24 修复（验收 A-7）：此前裸 int() —— 数量列一个坏单元格
+    抛 ValueError 毁掉整份文件导入。
+    """
+    if value is None or value == "":
+        return default
+    text = str(value).strip().replace(",", "")
+    m = re.match(r"(\d+)", text)
+    if m:
+        return int(m.group(1))
+    logger.warning("数量列无法解析 %r（%s），按 %d 处理", value, ref or "?", default)
+    return default
 
 
 @dataclass
@@ -28,7 +45,7 @@ class BOMItem:
     manufacturer: str = ""  # 制造商
 
     def __post_init__(self):
-        self.quantity = int(self.quantity) if self.quantity is not None else 1
+        self.quantity = _safe_int(self.quantity, default=1, ref=self.reference)
 
     @property
     def reference_list(self) -> list[str]:
@@ -113,7 +130,11 @@ class BOMParser:
         col_map = self._map_columns(df)
         items = []
 
-        for row in df.itertuples(index=False):
+        # 2026-10-24 修复（验收 A-8）：itertuples 会把含空格/# 的列名
+        # （"Part Number"、"LCSC Part #"）重命名为 _0/_1/...，getattr 永远
+        # 拿不到值 —— JLC/LCSC 英文导出的 BOM 被静默解析成空字段。
+        # 改为字典行取值，列名保持原样。
+        for row in df.to_dict("records"):
             item = self._row_to_item(row, col_map)
             if item is not None:
                 items.append(item)
@@ -121,19 +142,19 @@ class BOMParser:
         logger.info(f"解析完成：共 {len(items)} 条 BOM 记录")
         return items
 
-    def _row_to_item(self, row, col_map: dict[str, str]) -> Optional[BOMItem]:
+    def _row_to_item(self, row: dict, col_map: dict[str, str]) -> Optional[BOMItem]:
         ref_col = col_map.get("reference", "")
-        ref = str(getattr(row, ref_col, "")) if ref_col else ""
+        ref = str(row.get(ref_col, "") or "") if ref_col else ""
         if not ref or ref == "nan":
             return None
 
         kwargs: dict[str, object] = {}
         for field in self._TEXT_FIELDS:
             col = col_map.get(field, "")
-            kwargs[field] = str(getattr(row, col, "")) if col else ""
+            kwargs[field] = str(row.get(col, "") or "") if col else ""
         for field in self._INT_FIELDS:
             col = col_map.get(field, "")
-            kwargs[field] = int(getattr(row, col, 1) or 1) if col else 1
+            kwargs[field] = _safe_int(row.get(col, 1), default=1, ref=ref) if col else 1
 
         return BOMItem(**kwargs)
 

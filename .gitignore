@@ -66,6 +66,12 @@ test_data/_incoming_epro2/
 # 可再生的大 dump 与二进制不入库。已跟踪的历史文件已 git rm --cached。
 # violations.jsonl 可由 scripts/rule_spotcheck_dump.py 再生
 experiment_results/**/violations.jsonl
+# 实验目录内的可再生模型二进制（a9/a10 批出现 safetensors/onnx/pt 副本，
+# 单文件最大 154MB，超 GitHub 100MB 上限），本地保留
+experiment_results/**/*.safetensors
+experiment_results/**/*.onnx
+experiment_results/**/*.pt
+experiment_results/**/*.pth
 # 训练产物；本地保留，克隆后相关测试自动 skip
 data/*.pt
 data/*.pth

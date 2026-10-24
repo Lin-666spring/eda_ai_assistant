@@ -21,6 +21,7 @@ import logging
 import sqlite3
 import stat
 import os
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -173,11 +174,19 @@ class SessionStore:
         except OSError:
             pass
 
-    def _connect(self) -> sqlite3.Connection:
+    # P1-8（验收 2026-10-24）：sqlite3 的 `with conn` 只管理事务（异常回滚/
+    # 正常提交），并不关闭连接 —— 全文件 15 处调用点原先都靠 CPython 引用
+    # 计数兜底回收。封装成上下文管理器：事务语义不变，退出时显式 close。
+    @contextmanager
+    def _connect(self):
         conn = sqlite3.connect(str(self._db_path))
         conn.execute("PRAGMA foreign_keys = ON")
         conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     # ── Workspaces ──
 
@@ -431,8 +440,12 @@ class SessionStore:
             conn.execute("DELETE FROM app_state")
 
             for i, w in enumerate(workspaces or []):
+                # P1-10（验收 2026-10-24）：ws_default 等工作区在 _ensure_db
+                # 就已存在，裸 INSERT 必撞主键 → 整个退出保存事务回滚，
+                # assistants/conversations/app_state 全部丢失。改 upsert，
+                # 已存在的工作区按快照更新。
                 conn.execute(
-                    "INSERT INTO workspaces (workspace_id, name, path, sort_order) "
+                    "INSERT OR REPLACE INTO workspaces (workspace_id, name, path, sort_order) "
                     "VALUES (?, ?, ?, ?)",
                     (w["workspace_id"], w.get("name", "工作区"), w.get("path", ""), i),
                 )

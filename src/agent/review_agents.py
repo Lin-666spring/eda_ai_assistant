@@ -458,30 +458,38 @@ class MultiAgentReviewer:
             "只输出 JSON，不要其他文字。"
         )
 
+        # 任何失败（网络异常 / 响应无 JSON / JSON 解析失败）都必须向上抛出，
+        # 由 _process_agent_llm 捕获后回退规则分析。历史上这里把异常吞成 []，
+        # 导致断网时 5 个 Agent 齐报「本领域未发现问题，设计质量良好」。
         try:
             resp = self.llm.chat(prompt)
-            # 提取 JSON
-            start = resp.find("{")
-            end = resp.rfind("}") + 1
-            if start >= 0 and end > start:
-                data = json.loads(resp[start:end])
-                return [
-                    AgentFinding(
-                        agent_key=agent_key,
-                        agent_name=agent_def["name"],
-                        agent_emoji=agent_def["emoji"],
-                        severity=f.get("severity", "minor"),
-                        title=f.get("title", "未命名问题"),
-                        detail=f.get("detail", ""),
-                        suggestion=f.get("suggestion", ""),
-                        confidence=0.85,
-                    )
-                    for f in data.get("findings", [])
-                ]
         except Exception as e:
-            logger.warning("LLM analysis failed: %s", e)
+            logger.warning("LLM analysis request failed: %s, falling back", e)
+            raise
 
-        return []
+        start = resp.find("{")
+        end = resp.rfind("}") + 1
+        if start < 0 or end <= start:
+            raise ValueError(f"LLM 响应不含 JSON: {resp[:80]!r}")
+
+        try:
+            data = json.loads(resp[start:end])
+        except json.JSONDecodeError as e:
+            raise ValueError(f"LLM 返回 JSON 解析失败: {e}") from e
+
+        return [
+            AgentFinding(
+                agent_key=agent_key,
+                agent_name=agent_def["name"],
+                agent_emoji=agent_def["emoji"],
+                severity=f.get("severity", "minor"),
+                title=f.get("title", "未命名问题"),
+                detail=f.get("detail", ""),
+                suggestion=f.get("suggestion", ""),
+                confidence=0.85,
+            )
+            for f in data.get("findings", [])
+        ]
 
     def _llm_summarize(
         self, agent_def: dict, findings: list[AgentFinding], score: float
@@ -517,7 +525,13 @@ class MultiAgentReviewer:
         for report in agent_reports.values():
             for f in report.findings:
                 if f.severity in ("critical", "major"):
-                    key = f"{f.rule_name}:{f.location}"
+                    # 规则模式 findings 带 rule_name/location，跨 Agent 同一
+                    # 违规靠它去重；LLM findings 两者均为空串，历史上去重键
+                    # 塌缩成 ":" 把不同问题当重复丢光 —— 回退用 title 去重。
+                    if f.rule_name or f.location:
+                        key = f"{f.rule_name}:{f.location}"
+                    else:
+                        key = f"title:{f.title}"
                     if key not in seen:
                         seen.add(key)
                         all_critical.append({

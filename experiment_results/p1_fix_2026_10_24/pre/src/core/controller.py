@@ -1,0 +1,1878 @@
+"""
+Application controller — UI-agnostic orchestration layer.
+
+All business logic lives here. GUI and CLI consume this single API,
+so feature parity is guaranteed across interfaces.
+"""
+
+import inspect
+import json
+import logging
+import re
+import sys
+import threading
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Callable, Optional
+
+from src.agent.llm_client import LLMClient, DEFAULT_PROVIDER, resolve_provider
+from src.agent.prompt_templates import PromptTemplates
+from src.agent.router import LLMRouter, TaskIntent
+from src.bom.checker import BOMDuplicateChecker
+from src.bom.merger import BOMMerger
+from src.bom.parser import BOMItem, BOMParser
+from src.bom.validator import BOMValidator
+from src.config import config
+from src.exceptions import BOMEmptyError
+from src.html_bom.generator import HTMLBOMConfig, HTMLBOMGenerator
+from src.interfaces.eda_adapter import LCEDAAdapter, PCBData
+from src.rag.indexer import RAGIndexer, DEFAULT_PERSIST_DIR
+from src.rag.retriever import RAGRetriever
+from src.rules.checker import DesignRuleChecker
+from src.supply.lcsc_client import LcscSearchClient
+from src.supply.bom_health import BOMHealthChecker
+
+logger = logging.getLogger(__name__)
+
+
+def _is_key_usable(key: Optional[str]) -> bool:
+    return bool(key and key not in ("", "your_api_key_here", "sk-"))
+
+
+def default_output_dir() -> Path:
+    """导出文件的输出目录（HTML BOM / BOM CSV）— Eel 与 FastAPI 共用的唯一来源。
+
+    开发模式以本文件位置锚定项目根，与调用方 cwd 无关：endpoints.py 曾用
+    ``Path.cwd()`` 反推同一个目录，服务换个目录启动后返回的 path 恒为空串。
+    打包版（PyInstaller frozen）项目根在 _MEIPASS —— onefile 解包临时目录，
+    进程退出即清空，导出文件必须落到用户数据目录 app_home()/output。
+    """
+    if getattr(sys, "frozen", False):
+        from src.constants import app_home
+
+        return app_home() / "output"
+    return Path(__file__).parent.parent.parent / "output"
+
+
+# ══════════════════════════════════════════════════════
+#  Shared context — single source of truth for session state
+# ══════════════════════════════════════════════════════
+
+
+@dataclass
+class CommandContext:
+    """Mutable session state shared across all operations."""
+
+    bom_items: list = field(default_factory=list)
+    positions: dict = field(default_factory=dict)
+    # 网络表 {网络名: ["U1.12", ...]}；为空时 check_all 会从 pcb_data.nets 反推，
+    # 保证「未连接引脚 / 上下拉」这类规则在软件里和离线实验口径一致。
+    netlist: dict = field(default_factory=dict)
+    bom_file: Optional[str] = None
+    pcb_data: Optional[PCBData] = None
+
+    @property
+    def has_data(self) -> bool:
+        return bool(self.bom_items)
+
+
+# ══════════════════════════════════════════════════════
+#  Controller
+# ══════════════════════════════════════════════════════
+
+
+class AppController:
+    """Core controller — pure logic, zero UI dependencies.
+
+    Both ``MainWindow`` (GUI) and ``CLIPrototype`` (CLI) consume this class,
+    guaranteeing identical behaviour regardless of the interface.
+    """
+
+    # ── Lifecycle ──
+
+    @staticmethod
+    def _create_llm_client(api_key: str, base_url: str, model: str, provider: str,
+                            tool_executor=None) -> Optional[LLMClient]:
+        """工厂方法：根据 provider 创建对应的客户端
+
+        Claude 使用 Anthropic 原生 Messages API（非 OpenAI 兼容），
+        其余厂商使用 OpenAI 兼容的 LLMClient。
+        """
+        if provider == "claude":
+            from src.agent.anthropic_client import AnthropicClient
+            return AnthropicClient(
+                api_key=api_key,
+                base_url=base_url or None,
+                model=model or None,
+                provider=provider,
+                tool_executor=tool_executor,
+            )
+        else:
+            return LLMClient(
+                api_key=api_key,
+                base_url=base_url or None,
+                model=model or None,
+                provider=provider,
+                tool_executor=tool_executor,
+            )
+
+    def __init__(self, api_key: Optional[str] = None):
+        effective_key = api_key or config.llm.api_key
+        self.agent = self._create_llm_client(
+            effective_key, config.llm.base_url, config.llm.model,
+            config.llm.provider, self._dispatch_operation,
+        ) if _is_key_usable(effective_key) else None
+        self.router = LLMRouter.from_config(effective_key) if _is_key_usable(effective_key) else None
+        self.parser = BOMParser()
+        self.eda = LCEDAAdapter()
+        self.context = CommandContext()
+        self._conversation_active = False
+        self._active_assistant: Optional[str] = None  # 当前助手 ID
+        # 会话级客户端租借：并发 agent_loop/对话/审查各自克隆出短生命周期
+        # 客户端（tool_executor、history 私有），退出时把新增轮次合并回
+        # self.agent —— 否则并发请求互相覆盖 tool_executor、交叉混写历史。
+        self._history_lock = threading.Lock()
+        self._history_generation = 0  # 清空/切换助手/重配置时 +1，作废在途租借的合并
+        self._rag_index_checked = False  # RAG 索引是否已检查/建立
+        # 启动线程（后台预热）和首次查询可能同时进来，双检加锁避免建两遍索引
+        self._rag_index_lock = threading.Lock()
+        # NLU 引擎懒加载同口径（启动预热与首次消息并发）
+        self._nlu_lock = threading.Lock()
+        self._nlu_ready = False  # 失败也不重试（与旧 hasattr 口径一致）
+
+    def reconfigure_llm(self, provider: str, api_key: str, base_url: str, model: str):
+        """热重载 LLM 客户端 — 用户通过设置面板修改配置后调用。"""
+        if _is_key_usable(api_key):
+            self.agent = self._create_llm_client(
+                api_key, base_url or "", model or "", provider,
+                self._dispatch_operation,
+            )
+            self.router = LLMRouter.from_config(api_key)
+            # config.llm 是 src.config 导入时读一次 settings.json 的缓存，
+            # 此后永不更新 —— get_llm_config（Eel）/ GET /llm/config（REST）
+            # 会一直显示进程启动时的旧配置。镜像客户端实际生效的值，
+            # 让 config.llm 始终是「当前生效配置」。
+            config.llm.provider = self.agent.provider_name
+            config.llm.api_key = self.agent.api_key
+            config.llm.base_url = self.agent.base_url
+            config.llm.model = self.agent.model
+        else:
+            self.agent = None
+            self.router = None
+            # 没建客户端也回写：按厂商预设解析空缺，口径与 LLMClient 一致
+            resolved_url, resolved_model = resolve_provider(provider, base_url, model)
+            config.llm.provider = provider or DEFAULT_PROVIDER
+            config.llm.api_key = api_key
+            config.llm.base_url = resolved_url
+            config.llm.model = resolved_model
+        self._conversation_active = False
+        self._history_generation += 1  # 在途租借的合并作废（历史已清/客户端已换）
+        logger.info(
+            "LLM reconfigured: provider=%s, model=%s, has_key=%s",
+            provider, model or "(default)", bool(self.agent),
+        )
+
+    def clear_conversation(self):
+        """清空对话历史与上下文标记"""
+        self._conversation_active = False
+        self._history_generation += 1
+        if self.agent:
+            self.agent.clear_history()
+
+    def seed_conversation(self, turns: list[dict]) -> None:
+        """用前端传回的会话消息重建 LLM 历史（clear_chat(messages=) 的配套）。
+
+        切换回历史会话时调用：LLM 恢复该会话的上下文，而不是从零开始。
+        前端已把消息裁成 [{role: user|ai, content}]。
+        """
+        self._conversation_active = bool(turns)
+        self._history_generation += 1
+        if self.agent:
+            self.agent.seed_history(list(turns)[-40:])  # 与 HISTORY_MAX_TURNS=20 轮同量级
+        logger.info("Conversation seeded with %d turns", len(turns))
+
+    def set_active_assistant(self, assistant_id: str):
+        """切换当前助手 — 影响 AI 回复的系统提示词风格
+
+        Args:
+            assistant_id: 助手 ID，如 'eda-general' / 'bom-expert' / 'pcb-reviewer' / 'vision-analyst'
+        """
+        self._active_assistant = assistant_id
+        self._conversation_active = False
+        self._history_generation += 1
+        if self.agent:
+            self.agent.clear_history()
+        logger.info("Active assistant switched to: %s", assistant_id)
+
+    # ── 会话级客户端租借 ──
+
+    @contextmanager
+    def _llm_session(self, tool_executor=None, merge_history: bool = True):
+        """租借一个会话私有的 LLM 客户端（并发安全）。
+
+        self.agent 是共享单例：并发 agent_loop / 流式对话 / 多智能体审查
+        直接用它时，后到者覆盖前者的 tool_executor（on_tool_call 包装丢失），
+        各自的轮次交叉写进同一份 _history（对话上下文串台）。这里按当前
+        配置克隆出短生命周期客户端：继承共享历史快照，退出时只把本次新增
+        轮次合并回共享历史。
+
+        merge_history=False 用于审查这类「不该进对话历史」的调用 —— 多智能体
+        五个 Agent 并发跑在 ThreadPoolExecutor 上，其内部轮次本就不可靠，
+        回流只会污染用户对话上下文。
+
+        若租借期间发生 clear_conversation / 切助手 / reconfigure_llm
+        （generation 变化），合并放弃 —— 用户已明确丢弃该上下文。
+        """
+        shared = self.agent
+        if shared is None:
+            yield None
+            return
+        if not all(hasattr(shared, a) for a in
+                   ("api_key", "base_url", "model", "provider_name")):
+            # 非标准客户端（ui_smoke 的 _StubAgent 等测试替身）没有可克隆的
+            # 配置表面 —— 退回旧语义：直接共享，executor 原地注入。
+            # 别给它们造真客户端：按桩的假配置克隆会真的发网络请求。
+            if tool_executor is not None:
+                shared.tool_executor = tool_executor
+            yield shared
+            return
+        client = self._create_llm_client(
+            shared.api_key, shared.base_url, shared.model,
+            shared.provider_name, tool_executor=tool_executor,
+        )
+        generation = self._history_generation
+        snapshot = shared.get_history()
+        client.seed_history(snapshot)
+        try:
+            yield client
+        finally:
+            turns = client.get_history()
+            if (merge_history and generation == self._history_generation
+                    and len(turns) > len(snapshot)):
+                with self._history_lock:
+                    shared.extend_history(turns[len(snapshot):])
+
+    # ══════════════════════════════════════════════════
+    #  File I/O
+    # ══════════════════════════════════════════════════
+
+    def load_bom(self, file_path: str) -> tuple[int, str]:
+        """Parse a BOM file, populate context, return (count, message)."""
+        self.context.bom_items = self.parser.parse(file_path)
+        self.context.bom_file = file_path
+        self.clear_conversation()
+        name = Path(file_path).name
+        n = len(self.context.bom_items)
+        logger.info("BOM loaded: %s (%d items)", name, n)
+        return n, f" 已加载 BOM: {name}\n共 {n} 条物料记录"
+
+    def get_design_suggestions(self) -> str:
+        """设计意图识别：扫描 BOM 匹配电路模板，主动建议缺失元件"""
+        if not self.context.bom_items:
+            return ""
+        try:
+            from src.agent.design_templates import DesignTemplateEngine
+            engine = DesignTemplateEngine()
+            return engine.get_suggestions_report(self.context.bom_items)
+        except Exception as e:
+            logger.exception("Design suggestions failed")
+            return ""
+
+    def load_positions(self, file_path: str) -> tuple[int, str]:
+        """Parse a Pick & Place file, return (count, message)."""
+        self.context.positions = self.eda.get_positions(file_path)
+        name = Path(file_path).name
+        n = len(self.context.positions)
+        logger.info("Positions loaded: %s (%d entries)", name, n)
+        return n, f" 已加载坐标: {name}\n共 {n} 个位号坐标"
+
+    def load_pcb(self, file_path: str) -> tuple[int, str]:
+        """Parse a PCB layout file, populate context, return (net_count, message)."""
+        self.context.pcb_data = self.eda.get_pcb_data(file_path)
+        name = Path(file_path).name
+        pcb = self.context.pcb_data
+        logger.info(
+            "PCB loaded: %s (%d nets, %d traces, %d vias)",
+            name, pcb.net_count, pcb.trace_count, pcb.via_count,
+        )
+        summary = (
+            f" 已加载 PCB: {name}\n"
+            f"  格式: {pcb.format}\n"
+            f"  网络: {pcb.net_count} 个\n"
+            f"  走线: {pcb.trace_count} 条\n"
+            f"  过孔: {pcb.via_count} 个\n"
+            f"  层: {', '.join(pcb.layers) if pcb.layers else '无'}"
+        )
+        return pcb.net_count, summary
+
+    def load_project(self, file_path: str) -> tuple[int, str]:
+        """Load a `.epro2` project: BOM + PCB from one file.
+
+        立创 EDA V3 的 .epro2 同时包含 BOM 与 PCB（网络/走线/过孔/覆铜），
+        所以一次解析即可同时填充 `bom_items` 与 `pcb_data`。
+        Returns (bom_item_count, message).
+        """
+        from ..pcb.epro2_parser import bom_rows_to_items
+
+        pcb = self.eda.get_pcb_data(file_path)
+        self.context.pcb_data = pcb
+
+        bom_count = 0
+        if pcb.bom_items:
+            self.context.bom_items = bom_rows_to_items(pcb.bom_items)
+            bom_count = len(self.context.bom_items)
+
+        name = Path(file_path).name
+        logger.info(
+            "Project loaded: %s (%d BOM rows, %d nets, %d traces, %d vias)",
+            name, bom_count, pcb.net_count, pcb.trace_count, pcb.via_count,
+        )
+        summary = (
+            f" 已加载工程: {name}\n"
+            f"  格式: {pcb.format}\n"
+            f"  BOM: {bom_count} 行 / {sum(i.quantity for i in self.context.bom_items)} 个位号\n"
+            f"  网络: {pcb.net_count} 个\n"
+            f"  走线: {pcb.trace_count} 条\n"
+            f"  过孔: {pcb.via_count} 个\n"
+            f"  覆铜: {len(pcb.copper_pours)} 块\n"
+            f"  层: {', '.join(pcb.layers) if pcb.layers else '无'}"
+        )
+        return bom_count, summary
+
+    # ══════════════════════════════════════════════════
+    #  BOM operations — each returns a formatted report
+    # ══════════════════════════════════════════════════
+
+    def merge_bom(self) -> str:
+        merger = BOMMerger()
+        merged = merger.merge(self.context.bom_items)
+        return merger.get_merge_report(self.context.bom_items, merged)
+
+    def ai_merge_bom(self) -> str:
+        """AI-assisted BOM merge: rule-based merge + AI suggestions for further merging."""
+        if not self.is_agent_available():
+            return self.merge_bom() + "\n\n AI 未配置，仅执行了规则合并"
+
+        merger = BOMMerger()
+        rule_merged = merger.merge(self.context.bom_items)
+
+        bom_text = self._format_merged_for_ai(rule_merged)
+        prompt = PromptTemplates.get("bom_ai_merge", bom_data=bom_text)
+        system = PromptTemplates.get_system_prompt("bom")
+
+        try:
+            raw = self.agent.chat(prompt, system_prompt=system)
+            parsed = self._extract_json(raw)
+            suggestions = parsed.get("suggestions", []) if isinstance(parsed, dict) else []
+        except Exception:
+            logger.exception("AI merge analysis failed")
+            suggestions = []
+
+        final_merged, ai_count = merger.merge_with_ai_suggestion(
+            self.context.bom_items, suggestions,
+        )
+
+        report = merger.get_merge_report(self.context.bom_items, final_merged)
+        if ai_count > 0:
+            report += f"\n\n AI 额外识别了 {ai_count} 组合并"
+        else:
+            report += "\n\n AI 未发现额外合并机会"
+        return report
+
+    # prompt 里的本地数据截断上限（2026-10-10 前端批）：大 BOM/大板整段塞进
+    # prompt 会打出超长请求（费用暴涨/部分网关直接 400），截断后带省略标注。
+    _AI_CONTEXT_MAX_BOM_LINES = 300
+    _AI_CONTEXT_MAX_CHARS = 8000
+
+    def _format_merged_for_ai(self, merged: list) -> str:
+        """Format rule-merged BOM groups as compact text for AI analysis."""
+        lines: list[str] = []
+        for i, m in enumerate(merged, 1):
+            lines.append(
+                f"{i}. 位号:{m.reference_str} | 型号:{m.part_number} "
+                f"| 封装:{m.package} | 值:{m.value} | 数量:{m.total_quantity}"
+            )
+            if i >= self._AI_CONTEXT_MAX_BOM_LINES:
+                lines.append(f"…（共 {len(merged)} 行，已截断至前 {i} 行）")
+                break
+        return "\n".join(lines)
+
+    def validate_packages(self) -> str:
+        validator = BOMValidator()
+        results = validator.validate(self.context.bom_items)
+        return validator.get_validation_report(results)
+
+    def check_duplicates(self) -> str:
+        checker = BOMDuplicateChecker()
+        duplicates = checker.check(self.context.bom_items)
+        return checker.get_report(duplicates)
+
+    def generate_html_bom(self, output_path: Optional[str] = None) -> str:
+        if output_path is None:
+            out_dir = default_output_dir()
+            out_dir.mkdir(exist_ok=True)
+            output_path = str(out_dir / "ibom.html")
+
+        title = (
+            f"BOM — {Path(self.context.bom_file).stem}"
+            if self.context.bom_file
+            else "EDA AI BOM"
+        )
+        generator = HTMLBOMGenerator(HTMLBOMConfig(title=title))
+        generator.generate(self.context.bom_items, self.context.positions, output_path)
+        logger.info("HTML BOM generated: %s", output_path)
+        return f" HTML BOM 已生成:\n{output_path}"
+
+    def export_bom_csv(self, output_path: Optional[str] = None) -> str:
+        """导出 BOM 为 UTF-8-BOM CSV 文件（Excel 兼容中文）"""
+        if not self.context.bom_items:
+            return " 请先导入 BOM 文件再导出。"
+
+        if output_path is None:
+            out_dir = default_output_dir()
+            out_dir.mkdir(exist_ok=True)
+            # 生成带时间戳的文件名
+            from datetime import datetime
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            name = Path(self.context.bom_file).stem if self.context.bom_file else "bom_export"
+            output_path = str(out_dir / f"{name}_{ts}.csv")
+
+        try:
+            import csv
+            # 使用 UTF-8-BOM 编码确保 Excel 正确显示中文
+            with open(output_path, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f)
+                # 表头
+                writer.writerow(["位号", "参数值", "封装", "型号", "描述", "数量", "制造商"])
+                for item in self.context.bom_items:
+                    writer.writerow([
+                        item.reference,
+                        item.value,
+                        item.package,
+                        item.part_number,
+                        item.description,
+                        item.quantity,
+                        item.manufacturer,
+                    ])
+            logger.info("BOM CSV exported: %s", output_path)
+            return (
+                f" BOM CSV 已导出（UTF-8-BOM 编码，Excel 兼容中文）:\n"
+                f"`{output_path}`\n\n"
+                f"共计 {len(self.context.bom_items)} 行物料数据。"
+            )
+        except Exception as e:
+            logger.error("BOM CSV export failed: %s", e)
+            return f" CSV 导出失败: {str(e)}"
+
+    def check_design_rules(self) -> str:
+        checker = DesignRuleChecker()
+        violations = checker.check_all(
+            self.context.bom_items,
+            self.context.positions,
+            pcb_data=self.context.pcb_data,
+        )
+        return checker.get_report(violations)
+
+    # 3D 预览载荷上限：走线段/过孔超限时截断（前端照常渲染 + counts 里标注）。
+    # 泰山派 3M 实测 24122 段 / 2052 孔，离上限还有量级差；上限只防极端缝合孔板
+    _3D_MAX_SEGMENTS = 200_000
+    _3D_MAX_VIAS = 20_000
+
+    def get_board_3d_data(self) -> dict:
+        """3D 板卡预览数据 — 前端 board3d.js（three.js）渲染用。
+
+        载荷全部来自 ctx.pcb_data（.epro2 解析最全：板框/元件坐标/正反面/
+        走线线宽/过孔俱全；旧格式导入时相应字段缺省，前端按空渲染并提示）。
+        坐标一律绝对 mm、保留 3 位小数（1µm 精度足够，同时压 JSON 体积）。
+
+        Returns:
+            dict: ``{ok, reason?, format, board, components, traces, vias,
+            layers, counts}``；无工程数据时 ``reason='no_data'``。
+        """
+        ctx = self.context
+        pcb = ctx.pcb_data
+        if pcb is None:
+            return {"ok": True, "reason": "no_data", "board": None,
+                    "components": [], "traces": [], "vias": [], "layers": [],
+                    "counts": {}}
+
+        bo = dict(pcb.board_outline or {})
+        rings = bo.get("outline_rings_mm") or []
+        bo["rings"] = [
+            [[round(float(x), 3), round(float(y), 3)] for x, y in ring]
+            for ring in rings
+        ]
+
+        components = [
+            {
+                "ref": ref,
+                "x": round(float(e.get("x") or 0), 3),
+                "y": round(float(e.get("y") or 0), 3),
+                "rotation": e.get("rotation") or 0,
+                "side": e.get("side") or "",
+                "footprint_name": e.get("footprint_name") or "",
+                "value": e.get("value") or "",
+                "in_bom": bool(e.get("in_bom", True)),
+            }
+            for ref, e in (pcb.component_positions or {}).items()
+        ]
+
+        seg_count = 0
+        traces = []
+        for t in pcb.traces or []:
+            flat = []
+            for x1, y1, x2, y2 in t.segments or []:
+                flat.extend((round(float(x1), 3), round(float(y1), 3),
+                             round(float(x2), 3), round(float(y2), 3)))
+                seg_count += 1
+                if seg_count >= self._3D_MAX_SEGMENTS:
+                    break
+            if flat:
+                traces.append({
+                    "net": t.net_name, "layer": t.layer,
+                    "width_mm": round(float(t.width_mm or 0), 3), "segs": flat,
+                })
+            if seg_count >= self._3D_MAX_SEGMENTS:
+                break
+
+        vias = [
+            [round(float(v.position[0]), 3), round(float(v.position[1]), 3),
+             round(float(v.pad_mm or 0), 3)]
+            for v in (pcb.vias or [])[: self._3D_MAX_VIAS]
+        ]
+
+        return {
+            "ok": True,
+            "reason": "",
+            "format": pcb.format,
+            "board": bo if bo else None,
+            "components": components,
+            "traces": traces,
+            "vias": vias,
+            "layers": list(pcb.layers or []),
+            "counts": {
+                "components": len(components),
+                "trace_segments": sum(len(t["segs"]) // 4 for t in traces),
+                "vias": len(vias),
+                "segments_truncated": seg_count >= self._3D_MAX_SEGMENTS,
+                "vias_truncated": len(pcb.vias or []) > self._3D_MAX_VIAS,
+            },
+        }
+
+    def get_drc_heatmap(self, grid_size_mm: float = 5.0) -> dict:
+        """DRC 违规热力图数据 — Eel / FastAPI / 前端共用的唯一实现。
+
+        热力图是「违规计数网格」，不是图像：从违规文本里抠位号 → 查坐标 → 按
+        ``grid_size_mm`` 分桶计数。位置来源优先级：PCB 元件坐标 > 坐标文件(Pick & Place)。
+
+        Returns:
+            dict: ``{ok, data: [[x,y,count],...], grid_size_mm, source,
+            violation_count, mapped, reason}``；``reason`` 说明为什么画不出来
+            （``no_data`` / ``no_positions`` / ``no_violations`` / ``unmapped``）。
+        """
+        ctx = self.context
+        g = DesignRuleChecker._normalize_grid_size(grid_size_mm)
+        empty = {
+            "ok": True, "data": [], "grid_size_mm": g, "source": "",
+            "violation_count": 0, "mapped": 0, "reason": "",
+        }
+
+        if not ctx.has_data and not ctx.pcb_data:
+            empty["reason"] = "no_data"
+            return empty
+        if not ctx.pcb_data and not ctx.positions:
+            empty["reason"] = "no_positions"
+            return empty
+
+        checker = DesignRuleChecker()
+        violations = checker.check_all(
+            ctx.bom_items, ctx.positions, ctx.netlist, ctx.pcb_data
+        )
+        result = checker.build_heatmap(violations, g)
+
+        if result["source"] == "":
+            reason = "no_positions"
+        elif not violations:
+            reason = "no_violations"
+        elif not result["data"]:
+            reason = "unmapped"
+        else:
+            reason = ""
+        return {"ok": True, "reason": reason, **result}
+
+    def get_drc_violations(self) -> dict:
+        """DRC 违规坐标化清单 — 3D 板视图（board3d.js）违规标记层的数据源。
+
+        check_all 出口已把每条违规的 location 解析成板面坐标（``v.coords``，
+        优先级同热力图：PCB 元件坐标 > 坐标文件）。这里跑一遍 DRC 并序列化
+        成前端可渲染的数组；坐标与 3D 预览同一绝对 mm 坐标系。
+
+        Returns:
+            dict: ``{ok, reason, source, violation_count, mapped, items}``；
+            ``items[i] = {rule, severity, description, location, suggestion,
+            coords: [[x, y], ...]}``；``reason`` 语义同热力图
+            （``no_data`` / ``no_positions`` / ``no_violations`` / ``unmapped``）。
+        """
+        ctx = self.context
+        empty = {
+            "ok": True, "reason": "", "source": "",
+            "violation_count": 0, "mapped": 0, "items": [],
+        }
+
+        if not ctx.has_data and not ctx.pcb_data:
+            empty["reason"] = "no_data"
+            return empty
+        if not ctx.pcb_data and not ctx.positions:
+            empty["reason"] = "no_positions"
+            return empty
+
+        checker = DesignRuleChecker()
+        violations = checker.check_all(
+            ctx.bom_items, ctx.positions, ctx.netlist, ctx.pcb_data
+        )
+        _, source = checker._resolve_positions()
+        mapped = sum(1 for v in violations if v.coords)
+        if source == "":
+            reason = "no_positions"
+        elif not violations:
+            reason = "no_violations"
+        elif mapped == 0:
+            reason = "unmapped"
+        else:
+            reason = ""
+        items = [
+            {
+                "rule": v.rule_name,
+                "severity": v.severity.value,
+                "description": v.description,
+                "location": v.location,
+                "suggestion": v.suggestion,
+                "coords": [[round(float(x), 3), round(float(y), 3)]
+                           for x, y in v.coords],
+            }
+            for v in violations
+        ]
+        return {"ok": True, "reason": reason, "source": source,
+                "violation_count": len(violations), "mapped": mapped,
+                "items": items}
+
+    def review_design_multi_agent(self) -> str:
+        """多智能体协同设计审查 — 5 个专业 Agent 并行审查 + 合成报告
+
+        返回 JSON 格式的结构化审查报告（供前端雷达图 + 卡片渲染）。
+        """
+        if not self.context.bom_items:
+            return json.dumps({"error": "请先导入 BOM 文件"}, ensure_ascii=False)
+
+        try:
+            # 运行设计规则检查
+            checker = DesignRuleChecker()
+            violations = checker.check_all(
+                self.context.bom_items,
+                self.context.positions,
+                pcb_data=self.context.pcb_data,
+            )
+
+            # 多智能体审查（如果 LLM 可用则深度分析，否则基于规则）。
+            # 审查走会话租借且不回流：五个 Agent 并发跑在 ThreadPoolExecutor
+            # 上，共享 self.agent 时轮次互相穿插还灌进用户对话历史。
+            from src.agent.review_agents import MultiAgentReviewer
+            with self._llm_session(merge_history=False) as client:
+                reviewer = MultiAgentReviewer(llm_client=client)
+                if client is not None:
+                    report = reviewer.review_with_llm(
+                        violations,
+                        self.context.bom_items,
+                        self.context.positions,
+                        self.context.pcb_data,
+                    )
+                else:
+                    report = reviewer.review(
+                        violations,
+                        self.context.bom_items,
+                        self.context.positions,
+                        self.context.pcb_data,
+                    )
+
+            # 构建前端可渲染的 JSON
+            result = {
+                "radar_data": report.radar_data,
+                "overall_score": report.overall_score,
+                "overall_grade": report.overall_grade,
+                "consensus": report.consensus_summary,
+                "agents": {},
+                "critical_issues": report.critical_issues,
+                "improvement_roadmap": report.improvement_roadmap,
+            }
+
+            for key, ar in report.agent_reports.items():
+                result["agents"][key] = {
+                    "name": ar.agent_name,
+                    "emoji": ar.agent_emoji,
+                    "domain": ar.domain,
+                    "summary": ar.summary,
+                    "score": ar.score,
+                    "findings": [
+                        {
+                            "severity": f.severity,
+                            "title": f.title,
+                            "detail": f.detail,
+                            "suggestion": f.suggestion,
+                            "location": f.location,
+                        }
+                        for f in ar.findings[:5]
+                    ],
+                }
+
+            logger.info("Multi-agent review completed: score=%s, grade=%s",
+                        report.overall_score, report.overall_grade)
+            return json.dumps(result, ensure_ascii=False)
+
+        except Exception as e:
+            logger.exception("Multi-agent review failed")
+            return json.dumps({"error": f"多智能体审查失败: {e}"}, ensure_ascii=False)
+
+    def verify_suggestion_handler(self) -> str:
+        """闭环验证的本地降级处理 — 引导用户提供待验证的建议。"""
+        if not self.context.bom_items:
+            return json.dumps(
+                {"error": "请先导入 BOM 文件，然后再进行闭环验证"},
+                ensure_ascii=False,
+            )
+        return (
+            " 闭环验证已就绪（已加载 BOM 数据）。\n\n"
+            "请告诉我你想验证的 PCB 设计建议，例如：\n"
+            "• \"验证建议：将 C1 改为 10µF 陶瓷电容\"\n"
+            "• \"检查这个修改：在电源引脚附近增加 100nF 去耦电容\"\n"
+            "• \"帮我验证：移除 R5 是否安全\"\n\n"
+            "我会运行 DRC 规则引擎检查你的建议，如果发现问题会自动要求修正。"
+        )
+
+    def verify_suggestion(self, suggestion: str) -> str:
+        """闭环验证 — 对 LLM 设计建议执行规则引擎验证 (路线三核心)。
+
+        流程: LLM 建议 → DRC 检查 → 发现问题 → LLM 修正 → 重新检查
+        最多迭代 3 轮。
+
+        Returns:
+            JSON 格式的 VerificationReport
+        """
+        from src.core.verifier import (
+            VerificationEngine,
+            SuggestionCategory,
+            create_verifier_from_controller,
+        )
+        engine = create_verifier_from_controller(self)
+        report = engine.verify(suggestion, category=SuggestionCategory.GENERAL)
+        return json.dumps(report.to_dict(), ensure_ascii=False)
+
+    def run_electrical_health_check(self) -> str:
+        """PCB 电气健康检查 — 实现在 src/core/electrical_check.py（P1-6 阶段A 迁出）。"""
+        from src.core.electrical_check import run_electrical_health_check as _run
+        return _run(self.context.pcb_data, self.context.bom_items)
+
+    def check_bom_health(self) -> str:
+        """BOM 健康检查 — 库存 / 生命周期 / 替代料 / 成本。"""
+        if not self.context.has_data:
+            return " 请先导入 BOM 文件"
+        client = LcscSearchClient()
+        checker = BOMHealthChecker(client)
+        report = checker.check(self.context.bom_items)
+        logger.info(
+            "BOM health: %d items, score=%.0f, cost=¥%.2f",
+            report.total_items, report.health_score, report.total_cost_estimate,
+        )
+        return BOMHealthChecker.format_report(report)
+
+    def get_bom_summary(self) -> dict:
+        prefixes: dict[str, int] = {}
+        for item in self.context.bom_items:
+            first_ref = item.reference.split(",")[0].strip()
+            prefix = "".join(c for c in first_ref if c.isalpha())
+            prefixes[prefix] = prefixes.get(prefix, 0) + 1
+        return {"total": len(self.context.bom_items), "by_prefix": dict(sorted(prefixes.items()))}
+
+    # ── Operation dispatch table (strategy pattern) ──
+
+    def _dispatch_operation(self, operation: str, params: dict) -> str:
+        # 处理 LLM 返回的追问
+        if operation == "__clarify__":
+            question = params.get("question", "不太确定您的意思，能再说详细一点吗？")
+            options = params.get("options", [])
+            if options:
+                return " " + question + "\n\n可选项：\n" + "\n".join(f"  • {o}" for o in options)
+            return " " + question
+
+        # RAG 知识库查询 — 需要传递 query 参数
+        if operation == "rag_query":
+            query = params.get("query", "")
+            return self.query_knowledge_base(query)
+
+        # 闭环验证 — 需要传递 suggestion 参数
+        if operation == "verify_suggestion":
+            suggestion = params.get("suggestion", "")
+            if not suggestion:
+                return (
+                    " 闭环验证需要提供待验证的设计建议。\n\n"
+                    "使用方法：请描述你想验证的PCB设计建议，例如：\n"
+                    "• \"验证建议：在U1附近添加100nF去耦电容\"\n"
+                    "• \"验证这个修改：将电源线宽改为1.5mm\""
+                )
+            return self.verify_suggestion(suggestion)
+
+        # DRC 规则生成 — 需要传递 rule_description 参数
+        if operation == "generate_drc_rule":
+            return self._generate_drc_rule(params.get("rule_description", ""))
+
+        # 走线宽度计算 — LLM 以结构化参数给出电流/温升/铜厚；
+        # 参数缺失时 handler 内部用 raw_input 兜底解析或返回引导
+        if operation == "calc_trace_width":
+            return self._calc_trace_width_handler(
+                raw_input=str(params.get("raw_input") or ""),
+                current_a=params.get("current_a"),
+                temp_rise_c=params.get("temp_rise"),
+                copper_oz=params.get("copper_oz"),
+                is_inner=params.get("is_inner"),
+            )
+
+        # 从 ToolRegistry 获取 handler 映射（带懒加载降级）
+        dispatch = self._build_dispatch_map()
+        handler = dispatch.get(operation)
+        if handler:
+            return handler()
+
+        return (
+            f" 无法识别操作「{operation}」\n\n"
+            "可用操作：合并BOM / 校验封装 / 检查重复 / 筛选元件 / "
+            "生成HTML BOM / 设计规则检查 / BOM健康检查"
+        )
+
+    def _build_dispatch_map(self) -> dict[str, Callable[[], str]]:
+        """从 ToolRegistry 构建操作分发映射"""
+        handlers: dict[str, Callable[[], str]] = {}
+        try:
+            from src.agent.tools import ToolRegistry
+            for name, handler_name in ToolRegistry.get_dispatch_map().items():
+                if handler_name == "_filter_input":
+                    handlers[name] = self._filter_input_handler
+                elif handler_name == "_pcb_analysis_cmd":
+                    handlers[name] = self._pcb_analysis_handler
+                else:
+                    method = getattr(self, handler_name, None)
+                    if method:
+                        handlers[name] = method
+        except ImportError:
+            pass  # ToolRegistry 不可用
+
+        # 补充特殊方法
+        if "generate_html_bom" in handlers:
+            orig = handlers["generate_html_bom"]
+            handlers["generate_html_bom"] = lambda: orig()
+        if "filter_components" in handlers:
+            handlers["filter_components"] = lambda: self._filter_components({})
+
+        # 向后兼容旧指令名
+        handlers["load_pcb"] = lambda: " 请通过 文件→导入PCB 加载电路板文件。"
+        return handlers
+
+    # ══════════════════════════════════════════════════
+    #  RAG 知识库
+    # ══════════════════════════════════════════════════
+
+    def _ensure_rag_indexed(self) -> bool:
+        """惰性自动索引知识库文件（首次查询触发）
+
+        扫描 rag_data/*.md 文件并增量索引到 ChromaDB。
+        使用 manifest 跟踪文件 mtime，只有变更文件才重新索引。
+
+        Returns:
+            True 若索引就绪，False 若索引失败
+        """
+        if self._rag_index_checked:
+            return True
+
+        with self._rag_index_lock:
+            if self._rag_index_checked:      # 双检：等锁期间别人可能已经建好了
+                return True
+
+            rag_dir = Path(__file__).parent.parent.parent / "rag_data"
+            if not rag_dir.exists():
+                logger.warning("RAG: rag_data directory not found at %s", rag_dir)
+                self._rag_index_checked = True
+                return False
+
+            try:
+                indexer = RAGIndexer()
+                # manifest 跟着索引走（DEFAULT_PERSIST_DIR）：打包版索引在
+                # app_home/rag_index，manifest 放 rag_data（_MEIPASS）里退出
+                # 即丢，增量索引就永远失效、每次启动都全量重索引。
+                manifest_path = str(Path(DEFAULT_PERSIST_DIR) / ".index_manifest.json")
+                stats = indexer.index_directory(str(rag_dir), manifest_path)
+                logger.info(
+                    "RAG auto-index: %d indexed, %d skipped, %d errors, %d total chunks",
+                    stats["indexed"], stats["skipped"],
+                    len(stats.get("errors", [])), indexer.chunk_count,
+                )
+                self._rag_index_checked = True
+                return True
+            except Exception as e:
+                logger.exception("RAG auto-index failed: %s", e)
+                self._rag_index_checked = True
+                return False
+
+    def query_knowledge_base(self, query: str = "") -> str:
+        """查询 RAG 知识库
+
+        Args:
+            query: 自然语言查询问题。若为空则返回帮助提示。
+
+        Returns:
+            格式化的知识库检索结果（Markdown 格式）
+        """
+        if not query or not query.strip():
+            rag_dir = Path(__file__).parent.parent.parent / "rag_data"
+            doc_count = len(list(rag_dir.glob("*.md"))) if rag_dir.is_dir() else 0
+            return (
+                "**知识库查询**\n\n"
+                "请指定要查询的内容，例如：\n"
+                "  • 查询 IPC-2221 载流计算公式\n"
+                "  • DDR5 VREFDQ 配置规范是什么\n"
+                "  • 0603 封装尺寸参数\n"
+                "  • PDN 目标阻抗如何计算\n"
+                "  • GaN 散热设计要点\n"
+                "  • 华为 PCB 设计规范有哪些\n\n"
+                f"当前知识库包含 {doc_count} 个专业文档，覆盖 "
+                "IPC 标准、高速数字设计、信号完整性、EMC、DFM、热管理、"
+                "混合信号/RF、BGA 封装、先进材料、中国行业实践等领域。"
+            )
+
+        self._ensure_rag_indexed()
+
+        try:
+            retriever = RAGRetriever()
+            context = retriever.query_with_context(query, top_k=5)
+            if context == "（未找到相关文档）":
+                return (
+                    f"未找到与「{query}」相关的知识库内容。\n\n"
+                    "建议：\n"
+                    "  • 尝试更通用的关键词（如用「DDR5 布线」替代「DDR5-6400 CL40」）\n"
+                    "  • 确认知识库已被索引（检查控制台日志）\n"
+                    "  • 尝试查询相关主题：IPC 标准、封装尺寸、DRC 规则、去耦电容等"
+                )
+            return f"**知识库查询结果: {query}**\n\n{context}"
+        except FileNotFoundError as e:
+            logger.warning("RAG index not found, attempting auto-index: %s", e)
+            try:
+                self._rag_index_checked = False  # 重置以允许重建
+                self._ensure_rag_indexed()
+                retriever = RAGRetriever()
+                return f"**知识库查询结果: {query}**\n\n{retriever.query_with_context(query, top_k=5)}"
+            except Exception as e2:
+                logger.exception("RAG retrieval failed after auto-index")
+                return f"知识库查询失败: {e2}\n\n请确保知识库文件已正确放置在 rag_data/ 目录。"
+        except Exception as e:
+            logger.exception("RAG query failed")
+            return f"知识库查询失败: {e}"
+
+    # ══════════════════════════════════════════════════
+    #  Natural-language processing
+    # ══════════════════════════════════════════════════
+
+    def is_agent_available(self) -> bool:
+        return self.agent is not None
+
+    def _require_data(self) -> Optional[str]:
+        if not self.context.has_data:
+            return " 请先导入 BOM 文件再输入指令。"
+        return None
+
+    def process_input(self, user_input: str) -> str:
+        guard = self._require_data()
+        if guard:
+            return guard
+        if self.is_agent_available():
+            result = self._try_ai(user_input)
+            if result is not None:
+                return result
+        return self._local_fallback(user_input)
+
+    def process_input_stream(
+        self, user_input: str, on_token: Callable[[str], None]
+    ) -> str:
+        guard = self._require_data()
+        if guard:
+            return guard
+        if self.is_agent_available():
+            result = self._try_ai_stream(user_input, on_token)
+            if result is not None:
+                return result
+        return self._local_fallback(user_input)
+
+    def chat_message_stream(self, user_input: str, on_token: Callable[[str], None]) -> str:
+        """自然语言对话（流式），不要求 BOM 预加载，LLM 直接输出 Markdown。
+
+        与 process_input() 的区别：
+        - 不要求 _require_data() — 无需导入 BOM 即可对话
+        - LLM 用自然语言回复（Markdown 格式），而非 JSON 命令解析
+        - 通过 on_token 回调流式输出每个 token
+        - 使用 general 系统提示词，支持多轮对话历史
+
+        Returns:
+            AI 的完整回复文本
+        """
+        if not self.is_agent_available():
+            return self._local_fallback(user_input)
+
+        try:
+            system = PromptTemplates.get_system_prompt("general")
+            with self._llm_session() as client:
+                if client is None:
+                    return self._local_fallback(user_input)
+                raw = client.chat_stream(
+                    user_input, system_prompt=system,
+                    on_token=on_token, use_history=self._conversation_active,
+                )
+            self._conversation_active = True
+            return raw
+        except Exception:
+            logger.exception("chat_message_stream failed")
+            return " AI 调用失败，请检查网络连接和 API 配置。\n\n建议：\n- 检查 API Key 是否正确\n- 检查网络连接是否通畅\n- 检查 API 额度是否充足"
+
+    def agent_loop(
+        self,
+        user_input: str,
+        on_token: Optional[Callable[[str], None]] = None,
+        max_iterations: int = 5,
+        on_tool_call: Optional[Callable[[str, dict], None]] = None,
+    ) -> str:
+        """Function Calling Agent Loop — LLM 自主选择工具，多步推理
+
+        与 process_input() 的区别：
+        - process_input: 意图分类 → 命令解析 → 执行一个操作 → 返回
+        - agent_loop:    LLM 每轮自主决定调用哪些工具 → 执行 → 基于结果
+                         继续推理 → 循环直到 LLM 输出文本回复
+
+        适用场景：需要多步操作的复杂任务，如
+        - "检查BOM健康，对缺货的元件找替代料"
+        - "合并BOM，然后验证封装，最后生成HTML报告"
+
+        Args:
+            user_input: 用户输入
+            on_token: 流式输出回调（最终文本回复时逐 token 回调）
+            max_iterations: 最大工具调用轮数
+            on_tool_call: 工具调用回调（每次执行工具前回调工具名和参数，
+                          用于前端展示 Agent 推理过程）
+
+        Returns:
+            LLM 的最终文本回复
+        """
+        if not self.is_agent_available():
+            return " Agent Loop 需要配置 AI 模型。请在设置中配置 API Key。"
+
+        try:
+            from src.agent.tools import ToolRegistry
+            from src.agent.prompt_templates import PromptTemplates
+
+            functions = ToolRegistry.get_function_definitions()
+            system = PromptTemplates.get_system_prompt("agent")
+
+            # 工具执行器是本次会话私有的（有 on_tool_call 时包一层，让前端
+            # 能实时看到每次工具调用）—— 不再改写共享 self.agent 的
+            # tool_executor，并发请求各用各的执行器。
+            if on_tool_call is not None:
+                def _executor(name: str, args: dict) -> str:
+                    try:
+                        on_tool_call(name, args)
+                    except Exception:
+                        pass
+                    return self._dispatch_operation(name, args)
+                tool_executor: Optional[Callable] = _executor
+            else:
+                tool_executor = self._dispatch_operation
+
+            with self._llm_session(tool_executor=tool_executor) as client:
+                if client is None:  # 可用性检查后被 reconfigure_llm 置空
+                    return " Agent Loop 需要配置 AI 模型。请在设置中配置 API Key。"
+                result = client.chat_with_tools(
+                    user_message=user_input,
+                    functions=functions,
+                    system_prompt=system,
+                    on_token=on_token,
+                    use_history=self._conversation_active,
+                    max_iterations=max_iterations,
+                )
+            self._conversation_active = True
+            return result
+        except RuntimeError as e:
+            logger.exception("Agent loop runtime error")
+            return f" Agent Loop 错误: {e}"
+        except Exception:
+            logger.exception("Agent loop failed")
+            return " Agent Loop 调用失败，请检查网络连接和 API 配置。"
+
+    def process_image_input(self, text: str, image_b64: str) -> str:
+        """处理带图片的用户输入 — 调用多模态 LLM 分析
+
+        不需要 BOM 预加载（图片分析独立于 BOM 数据）。
+        """
+        if not self.is_agent_available():
+            return " 图片分析需要配置 AI 模型。请在设置中配置支持多模态的 API（如 Kimi、GPT-4o、Qwen-VL）。"
+
+        try:
+            return self._analyze_image(text, image_b64)
+        except Exception as e:
+            logger.exception("Image analysis failed")
+            return f" 图片分析失败: {e}"
+
+    # ── AI helpers ──
+
+    def _get_nlu_engine(self):
+        """lazy init NLU 引擎（获取或创建；双检锁，见 __init__ 注释）"""
+        if self._nlu_ready:
+            return self._nlu_engine
+        with self._nlu_lock:
+            if self._nlu_ready:
+                return self._nlu_engine
+            try:
+                from src.agent.nlu_engine import NLUEngine
+                engine = NLUEngine()
+                logger.info("NLU Engine ready (embedding: %s)", engine.embedding_available)
+                self._nlu_engine = engine
+            except Exception as e:
+                logger.warning("NLU Engine init failed: %s", e)
+                self._nlu_engine = None
+            self._nlu_ready = True
+        return self._nlu_engine
+
+    def warm_up_models(self) -> dict:
+        """预热本地 ML 模型（启动 boot 线程调用）。
+
+        元件分类 TextCNN（torch 导入 + 权重，首次 DRC 的一次性大头）+
+        意图模型 rbt3 ONNX（BERT，onnxruntime 加载 ~秒级，首次对话分类路径；
+        缺产物时回退 TextCNN）。懒加载内部均有双检锁，与用户
+        操作并发安全；预热完成后首次分析即走稳态。
+
+        Returns:
+            {"component_model": bool, "intent_model": bool} 各自是否就绪
+        """
+        from src.rules import base as rule_base
+        component_ready = rule_base.warm_up()
+        engine = self._get_nlu_engine()
+        intent_ready = bool(engine and engine.warm_up())
+        logger.info("ML warmup: component_model=%s intent_model=%s",
+                    component_ready, intent_ready)
+        return {"component_model": component_ready, "intent_model": intent_ready}
+
+    def _intent_to_system_type(self, intent: TaskIntent) -> str:
+        """将 TaskIntent 映射到 system prompt 类型
+
+        如果设置了 active assistant，优先使用助手偏好的提示词类型。
+        """
+        # 助手→系统提示映射
+        assistant_map = {
+            "eda-general": None,       # 使用意图自动映射
+            "bom-expert": "bom",       # 始终用 BOM 提示词
+            "pcb-reviewer": "pcb",     # 始终用 PCB 提示词
+            "vision-analyst": "vision", # 始终用视觉提示词
+        }
+        if self._active_assistant and self._active_assistant in assistant_map:
+            override = assistant_map[self._active_assistant]
+            if override:
+                return override
+
+        # 默认：基于意图映射
+        mapping = {
+            TaskIntent.BOM_ANALYSIS: "bom",
+            TaskIntent.RULE_CHECK: "rule",
+            TaskIntent.PCB_ANALYSIS: "pcb",
+            TaskIntent.CODE_RULE_GEN: "rule",
+            TaskIntent.VISUAL: "vision",
+            TaskIntent.TEXT_CHAT: "general",
+            TaskIntent.LOCAL_ONLY: "general",
+        }
+        return mapping.get(intent, "general")
+
+    def _build_ai_prompt(self, user_input: str) -> tuple[str, str]:
+        """根据意图分类选择最合适的 system prompt 和模板"""
+        if self.router:
+            intent = self.router.classify_intent(user_input)
+        else:
+            intent = TaskIntent.TEXT_CHAT
+
+        system_type = self._intent_to_system_type(intent)
+        system = PromptTemplates.get_system_prompt(system_type)
+        prompt = PromptTemplates.get("command_parse", user_command=user_input)
+        logger.debug("Intent: %s → system_prompt=%s", intent.name, system_type)
+        return system, prompt
+
+    def _ai_to_operation(self, raw_response: str) -> Optional[str]:
+        parsed = self._extract_json(raw_response)
+        if parsed is None:
+            return None
+        result = self._dispatch_operation(
+            parsed.get("operation", ""), parsed.get("params", {})
+        )
+        explanation = parsed.get("explanation", "")
+        return f" AI 理解: {explanation}\n\n{result}" if explanation else result
+
+    def _try_ai(self, user_input: str) -> Optional[str]:
+        """两阶段 NLU 管线
+
+        Stage 1: 意图分类（语义 + 关键词混合，带置信度）
+          - 高置信 (>0.7)  → 进入 Stage 2
+          - 中置信 (0.4-0.7) → 返回追问
+          - 低置信 (<0.4)   → 走原 LLM 路径兜底
+
+        Stage 2: 实体抽取 + 命令解析 → 操作分发
+        """
+        try:
+            nlu = self._get_nlu_engine()
+            if nlu is not None:
+                intent_name, confidence, _debug = nlu.classify(user_input)
+                try:
+                    intent = TaskIntent[intent_name]
+                except KeyError:
+                    intent = TaskIntent.TEXT_CHAT
+
+                logger.debug("NLU: intent=%s confidence=%.2f", intent.name, confidence)
+
+                if confidence < 0.40:
+                    # 低置信 → 走原 LLM 路径
+                    return self._legacy_ai_path(user_input)
+                elif confidence < 0.70:
+                    # 中置信 → 追问
+                    return self._ask_clarification(user_input, nlu)
+                else:
+                    # 高置信 → Stage 2
+                    return self._execute_with_intent(user_input, intent)
+            else:
+                # NLU 不可用 → 走原 LLM 路径
+                return self._legacy_ai_path(user_input)
+        except Exception:
+            logger.exception("AI processing failed, falling back to local")
+            return None
+
+    def _try_ai_stream(
+        self, user_input: str, on_token: Callable[[str], None]
+    ) -> Optional[str]:
+        """流式版本 — 暂用原路径（流式不适合两阶段追问）"""
+        try:
+            return self._legacy_ai_path_stream(user_input, on_token)
+        except Exception:
+            logger.exception("AI streaming failed, falling back to local")
+            return None
+
+    def _legacy_ai_path(self, user_input: str) -> Optional[str]:
+        """原 AI 路径：单次 LLM 调用解析"""
+        system, prompt = self._build_ai_prompt(user_input)
+        raw = self.agent.chat(
+            prompt, system_prompt=system,
+            use_history=self._conversation_active,
+        )
+        result = self._ai_to_operation(raw)
+        if result is not None:
+            self._conversation_active = True
+        return result
+
+    def _legacy_ai_path_stream(
+        self, user_input: str, on_token: Callable[[str], None]
+    ) -> Optional[str]:
+        """流式版本的遗留路径"""
+        system, prompt = self._build_ai_prompt(user_input)
+        raw = self.agent.chat_stream(
+            prompt, system_prompt=system, on_token=on_token,
+            use_history=self._conversation_active,
+        )
+        result = self._ai_to_operation(raw)
+        if result is not None:
+            self._conversation_active = True
+        return result
+
+    def _execute_with_intent(self, user_input: str, intent: TaskIntent) -> Optional[str]:
+        """Stage 2: 基于已确认意图的精准命令解析
+
+        2026-10-08（P1-8）：原实现「entity_extract → command_parse」固定两段
+        串行，每条高置信指令都烧两次 LLM 调用。改为懒触发 —— 先直接
+        command_parse（command_parse 模板的 entity_context 本就是可选段），
+        仅当 JSON 解析失败或 operation 无法识别时，才补一次实体抽取 + 带实体
+        上下文的重试。高置信路径 1 次调用，意图结论不变。
+        """
+        system_type = self._intent_to_system_type(intent)
+        system = PromptTemplates.get_system_prompt(system_type)
+
+        def _parse(entity_context: str) -> Optional[str]:
+            cmd_prompt = PromptTemplates.get(
+                "command_parse",
+                user_command=user_input,
+                entity_context=entity_context,
+            )
+            return self._ai_to_operation(
+                self.agent.chat(cmd_prompt, system_prompt=system)
+            )
+
+        def _needs_retry(result: Optional[str]) -> bool:
+            if result is None:  # JSON 解析失败
+                return True
+            return "无法识别操作「" in result  # _dispatch_operation 的未知操作文案
+
+        try:
+            result = _parse("")
+            if not _needs_retry(result):
+                self._conversation_active = True
+                return result
+
+            # 首次解析失败 → best-effort 补实体再重试一次；实体抽取自身
+            # 失败不阻塞（空实体上下文重试，等同原口径）。
+            entity_context = ""
+            try:
+                entity_prompt = PromptTemplates.get("entity_extract", user_command=user_input)
+                entity_raw = self.agent.chat(entity_prompt, system_prompt=system)
+                entities = self._extract_json(entity_raw)
+                if entities and entities.get("entities"):
+                    entity_context = "\n已提取的实体上下文：\n" + json.dumps(
+                        entities["entities"], ensure_ascii=False, indent=2
+                    )
+            except Exception:
+                logger.warning("entity_extract (retry path) failed", exc_info=True)
+
+            result = _parse(entity_context)
+            if result is not None:
+                self._conversation_active = True
+            return result
+        except Exception:
+            logger.exception("Stage 2 parsing failed, falling back to legacy")
+            return self._legacy_ai_path(user_input)
+
+    def _ask_clarification(self, user_input: str, nlu=None) -> str:
+        """生成意图追问（中置信度时调用）"""
+        if nlu is None:
+            nlu = self._get_nlu_engine()
+        if nlu is not None:
+            return nlu.get_clarification_question(user_input)
+        return (
+            " 不太确定您的意思，能再说详细一点吗？\n\n"
+            "可用操作：合并BOM / 校验封装 / 检查重复 / 设计规则 / PCB分析 / BOM健康"
+        )
+
+    def _analyze_image(self, text: str, image_b64: str) -> str:
+        """调用多模态 LLM 分析图片
+
+        使用视觉系统提示词和 VISION_ANALYSIS 模板，
+        通过 LLMClient.chat_multimodal 发送 base64 图片。
+        """
+        system = PromptTemplates.get_system_prompt("vision")
+        prompt = PromptTemplates.get(
+            "vision_analysis",
+            user_command=text,
+        )
+        try:
+            raw = self.agent.chat_multimodal(
+                user_message=prompt,
+                image_b64=image_b64,
+                system_prompt=system,
+            )
+            return f" AI 视觉分析:\n\n{raw}"
+        except Exception as e:
+            logger.exception("Multimodal LLM call failed")
+            return (
+                f" 视觉分析调用失败: {e}\n\n"
+                "请确认:\n"
+                "• 已配置支持多模态的 API（如 Kimi、GPT-4o、Qwen-VL）\n"
+                "• 当前模型支持图片输入\n"
+                "• API 额度充足"
+            )
+
+    def _filter_components(self, params: dict) -> str:
+        keyword = (params.get("keyword") or "").lower()
+        if not keyword:
+            return " 请指定筛选关键词"
+        matched = [
+            item for item in self.context.bom_items
+            if keyword in f"{item.reference} {item.value} {item.package} {item.part_number} {item.description}".lower()
+        ]
+        if not matched:
+            return f" 未找到包含「{keyword}」的元件"
+        lines = [f" 筛选结果 ({len(matched)} 条):"]
+        for item in matched:
+            lines.append(
+                f"   {item.reference:15s} {item.value:10s} "
+                f"{item.package:10s} {item.part_number}"
+            )
+        return "\n".join(lines)
+
+    # ── Local keyword fallback ──
+
+    # _KEYWORD_ROUTES 已从 ToolRegistry 派生（单一事实来源）
+    # 保留此属性以兼容旧代码，实际匹配在 _match_keyword 中通过 ToolRegistry 完成
+    _KEYWORD_ROUTES: tuple = ()  # deprecated, kept for compatibility
+
+    def _get_keyword_map(self):
+        """懒加载 ToolRegistry 关键词映射"""
+        try:
+            from src.agent.tools import ToolRegistry
+            return ToolRegistry.get_keyword_map()
+        except ImportError:
+            return ()
+
+    # 生成意图句式：生成/创建/编写…规则|脚本 → generate_drc_rule。
+    # 动作词组比 check_rule 的「规则/drc」更能代表 CODE_RULE_GEN 语义，
+    # 在关键词匹配前判断，避免「写一个去耦电容检查的DRC规则」被执行 DRC。
+    _RULE_GEN_PATTERN = re.compile(
+        r"(?:生成|创建|编写|新增|写一?[个条]).{0,12}(?:规则|脚本)"
+    )
+
+    # 知识问句句式（句首问词或句尾问式）。命中且 NLU 高置信 TEXT_CHAT 时，
+    # 本地降级不再执行动作工具（原先「什么是去耦电容？」会触发全量 DRC 扫描）。
+    _QUESTION_PATTERN = re.compile(
+        r"^(?:什么[是叫]|为什么|如何|怎么|介绍|讲解?|解释)|"
+        r"(?:是什么|有什么区别|的区别|有什么用)$"
+    )
+
+    def _local_chat_guard(self, user_input: str) -> Optional[str]:
+        """知识问句守卫（仅本地降级路径）— 问句式开头/结尾且本地 NLU 高置信
+        判为通用对话时，不执行动作工具，返回指引文案。
+
+        无 NLU（打包缺 torch）或 NLU 判断为操作意图时放行，不影响指令路由。
+        """
+        if not self._QUESTION_PATTERN.search(user_input.strip()):
+            return None
+        engine = self._get_nlu_engine()
+        if engine is None:
+            return None
+        try:
+            intent, confidence, _ = engine.classify(user_input)
+        except Exception:
+            return None
+        if intent != "TEXT_CHAT" or confidence < 0.8:
+            return None
+        return (
+            " 这看起来是一个知识型问题。本地模式（未配置 AI 模型）无法详细解答，你可以：\n"
+            "• 在设置中配置 API Key 后直接提问，我会结合知识库详细回答\n"
+            "• 或输入操作指令，如：合并BOM / 检查设计规则 / 走线宽度 1A"
+        )
+
+    def _match_keyword(self, user_input: str) -> Optional[Callable[[], str]]:
+        """关键词匹配 — 从 ToolRegistry 派生（精确子串 → 模糊 n-gram 降级）"""
+        lowered = user_input.lower()
+
+        # 第零轮：规则/脚本生成句式（generate_drc_rule）
+        if self._RULE_GEN_PATTERN.search(lowered):
+            handler = self._resolve_handler_by_tool("generate_drc_rule")
+            if handler:
+                logger.debug("Rule-gen pattern: '%s' → generate_drc_rule", user_input[:30])
+                return handler
+
+        # 第一轮：精确子串匹配 — 最长关键词优先，同长取注册序靠前。
+        # 2026-10-14 修复：原先按注册顺序先到先得，短关键词会抢占长关键词
+        # （check_rule「线宽」⊂ calc_trace_width「走线宽度」，导致
+        # 「帮我计算1A电流的走线宽度」被路由到全量 DRC 扫描）。
+        best_tool: Optional[str] = None
+        best_len = 0
+        for keywords, tool_name in self._get_keyword_map():
+            for kw in keywords:
+                if kw and kw in lowered and len(kw) > best_len:
+                    best_len = len(kw)
+                    best_tool = tool_name
+        if best_tool:
+            logger.debug("Keyword match: '%s' → %s (kw_len=%d)", user_input[:30], best_tool, best_len)
+            return self._resolve_handler_by_tool(best_tool)
+
+        # 第二轮：汉字 bigram 模糊匹配
+        best_tool: Optional[str] = None
+        best_score = 0.0
+        threshold = 0.25
+
+        for keywords, tool_name in self._get_keyword_map():
+            for kw in keywords:
+                if len(kw) < 2:
+                    continue
+                score = self._char_ngram_similarity(lowered, kw, n=2)
+                if score > best_score:
+                    best_score = score
+                    best_tool = tool_name
+
+        if best_score >= threshold and best_tool:
+            logger.debug("Fuzzy match: '%s' → %s (ngram=%.2f)", user_input[:30], best_tool, best_score)
+            return self._resolve_handler_by_tool(best_tool)
+
+        return None
+
+    def _resolve_handler_by_tool(self, tool_name: str) -> Optional[Callable[[], str]]:
+        """通过 ToolRegistry 解析 tool name → handler callable"""
+        # 特殊处理：需要参数或特殊逻辑的工具
+        # 所有 filter/search/lookup 类工具都使用 _filter_input_handler
+        filter_tools = {"filter_components", "search_component", "component_lookup"}
+        analysis_tools = {"pcb_analysis"}  # calc_trace_width 有本地真实计算，走 ToolDef handler
+        health_tools = {"bom_health", "find_alternatives", "supply_risk", "bom_cost_summary"}
+        report_tools = {"generate_html_bom"}
+        rule_tools = {"check_rule", "explain_design_rule"}
+        code_gen_tools = {"generate_drc_rule"}
+        review_tools = {"review_multi_agent"}
+        verify_tools = {"verify_suggestion"}
+
+        if tool_name in filter_tools:
+            return self._filter_input_handler
+        if tool_name in analysis_tools:
+            return self._pcb_analysis_handler
+        if tool_name in health_tools:
+            return self.check_bom_health
+        if tool_name in report_tools:
+            return self.generate_html_bom
+        if tool_name in rule_tools:
+            return self.check_design_rules
+        if tool_name in code_gen_tools:
+            return self._generate_drc_rule
+        if tool_name in review_tools:
+            return self.review_design_multi_agent
+        if tool_name in verify_tools:
+            return self.verify_suggestion_handler
+
+        # 标准工具：从 Registry 获取 handler 名称
+        try:
+            from src.agent.tools import ToolRegistry
+            dispatch = ToolRegistry.get_dispatch_map()
+            handler_name = dispatch.get(tool_name)
+            if handler_name:
+                return getattr(self, handler_name, None)
+        except ImportError:
+            pass
+        return None
+
+    def _resolve_handler(self, method_name: str) -> Optional[Callable[[], str]]:
+        """将方法名解析为可调用对象（向后兼容旧 _KEYWORD_ROUTES 路径）"""
+        if method_name == "_filter_input":
+            return self._filter_input_handler
+        if method_name == "_pcb_analysis_cmd":
+            return self._pcb_analysis_handler
+        return getattr(self, method_name, None)
+
+    @staticmethod
+    def _call_route_handler(handler: Callable, user_input: str) -> str:
+        """调用路由 handler — 声明了一个形参的 handler（如走线宽度计算）
+        绑定原始用户输入传入，零参 handler 保持原样调用。
+
+        原先 _local_fallback 一律 handler()，路由层拿不到句子，
+        需要从输入提取参数的工具只能返回引导文案。
+        """
+        try:
+            inspect.signature(handler).bind(user_input)
+        except TypeError:
+            args: tuple = ()
+        except ValueError:  # 无签名的内建/包装 — 保守走零参
+            args = ()
+        else:
+            args = (user_input,)
+        try:
+            return handler(*args)
+        except BOMEmptyError:
+            # chat 入口（chat_message_stream）不要求预载 BOM，本地降级命中
+            # 需要数据的工具（合并/校验/查重…）时给友好提示而非抛异常
+            return " 请先导入 BOM 文件再执行该操作。"
+
+    def _filter_input_handler(self) -> str:
+        """处理用户的筛选/搜索请求（从输入中提取关键词）"""
+        # 这个方法在本地降级时被调用，但我们没有保存原始输入
+        # 返回引导信息
+        return (
+            " 请在指令中指定要筛选的关键词，例如：\n"
+            "• \"筛选0603封装的电阻\"\n"
+            "• \"查找STM32\"\n"
+            "• \"搜索10kΩ\""
+        )
+
+    def _pcb_analysis_handler(self) -> str:
+        """处理 PCB 分析请求（本地降级时）"""
+        if self.agent is None:
+            return " PCB 分析需要 AI 支持，请先配置 API Key。"
+        summary = str(self.context.pcb_data or "未加载")
+        if len(summary) > self._AI_CONTEXT_MAX_CHARS:
+            summary = summary[:self._AI_CONTEXT_MAX_CHARS] + f"\n…（repr 已截断，原文 {len(summary)} 字符）"
+        return self.agent.chat(
+            PromptTemplates.get("pcb_analysis", pcb_summary=summary),
+            system_prompt=PromptTemplates.get_system_prompt("pcb"),
+        )
+
+    # ── 走线宽度计算（IPC-2221 本地真实计算，无 LLM/无 BOM 可用）──
+
+    _CALC_WIDTH_TABLE_MM = (0.3, 0.5, 0.8, 1.0, 1.5, 2.0)
+
+    def _calc_trace_width_handler(
+        self,
+        raw_input: str = "",
+        current_a: Optional[float] = None,
+        temp_rise_c: Optional[float] = None,
+        copper_oz: Optional[float] = None,
+        is_inner: Optional[bool] = None,
+    ) -> str:
+        """走线宽度计算 — 双入口：
+        - headless 关键词路由：raw_input 为原始句子，正则抽电流/温升/铜厚
+        - Agent Loop（calc_trace_width 工具）：_dispatch_operation 传结构化参数
+
+        2026-10-14 修复：原先关键词命中后映射到 _pcb_analysis_handler
+        （无 LLM 时只回「需要 AI 支持」），本地从未真正算过。
+        """
+        import re as _re
+        from src.pcb.calculator import ipc2221_current_capacity, ipc2221_trace_width
+
+        text = raw_input or ""
+
+        def _num(pattern: str) -> Optional[float]:
+            m = _re.search(pattern, text, re.IGNORECASE)
+            return float(m.group(1)) if m else None
+
+        if current_a is None:
+            ma = _num(r"(\d+(?:\.\d+)?)\s*(?:ma|毫安)")
+            if ma is not None:
+                current_a = ma / 1000.0
+        if current_a is None:
+            current_a = _num(r"(\d+(?:\.\d+)?)\s*(?:a\b|安)")
+        if current_a is None:
+            current_a = _num(r"(\d+(?:\.\d+)?)")  # 无单位兜底取第一个数
+        if current_a is None or current_a <= 0:
+            return (
+                " 请在句子里带上电流，例如：\n"
+                "• \"走线宽度 1A\"\n"
+                "• \"帮我计算 1A 电流的走线宽度\"\n"
+                "• \"2A 温升20 1oz 的线宽要多少\"（温升默认 10°C，铜厚默认 1oz）"
+            )
+
+        if temp_rise_c is None:
+            temp_rise_c = _num(r"温升\s*(\d+(?:\.\d+)?)")
+            if temp_rise_c is None:
+                temp_rise_c = _num(r"(\d+(?:\.\d+)?)\s*(?:°\s*c|℃|度)")
+        if temp_rise_c is None or temp_rise_c <= 0:
+            temp_rise_c = 10.0
+
+        if copper_oz is None:
+            copper_oz = _num(r"(\d+(?:\.\d+)?)\s*(?:oz|盎司)")
+        if copper_oz is None or copper_oz <= 0:
+            copper_oz = 1.0
+
+        if is_inner is None:
+            is_inner = "内层" in text
+
+        width_mm = ipc2221_trace_width(current_a, copper_oz, temp_rise_c, is_inner)
+        width_mil = width_mm * 39.37
+
+        table_lines = ["| 走线宽度 | 实际载流能力 |", "|---|---|"]
+        for w in self._CALC_WIDTH_TABLE_MM:
+            cap = ipc2221_current_capacity(w, copper_oz, temp_rise_c, is_inner)
+            mark = " ✓" if cap >= current_a else ""
+            table_lines.append(f"| {w:.1f} mm | {cap:.2f} A{mark} |")
+
+        return (
+            f"## 走线宽度计算（IPC-2221）\n\n"
+            f"**输入**：电流 {current_a:g} A · 温升 {temp_rise_c:g} °C · "
+            f"铜厚 {copper_oz:g} oz · {'内层' if is_inner else '外层'}\n\n"
+            f"### 所需最小走线宽度：**{width_mm:.3f} mm**（约 {width_mil:.1f} mil）\n\n"
+            f"常用线宽在相同参数下的载流能力（✓ 表示满足 {current_a:g} A）：\n\n"
+            + "\n".join(table_lines)
+            + "\n\n> 依据 IPC-2221 §6.2 载流经验公式反解；实际布线请再留 20%~50% 余量，"
+              "并考虑压降与散热条件。"
+        )
+
+
+    @staticmethod
+    def _char_ngram_similarity(a: str, b: str, n: int = 2) -> float:
+        """汉字 character n-gram Jaccard 相似度
+
+        用于处理输入法导致的近似匹配，如 "合饼" → "合并"、 "物料青丹" → "物料清单"。
+        """
+        def ngrams(s: str) -> set:
+            return {s[i:i + n] for i in range(len(s) - n + 1)}
+
+        grams_a = ngrams(a)
+        grams_b = ngrams(b)
+        if not grams_a or not grams_b:
+            return 0.0
+        intersection = grams_a & grams_b
+        union = grams_a | grams_b
+        return len(intersection) / len(union)
+
+    def _get_closest_commands(self, user_input: str, top: int = 3) -> list[tuple[str, float]]:
+        """找到与用户输入最相似的前 N 条指令（从 ToolRegistry 派生）"""
+        lowered = user_input.lower()
+        scored: list[tuple[str, float]] = []
+
+        for keywords, tool_name in self._get_keyword_map():
+            max_score = max(
+                (self._char_ngram_similarity(lowered, kw, n=2) for kw in keywords),
+                default=0.0,
+            )
+            if max_score > 0.15:
+                scored.append((tool_name, max_score))
+
+        # 去重保留最高分
+        seen: set[str] = set()
+        unique: list[tuple[str, float]] = []
+        for tool, score in sorted(scored, key=lambda x: -x[1]):
+            if tool not in seen:
+                seen.add(tool)
+                unique.append((tool, score))
+
+        return unique[:top]
+
+    def _local_fallback(self, user_input: str) -> str:
+        # 2026-10-08 修复（P1-13）：原来写 `'ToolRegistry' in dir()` —— dir() 无参
+        # 返回当前局部作用域名字，而 ToolRegistry 在函数内 import，判断恒假，
+        # 建议列表一直显示裸 tool_name。提升到方法入口统一 import。
+        from src.agent.tools import ToolRegistry
+
+        guard = self._local_chat_guard(user_input)
+        if guard:
+            return guard
+
+        handler = self._match_keyword(user_input)
+        if handler:
+            return self._call_route_handler(handler, user_input)
+
+        # 未匹配 → 查找最相似的指令给出建议
+        suggestions = self._get_closest_commands(user_input, top=3)
+        suggestion_text = ""
+        if suggestions:
+            suggestion_text = "\n 您是不是想:\n"
+            for tool_name, score in suggestions:
+                suggestion_text += f"  • {ToolRegistry.get_label(tool_name)}\n"
+
+        # 从 ToolRegistry 生成帮助文本
+        try:
+            help_text = ToolRegistry.get_help_text()
+        except ImportError:
+            help_text = (
+                "可用指令:\n"
+                "• 合并/整理 BOM     — 合并同类元件\n"
+                "• AI智能合并         — AI 辅助识别\n"
+                "• 校验/验证封装      — 检查封装匹配\n"
+                "• 查重/位号检查      — 检测重复位号\n"
+                "• 筛选/查找元件      — 搜索元件\n"
+                "• 生成 HTML/导出     — 交互式 BOM\n"
+                "• 规则检查 / DRC     — 设计规则检查\n"
+                "• BOM健康 / 库存     — 库存/替代料\n"
+                "• PCB / 电路板       — PCB 状态\n"
+                "• 统计 / 概览        — 元件统计"
+            )
+
+        return " 无法识别指令。" + suggestion_text + "\n" + help_text
+
+    @staticmethod
+    def _method_label(method_name: str) -> str:
+        """方法名 → 用户可读标签（从 ToolRegistry 派生，向后兼容）"""
+        try:
+            from src.agent.tools import ToolRegistry
+            # 尝试通过 handler 名称反查
+            for tool in ToolRegistry.get_all():
+                if tool.handler == method_name or tool.name == method_name:
+                    return tool.label
+        except ImportError:
+            pass
+        return method_name
+
+    def _summary_report(self) -> str:
+        summary = self.get_bom_summary()
+        lines = [
+            "=" * 50,
+            "        BOM 元件统计",
+            "=" * 50,
+            f"总元件数：{summary['total']}",
+            "-" * 50,
+        ]
+        for prefix, count in summary["by_prefix"].items():
+            lines.append(f"  {prefix}: {count} 个")
+        lines.append("=" * 50)
+        return "\n".join(lines)
+
+    def _generate_drc_rule(self, rule_desc: str = "") -> str:
+        """DRC 规则自动生成 — 根据自然语言描述生成检查规则代码
+
+        利用 LLM 将用户对 PCB 设计规则的自然语言描述
+        转换为可运行的 Python 规则检查代码（RuleViolation 格式）。
+        """
+        guard = self._require_llm()
+        if guard:
+            return guard
+
+        # 2026-10-06 修复：原实现读 self.context.conversation_history ——
+        # CommandContext 从未有过该字段，本工具被聊天/Agent Loop 触发时必然
+        # AttributeError。现在两级取值：Function Calling 参数（tools.py 已声明
+        # rule_description）优先；为空时回落 LLM 客户端历史里最后一条用户消息。
+        if not rule_desc and self.agent is not None:
+            for msg in reversed(self.agent.get_history()):
+                if msg.get("role") == "user":
+                    rule_desc = msg.get("content", "")
+                    break
+
+        if not rule_desc:
+            return " 请先描述你想生成的 DRC 规则。例如：'生成一个检查LED限流电阻的规则'"
+
+        # 构建生成提示（P1-6 阶段A：迁至 PromptTemplates.drc_rule_gen_prompt）
+        prompt = PromptTemplates.drc_rule_gen_prompt(rule_desc)
+
+        try:
+            llm = self.agent
+            code = llm.chat(prompt)
+            # 清理可能存在的 markdown 代码块标记
+            code = code.strip()
+            if code.startswith("```python"):
+                code = code[9:]
+            elif code.startswith("```"):
+                code = code[3:]
+            if code.endswith("```"):
+                code = code[:-3]
+            code = code.strip()
+
+            # 验证生成的代码是否语法正确
+            try:
+                compile(code, "<generated_drc_rule>", "exec")
+            except SyntaxError as e:
+                return (
+                    f" 生成的规则代码存在语法错误:\n```\n{e}\n```\n\n"
+                    f"请修改规则描述后重试。"
+                )
+
+            # 格式化为用户可查看的结果
+            return (
+                "##  DRC 规则已生成\n\n"
+                "以下规则代码可直接添加到 `src/rules/checker.py` 的 DesignRuleChecker 类中：\n\n"
+                f"```python\n{code}\n```\n\n"
+                "### 使用方式\n"
+                "1. 复制上方代码到 `src/rules/checker.py`\n"
+                "2. 保存文件后规则自动生效（`_check_` 前缀方法自动注册）\n"
+                "3. 运行 `python -m pytest tests/ -q` 验证无误\n\n"
+                " 提示: AI 生成的规则建议人工审核后再投入使用。"
+            )
+        except Exception as e:
+            return f" DRC 规则生成失败: {str(e)}\n\n请确保 LLM API 配置正确并重试。"
+
+    def _require_llm(self) -> Optional[str]:
+        """检查 LLM 是否可用"""
+        if not self.is_agent_available():
+            return " 此功能需要配置 LLM API Key。请在设置中配置 AI 模型。"
+        return None
+
+    def _pcb_status(self) -> str:
+        """返回已加载 PCB 的状态摘要"""
+        pcb = self.context.pcb_data
+        if not pcb:
+            return " 未加载 PCB 文件。请通过 文件→导入PCB 加载电路板文件。"
+        return (
+            f" PCB 状态:\n"
+            f"  格式: {pcb.format}\n"
+            f"  网络: {pcb.net_count} 个\n"
+            f"  走线: {pcb.trace_count} 条\n"
+            f"  过孔: {pcb.via_count} 个\n"
+            f"  层: {', '.join(pcb.layers) if pcb.layers else '无'}"
+        )
+
+    # ── Static utility ──
+
+    @staticmethod
+    def _extract_json(text: str) -> Optional[dict]:
+        start = text.find("{")
+        end = text.rfind("}") + 1
+        if start < 0 or end <= start:
+            return None
+        try:
+            return json.loads(text[start:end])
+        except json.JSONDecodeError:
+            return None

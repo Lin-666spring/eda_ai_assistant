@@ -15,7 +15,7 @@ import tempfile
 import threading
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 
 from src.api.models import (
     AssistantRequest,
@@ -52,7 +52,7 @@ from src.api.server import get_controller
 from src.core.controller import AppController, default_output_dir
 from src.core.persistence import SessionStore
 from src.bom.parser import BOMItem
-from src.config import SETTINGS_DIR, load_settings, save_settings
+from src.config import load_settings, save_settings
 from src.constants import get_provider_preset
 from src import settings_facade as facade
 
@@ -63,6 +63,23 @@ router = APIRouter()
 # ═══════════════════════════════════════════════════════════════
 #  Helpers
 # ═══════════════════════════════════════════════════════════════
+
+
+# P1-18（验收 2026-10-24）：破坏性端点（清空全部数据 / 覆盖已存配置含 API Key /
+# 永久删除会话）的反 CSRF 门槛。CORS 只拦「读响应」，拦不住浏览器跨站「发请求」：
+# 无 body 的 POST 用一个 <form> 就能打。要求自定义请求头 X-Requested-With:
+# XMLHttpRequest —— 跨站表单/简单请求带不了自定义头，而带自定义头会触发 CORS
+# 预检、非白名单 Origin 预检必败。合法调用方（同源前端 / lceda 插件）显式带上即可。
+_AJAX_HEADER = "X-Requested-With"
+_AJAX_VALUE = "XMLHttpRequest"
+_AJAX_403 = "缺少反 CSRF 请求头 X-Requested-With: XMLHttpRequest（破坏性操作需要显式携带）"
+
+
+def require_ajax_header(
+    x_requested_with: str = Header(default="", alias="X-Requested-With"),
+) -> None:
+    if x_requested_with != _AJAX_VALUE:
+        raise HTTPException(status_code=403, detail=_AJAX_403)
 
 
 def _bom_item_to_dict(item: BOMItem) -> dict:
@@ -310,9 +327,16 @@ def check_rules():
 @router.post("/health/check", response_model=ReportResponse)
 def check_bom_health():
     """Check BOM health via LCSC API (stock, lifecycle, alternatives, cost)."""
+    # P1-19（验收 2026-10-24）：逐物料已在 BOMHealthChecker 内降级为
+    # network_error，这里兜住其余未预期异常（缓存目录不可写等）——
+    # 返回 ok=False 的 error dict 而不是 500
     ctrl = get_controller()
-    report = ctrl.check_bom_health()
-    return ReportResponse(ok=True, report=report)
+    try:
+        report = ctrl.check_bom_health()
+        return ReportResponse(ok=True, report=report)
+    except Exception as e:
+        logger.exception("check_bom_health failed")
+        return ReportResponse(ok=False, report=str(e))
 
 
 @router.get("/drc/heatmap")
@@ -324,6 +348,29 @@ def get_drc_heatmap(grid_size_mm: float = Query(default=5.0)):
     Empty list if no positions are loaded or no violation maps to a component.
     """
     return get_controller().get_drc_heatmap(grid_size_mm)
+
+
+@router.get("/drc/violations")
+def get_drc_violations():
+    """Coordinatized DRC violation list for the 3D viewer marker layer.
+
+    Each item carries ``coords: [[x, y], ...]`` in absolute mm (same frame as
+    ``/board/3d``), resolved from the violation's referenced designators —
+    PCB component positions take priority over Pick & Place files. ``reason``
+    semantics match ``/drc/heatmap``.
+    """
+    return get_controller().get_drc_violations()
+
+
+@router.get("/board/3d")
+def get_board_3d_data():
+    """3D board preview payload for the frontend three.js viewer (board3d.js).
+
+    Board outline rings, component positions (with side T/B), trace segments
+    per (net, layer) and via positions — all in absolute mm. ``reason='no_data'``
+    when no PCB/project is loaded.
+    """
+    return get_controller().get_board_3d_data()
 
 
 @router.post("/verify/suggestion")
@@ -461,7 +508,8 @@ def get_llm_config():
     )
 
 
-@router.post("/llm/config", response_model=OkResponse)
+@router.post("/llm/config", response_model=OkResponse,
+             dependencies=[Depends(require_ajax_header)])  # P1-18（验收 2026-10-24）：覆盖已存 Key/接入点，破坏性
 def update_llm_config(req: LLMConfigRequest):
     """Update LLM provider, key, URL, and model. Persisted to settings.json."""
     ctrl = get_controller()
@@ -503,7 +551,8 @@ def get_settings():
     return {"ok": True, **facade.settings_view(mask_secrets=True)}
 
 
-@router.post("/settings", response_model=OkResponse)
+@router.post("/settings", response_model=OkResponse,
+             dependencies=[Depends(require_ajax_header)])  # P1-18（验收 2026-10-24）：整体覆盖 settings.json（含 Key），破坏性
 def save_all_settings(req: SettingsRequest):
     """Save all settings and reconfigure LLM（薄委托 facade.persist_all_settings）。
 
@@ -524,15 +573,21 @@ def save_all_settings(req: SettingsRequest):
         return OkResponse(ok=False, msg=str(e))
 
 
-@router.post("/clear-all-data", response_model=OkResponse)
+@router.post("/clear-all-data", response_model=OkResponse,
+             dependencies=[Depends(require_ajax_header)])  # P1-18（验收 2026-10-24）：无 body POST 可被跨站表单直发，必须带头
 def clear_all_data():
-    """Remove all local settings and database."""
-    import shutil
+    """Remove all local settings and database.
+
+    2026-10-24 修复（验收 A-5）：与 main.py 同步 —— 保留 logs/（Windows 下
+    FileHandler 持有句柄，整目录 rmtree 必失败）、重置本进程 controller
+    单例、清空内存 LLM Key。
+    """
+    from src.api.server import reset_controller
+    from src.config import clear_local_data
 
     try:
-        if SETTINGS_DIR.exists():
-            shutil.rmtree(str(SETTINGS_DIR))
-            SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+        clear_local_data()
+        reset_controller()
         return OkResponse(ok=True)
     except Exception as e:
         return OkResponse(ok=False, msg=str(e))
@@ -615,7 +670,8 @@ def persist_save_assistant(req: AssistantSaveRequest):
         return {"ok": False, "msg": str(e)}
 
 
-@router.delete("/persist/assistant/{instance_id}")
+@router.delete("/persist/assistant/{instance_id}",
+               dependencies=[Depends(require_ajax_header)])  # P1-18（验收 2026-10-24）：永久删除助手及其对话
 def persist_delete_assistant(instance_id: str):
     try:
         _get_store().delete_assistant(instance_id)
@@ -635,7 +691,8 @@ def persist_save_conversation(req: ConversationSaveRequest):
         return {"ok": False, "msg": str(e)}
 
 
-@router.delete("/persist/conversation/{conv_id}")
+@router.delete("/persist/conversation/{conv_id}",
+               dependencies=[Depends(require_ajax_header)])  # P1-18（验收 2026-10-24）：永久删除对话及其消息
 def persist_delete_conversation(conv_id: str):
     try:
         _get_store().delete_conversation(conv_id)

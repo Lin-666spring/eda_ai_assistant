@@ -16,6 +16,7 @@ numpy>=1.24.0            # torch/pandas 计算后端
 # 2026-10-14 BERT 批：意图底座换 rbt3，训练/导出侧依赖（仅本清单，不进运行时/exe）
 transformers>=5.0        # rbt3 微调（src/ml/train_intent_bert）
 onnx>=1.15               # ONNX 导出后图检查 + int8 动态量化（train_intent_bert --export）
+onnxconverter-common>=1.13  # fp16 融合导出（train_intent_bert.py fp16 分支；2026-10-24 A-9 重训实测缺失即崩）
 
 # UI 冒烟（可选，仅跑 tests/ui_smoke.py 85 例时需要）
 # playwright>=1.40.0

@@ -21,9 +21,24 @@
 """
 
 import logging
+import re
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
+
+# P1-4（验收 2026-10-24）：≤2 字符的纯字母/数字裸关键词（Buck 家族的 "MP"）
+# 不允许裸子串匹配 —— "TMP36"（温度传感器）内含 "MP"，STM32+TMP36 的 BOM
+# 被误判为 Buck 电路（62% 匹配度 + 误报缺失元件）。这类短词要求左词边界
+# （前一字符不是字母/数字），保留 "MP1584"/"MP2359"/"BQ25895" 等真实芯片
+# 家族的前缀命中；3 字符以上的编号词（如 "485"）维持原子串口径。
+_SHORT_TOKEN = re.compile(r"^[A-Za-z0-9]{1,2}$")
+
+
+def _keyword_in_text(keyword: str, text: str) -> bool:
+    """模板关键词命中判定：短裸词要求左词边界，其余关键词保持子串匹配"""
+    if _SHORT_TOKEN.match(keyword):
+        return re.search(r"(?<![A-Za-z0-9])" + re.escape(keyword), text) is not None
+    return keyword in text
 
 
 @dataclass
@@ -340,7 +355,7 @@ class DesignTemplateEngine:
         for kw in tmpl["match_keywords"]:
             kw_upper = kw.upper()
             for i, text in enumerate(bom_texts):
-                if kw_upper in text:
+                if _keyword_in_text(kw_upper, text):
                     ref = getattr(bom_items[i], "reference", "?")
                     matched_kw.append(f"{ref}({kw})")
                     break
@@ -384,7 +399,10 @@ class DesignTemplateEngine:
         """检查 texts 中是否包含任意关键词"""
         for text in texts:
             for kw in keywords:
-                if kw.upper() in text:
+                # P1-4（验收 2026-10-24）：命中判定统一走 _keyword_in_text，
+                # 短裸词（FB/EN/SS 等双字符标记）同样要求词边界，避免
+                # 型号中段碎片造成"元件已存在"的误判。
+                if _keyword_in_text(kw.upper(), text):
                     return True
         return False
 

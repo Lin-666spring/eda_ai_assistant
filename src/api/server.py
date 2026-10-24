@@ -16,6 +16,7 @@ import threading
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from pathlib import Path
@@ -70,6 +71,18 @@ def get_controller():
     return _controller
 
 
+def reset_controller():
+    """Drop the controller singleton.
+
+    本地数据被清除后（/clear-all-data）调用：旧 controller 持有指向已删除
+    sessions.db 的状态与已清除的 LLM Key（验收 A-5，2026-10-24）。下次
+    get_controller() 会按（现已为空的）持久化配置重建。
+    """
+    global _controller
+    with _controller_lock:
+        _controller = None
+
+
 # ── FastAPI app ───────────────────────────────────────────────
 
 app = FastAPI(
@@ -80,12 +93,15 @@ app = FastAPI(
 
 # CORS 白名单（2026-10-10 安全批）：此前 allow_origins=["*"] + /settings 回明文
 # Key，用户浏览器里任意网页都能 fetch 127.0.0.1:8710 窃取。响应现已脱敏，但仍
-# 收敛到已知调用方：lceda 插件 iframe（file:///扩展页 Origin 为 "null"，见
-# lceda_plugin/iframe/app.js 直连本服务）、本机端口、lceda 编辑器域（内容脚本
-# fetch 走页面 Origin）。新增调用方在此显式追加。
+# 收敛到已知调用方：lceda 插件 iframe（插件面板由本服务自挂在 /static/iframe，
+# Origin 即本机端口；编辑器内容脚本 fetch 走页面 Origin，见 lceda_plugin/dist/main.js）、
+# 本机端口、lceda 编辑器域。新增调用方在此显式追加。
+# P1-18（验收 2026-10-24）：移除 "null" —— CORS 只拦「读响应」，不拦「发请求」，
+# 保留 "null" 等于给任意本地 file:///沙盒页发跨站请求开绿灯；插件面板实际由
+# 本服务同源自挂，不需要 "null"。破坏性端点的 CSRF 防护见 endpoints.py 的
+# require_ajax_header（跨站表单/简单请求带不了自定义头）。
 # frontend/ Vite 模板已随批6 清退，5173 调试端口一并移除。
 _CORS_ALLOWED_ORIGINS = [
-    "null",  # file:// / 扩展沙盒 iframe（lceda 插件面板）
     "http://127.0.0.1:8710",
     "http://localhost:8710",
     "https://pro.lceda.cn",
@@ -95,7 +111,15 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_CORS_ALLOWED_ORIGINS,
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type"],
+    # X-Requested-With：破坏性端点的反 CSRF 头，白名单来源的合法调用方需携带
+    allow_headers=["Content-Type", "X-Requested-With"],
+)
+
+# P1-18（验收 2026-10-24）：TrustedHost —— 本服务只该被本机回环访问，Host 头
+# 异常（DNS rebinding / 缓存投毒扫描）直接 400。hostname 比对不含端口。
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["127.0.0.1", "localhost"],
 )
 
 # ── serve iframe static files (for LCEDA plugin dev) ─────────

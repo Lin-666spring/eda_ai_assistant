@@ -76,6 +76,11 @@ async function sendChat() {
     showEmptyState(false);
     const conv = getActiveConversation();
     if (!conv) { input.value = userText; return; }  // 无助手弹了新建框：别吞用户输入
+    // P1-22(a)（验收 2026-10-24）：发起时绑定会话与气泡 —— await 期间用户
+    // 可切走会话/发起新流，完成回调用 activeConvId 落库会写进别的会话，
+    // 用 _activeStreamBubble 会 finalize 到别人的气泡（两者都可能已被换掉）。
+    const convId = activeConvId;
+    const myBubble = _activeStreamBubble;
 
     // Update title from first message
     if (conv.messages.length === 0) {
@@ -98,24 +103,22 @@ async function sendChat() {
     try {
       const resp = await eel.query_knowledge_base(queryText)();
       if (resp && resp.ok) {
-        _activeStreamBubble.finalize(resp.result);
+        if (_activeStreamBubble === myBubble) _activeStreamBubble.finalize(resp.result);
         conv.messages.push({ role: 'ai', content: resp.result });
-        _persistMessage(activeConvId, 'ai', resp.result);
+        _persistMessage(convId, 'ai', resp.result);
       } else {
-        _activeStreamBubble.finalize('查询失败：' + (resp ? resp.result : '未知错误'));
-        const failText = _activeStreamBubble.getText();
+        const failText = '查询失败：' + (resp ? resp.result : '未知错误');
+        if (_activeStreamBubble === myBubble) _activeStreamBubble.finalize(failText);
         conv.messages.push({ role: 'ai', content: failText });
-        _persistMessage(activeConvId, 'ai', failText);
+        _persistMessage(convId, 'ai', failText);
       }
     } catch(e) {
-      if (_activeStreamBubble) {
-        _activeStreamBubble.finalize('网络错误：' + e);
-        const errText = _activeStreamBubble.getText();
-        conv.messages.push({ role: 'ai', content: errText });
-        _persistMessage(activeConvId, 'ai', errText);
-      }
+      const errText = '网络错误：' + e;
+      if (_activeStreamBubble === myBubble) _activeStreamBubble.finalize(errText);
+      conv.messages.push({ role: 'ai', content: errText });
+      _persistMessage(convId, 'ai', errText);
     }
-    _activeStreamBubble = null;
+    if (_activeStreamBubble === myBubble) _activeStreamBubble = null;
     disableInput(false);
     setStatus('就绪');
     renderConversations();
@@ -135,11 +138,10 @@ async function sendChat() {
     renderConversations();
   }
 
-  // Abort any in-progress stream
-  if (_activeStreamBubble) {
-    _activeStreamBubble = null;
-    _streamTokenCount = 0;
-  }
+  // P1-22(b)（验收 2026-10-24）：新消息打断旧流必须 finalize 旧气泡 ——
+  // 只置 null 会让光标残留、thinking 计时器永不清理；半截回复按发起会话
+  // 落库（新流起跑时后端代次 +1，旧流其后的 token/done/error 不再下发）。
+  _abortActiveStream('\n\n*(已停止生成)*');
 
   // Show user bubble
   if (hasImage) {
@@ -159,6 +161,11 @@ async function sendChat() {
     // Image analysis: 非流式接口，但同样给加载动效（多模态推理常要十几秒）
     _streamTokenCount = 0;
     _activeStreamBubble = createStreamingBubble();
+    // P1-22(a)（验收 2026-10-24）：发起时绑定会话与气泡（同知识库路径）——
+    // await 期间切走会话时旧气泡可能已被清掉、activeConvId 已指向别的会话，
+    // 完成 时直接 finalize/落库会崩溃或写错会话。
+    const convId = activeConvId;
+    const myBubble = _activeStreamBubble;
     document.getElementById('chatMessages').appendChild(_activeStreamBubble.element);
     _activeStreamBubble.setStatus('正在分析图片…');
     scrollChat();
@@ -176,11 +183,11 @@ async function sendChat() {
     const resultText = (resp && resp.ok)
       ? resp.result
       : ('处理失败: ' + (resp ? resp.result : '未知错误'));
-    _activeStreamBubble.finalize(resultText);
+    if (_activeStreamBubble === myBubble) _activeStreamBubble.finalize(resultText);
     conv.messages.push({ role: 'ai', content: resultText });
-    _persistMessage(activeConvId, 'ai', resultText);
+    _persistMessage(convId, 'ai', resultText);
     if (resp && resp.ok) showReport(resp.result);
-    _activeStreamBubble = null;
+    if (_activeStreamBubble === myBubble) _activeStreamBubble = null;
   } else {
     // Text message: use streaming API or Agent Loop
     _streamTokenCount = 0;
@@ -197,15 +204,11 @@ async function sendChat() {
       // on_stream_done callback handles finalization
     } catch (e) {
       // Network error: eel call itself failed
-      _activeToolCards.forEach(c => c.remove());
-      _activeToolCards = [];
-      if (_activeStreamBubble) {
-        _activeStreamBubble.finalize(' 连接错误: ' + e);
-        const conv2 = getActiveConversation();
-        conv2.messages.push({ role: 'ai', content: _activeStreamBubble.getText() });
-        _activeStreamBubble = null;
-      }
-      disableInput(false);
+      // P1-22(c)（验收 2026-10-24）：丢弃工具卡先停计时器（只 remove 会泄漏 setInterval）
+      _discardToolCards();
+      // P1-22(a)（验收 2026-10-24）：按发起会话定格落库半截回复，
+      // 并 finalize 旧气泡（清光标 + 停 thinking 计时器，见 _abortActiveStream）。
+      _abortActiveStream('\n\n*(连接错误: ' + e + ')*');
       setStatus('错误');
     }
   }
@@ -293,9 +296,43 @@ function renderMarkdown(text) {
     return escapeHtml(safe);
   }
   // 2026-10-08（P1-12）：剥裸 HTML 挡不住 markdown 链接 —— [x](javascript:…)
-  // 不含尖括号，marked v15 实测原样产出 href="javascript:…"。parse 后按协议
-  // 中和为 '#'，http(s) 等正常链接不受影响。
-  return html.replace(/href\s*=\s*["']?\s*(javascript|data):[^"'\s>]*/gi, 'href="#"');
+  // 不含尖括号，marked v15 实测原样产出 href="javascript:…"。
+  // 2026-10-24（验收 A-2）：按字面量匹配协议可被实体编码绕过 —— 浏览器解析
+  // 属性值时先解码 HTML 实体再解析 URL，`javascript&colon;alert(1)`、
+  // `&#106;avascript&#58;…` 都能执行。枚举实体变体打不完，改为：先把
+  // href/src 的值解码回真实字符，再做 scheme 白名单（http/https/mailto，
+  // 图片另放行 data:image/…）。
+  const decodeEntities = (s) => s.replace(
+    /&(#[xX]?[0-9a-fA-F]+|colon|amp|quot|apos|lt|gt|semi);?/g,
+    (m, body) => {
+      let code;
+      if (body.charCodeAt(0) === 35) { // '#'
+        code = (body[1] === 'x' || body[1] === 'X')
+          ? parseInt(body.slice(2), 16)
+          : parseInt(body.slice(1), 10);
+      } else {
+        code = { colon: 58, amp: 38, quot: 34, apos: 39,
+                 lt: 60, gt: 62, semi: 59 }[body.toLowerCase()];
+      }
+      return Number.isFinite(code) ? String.fromCharCode(code) : m;
+    });
+  const isSafeUrl = (url) => {
+    const decoded = decodeEntities(url).trim();
+    // 控制字符（\t\n\r 可用来拆分 scheme）直接拒绝
+    if (/[\x00-\x1f\x7f]/.test(decoded)) return false;
+    const m = decoded.match(/^([a-zA-Z][a-zA-Z0-9+.\-]*):/);
+    if (!m) return true;  // 相对地址 / #锚 / //host
+    const scheme = m[1].toLowerCase();
+    return scheme === 'http' || scheme === 'https' || scheme === 'mailto';
+  };
+  return html.replace(
+    /(\b(href|src)\s*=\s*)(["'])([\s\S]*?)\3/gi,
+    (m, pre, attr, q, val) => {
+      const decoded = decodeEntities(val).trim();
+      const ok = isSafeUrl(val) ||
+        (attr.toLowerCase() === 'src' && /^data:image\//i.test(decoded));
+      return ok ? m : pre + q + '#' + q;
+    });
 }
 
 function appendBubbleWithImage(type, text, imageDataUrl) {
@@ -316,6 +353,39 @@ function appendBubbleWithImage(type, text, imageDataUrl) {
 
 // ── Streaming bubble support ──
 
+// P1-22(a)（验收 2026-10-24）：本轮流式请求的「发起时会话」。流式完成回调
+// 到达时 activeConvId 可能已被切走（切换/删除/新建），落库必须用它而不是
+// 完成时的 activeConvId，否则回复落错会话。
+let _activeStreamConvId = null;
+// P1-26（验收 2026-10-24）：本轮流式回答是否真的调用了工具（产出报告/工具
+// 成果）。onToolCall 置位，createStreamingBubble 复位；纯闲聊不进报告栈。
+let _streamHadToolCall = false;
+
+/** P1-22(a/b)（验收 2026-10-24）：作废在途流的前端收尾 —— 旧气泡 finalize
+ *  （清光标 + 停 thinking 计时器），半截回复落到「发起该流」的会话。
+ *  切换会话/新消息打断时 activeConvId 已指向目标会话，按它落库会把回复
+ *  写进错误的会话（与后端 cancel_stream 代次作废配套：调用方负责 cancel，
+ *  本函数不调 —— 打断后立即发新流时避免代次竞态）。
+ *  半截内容为空时不落库：非流式路径（图片/知识库）的空占位气泡不值得
+ *  留一条「已停止」消息，完整结果由其自身完成路径按发起会话补落。 */
+function _abortActiveStream(note) {
+  if (!_activeStreamBubble) return;
+  const partial = _activeStreamBubble.getText();
+  const convId = _activeStreamConvId || activeConvId;
+  _activeStreamBubble.finalize(partial ? partial + note : partial);
+  _activeStreamBubble = null;
+  _streamTokenCount = 0;
+  disableInput(false);
+  if (partial.trim()) {
+    const conv = findConversation(convId);
+    if (conv) {
+      conv.messages.push({ role: 'ai', content: partial + note });
+      _persistMessage(convId, 'ai', partial + note);
+    }
+  }
+  renderConversations();
+}
+
 /** Create a streaming AI bubble that updates incrementally.
  *  首个 token 到达前显示「思考中」动效（三点脉冲 + 轮换文案 + 计时），
  *  避免用户对着空气泡干等。
@@ -323,8 +393,11 @@ function appendBubbleWithImage(type, text, imageDataUrl) {
 function createStreamingBubble() {
   showEmptyState(false);
   // Clear leftover tool-call cards from a previous turn
-  _activeToolCards.forEach(c => c.remove());
-  _activeToolCards = [];
+  // P1-22(c)（验收 2026-10-24）：先停计时器再移除（只 remove 泄漏 setInterval）
+  _discardToolCards();
+  // P1-22(a)：记录发起会话；P1-26：新一轮流的工具成果标记复位
+  _activeStreamConvId = activeConvId;
+  _streamHadToolCall = false;
   // 注意：element 必须是 .msg-row 外壳（不是裸 .bubble）：
   //    否则 AI 气泡既不被 clearChatMessages() 清理，也不被 _syncChatEmpty()
   //    计入，切换会话后会出现重复回答 + 空态不消失（2026-09-10 修正）。
@@ -406,6 +479,12 @@ function scrollChat() {
 
 // ═══════════ Report ═══════════
 
+/** P1-26（验收 2026-10-24）：用户是否正开着右面板看「报告」以外的 Tab。
+ *  抽成纯函数便于回归（面板折叠 = 没在看任何面板，强切无代价）。 */
+function _userReadingOtherTab(panelCollapsed, activeTabName) {
+  return !panelCollapsed && !!activeTabName && activeTabName !== 'report';
+}
+
 function showReport(text) {
   const stack = document.getElementById('reportStack');
   const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
@@ -414,8 +493,41 @@ function showReport(text) {
   card.innerHTML = `<div class="report-card-time">${time}</div>` + formatReport(text);
   stack.insertBefore(card, stack.firstChild);
   document.getElementById('reportEmpty').style.display = 'none';
-  switchTab('report');
+  // P1-26（验收 2026-10-24）：报告照常入栈，但用户正开着面板看别的 Tab
+  // （如 BOM 表）时不再强切 —— 只在「报告」页签上加未读角标；面板折叠
+  // 或已停在报告页时维持原强切（此时不存在抢用户视线的代价）。
+  const panel = document.getElementById('rightPanel');
+  const activeBtn = document.querySelector('.tab-btn.active');
+  const activeTab = activeBtn ? activeBtn.dataset.tab : null;
+  if (_userReadingOtherTab(!!(panel && panel.classList.contains('collapsed')), activeTab)) {
+    _badgeReportTab();
+  } else {
+    switchTab('report');
+  }
 }
+
+/** 「报告」页签未读角标（无新 CSS 可用，用内联样式小圆点） */
+function _badgeReportTab() {
+  const btn = document.querySelector('.tab-btn[data-tab="report"]');
+  if (!btn || btn.querySelector('.tab-notify-dot')) return;
+  const dot = document.createElement('span');
+  dot.className = 'tab-notify-dot';
+  dot.style.cssText = 'display:inline-block;width:6px;height:6px;border-radius:50%;'
+    + 'background:var(--accent);margin-left:4px;vertical-align:2px;';
+  btn.appendChild(dot);
+}
+
+// P1-26：角标是「未读」语义 —— 用户点开报告页即清。switchTab 定义在
+// imports.js（本批不可改文件），这里用事件委托补上清除时机。
+(function() {
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    const btn = (t && typeof t.closest === 'function') ? t.closest('.tab-btn[data-tab="report"]') : null;
+    if (!btn) return;
+    const dot = btn.querySelector('.tab-notify-dot');
+    if (dot) dot.remove();
+  });
+})();
 
 function formatReport(text) {
   const lines = text.split('\n');

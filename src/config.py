@@ -203,3 +203,39 @@ def get_config() -> AppConfig:
 
 # 向后兼容的快捷引用
 config = get_config()
+
+
+def clear_local_data(keep_logs: bool = True) -> None:
+    """删除 SETTINGS_DIR 下的全部本地数据（settings.json / sessions.db 等）。
+
+    2026-10-24 修复（验收 A-5）：
+    - 保留 logs/ 子目录：打包版日志写在 app_home()/logs 且 FileHandler
+      全程持有句柄，Windows 下带着句柄 shutil.rmtree 必抛 PermissionError
+      （旧版「清除数据」在打包版永远失败）；保留日志也便于排查清除后的异常。
+    - 同时清空 _llm_config_cache 与内存 config.llm 中的 API Key —— 否则
+      「清除所有本地数据」后密钥仍然生效，与用户预期不符。
+    删除成功后抛异常由调用方兜底；单例（SessionStore/AppController）的
+    重置是进程内状态，由各入口自己完成。
+    """
+    global _llm_config_cache
+    import gc
+    import shutil
+
+    # SessionStore 每次操作新建连接、靠引用计数关闭 —— 存量引用（异常
+    # traceback、引用环）在 Windows 上会让句柄滞留，unlink 报 WinError 32。
+    # 删除前强制回收一轮，把可能的残留连接全部关掉。
+    gc.collect()
+
+    if SETTINGS_DIR.exists():
+        for entry in SETTINGS_DIR.iterdir():
+            if keep_logs and entry.name == "logs":
+                continue
+            if entry.is_dir():
+                shutil.rmtree(entry)
+            else:
+                entry.unlink()
+
+    _llm_config_cache = None
+    # 内存中的存量 Key 一并抹掉（.env 提供的 Key 属环境配置，不动）
+    for field_name in ("api_key", "provider", "base_url", "model"):
+        object.__setattr__(config.llm, field_name, "")

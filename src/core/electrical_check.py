@@ -12,6 +12,60 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _point_segment_distance_sq(px: float, py: float,
+                               x1: float, y1: float, x2: float, y2: float) -> float:
+    """点到线段的最小距离平方（串扰实测间距用）。"""
+    dx, dy = x2 - x1, y2 - y1
+    seg_len_sq = dx * dx + dy * dy
+    if seg_len_sq <= 0.0:
+        ex, ey = px - x1, py - y1
+        return ex * ex + ey * ey
+    t = ((px - x1) * dx + (py - y1) * dy) / seg_len_sq
+    t = max(0.0, min(1.0, t))
+    ex, ey = px - (x1 + t * dx), py - (y1 + t * dy)
+    return ex * ex + ey * ey
+
+
+def _segments_intersect(a1, a2, b1, b2) -> bool:
+    """两线段是否相交（严格内部相交判定；端点接触由点距兜底为 0）。"""
+    def cross(ox, oy, ax, ay, bx, by):
+        return (ax - ox) * (by - oy) - (ay - oy) * (bx - ox)
+
+    d1 = cross(b1[0], b1[1], b2[0], b2[1], a1[0], a1[1])
+    d2 = cross(b1[0], b1[1], b2[0], b2[1], a2[0], a2[1])
+    d3 = cross(a1[0], a1[1], a2[0], a2[1], b1[0], b1[1])
+    d4 = cross(a1[0], a1[1], a2[0], a2[1], b2[0], b2[1])
+    return ((d1 > 0) != (d2 > 0)) and ((d3 > 0) != (d4 > 0))
+
+
+def _min_trace_spacing_mm(t1, t2):
+    """两条走线间的最小间距 (mm)；任一方缺几何数据返回 None（无法判定）。
+
+    P1-7（验收 2026-10-24）：串扰间距必须用真实几何 —— 原实现把
+    min(线宽)*2 这个编造值当间距喂给 3W/2W 检查，比值恒等于 2.0 恒满足
+    2W 规则，串扰问题永远为 0（虚假安全结论）。
+    """
+    segs1, segs2 = t1.segments or [], t2.segments or []
+    if not segs1 or not segs2:
+        return None
+    best_sq = float("inf")
+    for a in segs1:
+        ax1, ay1, ax2, ay2 = a[0], a[1], a[2], a[3]
+        for b in segs2:
+            bx1, by1, bx2, by2 = b[0], b[1], b[2], b[3]
+            if _segments_intersect((ax1, ay1), (ax2, ay2), (bx1, by1), (bx2, by2)):
+                return 0.0  # 不同网络的走线几何相交 → 间距 0，必然违规
+            # 线段最小距离 = 各端点到对方线段的最小距离
+            for px, py, x1, y1, x2, y2 in (
+                (ax1, ay1, bx1, by1, bx2, by2),
+                (ax2, ay2, bx1, by1, bx2, by2),
+                (bx1, by1, ax1, ay1, ax2, ay2),
+                (bx2, by2, ax1, ay1, ax2, ay2),
+            ):
+                best_sq = min(best_sq, _point_segment_distance_sq(px, py, x1, y1, x2, y2))
+    return best_sq ** 0.5
+
+
 def run_electrical_health_check(pcb, bom) -> str:
     """PCB 电气健康检查 — 使用电路计算引擎进行真实工程分析。
 
@@ -91,20 +145,37 @@ def run_electrical_health_check(pcb, bom) -> str:
                 )
 
     # 4. 串扰/EMC
+    # P1-7（验收 2026-10-24）：间距用真实几何计算；缺几何数据的走线对记为
+    # "无法判定"并如实上报 —— 数据不足时宁可承认无法判定，也绝不假通过
+    # （"所有电气检查通过"的虚假安全结论比漏报更危险）。
+    crosstalk_skipped = 0
     if pcb and pcb.traces:
-        # 检查走线间距
-        for i in range(min(20, len(pcb.traces))):
-            for j in range(i + 1, min(20, len(pcb.traces))):
+        limit = min(20, len(pcb.traces))
+        for i in range(limit):
+            for j in range(i + 1, limit):
                 t1, t2 = pcb.traces[i], pcb.traces[j]
                 # 简化为检查同一层的相邻走线
-                if t1.layer == t2.layer and t1.width_mm > 0 and t2.width_mm > 0:
-                    span = min(t1.width_mm, t2.width_mm)
-                    ok, ratio, msg = crosstalk_3w_rule_check(span * 2, span)
-                    if not ok:
-                        report.crosstalk_issues.append(
-                            f"{t1.net_name} ↔ {t2.net_name}: {msg}"
-                        )
-                        break
+                if t1.layer != t2.layer or t1.width_mm <= 0 or t2.width_mm <= 0:
+                    continue
+                if (t1.net_name or "") == (t2.net_name or ""):
+                    # 同网络走线等电位/物理相连，间距不构成串扰风险
+                    continue
+                spacing = _min_trace_spacing_mm(t1, t2)
+                if spacing is None:
+                    crosstalk_skipped += 1
+                    continue
+                span = min(t1.width_mm, t2.width_mm)
+                ok, ratio, msg = crosstalk_3w_rule_check(spacing, span)
+                if not ok:
+                    report.crosstalk_issues.append(
+                        f"{t1.net_name} ↔ {t2.net_name}: {msg}"
+                        f"（实测间距 {spacing:.3f}mm，基准线宽 {span:.3f}mm）"
+                    )
+                    break
+    if crosstalk_skipped:
+        report.crosstalk_issues.append(
+            f"{crosstalk_skipped} 对走线缺少几何数据，串扰间距无法判定（未计入通过）"
+        )
 
     # 5. 阻抗估计
     if pcb and pcb.traces:

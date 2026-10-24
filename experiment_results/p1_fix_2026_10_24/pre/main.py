@@ -1,0 +1,1129 @@
+"""
+TraceWise — Eel 应用入口
+面向立创EDA的AI智能辅助设计软件
+"""
+
+# gevent monkey-patch 必须先于 eel/requests/subprocess 等一切 import
+# （2026-10-10 稳定性批）：eel 把每个 @eel.expose 回调放进 gevent greenlet
+# 但从不 patch，LLM 的 requests.post(timeout=120)、目录选择器子进程的
+# subprocess.run(timeout=180) 都是纯阻塞调用 —— 期间唯一的 OS 线程被占死，
+# 所有其他 JS→Python 调用（500ms 轮询、保存设置、第二条消息）排队冻结。
+# patch 后这些调用在 greenlet 间协作让出；CPU 密集的 DRC 全量扫描 patch
+# 不了，由 _offload() 卸载到 gevent 线程池。仅作为应用入口运行时打 ——
+# pytest 内 `import main`（test_provider_catalog/test_tool_catalog）不能
+# 污染测试进程的 threading/socket。
+import sys
+
+# 桥接子进程分发（2026-10-14 打包验证批）：托盘+热键的 Win32 消息泵线程与
+# gevent hub 不兼容（hub 主线程直接消失，见 system_bridge 模块注释），故
+# 二者整体跑在独立子进程里。该分发必须在 patch 之前 —— slave 全程无 gevent。
+if "--eda-bridge-slave" in sys.argv:
+    try:
+        from src.core.system_bridge import run_bridge_slave
+
+        run_bridge_slave()
+    except SystemExit:
+        raise
+    except Exception:
+        import traceback
+
+        traceback.print_exc(file=sys.stderr)
+        sys.exit(1)
+    sys.exit(0)
+
+_GEVENT_PATCHED = "pytest" not in sys.modules
+if _GEVENT_PATCHED:
+    try:
+        from gevent import monkey
+        monkey.patch_all()
+    except ImportError:
+        _GEVENT_PATCHED = False  # eel 依赖 gevent，正常不会缺；缺装时保持旧阻塞行为
+
+import base64
+import json
+import logging
+import os
+import tempfile
+import threading
+from pathlib import Path
+
+try:
+    import eel
+except ImportError:
+    print("缺少依赖 eel，请先安装：pip install -r requirements.txt", file=sys.stderr)
+    sys.exit(1)
+
+logger = logging.getLogger(__name__)
+
+# Handle PyInstaller bundle
+if getattr(sys, 'frozen', False):
+    PROJECT_ROOT = Path(sys._MEIPASS)
+else:
+    PROJECT_ROOT = Path(__file__).parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.core.controller import AppController, default_output_dir
+from src.core.file_watcher import FileWatcher
+from src.core.persistence import SessionStore
+from src.bom.parser import BOMItem
+from src.config import config, load_settings, save_settings, SETTINGS_DIR, clear_local_data
+from src.constants import (
+    LLM_PROVIDER_PRESETS,
+    DEFAULT_PROVIDER,
+    ProviderPreset,
+    get_provider_preset,
+    APP_NAME,
+    APP_TAGLINE,
+    APP_VERSION,
+    GUI,
+    app_home,
+)
+from src.core.boot import BootSequencer, BootStep
+from src import settings_facade as facade
+
+# ── Init ──
+
+eel.init(str(PROJECT_ROOT / "web"))
+
+watcher = FileWatcher()
+
+# ── 惰性单例（2026-10-08 P1-10）──
+# 模块级 `controller = AppController()` / `_store = SessionStore()` 会在
+# `import main` 时就建 LLM 客户端/路由、当场创建 sessions.db（打包版子进程
+# 和测试全受牵连）。改为首次 eel 调用才初始化；双检锁与 api/server.py
+# get_controller 的 a13a51b 口径一致。
+_controller: AppController | None = None
+_store: SessionStore | None = None
+_lazy_init_lock = threading.Lock()
+
+
+def get_controller() -> AppController:
+    global _controller
+    if _controller is None:
+        with _lazy_init_lock:
+            if _controller is None:
+                _controller = AppController()
+    return _controller
+
+
+def get_store() -> SessionStore:
+    global _store
+    if _store is None:
+        with _lazy_init_lock:
+            if _store is None:
+                _store = SessionStore()
+    return _store
+
+# ── Helpers ──
+
+def _offload(fn, *args):
+    """CPU 密集操作卸载到 gevent 线程池的真实 OS 线程（2026-10-10 稳定性批）。
+
+    monkey-patch 只能让 IO 协作让出，纯 Python 计算（DRC 全量扫描/热力图
+    聚合）仍会占死 hub —— 期间轮询/保存设置全部冻结。经 hub.threadpool 跑
+    在真实线程：调用方 greenlet 挂起等结果，hub 继续服务其他回调。未 patch
+    （测试进程/缺 gevent 回退）时原地执行，行为与旧版一致。
+    """
+    if not _GEVENT_PATCHED:
+        return fn(*args)
+    import gevent
+    return gevent.get_hub().threadpool.apply(fn, args)
+
+
+def _bom_item_to_dict(item: BOMItem) -> dict:
+    """薄委托：实现在 src/settings_facade.py（P1-7 双入口收编，曾与 REST 各写一份）。"""
+    return facade.bom_item_to_dict(item)
+
+
+def _bom_items() -> list:
+    return [_bom_item_to_dict(i) for i in get_controller().context.bom_items]
+
+
+# ══════════════════════════════════════════
+#  Exposed API
+# ══════════════════════════════════════════
+
+def _write_temp(name: str, b64: str) -> str:
+    """Decode base64 content, write to temp dir, return file path."""
+    content = base64.b64decode(b64)
+    tmp = Path(tempfile.gettempdir()) / "eda_ai_assistant"
+    tmp.mkdir(parents=True, exist_ok=True)
+    # 与 src/api/endpoints.py 同步修（2026-10-07）：filename 带路径分隔符时
+    # 原样拼接可写到临时目录之外，这里只保留文件名本身。
+    file_path = tmp / Path(name).name
+    file_path.write_bytes(content)
+    return str(file_path)
+
+
+@eel.expose
+def import_bom_file(name: str, b64: str) -> dict:
+    try:
+        path = _write_temp(name, b64)
+        count, msg = get_controller().load_bom(path)
+        return {"ok": True, "count": count, "msg": msg, "items": _bom_items()}
+    except Exception as e:
+        return {"ok": False, "msg": str(e), "items": []}
+
+
+@eel.expose
+def import_pos_file(name: str, b64: str) -> dict:
+    try:
+        path = _write_temp(name, b64)
+        count, msg = get_controller().load_positions(path)
+        return {"ok": True, "count": count, "msg": msg}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def import_project_file(name: str, b64: str) -> dict:
+    """导入立创 EDA V3 .epro2 工程：一次得到 BOM + PCB"""
+    try:
+        path = _write_temp(name, b64)
+        count, msg = get_controller().load_project(path)
+        pcb = get_controller().context.pcb_data
+        info = {}
+        if pcb:
+            info = {
+                "format": pcb.format,
+                "net_count": pcb.net_count,
+                "trace_count": pcb.trace_count,
+                "via_count": pcb.via_count,
+                "pour_count": len(pcb.copper_pours),
+                "layers": pcb.layers,
+            }
+        return {"ok": True, "count": count, "msg": msg, "pcb": info, "items": _bom_items()}
+    except Exception as e:
+        return {"ok": False, "msg": str(e), "items": []}
+
+
+@eel.expose
+def import_pcb_file(name: str, b64: str) -> dict:
+    """导入 PCB 文件（.json / .epro / .epro2）"""
+    try:
+        path = _write_temp(name, b64)
+        count, msg = get_controller().load_pcb(path)
+        pcb = get_controller().context.pcb_data
+        info = {}
+        if pcb:
+            info = {
+                "format": pcb.format,
+                "net_count": pcb.net_count,
+                "trace_count": pcb.trace_count,
+                "via_count": pcb.via_count,
+                "layers": pcb.layers,
+            }
+        return {"ok": True, "count": count, "msg": msg, "pcb": info}
+    except Exception as e:
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def load_demo_data() -> dict:
+    """一键演示：加载内置示例数据（有缺陷的 MCU 板 BOM + 坐标）"""
+    try:
+        bom_path = PROJECT_ROOT / "tests" / "sample_bom_bad.csv"
+        pos_path = PROJECT_ROOT / "tests" / "sample_positions.csv"
+        count, msg = get_controller().load_bom(str(bom_path))
+        pos_count = 0
+        if pos_path.exists():
+            pos_count, _ = get_controller().load_positions(str(pos_path))
+        return {
+            "ok": True, "count": count, "pos_count": pos_count,
+            "msg": msg, "items": _bom_items(),
+        }
+    except Exception as e:
+        return {"ok": False, "msg": str(e), "items": []}
+
+
+@eel.expose
+def check_rules() -> dict:
+    ctrl = get_controller()
+    report = _offload(ctrl.check_design_rules)
+    return {"ok": True, "report": report}
+
+
+@eel.expose
+def generate_html_bom() -> dict:
+    try:
+        report = get_controller().generate_html_bom()
+        # 回查路径用 get_controller().default_output_dir()（与 REST /bom/generate-html
+        # 同源）。别再 Path(__file__).parent 自行反推 —— 那是 e3459be 修掉的双入口漂移。
+        html_path = default_output_dir() / "ibom.html"
+        if html_path.exists():
+            import webbrowser
+            webbrowser.open(str(html_path))
+            return {"ok": True, "report": report, "path": str(html_path)}
+        return {"ok": True, "report": report, "path": ""}
+    except Exception as e:
+        return {"ok": False, "report": str(e), "path": ""}
+
+
+@eel.expose
+def send_image(text: str, image_b64: str) -> dict:
+    """Send a chat message with an image (base64 data URI).
+
+    The image is passed directly to a multimodal LLM for visual analysis.
+    """
+    try:
+        result = get_controller().process_image_input(text, image_b64)
+        return {"ok": True, "result": result}
+    except Exception as e:
+        return {"ok": False, "result": str(e)}
+
+
+@eel.expose
+def clear_chat(messages=None):
+    """清空后端对话历史（切换会话/新对话时调用，防上下文串台）。
+
+    messages 非空时用它重建历史 —— 前端切回历史会话时把该会话的消息
+    传回来，LLM 恢复该会话的上下文而不是从零开始。
+    """
+    ctrl = get_controller()
+    ctrl.clear_conversation()
+    if messages:
+        try:
+            turns = [
+                {"role": m.get("role"), "content": m.get("content", "")}
+                for m in messages
+                if isinstance(m, dict) and m.get("role") in ("user", "ai")
+                and m.get("content")
+            ]
+            ctrl.seed_conversation(turns)
+        except Exception:
+            logger.exception("clear_chat: seed_conversation failed")
+    return {"ok": True}
+
+
+@eel.expose
+def review_design_multi_agent() -> str:
+    """多智能体协同设计审查 — 返回 JSON"""
+    return get_controller().review_design_multi_agent()
+
+
+@eel.expose
+def get_drc_heatmap(grid_size_mm: float = 5.0) -> str:
+    """DRC 违规热力图数据 — 返回 JSON {ok, data: [[x,y,count],...], grid_size_mm, source, reason}"""
+    import json
+    ctrl = get_controller()
+    return json.dumps(_offload(ctrl.get_drc_heatmap, grid_size_mm), ensure_ascii=False)
+
+
+@eel.expose
+def get_drc_violations() -> str:
+    """DRC 违规坐标化清单 — 3D 板视图违规标记层。
+    返回 JSON {ok, reason, source, violation_count, mapped, items:[{rule, severity,
+    description, location, suggestion, coords:[[x,y],...]}]}，坐标绝对 mm。"""
+    import json
+    ctrl = get_controller()
+    return json.dumps(_offload(ctrl.get_drc_violations), ensure_ascii=False)
+
+
+@eel.expose
+def get_board_3d_data() -> str:
+    """3D 板卡预览数据 — 前端 board3d.js（three.js）渲染。
+    载荷可能到 MB 级（走线段平铺），走 _offload 避免阻塞 gevent 主循环。"""
+    import json
+    ctrl = get_controller()
+    return json.dumps(_offload(ctrl.get_board_3d_data), ensure_ascii=False)
+
+
+@eel.expose
+def set_active_assistant(assistant_id: str) -> dict:
+    """切换当前助手"""
+    try:
+        get_controller().set_active_assistant(assistant_id)
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "result": str(e)}
+
+
+@eel.expose
+def get_llm_config() -> dict:
+    return {
+        "provider": config.llm.provider,
+        "model": config.llm.model,
+        "is_configured": config.llm.is_configured,
+        "provider_label": config.llm.provider_label,
+    }
+
+
+@eel.expose
+def get_settings() -> dict:
+    """薄委托：取值口径在 facade.settings_view（曾与 REST /settings 各写一份）。"""
+    return facade.settings_view()
+
+
+@eel.expose
+def save_theme(theme: str):
+    saved = load_settings()
+    saved["selected_theme"] = theme
+    save_settings(saved)
+    return {"ok": True}
+
+
+@eel.expose
+def save_accent(color: str):
+    saved = load_settings()
+    saved["selected_accent"] = color
+    save_settings(saved)
+    return {"ok": True}
+
+
+@eel.expose
+def save_font_size(size: int):
+    saved = load_settings()
+    saved["font_size"] = size
+    save_settings(saved)
+    return {"ok": True}
+
+
+@eel.expose
+def save_all_settings(provider: str, api_key: str, base_url: str, model: str,
+                      temperature: float, theme: str, accent: str) -> dict:
+    try:
+        facade.persist_all_settings(get_controller(), provider, api_key, base_url,
+                                    model, temperature, theme, accent)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("Failed to save settings")
+        return {"ok": False, "error": str(e)}
+
+
+@eel.expose
+def test_llm_connection(provider: str, api_key: str, base_url: str, model: str) -> dict:
+    """薄委托：实现（含 openai SDK 时代的历史注释）在 facade.test_llm_connection。
+
+    f3a27e4 的教训：这个函数曾与 REST /llm/test 各写一份，REST 侧漏改
+    仍依赖 openai SDK —— 现在逻辑只剩 facade 一处。
+    """
+    return facade.test_llm_connection(provider, api_key, base_url, model)
+
+
+@eel.expose
+def get_providers() -> dict:
+    """厂商 + 模型目录 — 设置面板的唯一事实来源（SSOT）。
+
+    前端不再手写 PROVIDERS：名称、地址、模型清单、协议、图标全部来自
+    src/constants.py 的 LLM_PROVIDER_PRESETS。
+    """
+    from src.agent.model_catalog import fallback_models
+    providers = []
+    for key, preset in LLM_PROVIDER_PRESETS.items():
+        providers.append({
+            "key": key,
+            "name": preset.name,
+            "brand": preset.brand or preset.name,
+            "label": preset.brand or preset.name,
+            "icon": preset.icon or preset.name[:2].upper(),
+            "base_url": preset.base_url,
+            "default_model": preset.default_model,
+            "models": fallback_models(key),
+            "models_source": "fallback",      # /models 端点可用时前端会覆盖
+            "protocol": preset.protocol,
+            "description": preset.description,
+            "key_url": preset.key_url,
+            "notes": preset.notes,
+        })
+    return {
+        "ok": True,
+        "count": len(providers),
+        "default_provider": DEFAULT_PROVIDER,
+        "providers": providers,
+    }
+
+
+@eel.expose
+def fetch_provider_models(provider: str, api_key: str = "", base_url: str = "") -> dict:
+    """实时拉取某厂商的模型列表（GET /models，只读免费）。
+
+    api_key 留空时回落到当前已保存的配置，方便「就按现在的 Key 拉一下」。
+    """
+    from src.agent.model_catalog import list_models
+    if not api_key:
+        saved = load_settings()
+        api_key = saved.get("llm_api_key", "") or config.llm.api_key
+    result = list_models(provider, api_key, base_url)
+    if result.get("ok"):
+        result["models_source"] = "live"
+    return result
+
+
+@eel.expose
+def clear_all_data() -> dict:
+    """Clear all local data (settings + DB).
+
+    2026-10-24 修复（验收 A-5）：
+    - rmtree 改为按条目删除并保留 logs/ —— 打包版日志写在 app_home()/logs
+      且 FileHandler 持有句柄，整目录 rmtree 在 Windows 必抛 PermissionError；
+    - 删除后必须重置 _store/_controller 单例：旧 SessionStore 指向已删除的
+      sessions.db，页面 reload 后首个 db_* 调用会在无表的空库上报
+      no such table；
+    - 同步清空内存中的 LLM API Key（见 config.clear_local_data）。
+    """
+    global _store, _controller
+    try:
+        clear_local_data()
+        with _lazy_init_lock:
+            _store = None
+            _controller = None
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@eel.expose
+def get_design_suggestions() -> str:
+    """设计意图识别：BOM加载后自动调用，返回Markdown格式的主动建议"""
+    return get_controller().get_design_suggestions()
+
+
+# ══════════════════════════════════════════
+#  统一工具目录 — 前端「工具箱」的唯一事实来源
+# ══════════════════════════════════════════
+
+def _tool_prompt_prefix(t) -> str:
+    """为「需要参数」的工具生成输入预填前缀。
+
+    优先取能作为标签子串出现的关键词（保证 NLU 子串匹配命中），
+    否则退回第一个关键词。例：calc_trace_width → "走线宽度 "。
+    """
+    label = t.label.lower()
+    for kw in t.keywords:
+        if kw and kw.lower() in label:
+            return f"{kw} "
+    return f"{t.keywords[0]} " if t.keywords else f"{t.label} "
+
+
+def _tool_to_dict(t) -> dict:
+    required = list((t.params_schema or {}).get("required", []))
+    properties = (t.params_schema or {}).get("properties", {})
+    ready = True
+    blocked_reason = ""
+    if t.requires_data and not get_controller().context.has_data:
+        ready = False
+        blocked_reason = "需先导入 BOM"
+    return {
+        "name": t.name,
+        "label": t.label,
+        "description": t.description,
+        "category": t.category,
+        "requires_data": bool(t.requires_data),
+        "ready": ready,
+        "blocked_reason": blocked_reason,
+        "needs_input": bool(required),
+        "params": [
+            {"name": p, "hint": properties.get(p, {}).get("description", "")}
+            for p in required
+        ],
+        "prompt_prefix": _tool_prompt_prefix(t),
+        "keywords": list(t.keywords)[:4],
+    }
+
+
+@eel.expose
+def get_tools_catalog() -> dict:
+    """返回全部系统能力的目录（从 ToolRegistry 派生，前端不再重复维护）。"""
+    try:
+        from src.agent.tools import ToolRegistry
+        tools = [_tool_to_dict(t) for t in ToolRegistry.get_all()]
+    except ImportError as e:  # pragma: no cover — 打包缺失时降级
+        logger.exception("ToolRegistry unavailable")
+        return {"ok": False, "error": str(e), "tools": []}
+
+    categories = []
+    for t in tools:
+        cid = t["category"]
+        hit = next((c for c in categories if c["id"] == cid), None)
+        if hit is None:
+            categories.append({"id": cid, "count": 1})
+        else:
+            hit["count"] += 1
+
+    return {
+        "ok": True,
+        "count": len(tools),
+        "ready_count": sum(1 for t in tools if t["ready"]),
+        "has_bom": get_controller().context.has_data,
+        "has_pcb": get_controller().context.pcb_data is not None,
+        "categories": categories,
+        "tools": tools,
+    }
+
+
+@eel.expose
+def run_tool(tool_name: str) -> dict:
+    """直接从工具箱运行一个无需参数的能力。
+
+    复用 get_controller()._dispatch_operation，因此与聊天路径走的是同一张
+    派发表（ToolRegistry.get_dispatch_map），不存在第二套逻辑。
+    """
+    try:
+        from src.agent.tools import ToolRegistry
+    except ImportError as e:  # pragma: no cover
+        return {"ok": False, "error": str(e)}
+
+    tool = ToolRegistry.get_by_name(tool_name)
+    if tool is None:
+        return {"ok": False, "error": f"未知工具: {tool_name}"}
+    if tool.requires_data and not get_controller().context.has_data:
+        return {"ok": False, "error": f"「{tool.label}」需要先导入 BOM"}
+    if tool.name == "analyze_image":
+        return {"ok": False, "error": "请在输入框添加图片后发送"}
+
+    try:
+        result = get_controller()._dispatch_operation(tool_name, {})
+    except Exception as e:
+        logger.exception("run_tool failed: %s", tool_name)
+        return {"ok": False, "error": str(e)}
+
+    return {"ok": True, "tool": tool.name, "label": tool.label, "result": str(result or "")}
+
+
+@eel.expose
+def toggle_auto_sync() -> dict:
+    if watcher.is_running:
+        watcher.stop()
+        return {"ok": True, "running": False, "msg": "自动同步已关闭"}
+    path = FileWatcher.default_watch_path()
+    if not path:
+        return {"ok": False, "running": False, "msg": "未找到立创 EDA 项目目录"}
+
+    def _notify_pcb_changed(fp: str) -> None:
+        # PollingObserver 在 gevent patch 下就是 hub greenlet，直接推送安全；
+        # 未 patch 的回退场景它是真实线程 —— 跨线程写 eel websocket 会帧交错，
+        # 经 hub 调度回正确上下文（2026-10-10 稳定性批）。
+        try:
+            import gevent
+            gevent.get_hub().loop.run_callback(lambda: eel.on_pcb_changed(fp)())
+        except Exception:
+            eel.on_pcb_changed(fp)()
+
+    watcher.watch(path, _notify_pcb_changed)
+    return {"ok": True, "running": True, "path": path, "msg": f"自动同步已开启 — {path}"}
+
+# ── 流式代次守卫（2026-10-10 前端批）──
+# 前端发新消息/点停止时，旧流可能仍在跑：旧流的 on_stream_done 会把旧回复
+# push 进新会话并落库、旧 token 混进新气泡。每次新流起跑递增代次，回调只对
+# 最新代次生效 —— 被超越的旧流 token/done/error 直接丢弃（前端已把旧气泡
+# 定格在当时的半截内容上）。
+_stream_seq = 0
+_stream_seq_lock = threading.Lock()
+
+
+def _next_stream_seq() -> int:
+    global _stream_seq
+    with _stream_seq_lock:
+        _stream_seq += 1
+        return _stream_seq
+
+
+def _emit_stream(seq: int, fn_name: str, *args) -> None:
+    with _stream_seq_lock:
+        live = seq == _stream_seq
+    if live:
+        getattr(eel, fn_name)(*args)()
+
+
+@eel.expose
+def cancel_stream() -> dict:
+    """停止生成：作废在途流（其后 token/done 不再下发）。
+
+    后端 LLM 请求本身无法中断，会在后台跑完但结果被丢弃；前端气泡定格在
+    已收到的半截内容上。
+    """
+    _next_stream_seq()
+    return {"ok": True}
+
+
+@eel.expose
+def send_message_stream(text: str):
+    """Send a chat message with streaming token callbacks to the frontend.
+
+    The controller invokes eel.on_stream_token(token)() for each token,
+    eel.on_stream_done(full_text)() on completion, and
+    eel.on_stream_error(err_msg)() on failure.
+    """
+    seq = _next_stream_seq()
+    try:
+        result = get_controller().chat_message_stream(
+            text,
+            on_token=lambda token: _emit_stream(seq, "on_stream_token", token)
+        )
+        _emit_stream(seq, "on_stream_done", result)
+    except Exception as e:
+        _emit_stream(seq, "on_stream_error", str(e))
+
+
+@eel.expose
+def send_message_agent(text: str):
+    """Send a chat message via Agent Loop — LLM autonomously selects and calls tools.
+
+    The LLM receives the full tool list (Function Calling), decides which tools
+    to call, executes them, and iterates until it has a final answer.
+
+    Streaming: on_stream_token is called for the final text response (simulated
+    token-by-token output). Tool execution happens before streaming begins.
+    """
+    seq = _next_stream_seq()
+    try:
+        result = get_controller().agent_loop(
+            text,
+            on_token=lambda token: _emit_stream(seq, "on_stream_token", token),
+            on_tool_call=lambda name, args: _emit_stream(seq, "on_tool_call", name),
+        )
+        _emit_stream(seq, "on_stream_done", result)
+    except Exception as e:
+        _emit_stream(seq, "on_stream_error", str(e))
+
+# ══════════════════════════════════════════
+#  Persistence API (SQLite session store)
+# ══════════════════════════════════════════
+
+@eel.expose
+def db_load_all() -> dict:
+    """启动时加载全部持久化数据"""
+    try:
+        data = get_store().load_all()
+        logger.info("DB load_all: %d assistants", len(data.get("assistants", [])))
+        return {"ok": True, "data": data}
+    except Exception as e:
+        logger.exception("db_load_all failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def db_save_assistant(instance_id: str, type_id: str, name: str, sort_order: int = 0):
+    """保存新助手"""
+    try:
+        get_store().save_assistant(instance_id, type_id, name, sort_order)
+        get_store().save_state("active_assistant", instance_id)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("db_save_assistant failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def db_delete_assistant(instance_id: str):
+    """删除助手及其对话"""
+    try:
+        get_store().delete_assistant(instance_id)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("db_delete_assistant failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def db_save_conversation(conv_id: str, instance_id: str, title: str = "新对话",
+                         workspace_id: str = ""):
+    """保存新对话（workspace_id 决定它归属哪个工作区）"""
+    try:
+        get_store().save_conversation(conv_id, instance_id, title, workspace_id=workspace_id)
+        get_store().save_state("active_conv", conv_id)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("db_save_conversation failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def db_delete_conversation(conv_id: str):
+    """删除对话及其消息"""
+    try:
+        get_store().delete_conversation(conv_id)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("db_delete_conversation failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def db_save_message(conv_id: str, role: str, content: str, image: str = "", seq: int = 0):
+    """保存单条消息"""
+    try:
+        get_store().save_message(conv_id, role, content, image or None, seq)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("db_save_message failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def db_load_messages(conv_id: str) -> dict:
+    """加载指定对话的历史消息"""
+    try:
+        messages = get_store().load_messages(conv_id)
+        return {
+            "ok": True,
+            "messages": [
+                {"role": m.role, "content": m.content, "image": m.image or ""}
+                for m in messages
+            ],
+        }
+    except Exception as e:
+        logger.exception("db_load_messages failed")
+        return {"ok": False, "msg": str(e)}
+
+
+@eel.expose
+def db_save_active_state(active_assistant: str = "", active_conv: str = "",
+                         active_workspace: str = ""):
+    """保存当前活跃的工作区 / 助手 / 对话"""
+    try:
+        if active_workspace:
+            get_store().save_state("active_workspace", active_workspace)
+        if active_assistant:
+            get_store().save_state("active_assistant", active_assistant)
+        if active_conv:
+            get_store().save_state("active_conv", active_conv)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("db_save_active_state failed")
+        return {"ok": False, "msg": str(e)}
+
+
+# ══════════════════════════════════════════
+#  工作区（workspace）— 对话按工程上下文隔离
+# ══════════════════════════════════════════
+
+@eel.expose
+def db_save_workspace(workspace_id: str, name: str, path: str = "") -> dict:
+    """新建 / 更新工作区（name + 可选的本地目录）"""
+    try:
+        if not workspace_id:
+            return {"ok": False, "error": "缺少 workspace_id"}
+        get_store().save_workspace(workspace_id, name or "未命名工作区", path or "")
+        return {"ok": True, "workspace": {
+            "workspace_id": workspace_id, "name": name, "path": path or "",
+        }}
+    except Exception as e:
+        logger.exception("db_save_workspace failed")
+        return {"ok": False, "error": str(e)}
+
+
+@eel.expose
+def db_delete_workspace(workspace_id: str) -> dict:
+    """删除工作区（其对话回落到默认工作区，不丢数据）"""
+    try:
+        get_store().delete_workspace(workspace_id)
+        return {"ok": True}
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
+    except Exception as e:
+        logger.exception("db_delete_workspace failed")
+        return {"ok": False, "error": str(e)}
+
+
+@eel.expose
+def db_set_active_workspace(workspace_id: str) -> dict:
+    """切换当前工作区（持久化，下次启动仍在同一工作区）"""
+    try:
+        get_store().save_state("active_workspace", workspace_id)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("db_set_active_workspace failed")
+        return {"ok": False, "error": str(e)}
+
+
+@eel.expose
+def db_load_workspaces() -> dict:
+    """单独加载工作区列表（设置面板 / 刷新用）"""
+    try:
+        ws = [{
+            "workspace_id": w.workspace_id,
+            "name": w.name,
+            "path": w.path,
+            "sort_order": w.sort_order,
+        } for w in get_store().load_workspaces()]
+        return {"ok": True, "workspaces": ws}
+    except Exception as e:
+        logger.exception("db_load_workspaces failed")
+        return {"ok": False, "error": str(e), "workspaces": []}
+
+
+_TK_PICK_SCRIPT = """
+import tkinter as tk
+from tkinter import filedialog
+root = tk.Tk()
+root.withdraw()
+root.attributes('-topmost', True)
+path = filedialog.askdirectory(title='选择工作区目录')
+root.destroy()
+print(path or '')
+"""
+
+
+@eel.expose
+def pick_workspace_dir() -> dict:
+    """弹出系统文件夹选择框，返回选中的目录。
+
+    用子进程跑 tkinter：Eel 的主循环跑在 gevent 上，在主线程里开 tkinter
+    对话框会把整个服务卡死，所以隔离到独立进程。
+    """
+    import subprocess
+    try:
+        if getattr(sys, "frozen", False):
+            # 打包后 sys.executable 是应用本体，不能再喂 -c 脚本
+            return {"ok": False, "error": "打包版本暂不支持目录选择，请手动输入路径"}
+        proc = subprocess.run(
+            [sys.executable, "-c", _TK_PICK_SCRIPT],
+            capture_output=True, text=True, timeout=180,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        path = (proc.stdout or "").strip().splitlines()[-1] if proc.stdout else ""
+        if not path:
+            return {"ok": False, "error": "未选择目录", "cancelled": True}
+        return {"ok": True, "path": path}
+    except Exception as e:
+        logger.warning("pick_workspace_dir failed: %s", e)
+        return {"ok": False, "error": str(e)}
+
+
+@eel.expose
+def create_workspace_dir(path: str) -> dict:
+    """确保工作区目录存在（不存在则创建），返回规范化后的绝对路径。"""
+    try:
+        target = Path(path).expanduser()
+        target.mkdir(parents=True, exist_ok=True)
+        if not target.is_dir():
+            return {"ok": False, "error": "路径不是目录"}
+        return {"ok": True, "path": str(target.resolve())}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@eel.expose
+def open_workspace_dir(path: str) -> dict:
+    """在资源管理器中打开工作区目录"""
+    try:
+        target = Path(path).expanduser()
+        if not target.is_dir():
+            return {"ok": False, "error": "目录不存在"}
+        if sys.platform.startswith("win"):
+            os.startfile(str(target))  # noqa: S606 — 本地桌面应用，打开自己的目录
+        else:
+            import subprocess
+            opener = "open" if sys.platform == "darwin" else "xdg-open"
+            subprocess.Popen([opener, str(target)])
+        return {"ok": True}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+# ══════════════════════════════════════════
+#  System bridge (hotkey / tray / window mode)
+# ══════════════════════════════════════════
+
+from src.core.system_bridge import (
+    consume_toggle, start_bridge_slave, stop_bridge_slave,
+    is_companion_mode, request_toggle,
+)
+
+
+@eel.expose
+def poll_toggle() -> dict:
+    """JS 轮询：是否有待处理的模式切换"""
+    try:
+        toggled = consume_toggle()
+        return {"ok": True, "toggled": toggled, "companion": is_companion_mode()}
+    except Exception as e:
+        return {"ok": False, "toggled": False, "companion": False}
+
+
+@eel.expose
+def request_window_toggle():
+    """JS 主动请求窗口模式切换"""
+    try:
+        request_toggle()
+        return {"ok": True, "companion": is_companion_mode()}
+    except Exception as e:
+        return {"ok": False}
+
+
+@eel.expose
+def query_knowledge_base(query: str) -> dict:
+    """查询 RAG 知识库
+
+    Args:
+        query: 自然语言查询问题
+
+    Returns:
+        {"ok": True, "result": "..."} 或 {"ok": False, "result": "错误信息"}
+    """
+    try:
+        result = get_controller().query_knowledge_base(query)
+        return {"ok": True, "result": result}
+    except Exception as e:
+        logger.exception("Eel RAG query failed")
+        return {"ok": False, "result": str(e)}
+
+
+# ══════════════════════════════════════════
+#  两段式启动（小窗先出 → 展开正式界面）
+# ══════════════════════════════════════════
+#  旧的顺序是「先把重活干完，再开窗口」：RAG 建索引、热键、托盘全跑完，屏幕上
+#  才出现第一个像素，用户双击之后只能盯着桌面。现在改成:
+#     1. 浏览器先开一个 480×340 的小窗（秒开），显示启动界面；
+#     2. 热键 / 托盘 / 知识库预热丢到后台线程（boot worker）；
+#     3. 关键步骤就绪 + 前端首屏渲染完成 → 前端把窗口 resizeTo 成 1300×840。
+#  状态由 BootSequencer 提供，前端轮询 boot_status()。
+
+SPLASH_SIZE = (GUI.SPLASH_WIDTH, GUI.SPLASH_HEIGHT)
+MAIN_SIZE = (GUI.MAIN_WIDTH, GUI.MAIN_HEIGHT)
+
+boot = BootSequencer((
+    BootStep("services", "正在注册全局热键与系统托盘", critical=True),
+    BootStep("ml_warmup", "正在预热本地模型", critical=False),
+    BootStep("knowledge", "正在预热知识库", critical=False),
+))
+
+
+def _centered_position(size: tuple) -> tuple | None:
+    """把小窗摆在屏幕正中（取不到屏幕尺寸就交给系统默认位置）。"""
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32          # 非 Windows 没有 windll → 走 except
+        sw, sh = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
+        w, h = size
+        return max(0, (sw - w) // 2), max(0, (sh - h) // 2)
+    except Exception:
+        return None
+
+
+def _window_args(size: tuple) -> list:
+    """浏览器命令行里的窗口尺寸 / 位置。
+
+    eel 的 size= 最终是页面里的 window.resizeTo（见 eel.js 的 _position_window），
+    能不能生效由浏览器策略决定；命令行参数是窗口创建时浏览器自己应用的，属于
+    更可靠的一层。两层都留着，谁先起效都行。
+    """
+    args = ["--disable-http-cache", "--window-size=%d,%d" % size]
+    pos = _centered_position(size)
+    if pos:
+        args.append("--window-position=%d,%d" % pos)
+    return args
+
+
+def _boot_worker() -> None:
+    """后台启动步骤 —— 跑在独立线程里，主线程去开窗口/跑 Eel 主循环。
+
+    放后台的不只是「慢」：它们都不影响对话界面能不能用，没理由让用户等。
+    """
+    with boot.step("services"):
+        # 托盘+热键在独立桥接子进程承载（消息泵与 gevent hub 不兼容，
+        # 2026-10-14 打包验证批；marker 文件单向通信，见 system_bridge）
+        start_bridge_slave()
+
+    # 本地 ML 模型预热：torch 导入 + 权重（元件 TextCNN / 意图 rbt3 ONNX）
+    # 是首次分析/对话的一次性大头
+    # （实测 1.2~3.6s + 1.65s），boot 期间后台做完，用户首次 DRC/对话即走稳态。
+    # 打包版 torch 不进 exe（红线不变），但意图 rbt3 ONNX 随包（2026-10-14
+    # BERT 批）——打包版预热走 onnxruntime 加载，元件 TextCNN 仍快速空转。
+    with boot.step("ml_warmup"):
+        try:
+            get_controller().warm_up_models()
+        except Exception as e:
+            logger.warning("ML 预热失败（不阻塞启动，首次使用时再懒加载）: %s", e)
+
+    # 知识库首次索引可能要十几秒 —— 只做预热，不挡界面（前端顶栏会给提示）
+    with boot.step("knowledge"):
+        get_controller()._ensure_rag_indexed()
+
+
+def _run_window(mode: str) -> None:
+    """开小窗并进入 Eel 主循环（阻塞；gevent 的 hub 靠这个阻塞点跑起来）。"""
+    eel.start("index.html", mode=mode, port=0, block=True,
+              size=SPLASH_SIZE, cmdline_args=_window_args(SPLASH_SIZE))
+
+
+@eel.expose
+def boot_status() -> dict:
+    """前端轮询的启动状态（见 src/core/boot.py 的 BootSequencer.status）。
+
+    额外带上界面要用的品牌信息：
+      * started=False 表示不是 main() 起的（例如 UI 冒烟测试直接 eel.start），
+        前端据此直接跳过等待，别把小窗流程强加给测试/调试场景；
+      * logo 只在文件真的存在时给路径，省得浏览器抓一个 404。
+    """
+    status = boot.status()
+    logo = PROJECT_ROOT / "web" / "img" / "logo-mark.png"
+    status["app"] = {"name": APP_NAME, "tagline": APP_TAGLINE, "version": APP_VERSION}
+    status["logo"] = "img/logo-mark.png" if logo.is_file() else ""
+    status["main_size"] = list(MAIN_SIZE)
+    return status
+
+
+@eel.expose
+def request_main_window() -> dict:
+    """小窗兜底：resizeTo 被浏览器拒绝时，按正式尺寸另开一个窗口。
+
+    eel 没有「给某个窗口单独指定尺寸」的公开接口 —— show() 读的是 _start_args
+    （start() 留下的那份），所以这里改完 size/cmdline_args 再 show，新窗口的
+    eel.js 会按 1300×840 摆好自己。
+    """
+    try:
+        if eel._start_args.get("mode") in (None, False, "none"):
+            return {"ok": False, "reason": "no_browser"}   # 无窗口模式（测试/调试）
+        eel._start_args["size"] = MAIN_SIZE
+        eel._start_args["cmdline_args"] = _window_args(MAIN_SIZE)
+        eel.show("index.html")
+        logger.info("小窗无法自行展开，已另开正式窗口 %sx%s", *MAIN_SIZE)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("request_main_window failed")
+        return {"ok": False, "reason": str(e)}
+
+
+# ══════════════════════════════════════════
+#  Entry point
+# ══════════════════════════════════════════
+
+def main():
+    setup_logging()
+    logger = logging.getLogger(__name__)
+    logger.info("启动 %s v%s (Eel)...", APP_NAME, APP_VERSION)
+
+    # 先把窗口开出来，再让后台线程干重活（顺序反了用户就要多等好几秒）
+    boot.start()
+    threading.Thread(target=_boot_worker, daemon=True, name="boot-worker").start()
+
+    try:
+        _run_window("chrome")
+    except EnvironmentError:
+        logger.info("Chrome not found, trying Edge...")
+        _run_window("edge")
+    finally:
+        stop_bridge_slave()
+
+
+def setup_logging(debug: bool = False):
+    if getattr(sys, "frozen", False):
+        # 打包版：_MEIPASS 是解包临时目录、退出即删，日志写那里等于不落盘
+        log_dir = app_home() / "logs"
+    else:
+        log_dir = PROJECT_ROOT / "logs"
+    # 日志目录可能被杀软拦截/只读（2026-10-14 打包验证：普通令牌写用户目录
+    # 被拒）——降级为纯控制台，应用必须能起来
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        file_handler: logging.Handler = logging.FileHandler(
+            log_dir / "app.log", encoding="utf-8")
+    except OSError as e:
+        print(f"[warn] 日志目录不可用（{e}），降级为控制台日志", file=sys.stderr)
+        file_handler = logging.StreamHandler(sys.stdout)
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+    level = logging.DEBUG if debug else logging.INFO
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=[file_handler, logging.StreamHandler(sys.stdout)],
+    )
+
+
+if __name__ == "__main__":
+    main()

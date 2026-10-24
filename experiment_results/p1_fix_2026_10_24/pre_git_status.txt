@@ -1,0 +1,62 @@
+ M CLAUDE.md
+ M data/calibration_report.json
+ M data/component_train_report.json
+ M data/component_train_train.json
+ M data/component_train_val.json
+ M data/intent_bert_train_report.json
+ M data/models/intent_bert/calibration.json
+ M data/models/intent_bert/intent_config.json
+ M data/nlu_train_report.json
+ M data/nlu_train_train.json
+ M data/nlu_train_val.json
+ M docs/generate_competition_plan.py
+ M main.py
+ M rag_data/.index_manifest.json
+ M requirements-dev.txt
+ M src/agent/nlu_engine.py
+ M src/agent/review_agents.py
+ M src/api/endpoints.py
+ M src/api/server.py
+ M src/bom/parser.py
+ M src/config.py
+ M src/core/controller.py
+ M src/html_bom/generator.py
+ M src/html_bom/templates/ibom.html
+ M src/html_bom/templates/verification_map.html
+ M src/html_bom/verification_map.py
+ M src/ml/calibrate.py
+ M src/ml/change_predictor.py
+ M src/ml/generate_component_data.py
+ M src/ml/generate_nlu_data.py
+ M src/ml/train_component.py
+ M src/ml/train_intent.py
+ M src/pcb/parser.py
+ M src/rules/base.py
+ M src/rules/checker.py
+ M tests/test_confidence_calibration.py
+ M tests/test_golden_snapshot.py
+ M tests/test_web_render_safety.py
+ M web/css/style.css
+ M web/index.html
+ M web/js/chat.js
+ M web/js/tools.js
+ M "\345\244\247\345\210\233\344\270\255\346\234\237\346\243\200\346\237\245/\346\231\272\347\273\230PCB_\345\244\247\345\210\233\344\270\255\346\234\237\346\243\200\346\237\245\346\261\207\346\212\245_2026-10-19.pptx"
+?? "docs/\344\273\243\347\240\201\351\252\214\346\224\266\346\212\245\345\221\212_2026-10-24.md"
+?? experiment_results/a10_intent_2026_10_24/
+?? experiment_results/a9_ic_augment_2026_10_24/
+?? experiment_results/a9_retrain/
+?? experiment_results/p1_fix_2026_10_24/
+?? src/ml/model_paths.py
+?? src/ml/split_utils.py
+?? tests/test_board3d.py
+?? tests/test_bom_parser_robustness.py
+?? tests/test_clear_all_data.py
+?? tests/test_html_bom_xss.py
+?? tests/test_ml_split_no_leakage.py
+?? tests/test_pcb_parser_units.py
+?? tests/test_review_agents_llm.py
+?? tests/test_violation_coords.py
+?? web/js/board3d.js
+?? web/js/particles.js
+?? web/vendor/OrbitControls.js
+?? web/vendor/three.min.js

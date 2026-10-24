@@ -8,19 +8,24 @@
 // ═══════════ Chat ═══════════
 
 function clearChatMessages() {
-  // Abort any in-progress stream
-  _activeStreamBubble = null;
-  _streamTokenCount = 0;
-  _activeToolCards.forEach(c => c.remove());
-  _activeToolCards = [];
+  // P1-22(a)（验收 2026-10-24）：清屏 = 离开当前流的显示现场（切会话/切助手/
+  // 新建对话），在途流不能只置 null —— 那会让 AI 回复永久丢失或被完成回调
+  // 落进别的会话。先按「发起会话」定格落库半截回复（与停止生成同口径），
+  // 后端代次由触发清屏的入口调用 cancel_stream 作废。
+  // P1-22(b)：finalize 顺带清光标 + 停 thinking 计时器。
+  _abortActiveStream('\n\n*(已停止生成)*');
+  // P1-22(c)（验收 2026-10-24）：工具卡先 clearInterval 再移除（只 remove
+  // 的话 100ms 计时器继续写已脱离 DOM 的节点，泄漏累积）。
+  _discardToolCards();
   const container = document.getElementById('chatMessages');
   if (!container) return;
-  // 注意：只能保留空态占位节点，其余一律清掉。
+  // 注意：只能保留空态相关节点（占位 #chatEmpty + 空态粒子画布
+  // #chatEmptyParticles，见 js/particles.js），其余一律清掉。
   // 过去只删 `.msg-row,.config-tip`，而流式 AI 气泡（裸 .bubble）和
   // `.tool-call-card` 都不带 .msg-row，切换助手/会话后它们会留在 DOM 里，
   // 造成「同一个回答显示两遍」（2026-09-10 实测：bareBubbles 存活 1 个）。
   Array.from(container.children).forEach(el => {
-    if (el.id !== 'chatEmpty') el.remove();
+    if (el.id !== 'chatEmpty' && el.id !== 'chatEmptyParticles') el.remove();
   });
   _syncChatEmpty();
 }
@@ -523,11 +528,14 @@ function prefillToolInput(t) {
 async function runToolInline(t) {
   _enterChatStream();
   const conv = getActiveConversation();
+  // P1-22(a)（验收 2026-10-24）：发起时绑定会话 —— await 期间切走会话时，
+  // 按 activeConvId 落库会把工具结果写进别的会话。
+  const convId = activeConvId;
   const prompt = `▶ 运行工具：${t.label}`;
   appendBubble('user', prompt);
   if (conv) {
     conv.messages.push({ role: 'user', content: prompt });
-    _persistMessage(activeConvId, 'user', prompt);
+    _persistMessage(convId, 'user', prompt);
   }
   disableInput(true);
   const stream = createStreamingBubble();
@@ -545,7 +553,7 @@ async function runToolInline(t) {
   stream.finalize(text);
   if (conv) {
     conv.messages.push({ role: 'ai', content: text });
-    _persistMessage(activeConvId, 'ai', text);
+    _persistMessage(convId, 'ai', text);
   }
   if (ok && resp.result) showReport(resp.result);
   renderConversations();
@@ -585,10 +593,13 @@ async function startDemo() {
   //    newConversation() → clearChatMessages() 会把刚展示的演示结果清空
   //    （2026-09-10 实测：用户视角就是「刚看到的结论消失了」）。
   const conv = getActiveConversation();
+  // P1-22(a)（验收 2026-10-24）：发起时绑定会话（同 runToolInline）——
+  // 演示数据加载期间切走会话，结果不能落进别的会话。
+  const convId = activeConvId;
   const _record = (role, content) => {
     if (!conv) return;
     conv.messages.push({ role, content });
-    _persistMessage(activeConvId, role, content);
+    _persistMessage(convId, role, content);
   };
   if (conv && conv.messages.length === 0) {
     conv.title = '示例 MCU 板审查';

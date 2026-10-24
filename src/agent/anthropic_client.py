@@ -18,6 +18,8 @@ Anthropic Messages API 文档: https://docs.anthropic.com/en/api/messages
 
 import json
 import logging
+import threading
+import time
 from typing import Optional, Callable
 
 import requests
@@ -25,6 +27,12 @@ import requests
 logger = logging.getLogger(__name__)
 
 ANTHROPIC_VERSION = "2023-06-01"
+
+# P1-2（验收 2026-10-24）：429/5xx 是瞬态失败（限流/网关抖动），一次失败就断掉
+# 整轮对话不可接受 —— 退避 1.5s/4s 重试至多 2 次；4xx 参数类错误重试无意义。
+# 口径对齐 llm_client._open 的同款常量。
+_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+_RETRY_DELAYS = (1.5, 4.0)
 
 
 class AnthropicClient:
@@ -48,6 +56,9 @@ class AnthropicClient:
         self.provider_name = provider or "claude"
         self.tool_executor = tool_executor
         self._history: list[dict] = []
+        # P1-2（验收 2026-10-24）：_history 并发保护 —— 会话租借场景下多线程
+        # 共享同一客户端实例，历史读写需互斥（对齐 llm_client._history_lock）。
+        self._history_lock = threading.Lock()
 
     @property
     def provider_label(self) -> str:
@@ -181,7 +192,9 @@ class AnthropicClient:
         tools = self._convert_functions_to_tools(functions)
         messages = self._build_messages(user_message, use_history)
 
-        for iteration in range(max_iterations):
+        last_results: list[str] = []
+        resp: Optional[dict] = None
+        for _ in range(max_iterations):
             payload = {
                 "model": self.model,
                 "max_tokens": 4096,
@@ -214,12 +227,19 @@ class AnthropicClient:
                     tool_input = tb.get("input", {})
                     tool_id = tb.get("id", "")
 
-                    # 执行工具 (复用 controller 的 dispatch)
-                    if self.tool_executor:
-                        result_text = self.tool_executor(tool_name, tool_input)
-                    else:
-                        result_text = json.dumps({"error": "no tool executor"}, ensure_ascii=False)
+                    # P1-1（验收 2026-10-24）：单个工具异常不能终止整个 Agent
+                    # Loop —— 对齐 llm_client.chat_with_tools 的口径，把错误
+                    # 文本作为 tool_result 回传，让 LLM 自行消化后继续推理。
+                    try:
+                        if self.tool_executor:
+                            result_text = self.tool_executor(tool_name, tool_input)
+                        else:
+                            result_text = json.dumps({"error": "no tool executor"}, ensure_ascii=False)
+                    except Exception as exc:
+                        result_text = f"工具执行失败: {exc}"
+                        logger.error("Tool %s failed: %s", tool_name, exc)
 
+                    last_results.append(f"[{tool_name}] {result_text}")
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": tool_id,
@@ -228,19 +248,29 @@ class AnthropicClient:
 
                 # 将 tool_result 加入消息
                 messages.append({"role": "user", "content": tool_results})
+                continue  # 回到循环顶部，让 LLM 消化工具结果
 
-            elif stop_reason == "end_turn":
-                # LLM 完成回复
-                reply = self._extract_text(resp)
-                self._record_turn(user_message, reply)
-                return reply
-            else:
-                # stop 或其他 — 尝试提取文本
-                reply = self._extract_text(resp)
-                self._record_turn(user_message, reply)
-                return reply
+            # end_turn / stop 或其他 — LLM 给出最终回复
+            reply = self._extract_text(resp)
+            self._record_turn(user_message, reply)
+            return reply
 
-        return self._extract_text(resp) if 'resp' in dir() else "(Agent loop max iterations reached)"
+        # P1-2（验收 2026-10-24）：迭代耗尽不能返回空串 —— stop_reason 仍为
+        # tool_use 时 extract_text 得到 ""，调用方无从得知 Agent 做到了哪一步。
+        # 对齐 llm_client 同场景：优先返回最后一轮的文本，没有文本则返回
+        # 已执行操作的摘要，并把摘要记入历史。
+        final_text = self._extract_text(resp) if resp is not None else ""
+        if final_text:
+            self._record_turn(user_message, final_text)
+            return final_text
+        logger.warning(
+            "Anthropic agent loop hit max_iterations=%d after %d tool calls",
+            max_iterations, len(last_results),
+        )
+        summary = "已达到最大操作步数限制。以下是我已完成的操作：\n\n"
+        summary += "\n".join(f"{i}. {r}" for i, r in enumerate(last_results, 1))
+        self._record_turn(user_message, summary)
+        return summary
 
     def function_call(
         self,
@@ -270,18 +300,22 @@ class AnthropicClient:
         return {"name": "", "arguments": {}}
 
     def clear_history(self):
-        self._history = []
+        with self._history_lock:
+            self._history = []
 
     def get_history(self) -> list[dict]:
-        return self._history.copy()
+        with self._history_lock:
+            return self._history.copy()
 
     def seed_history(self, turns: list[dict]) -> None:
         """用给定轮次替换本客户端历史（会话租借：继承共享历史快照）"""
-        self._history = list(turns)
+        with self._history_lock:
+            self._history = list(turns)
 
     def extend_history(self, turns: list[dict]) -> None:
         """追加轮次（会话租借：把本次会话的新增轮次合并回共享历史）"""
-        self._history.extend(turns)
+        with self._history_lock:
+            self._history.extend(turns)
 
     def list_models(self) -> dict:
         """实时拉取 Anthropic 可用模型（GET /v1/models，只读免费）。
@@ -299,27 +333,22 @@ class AnthropicClient:
     def _build_messages(self, user_message: str, use_history: bool = False) -> list[dict]:
         messages = []
         if use_history:
-            for turn in self._history[-self.HISTORY_MAX_TURNS * 2:]:
-                messages.append(turn)
+            with self._history_lock:
+                messages.extend(self._history[-self.HISTORY_MAX_TURNS * 2:])
         messages.append({"role": "user", "content": user_message})
         return messages
 
     def _record_turn(self, user_msg: str, reply: str):
-        self._history.append({"role": "user", "content": user_msg})
-        self._history.append({"role": "assistant", "content": reply})
-        if len(self._history) > self.HISTORY_MAX_TURNS * 2:
-            self._history = self._history[-self.HISTORY_MAX_TURNS * 2:]
+        with self._history_lock:
+            self._history.append({"role": "user", "content": user_msg})
+            self._history.append({"role": "assistant", "content": reply})
+            if len(self._history) > self.HISTORY_MAX_TURNS * 2:
+                self._history = self._history[-self.HISTORY_MAX_TURNS * 2:]
 
     def _api_call(self, payload: dict) -> dict:
         """调用 Anthropic Messages API (非流式)"""
         try:
-            r = requests.post(
-                self.base_url,
-                headers=self._headers(),
-                json=payload,
-                timeout=120,
-            )
-            r.raise_for_status()
+            r = self._post_with_retry(payload, timeout=120)
             return r.json()
         except requests.exceptions.HTTPError as e:
             detail = ""
@@ -330,20 +359,37 @@ class AnthropicClient:
             logger.error("Anthropic API error: %s — %s", e, detail)
             raise
 
+    def _post_with_retry(self, payload: dict, timeout: int, stream: bool = False):
+        """POST 请求，429/5xx 按 _RETRY_DELAYS 退避重试（P1-2，对齐 llm_client）"""
+        for attempt in range(len(_RETRY_DELAYS) + 1):
+            try:
+                r = requests.post(
+                    self.base_url,
+                    headers=self._headers(),
+                    json=payload,
+                    timeout=timeout,
+                    stream=stream,
+                )
+                r.raise_for_status()
+                return r
+            except requests.exceptions.HTTPError as e:
+                status = e.response.status_code if e.response is not None else None
+                if status in _RETRYABLE_STATUS and attempt < len(_RETRY_DELAYS):
+                    logger.warning(
+                        "Anthropic API %s（第 %d 次失败），%.1fs 后重试: %s",
+                        self.base_url, attempt + 1, _RETRY_DELAYS[attempt], status,
+                    )
+                    time.sleep(_RETRY_DELAYS[attempt])
+                    continue
+                raise
+
     def _api_stream(
         self, payload: dict, on_token: Optional[Callable[[str], None]] = None
     ) -> str:
         """调用 Anthropic Messages API (流式 SSE)"""
         full_text = []
         try:
-            r = requests.post(
-                self.base_url,
-                headers=self._headers(),
-                json=payload,
-                timeout=300,
-                stream=True,
-            )
-            r.raise_for_status()
+            r = self._post_with_retry(payload, timeout=300, stream=True)
 
             for line in r.iter_lines(decode_unicode=True):
                 if not line:

@@ -16,6 +16,8 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+from src.ml.split_utils import split_by_template
+
 # ── 术语表 ──
 
 _TERMS = {
@@ -25,6 +27,11 @@ _TERMS = {
         "ESP32-S3", "GD32F103C8T6", "CH32V307", "ATmega328P", "RP2040",
         "nRF52840", "i.MX RT1062", "STM32H743IIT6", "STM32G030F6P6",
         "ATtiny85", "MSP430G2553", "LPC1768", "MK66FX1M0",
+        # 2026-10-24 A-9 增强：补料号家族成员（前缀模式而非单点记忆）
+        "STM32F030F4P6", "STM32F401CCU6", "STM32L432KC", "STM32F107VCT6",
+        "GD32F303CBT6", "GD32F450ZIT6", "CH32V203C8T6", "CH552G",
+        "ESP32-C3-MINI", "ESP8266EX", "HK32F103C8T6", "AT32F403ACGT7",
+        "STM8S103F3P6", "nRF52832QFAA",
     ],
     "{fpga_pn}": [
         "EP4CE6E22C8N", "XC6SLX9-2TQG144C", "EPM240T100C5N", "GW1NR-9",
@@ -34,14 +41,28 @@ _TERMS = {
         "AMS1117-3.3", "AMS1117-5.0", "LM1117-3.3", "ME6211C33M5G",
         "HT7333", "XC6206P332MR", "TLV1117-33", "LP2985-33",
         "SPX3819M5-L-3-3", "NCP1117ST33T3G", "RT9193-33",
+        # 2026-10-24 A-9 增强：家族成员扩充
+        "AMS1117-1.8", "LM1117-5.0", "RT9013-33", "RT9018-33",
+        "XC6220B331MR", "XC6204B332MR", "AP2112K-3.3", "HT7533-1",
+        "LP5907MFX-3.3", "TLV75533PDBVR", "SGM2019-3.3", "AZ1117CH-3.3",
     ],
     "{dcdc_pn}": [
         "MP1584", "MP2307", "LM2596", "TPS5430", "XL6009", "MT3608",
         "SY8120B", "RT7272", "TPS562201", "LMR16030",
+        # 2026-10-24 A-9 增强：每个常见 DC-DC 料号家族补 2~4 个成员，
+        # 让字符级模型学「TPS56xx/LM25xx/MP23xx… = 电源」的前缀模式
+        "TPS562243", "TPS563201", "TPS54331", "TPS54302",
+        "LM2576", "LM2576-5.0", "LM2675", "LM2678",
+        "MP2359", "MP2315", "MP2495", "MP2451",
+        "SY8088", "SY8008", "SY7201", "SY7065",
+        "RT7259", "RT7859", "MT2492", "XD9264",
+        "TPS61088", "TPS61021", "LTC3406", "LTC1871", "FP6717", "B6286",
     ],
     "{opamp_pn}": [
         "LM358", "LM324", "TL072", "NE5532", "OPA2134", "AD8605",
         "MCP6002", "LMV358", "TL084", "OP07", "INA226", "AD620",
+        # 2026-10-24 A-9 增强：与 ic_power 裸料号边界对照
+        "LMV324", "OPA2333", "GS8632", "AD8532",
     ],
     "{interface_pn}": [
         "CH340G", "CH340C", "CP2102", "FT232RL", "CH343P",
@@ -177,6 +198,11 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "ref:U pn:{mcu_pn} pkg:{ic_pkg} desc:",
         "ref:U pn:{mcu_pn} pkg:{ic_pkg} desc:{mcu_pn}",
         "ref:U pn:{mcu_pn} pkg:{ic_pkg} desc:IC",
+        # 2026-10-24 A-9 增强：裸料号多封装模板（同上，保证两侧覆盖）
+        "ref:U pn:{mcu_pn} pkg:LQFP-32 desc:",
+        "ref:U pn:{mcu_pn} pkg:QFN-32 desc:",
+        "ref:IC pn:{mcu_pn} pkg:LQFP-48 desc:",
+        "ref:U pn:{mcu_pn} pkg:LQFP-64 desc:主控 {mcu_pn}",
     ],
     "ic_power": [
         "ref:U pn:{ldo_pn} pkg:SOT-223 desc:线性稳压器 3.3V 1A",
@@ -195,6 +221,24 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "ref:U pn:IP5306 pkg:SOP-8 desc:移动电源 SoC 充放电管理",
         "ref:U pn:{ldo_pn} pkg:SOT-223 desc:",
         "ref:U pn:{dcdc_pn} pkg:SOP-8 desc:",
+        # 2026-10-24 A-9 增强：裸料号模板按「不同模板串 × 多封装」重复出现——
+        # 模板级切分按模板串独立洗牌，多个裸料号模板可保证 train/val 两侧
+        # 都有裸料号样本（此前单一裸料号模板整体落 val，训练侧零裸料号样本，
+        # ic_power val 召回塌到 20%，金样去耦类触发 130→119）
+        "ref:U pn:{dcdc_pn} pkg:SOT-23-6 desc:",
+        "ref:U pn:{dcdc_pn} pkg:TO-252 desc:",
+        "ref:U pn:{dcdc_pn} pkg:SOT-23-5 desc:",
+        "ref:IC pn:{dcdc_pn} pkg:SOP-8 desc:",
+        "ref:U pn:{ldo_pn} pkg:SOT-89 desc:",
+        "ref:U pn:{ldo_pn} pkg:SOT-23-3 desc:",
+        "ref:IC pn:{ldo_pn} pkg:SOT-223 desc:",
+        # 带家族提示 desc 的变体
+        "ref:U pn:{dcdc_pn} pkg:SOP-8 desc:Buck 降压 2A",
+        "ref:U pn:{dcdc_pn} pkg:TO-263 desc:降压稳压 3A 输出可调",
+        "ref:U pn:{dcdc_pn} pkg:SOP-16 desc:电源芯片",
+        "ref:U pn:{ldo_pn} pkg:SOT-23 desc:LDO 3.3V 500mA",
+        "ref:U pn:{dcdc_pn} pkg:SOP-8 desc:降压 {dcdc_pn}",
+        "ref:U pn:{ldo_pn} pkg:SOT-223 desc:稳压 {ldo_pn}",
     ],
     "ic_analog": [
         "ref:U pn:{opamp_pn} pkg:SOP-8 desc:运算放大器",
@@ -217,6 +261,9 @@ _RAW_TEMPLATES: dict[str, list[str]] = {
         "ref:U pn:{interface_pn} pkg:QFN-32 desc:USB HUB 控制器",
         "ref:U pn:{interface_pn} pkg:SOT-23-6 desc:ESD 保护",
         "ref:U pn:{interface_pn} pkg:SOP-16 desc:",
+        # 2026-10-24 A-9 增强：裸料号边界对照
+        "ref:U pn:{opamp_pn} pkg:MSOP-8 desc:",
+        "ref:IC pn:{interface_pn} pkg:SOP-8 desc:",
     ],
     "ic_other": [
         "ref:U pn:{driver_pn} pkg:SOP-16 desc:达林顿驱动阵列",
@@ -421,18 +468,20 @@ def _fill_template(template: str) -> str:
 
 
 def _expand_templates(raw_templates: dict[str, list[str]], count_per_class: int) -> list[dict]:
-    """展开模板为训练样本"""
+    """展开模板为训练样本（携带 ``_template`` 供模板级切分，验收 A-9）"""
     samples: list[dict] = []
 
     for comp_type, templates in raw_templates.items():
         if len(templates) >= count_per_class:
             chosen = random.sample(templates, count_per_class)
             for t in chosen:
-                samples.append({"text": _fill_template(t), "type": comp_type})
+                samples.append({"text": _fill_template(t), "type": comp_type,
+                                "_template": t})
         else:
             for i in range(count_per_class):
                 t = random.choice(templates)
-                samples.append({"text": _fill_template(t), "type": comp_type})
+                samples.append({"text": _fill_template(t), "type": comp_type,
+                                "_template": t})
 
     return samples
 
@@ -465,9 +514,11 @@ def generate_data(
     train_samples = []
     val_samples = []
     for intent, items in by_class.items():
-        split_idx = int(len(items) * (1 - val_split))
-        train_samples.extend(items[:split_idx])
-        val_samples.extend(items[split_idx:])
+        # 模板级切分（验收 A-9，2026-10-24）：同一模板的全部变体进同一侧，
+        # 验证集与训练集逐字不重叠（此前 26% 重复）。
+        tr, va = split_by_template(items, val_split, label_key="type")
+        train_samples.extend(tr)
+        val_samples.extend(va)
 
     random.shuffle(train_samples)
     random.shuffle(val_samples)

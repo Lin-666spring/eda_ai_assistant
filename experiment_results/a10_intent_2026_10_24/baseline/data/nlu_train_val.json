@@ -1,0 +1,202 @@
+[
+  {
+    "text": "电源纹波一般要求多少？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "写一段代码来验证PDN目标阻抗",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "排针的典型应用电路是什么？",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "跑一下BOM健康",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "帮我生成一份DRC报告",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "帮我写一个Python脚本来分析BOM",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "过滤出所有电容",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "有没有12V转3.3V的LDO",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "看看哪些物料交期比较长",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "地的设计有没有问题？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "查看系统信息",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "PDN阻抗达标了吗？",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "分析一下走线的载流能力",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "LED的典型应用电路是什么？",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "过滤出所有电感",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "每个IC都有去耦电容吗？",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "帮我分析BOM中的元件类型分布",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "显示BOM概览",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "这几个元件哪家有现货？",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "给我一份完整的评估报表",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "如何选择合适的LDO？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "查一下这个料的工作温度范围",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "PCB设计中有哪些常见问题？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "筛选出所有0805封装的二极管",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "有没有3.3V转3.3V的LDO",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "写一段代码来验证模拟数字分离",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "全板DRC跑一遍",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "帮我分析一下这张电路图",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "查一下这个料的价格",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "合并相同的料号",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "分析一下这个示波器波形",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "什么是去耦电容？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "比较器的典型应用电路是什么？",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "PCB的电源网络能承载多大电流？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "筛选出所有SOT-23封装的ESD保护管",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "过滤出所有运放",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "打开文件",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "看看高频信号的处理怎么样？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "检查一下复位电路是否完整",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "写一段代码来验证晶振负载电容",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "导出当前的BOM数据",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "说说这个违规的原理",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "帮我看看电磁兼容方面怎么样",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "电容的典型应用电路是什么？",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "BOM合并",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "LDO的典型应用电路是什么？",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "导入PCB文件",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "从截图分析一下PCB的问题",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "帮我计算5A电流的走线宽度",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "差分线等长了吗",
+    "intent": "RULE_CHECK"
+  }
+]

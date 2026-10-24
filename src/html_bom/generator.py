@@ -3,7 +3,6 @@
 基于 PCB 元件坐标数据，生成可交互的 Web 页面
 """
 
-import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -64,12 +63,14 @@ class HTMLBOMGenerator:
         board_stats = calculate_board_stats(positions)
 
         # 渲染模板
+        # 2026-10-24 修复（验收 A-1）：不再手工 json.dumps + 模板 |safe ——
+        # json.dumps 不转义 </script>，BOM 字段可闭合脚本块注入任意 JS。
+        # 模板内改用 |tojson（转义 <>&' 为 \uXXXX），此处只传原始数据。
         template = self._env.get_template("ibom.html")
         html = template.render(
             config=self.config,
             components=components,
             board_stats=board_stats,
-            components_json=json.dumps(components, ensure_ascii=False),
         )
 
         # 保存文件

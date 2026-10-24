@@ -66,7 +66,7 @@ from src.core.controller import AppController, default_output_dir
 from src.core.file_watcher import FileWatcher
 from src.core.persistence import SessionStore
 from src.bom.parser import BOMItem
-from src.config import config, load_settings, save_settings, SETTINGS_DIR
+from src.config import config, load_settings, save_settings, SETTINGS_DIR, clear_local_data
 from src.constants import (
     LLM_PROVIDER_PRESETS,
     DEFAULT_PROVIDER,
@@ -238,9 +238,15 @@ def load_demo_data() -> dict:
 
 @eel.expose
 def check_rules() -> dict:
-    ctrl = get_controller()
-    report = _offload(ctrl.check_design_rules)
-    return {"ok": True, "report": report}
+    # P1-11（验收 2026-10-24）：DRC 全量扫描是最易抛错的重路径，异常一旦
+    # 穿透 eel 回调，前端 await 永远挂起 —— 与其他端点对齐补 error dict 兜底。
+    try:
+        ctrl = get_controller()
+        report = _offload(ctrl.check_design_rules)
+        return {"ok": True, "report": report}
+    except Exception as e:
+        logger.exception("check_rules failed")
+        return {"ok": False, "report": str(e)}
 
 
 @eel.expose
@@ -279,34 +285,89 @@ def clear_chat(messages=None):
     messages 非空时用它重建历史 —— 前端切回历史会话时把该会话的消息
     传回来，LLM 恢复该会话的上下文而不是从零开始。
     """
-    ctrl = get_controller()
-    ctrl.clear_conversation()
-    if messages:
-        try:
-            turns = [
-                {"role": m.get("role"), "content": m.get("content", "")}
-                for m in messages
-                if isinstance(m, dict) and m.get("role") in ("user", "ai")
-                and m.get("content")
-            ]
-            ctrl.seed_conversation(turns)
-        except Exception:
-            logger.exception("clear_chat: seed_conversation failed")
-    return {"ok": True}
+    # P1-11（验收 2026-10-24）：clear_conversation 原在 try 之外，抛错即挂起前端
+    try:
+        ctrl = get_controller()
+        ctrl.clear_conversation()
+        if messages:
+            try:
+                turns = [
+                    {"role": m.get("role"), "content": m.get("content", "")}
+                    for m in messages
+                    if isinstance(m, dict) and m.get("role") in ("user", "ai")
+                    and m.get("content")
+                ]
+                ctrl.seed_conversation(turns)
+            except Exception:
+                logger.exception("clear_chat: seed_conversation failed")
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("clear_chat failed")
+        return {"ok": False, "error": str(e)}
 
 
 @eel.expose
 def review_design_multi_agent() -> str:
     """多智能体协同设计审查 — 返回 JSON"""
-    return get_controller().review_design_multi_agent()
+    # P1-11（验收 2026-10-24）：五 Agent 并发审查路径长且依赖 LLM，异常必须
+    # 兜成 JSON 字符串，否则前端 JSON.parse 前的 await 先挂死
+    try:
+        return get_controller().review_design_multi_agent()
+    except Exception as e:
+        logger.exception("review_design_multi_agent failed")
+        return json.dumps({"ok": False, "error": str(e)}, ensure_ascii=False)
 
 
 @eel.expose
 def get_drc_heatmap(grid_size_mm: float = 5.0) -> str:
     """DRC 违规热力图数据 — 返回 JSON {ok, data: [[x,y,count],...], grid_size_mm, source, reason}"""
-    import json
-    ctrl = get_controller()
-    return json.dumps(_offload(ctrl.get_drc_heatmap, grid_size_mm), ensure_ascii=False)
+    # P1-11（验收 2026-10-24）：兜底返回与成功同构的 JSON（ok=False + reason），
+    # 前端 await 与 JSON.parse 都不挂
+    try:
+        ctrl = get_controller()
+        return json.dumps(_offload(ctrl.get_drc_heatmap, grid_size_mm), ensure_ascii=False)
+    except Exception as e:
+        logger.exception("get_drc_heatmap failed")
+        return json.dumps(
+            {"ok": False, "data": [], "grid_size_mm": grid_size_mm, "source": "",
+             "violation_count": 0, "mapped": 0, "reason": f"error: {e}"},
+            ensure_ascii=False,
+        )
+
+
+@eel.expose
+def get_drc_violations() -> str:
+    """DRC 违规坐标化清单 — 3D 板视图违规标记层。
+    返回 JSON {ok, reason, source, violation_count, mapped, items:[{rule, severity,
+    description, location, suggestion, coords:[[x,y],...]}]}，坐标绝对 mm。"""
+    # P1-11（验收 2026-10-24）：同 get_drc_heatmap，异常兜成同构 JSON
+    try:
+        ctrl = get_controller()
+        return json.dumps(_offload(ctrl.get_drc_violations), ensure_ascii=False)
+    except Exception as e:
+        logger.exception("get_drc_violations failed")
+        return json.dumps(
+            {"ok": False, "reason": f"error: {e}", "source": "",
+             "violation_count": 0, "mapped": 0, "items": []},
+            ensure_ascii=False,
+        )
+
+
+@eel.expose
+def get_board_3d_data() -> str:
+    """3D 板卡预览数据 — 前端 board3d.js（three.js）渲染。
+    载荷可能到 MB 级（走线段平铺），走 _offload 避免阻塞 gevent 主循环。"""
+    # P1-11（验收 2026-10-24）：同 get_drc_heatmap，异常兜成同构 JSON
+    try:
+        ctrl = get_controller()
+        return json.dumps(_offload(ctrl.get_board_3d_data), ensure_ascii=False)
+    except Exception as e:
+        logger.exception("get_board_3d_data failed")
+        return json.dumps(
+            {"ok": False, "reason": f"error: {e}", "board": None,
+             "components": [], "traces": [], "vias": [], "layers": [], "counts": {}},
+            ensure_ascii=False,
+        )
 
 
 @eel.expose
@@ -321,42 +382,72 @@ def set_active_assistant(assistant_id: str) -> dict:
 
 @eel.expose
 def get_llm_config() -> dict:
-    return {
-        "provider": config.llm.provider,
-        "model": config.llm.model,
-        "is_configured": config.llm.is_configured,
-        "provider_label": config.llm.provider_label,
-    }
+    # P1-11（验收 2026-10-24）：异常兜成同构 dict（is_configured=False），
+    # 前端设置面板按未配置降级而不是 await 挂死
+    try:
+        return {
+            "provider": config.llm.provider,
+            "model": config.llm.model,
+            "is_configured": config.llm.is_configured,
+            "provider_label": config.llm.provider_label,
+        }
+    except Exception as e:
+        logger.exception("get_llm_config failed")
+        return {
+            "provider": "", "model": "", "is_configured": False,
+            "provider_label": "", "error": str(e),
+        }
 
 
 @eel.expose
 def get_settings() -> dict:
     """薄委托：取值口径在 facade.settings_view（曾与 REST /settings 各写一份）。"""
-    return facade.settings_view()
+    # P1-11（验收 2026-10-24）：设置页首屏依赖此端点，抛错即整页挂起
+    try:
+        return facade.settings_view()
+    except Exception as e:
+        logger.exception("get_settings failed")
+        return {"ok": False, "error": str(e)}
 
 
 @eel.expose
 def save_theme(theme: str):
-    saved = load_settings()
-    saved["selected_theme"] = theme
-    save_settings(saved)
-    return {"ok": True}
+    # P1-11（验收 2026-10-24）：load/save_settings 走磁盘 IO（OSError 可能），
+    # 主题切换失败不能挂死前端 await
+    try:
+        saved = load_settings()
+        saved["selected_theme"] = theme
+        save_settings(saved)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("save_theme failed")
+        return {"ok": False, "error": str(e)}
 
 
 @eel.expose
 def save_accent(color: str):
-    saved = load_settings()
-    saved["selected_accent"] = color
-    save_settings(saved)
-    return {"ok": True}
+    # P1-11（验收 2026-10-24）：同 save_theme，磁盘 IO 失败兜 error dict
+    try:
+        saved = load_settings()
+        saved["selected_accent"] = color
+        save_settings(saved)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("save_accent failed")
+        return {"ok": False, "error": str(e)}
 
 
 @eel.expose
 def save_font_size(size: int):
-    saved = load_settings()
-    saved["font_size"] = size
-    save_settings(saved)
-    return {"ok": True}
+    # P1-11（验收 2026-10-24）：同 save_theme，磁盘 IO 失败兜 error dict
+    try:
+        saved = load_settings()
+        saved["font_size"] = size
+        save_settings(saved)
+        return {"ok": True}
+    except Exception as e:
+        logger.exception("save_font_size failed")
+        return {"ok": False, "error": str(e)}
 
 
 @eel.expose
@@ -388,30 +479,36 @@ def get_providers() -> dict:
     前端不再手写 PROVIDERS：名称、地址、模型清单、协议、图标全部来自
     src/constants.py 的 LLM_PROVIDER_PRESETS。
     """
-    from src.agent.model_catalog import fallback_models
-    providers = []
-    for key, preset in LLM_PROVIDER_PRESETS.items():
-        providers.append({
-            "key": key,
-            "name": preset.name,
-            "brand": preset.brand or preset.name,
-            "label": preset.brand or preset.name,
-            "icon": preset.icon or preset.name[:2].upper(),
-            "base_url": preset.base_url,
-            "default_model": preset.default_model,
-            "models": fallback_models(key),
-            "models_source": "fallback",      # /models 端点可用时前端会覆盖
-            "protocol": preset.protocol,
-            "description": preset.description,
-            "key_url": preset.key_url,
-            "notes": preset.notes,
-        })
-    return {
-        "ok": True,
-        "count": len(providers),
-        "default_provider": DEFAULT_PROVIDER,
-        "providers": providers,
-    }
+    # P1-11（验收 2026-10-24）：设置面板靠它渲染厂商目录，目录构建抛错
+    # （导入失败/目录数据异常）不能挂死设置页
+    try:
+        from src.agent.model_catalog import fallback_models
+        providers = []
+        for key, preset in LLM_PROVIDER_PRESETS.items():
+            providers.append({
+                "key": key,
+                "name": preset.name,
+                "brand": preset.brand or preset.name,
+                "label": preset.brand or preset.name,
+                "icon": preset.icon or preset.name[:2].upper(),
+                "base_url": preset.base_url,
+                "default_model": preset.default_model,
+                "models": fallback_models(key),
+                "models_source": "fallback",      # /models 端点可用时前端会覆盖
+                "protocol": preset.protocol,
+                "description": preset.description,
+                "key_url": preset.key_url,
+                "notes": preset.notes,
+            })
+        return {
+            "ok": True,
+            "count": len(providers),
+            "default_provider": DEFAULT_PROVIDER,
+            "providers": providers,
+        }
+    except Exception as e:
+        logger.exception("get_providers failed")
+        return {"ok": False, "error": str(e), "count": 0, "providers": []}
 
 
 @eel.expose
@@ -420,24 +517,40 @@ def fetch_provider_models(provider: str, api_key: str = "", base_url: str = "") 
 
     api_key 留空时回落到当前已保存的配置，方便「就按现在的 Key 拉一下」。
     """
-    from src.agent.model_catalog import list_models
-    if not api_key:
-        saved = load_settings()
-        api_key = saved.get("llm_api_key", "") or config.llm.api_key
-    result = list_models(provider, api_key, base_url)
-    if result.get("ok"):
-        result["models_source"] = "live"
-    return result
+    # P1-11（验收 2026-10-24）：list_models 网络调用可抛非预期异常（DNS/超时
+    # 之外的 KeyboardInterrupt 之外错误），兜成与该函数错误形态一致的 dict
+    try:
+        from src.agent.model_catalog import list_models
+        if not api_key:
+            saved = load_settings()
+            api_key = saved.get("llm_api_key", "") or config.llm.api_key
+        result = list_models(provider, api_key, base_url)
+        if result.get("ok"):
+            result["models_source"] = "live"
+        return result
+    except Exception as e:
+        logger.exception("fetch_provider_models failed")
+        return {"ok": False, "provider": provider, "models": [], "error": str(e)}
 
 
 @eel.expose
 def clear_all_data() -> dict:
-    """Clear all local data (settings + DB)."""
-    import shutil
+    """Clear all local data (settings + DB).
+
+    2026-10-24 修复（验收 A-5）：
+    - rmtree 改为按条目删除并保留 logs/ —— 打包版日志写在 app_home()/logs
+      且 FileHandler 持有句柄，整目录 rmtree 在 Windows 必抛 PermissionError；
+    - 删除后必须重置 _store/_controller 单例：旧 SessionStore 指向已删除的
+      sessions.db，页面 reload 后首个 db_* 调用会在无表的空库上报
+      no such table；
+    - 同步清空内存中的 LLM API Key（见 config.clear_local_data）。
+    """
+    global _store, _controller
     try:
-        if SETTINGS_DIR.exists():
-            shutil.rmtree(str(SETTINGS_DIR))
-            SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+        clear_local_data()
+        with _lazy_init_lock:
+            _store = None
+            _controller = None
         return {"ok": True}
     except Exception as e:
         return {"ok": False, "error": str(e)}
@@ -446,7 +559,13 @@ def clear_all_data() -> dict:
 @eel.expose
 def get_design_suggestions() -> str:
     """设计意图识别：BOM加载后自动调用，返回Markdown格式的主动建议"""
-    return get_controller().get_design_suggestions()
+    # P1-11（验收 2026-10-24）：BOM 加载后前端会 await 本端点，识别失败
+    # 必须返回可展示的 Markdown 文案而不是让 await 挂死
+    try:
+        return get_controller().get_design_suggestions()
+    except Exception as e:
+        logger.exception("get_design_suggestions failed")
+        return f"设计建议生成失败：{e}"
 
 
 # ══════════════════════════════════════════
@@ -495,31 +614,37 @@ def _tool_to_dict(t) -> dict:
 @eel.expose
 def get_tools_catalog() -> dict:
     """返回全部系统能力的目录（从 ToolRegistry 派生，前端不再重复维护）。"""
+    # P1-11（验收 2026-10-24）：目录构建（含 get_controller/context 读取）整体
+    # 兜底 —— 原先只挡 ImportError，其余异常仍会挂死工具箱首屏
     try:
         from src.agent.tools import ToolRegistry
         tools = [_tool_to_dict(t) for t in ToolRegistry.get_all()]
-    except ImportError as e:  # pragma: no cover — 打包缺失时降级
+    except Exception as e:
         logger.exception("ToolRegistry unavailable")
         return {"ok": False, "error": str(e), "tools": []}
 
-    categories = []
-    for t in tools:
-        cid = t["category"]
-        hit = next((c for c in categories if c["id"] == cid), None)
-        if hit is None:
-            categories.append({"id": cid, "count": 1})
-        else:
-            hit["count"] += 1
+    try:
+        categories = []
+        for t in tools:
+            cid = t["category"]
+            hit = next((c for c in categories if c["id"] == cid), None)
+            if hit is None:
+                categories.append({"id": cid, "count": 1})
+            else:
+                hit["count"] += 1
 
-    return {
-        "ok": True,
-        "count": len(tools),
-        "ready_count": sum(1 for t in tools if t["ready"]),
-        "has_bom": get_controller().context.has_data,
-        "has_pcb": get_controller().context.pcb_data is not None,
-        "categories": categories,
-        "tools": tools,
-    }
+        return {
+            "ok": True,
+            "count": len(tools),
+            "ready_count": sum(1 for t in tools if t["ready"]),
+            "has_bom": get_controller().context.has_data,
+            "has_pcb": get_controller().context.pcb_data is not None,
+            "categories": categories,
+            "tools": tools,
+        }
+    except Exception as e:
+        logger.exception("get_tools_catalog failed")
+        return {"ok": False, "error": str(e), "tools": []}
 
 
 @eel.expose
@@ -529,49 +654,61 @@ def run_tool(tool_name: str) -> dict:
     复用 get_controller()._dispatch_operation，因此与聊天路径走的是同一张
     派发表（ToolRegistry.get_dispatch_map），不存在第二套逻辑。
     """
+    # P1-11（验收 2026-10-24）：工具查找/前置校验原在 try 之外（get_controller、
+    # context 读取都可抛），整体兜底保证前端按钮永远拿到 error dict 而非挂起
     try:
         from src.agent.tools import ToolRegistry
     except ImportError as e:  # pragma: no cover
         return {"ok": False, "error": str(e)}
 
-    tool = ToolRegistry.get_by_name(tool_name)
-    if tool is None:
-        return {"ok": False, "error": f"未知工具: {tool_name}"}
-    if tool.requires_data and not get_controller().context.has_data:
-        return {"ok": False, "error": f"「{tool.label}」需要先导入 BOM"}
-    if tool.name == "analyze_image":
-        return {"ok": False, "error": "请在输入框添加图片后发送"}
-
     try:
-        result = get_controller()._dispatch_operation(tool_name, {})
-    except Exception as e:
-        logger.exception("run_tool failed: %s", tool_name)
-        return {"ok": False, "error": str(e)}
+        tool = ToolRegistry.get_by_name(tool_name)
+        if tool is None:
+            return {"ok": False, "error": f"未知工具: {tool_name}"}
+        if tool.requires_data and not get_controller().context.has_data:
+            return {"ok": False, "error": f"「{tool.label}」需要先导入 BOM"}
+        if tool.name == "analyze_image":
+            return {"ok": False, "error": "请在输入框添加图片后发送"}
 
-    return {"ok": True, "tool": tool.name, "label": tool.label, "result": str(result or "")}
+        try:
+            result = get_controller()._dispatch_operation(tool_name, {})
+        except Exception as e:
+            logger.exception("run_tool failed: %s", tool_name)
+            return {"ok": False, "error": str(e)}
+
+        return {"ok": True, "tool": tool.name, "label": tool.label, "result": str(result or "")}
+    except Exception as e:
+        logger.exception("run_tool guard failed: %s", tool_name)
+        return {"ok": False, "error": str(e)}
 
 
 @eel.expose
 def toggle_auto_sync() -> dict:
-    if watcher.is_running:
-        watcher.stop()
-        return {"ok": True, "running": False, "msg": "自动同步已关闭"}
-    path = FileWatcher.default_watch_path()
-    if not path:
-        return {"ok": False, "running": False, "msg": "未找到立创 EDA 项目目录"}
+    # P1-11（验收 2026-10-24）：watcher.watch 起观察器可抛（目录失效/权限），
+    # 开关状态必须回给前端而不是挂起
+    try:
+        if watcher.is_running:
+            watcher.stop()
+            return {"ok": True, "running": False, "msg": "自动同步已关闭"}
+        path = FileWatcher.default_watch_path()
+        if not path:
+            return {"ok": False, "running": False, "msg": "未找到立创 EDA 项目目录"}
 
-    def _notify_pcb_changed(fp: str) -> None:
-        # PollingObserver 在 gevent patch 下就是 hub greenlet，直接推送安全；
-        # 未 patch 的回退场景它是真实线程 —— 跨线程写 eel websocket 会帧交错，
-        # 经 hub 调度回正确上下文（2026-10-10 稳定性批）。
-        try:
-            import gevent
-            gevent.get_hub().loop.run_callback(lambda: eel.on_pcb_changed(fp)())
-        except Exception:
-            eel.on_pcb_changed(fp)()
+        def _notify_pcb_changed(fp: str) -> None:
+            # PollingObserver 在 gevent patch 下就是 hub greenlet，直接推送安全；
+            # 未 patch 的回退场景它是真实线程 —— 跨线程写 eel websocket 会帧交错，
+            # 经 hub 调度回正确上下文（2026-10-10 稳定性批）。
+            try:
+                import gevent
+                gevent.get_hub().loop.run_callback(lambda: eel.on_pcb_changed(fp)())
+            except Exception:
+                eel.on_pcb_changed(fp)()
 
-    watcher.watch(path, _notify_pcb_changed)
-    return {"ok": True, "running": True, "path": path, "msg": f"自动同步已开启 — {path}"}
+        watcher.watch(path, _notify_pcb_changed)
+        return {"ok": True, "running": True, "path": path, "msg": f"自动同步已开启 — {path}"}
+    except Exception as e:
+        logger.exception("toggle_auto_sync failed")
+        return {"ok": False, "running": watcher.is_running, "error": str(e)}
 
 # ── 流式代次守卫（2026-10-10 前端批）──
 # 前端发新消息/点停止时，旧流可能仍在跑：旧流的 on_stream_done 会把旧回复
@@ -1018,12 +1155,18 @@ def boot_status() -> dict:
         前端据此直接跳过等待，别把小窗流程强加给测试/调试场景；
       * logo 只在文件真的存在时给路径，省得浏览器抓一个 404。
     """
-    status = boot.status()
-    logo = PROJECT_ROOT / "web" / "img" / "logo-mark.png"
-    status["app"] = {"name": APP_NAME, "tagline": APP_TAGLINE, "version": APP_VERSION}
-    status["logo"] = "img/logo-mark.png" if logo.is_file() else ""
-    status["main_size"] = list(MAIN_SIZE)
-    return status
+    # P1-11（验收 2026-10-24）：前端按固定间隔轮询本端点，抛错会让启动页
+    # 永远停在小窗 —— 兜底返回未就绪状态
+    try:
+        status = boot.status()
+        logo = PROJECT_ROOT / "web" / "img" / "logo-mark.png"
+        status["app"] = {"name": APP_NAME, "tagline": APP_TAGLINE, "version": APP_VERSION}
+        status["logo"] = "img/logo-mark.png" if logo.is_file() else ""
+        status["main_size"] = list(MAIN_SIZE)
+        return status
+    except Exception as e:
+        logger.exception("boot_status failed")
+        return {"started": False, "steps": [], "error": str(e)}
 
 
 @eel.expose

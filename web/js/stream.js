@@ -29,6 +29,8 @@ let _activeToolCards = [];
 
 eel.expose(onToolCall, 'on_tool_call');
 function onToolCall(toolName) {
+  // P1-26（验收 2026-10-24）：本轮回答确实动用了工具 → 完成时才允许进报告栈
+  _streamHadToolCall = true;
   if (!_activeStreamBubble) return;
   const label = toolCallLabel(toolName);
   // Create a card with spinner, inserted before the streaming bubble
@@ -72,6 +74,18 @@ function _finishToolCard(c) {
   const st = c.querySelector('.tool-call-status');
   if (st) st.textContent = '已完成';
 }
+
+/** P1-22(c)（验收 2026-10-24）：丢弃工具卡必须先 clearInterval —— 只 remove
+ *  节点的话，卡片自带的 100ms 计时器仍在往已脱离 DOM 的元素写文本，
+ *  长会话下定时器与节点双双泄漏（clearChatMessages / 新一轮流 / 错误收尾
+ *  共用本入口；需要保留卡片可见的收尾走 _finishToolCard）。 */
+function _discardToolCards() {
+  _activeToolCards.forEach(c => {
+    if (c._stopTimer) c._stopTimer();
+    c.remove();
+  });
+  _activeToolCards = [];
+}
 function makeDoneIcon() {
   const s = document.createElement('span');
   s.className = 'tool-call-icon';
@@ -95,10 +109,19 @@ function onStreamDone(fullText) {
   _activeToolCards = [];
   if (_activeStreamBubble) {
     _activeStreamBubble.finalize(fullText);
-    const conv = getActiveConversation();
-    conv.messages.push({ role: 'ai', content: _activeStreamBubble.getText() });
-    _persistMessage(activeConvId, 'ai', _activeStreamBubble.getText());
-    showReport(fullText);
+    // P1-22(a)（验收 2026-10-24）：落库绑定「发起流时」的会话 —— 回调到达时
+    // activeConvId 可能已被切走，用完成时的活动会话会把回复写错地方。
+    const convId = _activeStreamConvId || activeConvId;
+    const conv = findConversation(convId);
+    if (conv) {
+      const text = _activeStreamBubble.getText();
+      conv.messages.push({ role: 'ai', content: text });
+      _persistMessage(convId, 'ai', text);
+    }
+    // P1-26（验收 2026-10-24）：仅当本轮流式回答确实调用过工具（产出了
+    // 报告/工具成果）才入报告栈并切右面板 —— 纯闲聊不再抢走用户正在看的
+    // BOM 表（是否强切由 showReport 按用户当前视面决定）。
+    if (_streamHadToolCall) showReport(fullText);
     _activeStreamBubble = null;
     _streamTokenCount = 0;
   }
@@ -111,15 +134,19 @@ function onStreamDone(fullText) {
 
 eel.expose(onStreamError, 'on_stream_error');
 function onStreamError(errorMsg) {
-  _activeToolCards.forEach(c => c.remove());
-  _activeToolCards = [];
+  // P1-22(c)（验收 2026-10-24）：丢弃工具卡先停计时器（只 remove 泄漏 setInterval）
+  _discardToolCards();
   if (_activeStreamBubble) {
     _activeStreamBubble.finalize(' 流式输出中断: ' + errorMsg);
-    const conv = getActiveConversation();
-    const text = _activeStreamBubble.getText();
-    conv.messages.push({ role: 'ai', content: text });
-    // 与 onStreamDone 同口径落库：否则重启后这条 AI 回复会凭空消失
-    _persistMessage(activeConvId, 'ai', text);
+    // P1-22(a)（验收 2026-10-24）：错误收尾同 onStreamDone 口径 —— 按
+    // 发起会话落库，否则切走会话后中断回复会写错地方或整条丢失。
+    const convId = _activeStreamConvId || activeConvId;
+    const conv = findConversation(convId);
+    if (conv) {
+      const text = _activeStreamBubble.getText();
+      conv.messages.push({ role: 'ai', content: text });
+      _persistMessage(convId, 'ai', text);
+    }
     _activeStreamBubble = null;
     _streamTokenCount = 0;
   }

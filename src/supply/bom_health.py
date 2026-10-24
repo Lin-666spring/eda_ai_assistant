@@ -3,6 +3,7 @@ BOM 健康检查引擎 — 库存、生命周期、替代料推荐、成本估�
 """
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -11,6 +12,11 @@ from ..constants import SUPPLY
 from .lcsc_client import ComponentInfo, LcscSearchClient
 
 logger = logging.getLogger(__name__)
+
+# P1-19（验收 2026-10-24）：并发查询的线程数上界。LCSC/JlcSearch 每请求都有
+# 自身超时（SUPPLY.*_TIMEOUT），并发只是把「N 个物料 × 超时」压成
+# 「ceil(N/并发数) × 超时」，单请求超时语义不变。
+QUERY_WORKERS = 8
 
 
 @dataclass
@@ -24,6 +30,9 @@ class BOMHealthReport:
     alternatives: dict[str, list[dict]] = field(default_factory=dict)
     total_cost_estimate: float = 0.0
     not_found: list[str] = field(default_factory=list)
+    # P1-19（验收 2026-10-24）：网络查询失败的物料单独成档（[{reference, part,
+    # error}]），既不中断整批检查，也不冒充「有货/缺货/未收录」结论
+    network_errors: list[dict] = field(default_factory=list)
 
     @property
     def health_score(self) -> float:
@@ -35,6 +44,7 @@ class BOMHealthReport:
             + len(self.low_stock) * 5
             + len(self.lifecycle_warnings) * 10
             + len(self.not_found) * 2
+            + len(self.network_errors) * 2  # P1-19：查不出的物料不能按满分计
         )
         return max(0.0, 100.0 - deductions)
 
@@ -49,16 +59,37 @@ class BOMHealthChecker:
         self._client = client
 
     def check(self, bom_items: list[BOMItem]) -> BOMHealthReport:
-        """全面健康检查。"""
+        """全面健康检查。
+
+        P1-19（验收 2026-10-24）：
+        - 单个物料网络失败只降级为 network_error 条目，不再中断整批检查
+          （原先一个 requests 异常让整张 BOM 的健康检查全废、端点 500）；
+        - 无型号/需查询的物料分拣后有界并发查询（QUERY_WORKERS 线程），
+          单请求超时语义不变，总时长从「物料数 × 超时」压到
+          「ceil(物料数/并发) × 超时」（串行最坏 ~21 分钟 → ~2 分钟级）。
+        """
         report = BOMHealthReport(total_items=len(bom_items))
 
+        # 分拣：无型号的直接 not_found，其余待查询（保持原顺序）
+        pending: list[tuple[BOMItem, str]] = []
         for item in bom_items:
             part = item.part_number
             if not part or part in ("N/A", "Unknown"):
                 report.not_found.append(item.reference)
                 continue
+            pending.append((item, part))
 
-            info = self._client.is_available(part)
+        results = self._query_parts_concurrent([part for _, part in pending])
+
+        for item, part in pending:
+            info = results.get(part)
+            if isinstance(info, Exception):
+                report.network_errors.append({
+                    "reference": item.reference,
+                    "part": part,
+                    "error": str(info),
+                })
+                continue
             if info is None:
                 report.not_found.append(item.reference)
                 continue
@@ -87,7 +118,7 @@ class BOMHealthChecker:
             # 成本累计
             report.total_cost_estimate += info.min_price
 
-        # 替代料推荐（仅对缺货项）
+        # 替代料推荐（仅对缺货项；_recommend_alternatives 内部已逐次兜异常）
         for missing in report.out_of_stock:
             alts = self._recommend_alternatives(
                 missing["part"], missing["package"]
@@ -95,7 +126,40 @@ class BOMHealthChecker:
             if alts:
                 report.alternatives[missing["part"]] = alts
 
+        if report.network_errors:
+            logger.warning(
+                "BOM health: %d/%d items failed network query (degraded, not aborted)",
+                len(report.network_errors), report.total_items,
+            )
+
         return report
+
+    def _query_parts_concurrent(
+        self, parts: list[str]
+    ) -> dict[str, "ComponentInfo | None | Exception"]:
+        """并发查询各物料的库存信息。
+
+        P1-19（验收 2026-10-24）：逐物料 try/except —— 失败物料返回 Exception
+        哨兵（而非 None，与「查到但无货」区分），由调用方标记 network_error。
+        同一 part 多个位号复用同一份查询结果。
+        """
+        unique_parts = list(dict.fromkeys(parts))
+        results: dict[str, ComponentInfo | None | Exception] = {}
+        if not unique_parts:
+            return results
+
+        def _one(part: str):
+            try:
+                return self._client.is_available(part)
+            except Exception as e:  # 单物料失败降级，不上抛中断整批
+                logger.warning("BOM health: query failed for %s: %s", part, e)
+                return e
+
+        max_workers = max(1, min(QUERY_WORKERS, len(unique_parts)))
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            for part, res in zip(unique_parts, pool.map(_one, unique_parts)):
+                results[part] = res
+        return results
 
     def recommend_alternatives(
         self, part_number: str, package: str = ""
@@ -111,7 +175,12 @@ class BOMHealthChecker:
         for item in bom_items:
             if not item.part_number:
                 continue
-            info = self._client.is_available(item.part_number)
+            # P1-19（验收 2026-10-24）：单物料网络失败只跳过该项，不中断整个估值
+            try:
+                info = self._client.is_available(item.part_number)
+            except Exception as e:
+                logger.warning("BOM cost: query failed for %s: %s", item.part_number, e)
+                continue
             if info and info.min_price > 0:
                 total += info.min_price * item.quantity * quantity
         return round(total, 2)
@@ -183,6 +252,16 @@ class BOMHealthChecker:
                 lines.append(f"    • {ref}")
             if len(report.not_found) > 10:
                 lines.append(f"    ... 等 {len(report.not_found) - 10} 项")
+
+        # P1-19（验收 2026-10-24）：网络失败的物料单独提示 —— 它们的库存状态
+        # 未知，不能混进「未查询到」让用户误以为商品不存在
+        if report.network_errors:
+            lines.append("-" * 58)
+            lines.append(f"  网络查询失败 ({len(report.network_errors)} 项，请重试):")
+            for w in report.network_errors[:10]:
+                lines.append(f"    ! {w['reference']}  {w['part']}")
+            if len(report.network_errors) > 10:
+                lines.append(f"    ... 等 {len(report.network_errors) - 10} 项")
 
         if report.out_of_stock:
             lines.append("-" * 58)

@@ -3,6 +3,7 @@
 使用 chromadb 做向量存储，硅基流动 API (BGE-M3) 做嵌入。
 """
 
+import hashlib
 import json
 import logging
 import os
@@ -62,19 +63,36 @@ class RAGIndexer:
             docs: [{"title": str, "content": str, "source": str, "url": str}, ...]
 
         Returns:
-            索引的总 chunk 数
+            成功索引的 chunk 数（嵌入失败的文档跳过并记 error 日志，不计数）
+
+        P1-21（验收 2026-10-24）：每个文档写入成功后清掉同 source 里未被新内容
+        覆盖的旧 chunk —— 重索引（内容变更）时旧的 chunk 永不删除会让同一份
+        知识的新旧两版同时在库里，检索命中过期内容。顺序是「先记旧 ID → 写新 →
+        删差集」：写入失败时旧数据原样保留，且不会误删刚写入的新 chunk。
         """
         total = 0
         for doc in docs:
+            source = doc.get("source", "")
             chunks = self._split_text(
                 doc.get("title", ""),
                 doc.get("content", ""),
-                doc.get("source", ""),
+                source,
                 doc.get("url", ""),
             )
-            if chunks:
-                self._add_chunks(chunks)
-                total += len(chunks)
+            if not chunks:
+                continue
+            stale_ids = self._source_chunk_ids(source)
+            try:
+                new_ids = self._add_chunks(chunks)
+            except Exception as e:
+                # P1-21（验收 2026-10-24）：嵌入失败的批次响亮失败 —— 跳过该批并
+                # 记 error 日志，绝不把回退向量混进 collection（两种向量空间
+                # 混存会让检索质量静默劣化，且无法事后清理）。
+                logger.error("RAG index batch failed (skipped): source=%s, %d chunks, error=%s",
+                             source or "(no source)", len(chunks), e)
+                continue
+            self._delete_chunks(i for i in stale_ids if i not in set(new_ids))
+            total += len(chunks)
 
         logger.info("Indexed %d chunks from %d documents", total, len(docs))
         return total
@@ -265,34 +283,64 @@ class RAGIndexer:
 
         return chunks
 
-    def _add_chunks(self, chunks: list[dict]) -> None:
-        """将 chunks 写入 chromadb collection"""
-        if not chunks:
-            return
+    def _add_chunks(self, chunks: list[dict]) -> list[str]:
+        """将 chunks 写入 chromadb collection，返回写入的 chunk ID 列表。
 
-        ids = [f"chunk_{self._collection.count() + i}" for i in range(len(chunks))]
+        P1-21（验收 2026-10-24）：
+        - ID 改为内容寻址（source + text 哈希）：旧的 chunk_{count+i} 依赖
+          「写入瞬间」的行数，跨进程并发写和重索引删旧 chunk 后必然撞号/
+          错位；哈希 ID 让同一份内容重索引时幂等（upsert 覆盖自身）。
+        - 嵌入失败不再回退 chromadb 内置 MiniLM 向量 —— 同一 collection 混
+          两种向量空间后检索质量静默劣化，这里直接把异常抛给调用方
+          （index_documents 记 error 并跳过该批）。
+        """
+        if not chunks:
+            return []
+
         texts = [c["text"] for c in chunks]
+        ids = [self._chunk_id(c) for c in chunks]
         metadatas = [
             {"title": c["title"], "source": c.get("source", ""), "url": c.get("url", "")}
             for c in chunks
         ]
 
-        # 优先使用硅基流动 API，失败则回退 chromadb 内置 embedding
-        try:
-            embedding_fn = _SiliconFlowEmbedding()
-            embeddings = embedding_fn.embed(texts)
-            self._collection.add(
-                ids=ids, embeddings=embeddings,
-                documents=texts, metadatas=metadatas,
-            )
-            return
-        except Exception as e:
-            logger.warning("SiliconFlow embedding failed, using local: %s", e)
-
-        # chromadb 内置 DefaultEmbeddingFunction (all-MiniLM-L6-v2)
-        self._collection.add(
-            ids=ids, documents=texts, metadatas=metadatas,
+        # 硅基流动 API (BGE-M3) —— 唯一嵌入通道，失败即响亮失败（见 docstring）
+        embedding_fn = _SiliconFlowEmbedding()
+        embeddings = embedding_fn.embed(texts)
+        self._collection.upsert(
+            ids=ids, embeddings=embeddings,
+            documents=texts, metadatas=metadatas,
         )
+        return ids
+
+    @staticmethod
+    def _chunk_id(chunk: dict) -> str:
+        """内容寻址 chunk ID：同 source 同文本 → 同 ID（重索引幂等）。"""
+        digest = hashlib.md5(
+            f"{chunk.get('source', '')}\x00{chunk['text']}".encode("utf-8")
+        ).hexdigest()
+        return f"chunk_{digest}"
+
+    def _source_chunk_ids(self, source: str) -> list[str]:
+        """列出某 source 当前在库的 chunk ID（重索引时用于清理旧 chunk）。"""
+        if not source:
+            return []
+        try:
+            got = self._collection.get(where={"source": source})
+            return list(got.get("ids", []))
+        except Exception as e:
+            logger.warning("RAG: failed to list chunks of source=%s: %s", source, e)
+            return []
+
+    def _delete_chunks(self, ids) -> None:
+        """按 ID 删除 chunk（忽略单个删除失败，不阻塞索引主流程）。"""
+        ids = list(ids)
+        if not ids:
+            return
+        try:
+            self._collection.delete(ids=ids)
+        except Exception as e:
+            logger.warning("RAG: failed to delete %d stale chunks: %s", len(ids), e)
 
 
 class _SiliconFlowEmbedding:

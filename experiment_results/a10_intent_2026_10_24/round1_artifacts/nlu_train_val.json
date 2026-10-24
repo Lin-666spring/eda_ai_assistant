@@ -1,0 +1,322 @@
+[
+  {
+    "text": "为什么要在芯片旁边放去耦电容？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "导出所有违规的汇总",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "TF卡座的选型要注意什么？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "分析一下走线的载流能力",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "这个波形是不是振铃了",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "查看PCB状态",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "USB座的ESR是多少",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "系统什么状态",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "查一下有没有直角走线",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "看看DC-DC在BOM里有几条",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "帮我看看电磁兼容方面怎么样",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "检查一下复位电路是否完整",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "这个DC-DC耐压多少",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "帮我搜一下按键的替代型号",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "看看哪些物料交期比较长",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "检查模数分离",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "找一款24V转3.3V的LDO",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "帮我写个自动布局检查的小工具",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "看看去耦电容放对没有",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "什么情况下需要加散热孔？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "DRC跑一遍",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "帮我看看这个示波器截图",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "电路板有没有什么问题？",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "这个原理图里有没有画错的地方",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "帮我检查过孔",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "过滤出所有ESD保护管",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "这个排针耐压多少",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "这个电感耐压多少",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "显示帮助",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "重码检查",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "晶振的ESR是多少",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "帮我看看哪些元件涨价了",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "找一款12V转3.3V的LDO",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "位号查重",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "讲讲差分信号的好处",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "BOM里各种元件分别有多少",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "STM32和GD32有什么区别？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "信号完整性方面有什么实用技巧",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "帮我搜一下TVS管的替代型号",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "PCB的热管理怎么样？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "过滤出所有TF卡座",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "看看当前打开了什么文件",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "PCB散热怎么样？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "这些料的生命周期如何？",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "过滤DO-214AC的电容",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "用Python写个BOM编码规范检查",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "BOM中有没有采购风险的元件？",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "看看光耦在BOM里有几条",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "LDO的选型要注意什么？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "这个层叠方案可以吗？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "计算0.5A需要的线宽",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "帮我生成一个检查脚本",
+    "intent": "CODE_RULE_GEN"
+  },
+  {
+    "text": "全板DRC跑一遍",
+    "intent": "RULE_CHECK"
+  },
+  {
+    "text": "这个MOSFET耐压多少",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "找一款3.3V转3.3V的LDO",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "生成元件清单报表",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "看看这个PCB布局图",
+    "intent": "VISUAL"
+  },
+  {
+    "text": "计算3A需要的线宽",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "转换效率方面有什么实用技巧",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "做一个元件分类统计",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "把分析结果导出",
+    "intent": "REPORT_GEN"
+  },
+  {
+    "text": "过滤DFN-10的电容",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "找一款5V转3.3V的LDO",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "帮我搜一下电感的替代型号",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "过滤SOT-23的电容",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "看看LDO在BOM里有几条",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "查重",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "分析一下PCB的信号完整性",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "LED的选型要注意什么？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "这个电感的工作频率是多少？",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "继电器的ESR是多少",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "开关的ESR是多少",
+    "intent": "COMPONENT_LOOKUP"
+  },
+  {
+    "text": "看看帮助文档",
+    "intent": "LOCAL_ONLY"
+  },
+  {
+    "text": "DC-DC的选型要注意什么？",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "PCB的爬电距离怎么样？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "看看电感在BOM里有几条",
+    "intent": "BOM_ANALYSIS"
+  },
+  {
+    "text": "DCDC电源板的信号完整性怎么样？",
+    "intent": "PCB_ANALYSIS"
+  },
+  {
+    "text": "哪种料采购最紧迫",
+    "intent": "BOM_HEALTH"
+  },
+  {
+    "text": "EMI抑制方面有什么实用技巧",
+    "intent": "TEXT_CHAT"
+  },
+  {
+    "text": "排针的ESR是多少",
+    "intent": "COMPONENT_LOOKUP"
+  }
+]

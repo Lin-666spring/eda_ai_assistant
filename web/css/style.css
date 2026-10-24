@@ -730,6 +730,7 @@ body[data-theme="dark"] .tool-card-cat.tone-pink   { color: #ef7fb4; }
   flex: 1; min-height: 0; overflow-y: auto; padding: 16px 40px 10px;
   display: flex; flex-direction: column; gap: 6px;
   scroll-behavior: smooth;
+  position: relative; /* 空态粒子画布的定位上下文 */
 }
 #chatMessages.hidden { display: none; }
 
@@ -737,7 +738,22 @@ body[data-theme="dark"] .tool-card-cat.tone-pink   { color: #ef7fb4; }
 #chatEmpty {
   margin: auto; text-align: center; padding: 32px 24px;
   max-width: 440px; color: var(--text-muted);
+  position: relative; z-index: 1; /* 浮在空态粒子画布之上 */
 }
+
+/* ── 电路粒子场（js/particles.js，2026-10-24）──
+   空态/启动界面的背景装饰：过孔节点 + 45° 走线 + 信号脉冲。
+   画布铺满宿主容器（#chatMessages / #appSplash），内容层压在上面。
+   颜色由 JS 每秒读 --accent 与主题；reduced-motion 时 JS 只画静态帧。 */
+.particle-field {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 0;
+  animation: particlesIn .9s ease both;
+}
+/* 启动界面：光晕(DOM在前) → 粒子 → 文案内容，各占一层 */
+.splash-inner { z-index: 1; }
+.splash-foot { z-index: 1; }
+@keyframes particlesIn { from { opacity: 0; } to { opacity: 1; } }
 .chat-empty-icon {
   width: 64px; height: 64px; margin: 0 auto 16px;
   display: flex; align-items: center; justify-content: center;
@@ -991,11 +1007,47 @@ body[data-theme="dark"] .tool-card-cat.tone-pink   { color: #ef7fb4; }
    实测 elementFromPoint 命中的是卡片而非按钮（2026-09-10 移除）。 */
 #panelToggleTop.active { background: var(--accent-bg); color: var(--accent); }
 .panel-content { flex: 1; overflow: auto; padding: 12px; }
+/* 3D 预览进来后第 5 个标签，窄面板放不下一行 —— 允许换行 */
+.panel-tabs { flex-wrap: wrap; }
+.tab-btn { padding: 8px 10px; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 .empty-hint {
   display: flex; align-items: center; justify-content: center;
   height: 80px; color: var(--text-muted); font-size: 12px;
+}
+
+/* ── 3D 板卡预览（js/board3d.js，2026-10-24）──
+   three.js 画布透明背景直接透面板底色（深浅色零适配）；
+   元件/走线/过孔由 JS 按需构建，工具栏按钮切换视角与图层。 */
+.b3d-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.b3d-btn {
+  height: 24px; padding: 0 10px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--bg-card);
+  color: var(--text-secondary); font-size: 11.5px; font-weight: 500;
+  cursor: pointer; transition: var(--transition); font-family: var(--font);
+}
+.b3d-btn:hover { border-color: var(--accent); color: var(--accent); }
+.b3d-btn.on { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+.b3d-sep { width: 1px; height: 16px; background: var(--border); margin: 0 2px; }
+#b3dWrap {
+  position: relative; height: 420px; overflow: hidden;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-card-alt);
+}
+#b3dCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.b3d-loading {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--bg-card); opacity: .88;
+  font-size: 12px; color: var(--text-secondary);
+}
+.b3d-badge {
+  position: absolute; left: 8px; bottom: 8px; z-index: 2;
+  max-width: calc(100% - 16px); padding: 3px 10px;
+  border-radius: 10px; background: var(--bg-card); border: 1px solid var(--border);
+  font-size: 11px; color: var(--text-muted);
+  pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 /* BOM Table */
@@ -1861,6 +1913,8 @@ body.companion-mode .status-pill { display: none; }
 @media (prefers-reduced-motion: reduce) {
   /* 动效降级：进度条改成常亮细线，三点/转圈停成静态点，信息不丢 */
   .top-progress::after { animation: none !important; left: 0; width: 100%; }
+  /* 粒子场：JS 侧同步降级为单帧静态走线，这里的淡入也不做 */
+  .particle-field { animation: none !important; }
   .think-dots i { animation: none !important; opacity: 1; transform: none; }
   .status-spinner, button.is-loading::after { animation: none !important; }
   .skeleton-line { animation: none !important; background: var(--bg-card-alt); }

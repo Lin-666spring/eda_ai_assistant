@@ -1,0 +1,45 @@
+{
+  "model_type": "rbt3-onnx",
+  "base": "hfl/rbt3",
+  "precision": "fp16",
+  "export_info": {
+    "precision": "fp16",
+    "fused": true,
+    "size_mb": 77.0
+  },
+  "labels": [
+    "TEXT_CHAT",
+    "BOM_ANALYSIS",
+    "BOM_HEALTH",
+    "RULE_CHECK",
+    "PCB_ANALYSIS",
+    "CODE_RULE_GEN",
+    "REPORT_GEN",
+    "COMPONENT_LOOKUP",
+    "VISUAL",
+    "LOCAL_ONLY"
+  ],
+  "max_len": 32,
+  "temperature": 0.7,
+  "tokenizer": {
+    "type": "bert-wordpiece",
+    "lowercase": true,
+    "pad_token": "[PAD]",
+    "pad_id": 0
+  },
+  "inputs": [
+    "input_ids",
+    "attention_mask",
+    "token_type_ids"
+  ],
+  "output": "logits",
+  "exported_at": "2026-10-14T11:41:17.067369",
+  "val_acc": 0.98,
+  "eval_acc": 0.9643,
+  "onnx_parity": {
+    "n_samples": 234,
+    "argmax_agreement": 1.0,
+    "max_prob_diff": 0.00068,
+    "precision": "fp16"
+  }
+}

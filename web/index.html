@@ -34,6 +34,8 @@
      没有这个文件时用下面这枚内联 SVG 标记（不会去抓 404）。 -->
 <div id="appSplash" role="status" aria-live="polite">
   <div class="splash-glow" aria-hidden="true"></div>
+  <!-- 电路粒子场背景（js/particles.js）：过孔节点 + 45° 走线 + 信号脉冲 -->
+  <canvas id="splashParticles" class="particle-field" aria-hidden="true"></canvas>
   <div class="splash-inner">
     <div class="splash-logo">
       <svg viewBox="0 0 32 32" aria-hidden="true">
@@ -173,6 +175,8 @@
 
   <!-- 消息/结果流（主页面的主体） -->
   <div id="chatMessages">
+    <!-- 空态背景粒子画布：tools.js 清屏时按 id 保留（见其白名单注释） -->
+    <canvas id="chatEmptyParticles" class="particle-field" aria-hidden="true"></canvas>
     <div id="chatEmpty">
       <div class="chat-empty-icon">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 20h8M12 18v2"/></svg>
@@ -219,6 +223,7 @@
     <button class="tab-btn active" data-tab="bom">BOM 表格</button>
     <button class="tab-btn" data-tab="report">报告</button>
     <button class="tab-btn" data-tab="review">审查</button>
+    <button class="tab-btn" data-tab="board3d">3D 预览</button>
     <button class="tab-btn" data-tab="html">HTML 预览</button>
   </div>
   <div class="panel-content">
@@ -289,8 +294,38 @@
         <div id="drcHeatmapEmpty" class="empty-hint" style="display:none">无元件坐标 — 请导入 PCB 文件或坐标文件(Pick &amp; Place)后重试</div>
       </div>
     </div>
+    <!-- ═══ 3D 板卡预览（js/board3d.js + vendor three.js，懒加载）═══
+         数据来自 get_board_3d_data（.epro2 最全：板框环/元件正反面/走线/过孔）。
+         元件为估算尺寸（封装名/位号推断），仅作视觉呈现。 -->
+    <div id="tab-board3d" class="tab-panel">
+      <div class="b3d-toolbar">
+        <button class="b3d-btn" id="b3dViewTop" title="俯视（看布局）">顶视</button>
+        <button class="b3d-btn" id="b3dViewTilt" title="斜视（默认）">斜视</button>
+        <button class="b3d-btn" id="b3dViewSide" title="侧视（看高度）">侧视</button>
+        <button class="b3d-btn" id="b3dViewBottom" title="从板底看 B 面">翻面</button>
+        <span class="b3d-sep"></span>
+        <button class="b3d-btn on" id="b3dToggleTraces">走线</button>
+        <button class="b3d-btn on" id="b3dToggleVias">过孔</button>
+        <button class="b3d-btn" id="b3dToggleDrc" title="DRC 违规标记（按违规涉及的元件坐标落点，点击标记看详情）">违规</button>
+        <button class="b3d-btn" id="b3dReload" title="重新拉取当前工程的 3D 数据">刷新</button>
+      </div>
+      <div id="b3dWrap">
+        <canvas id="b3dCanvas"></canvas>
+        <div id="b3dLoading" class="b3d-loading" style="display:none">
+          <span class="status-spinner"></span><span>正在构建 3D 场景…</span>
+        </div>
+        <div id="b3dBadge" class="b3d-badge"></div>
+      </div>
+      <div id="b3dEmpty" class="empty-hint">导入 .epro2 工程文件后可预览 3D 板卡</div>
+    </div>
     <div id="tab-html" class="tab-panel">
-      <iframe id="htmlFrame" style="width:100%;height:100%;border:none;display:none;"></iframe>
+      <!-- P1-27（验收 2026-10-24）：报告 iframe 加 sandbox 最小权限 ——
+           allow-scripts：报告为站内模板生成（A-1 已做 XSS 硬化），自带的
+           搜索/高亮/封装预览 JS 需要执行；不给 allow-same-origin：文档落到
+           不透明源，无法触碰父页面 DOM、无 storage/cookie、不能弹窗/表单/
+           导航父页 —— file:// 上下文下隔离脚本执行面且不影响功能
+           （模板已核实无外部资源引用、无 localStorage/window.top 依赖）。 -->
+      <iframe id="htmlFrame" style="width:100%;height:100%;border:none;display:none;" sandbox="allow-scripts"></iframe>
       <div id="htmlEmpty" class="empty-hint">HTML BOM 预览将在生成后显示</div>
     </div>
   </div>
@@ -574,6 +609,10 @@
 <script src="js/review.js"></script>
 <script src="js/heatmap.js"></script>
 <script src="js/misc.js"></script>
+<!-- 粒子场是自包含 IIFE，不依赖上面 13 个模块的任何全局，故排在末尾、顺序无关 -->
+<script src="js/particles.js"></script>
+<!-- 3D 板卡预览同样是自包含模块；three.js 按需懒加载 vendor 脚本 -->
+<script src="js/board3d.js"></script>
 <script>
 // ── 启动收尾（两段式启动的第二段）──
 // 只干两件事：把窗口从小窗展开成正式界面，然后淡出启动遮罩。

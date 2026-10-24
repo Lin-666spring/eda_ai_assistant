@@ -120,8 +120,25 @@ class DesignRuleChecker(BomRulesMixin, GeometryRulesMixin, LayoutRulesMixin):
                 len(self.rule_errors),
                 ", ".join(err["rule"] for err in self.rule_errors),
             )
+        self._coordinatize(violations)
         logger.info(f"规则检查完成: 发现 {len(violations)} 项违规")
         return violations
+
+    def _coordinatize(self, violations):
+        """违规坐标化：把 location 里的位号解析成板面坐标，写回 ``v.coords``。
+
+        位置来源与热力图同一优先级（PCB > 坐标文件），位号→坐标的口径也
+        复用同一段（``_violation_xy``），保证标记层与热力图永远指向同一处。
+        没有位置数据时全部留空 —— 调用方按「未定位」处理，不算错误。
+        """
+        pos_source, _ = self._resolve_positions()
+        if not violations or not pos_source:
+            return
+        ref_to_pos = self._extract_xy(pos_source)
+        for v in violations:
+            pts = self._violation_xy(v, ref_to_pos)
+            if pts:
+                v.coords = list(dict.fromkeys(pts))   # 保序去重（同一位置只标一次）
 
     # 热力图网格边长上下限（P1-6 阶段B：拆包脚本曾漏掉类级赋值，热力图测试抓回）
     DEFAULT_GRID_MM = 5.0
@@ -171,6 +188,20 @@ class DesignRuleChecker(BomRulesMixin, GeometryRulesMixin, LayoutRulesMixin):
             ref_to_pos[str(ref).upper()] = (px, py)
         return ref_to_pos
 
+    _REF_TOKEN_RE = re.compile(r'[A-Z]+\d+')
+
+    @classmethod
+    def _violation_xy(cls, v, ref_to_pos: dict) -> list[tuple[float, float]]:
+        """一条违规 → 坐标点列表：location 抠位号 → 查表，查不到的位号跳过。
+
+        不去重 —— 热力图按「一位号一格」计数（一违规可计多格），
+        ``_coordinatize`` 存入 v.coords 时才做保序去重。
+        """
+        if not v.location or not ref_to_pos:
+            return []
+        return [ref_to_pos[ref] for ref in cls._REF_TOKEN_RE.findall(v.location.upper())
+                if ref in ref_to_pos]
+
 
     def build_heatmap(self, violations, grid_size_mm=5.0, positions=None) -> dict:
         """违规 → 坐标网格，返回 ECharts 数据 + 元信息（前端据此显示单位/来源）。
@@ -206,13 +237,7 @@ class DesignRuleChecker(BomRulesMixin, GeometryRulesMixin, LayoutRulesMixin):
 
         grid: dict[tuple[int, int], int] = {}
         for v in violations:
-            if not v.location:
-                continue
-            refs = re.findall(r'[A-Z]+\d+', v.location.upper())
-            for ref in refs:
-                pos = ref_to_pos.get(ref)
-                if pos is None:
-                    continue
+            for pos in self._violation_xy(v, ref_to_pos):
                 bx = int((pos[0] - x_min) / g)
                 by = int((pos[1] - y_min) / g)
                 key = (bx, by)
@@ -240,6 +265,9 @@ class DesignRuleChecker(BomRulesMixin, GeometryRulesMixin, LayoutRulesMixin):
             for v in items:
                 lines.append(f"  • [{v.rule_name}] {v.description}")
                 if v.location: lines.append(f"    位置: {v.location}")
+                if v.coords:
+                    pts = ", ".join(f"({x:.2f}, {y:.2f})" for x, y in v.coords)
+                    lines.append(f"    坐标: {pts} mm")
                 if v.suggestion: lines.append(f"    建议: {v.suggestion}")
                 if v.theory: lines.append(f"    理论: {v.theory}")
         lines.append("\n" + "=" * 55)

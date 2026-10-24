@@ -442,12 +442,19 @@ class Epro2Parser(PCBParseStrategy):
             rad = math.radians(_num(comp.get("rotation")) or 0.0)
             cs, sn = math.cos(rad), math.sin(rad)
             rx, ry = fp_pad["x"], fp_pad["y"]
+            # P1-16（验收 2026-10-24）：底层元件（layerId=2）是封装翻面贴装，
+            # 焊盘相对坐标必须先做 Y 镜像再旋转定位——不镜像则反面元件焊盘
+            # 绝对位置系统性偏错（对称封装侥幸重合掩盖）。镜像轴按 78 板实测
+            # 钉死：底层焊盘位置与同网底层走线端点重合数，先镜像后旋转
+            # 4754/仅 73 失配，不镜像 3050/7261 失配；顶层对照组「旋转+平移
+            # 不镜像」以压倒优势成立（口径同本文件既有顶层变换）。
+            ry_eff = -ry if comp.get("layer_id") == 2 else ry
             pcb.pads.append({
                 "ref": attrs.get("Designator") or cid,
                 "num": fp_pad["num"] or pad_num,
                 "net": net_name,
-                "x": round((comp["x"] + rx * cs - ry * sn) * scale, 4),
-                "y": round((comp["y"] + rx * sn + ry * cs) * scale, 4),
+                "x": round((comp["x"] + rx * cs - ry_eff * sn) * scale, 4),
+                "y": round((comp["y"] + rx * sn + ry_eff * cs) * scale, 4),
                 "layer_id": fp_pad["layer_id"],
                 "thru": fp_pad["thru"],
             })

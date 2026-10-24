@@ -21,6 +21,15 @@ logger = logging.getLogger(__name__)
 
 # ──────────────── 共享常量 ────────────────
 
+# 标准版 .json 与专业版 .epro 的坐标/线宽/孔径统一以 0.01 inch（=10mil=0.254mm）
+# 为单位：
+# - 标准版：docs.easyeda.com Document Format（canvas 坐标单位 10 mil）
+# - 专业版：.specs/v3/lceda-pro-file-format-v3 §「所有坐标、长度、大小统一使用
+#   0.01 inch 为单位」
+# 2026-10-24 修复：此前漏掉换算，字段却命名为 *_mm，10mil 尺度被当 mm 喂给
+# 全部下游规则（线宽/间距/载流判定全面失真）。
+TEN_MIL_TO_MM = 0.254
+
 _LAYER_MAP: dict[str, str] = {
     "1": "TopLayer",
     "2": "BottomLayer",
@@ -64,6 +73,7 @@ class LCEDAJsonParser(PCBParseStrategy):
 
     图元属性用 ~ 分隔；坐标对用空格分隔。
     轻量提取：只解析 TRACK/PAD/VIA 的关键字段，忽略全量几何。
+    坐标/线宽/孔径按官方格式规定以 0.01 inch 为单位，统一换算为 mm。
     """
 
     def parse(self, file_path: str) -> PCBData:
@@ -149,15 +159,30 @@ class LCEDAJsonParser(PCBParseStrategy):
             width_mm = float(parts[4]) if len(parts) > 4 else 0.0
         except ValueError:
             width_mm = 0.0
+        width_mm *= TEN_MIL_TO_MM
 
-        segments = []
+        # 标准版 TRACK 的每个 ~ 字段是一个顶点 "x y"（docstring 所述格式）；
+        # 历史代码要求单字段 4 个数字才成段，真实导出全是 2 数字字段 →
+        # segments 恒为空。4 数字字段按两个顶点处理，与旧语义等价。
+        vertices = []
         for seg_str in parts[5:]:
             coords = seg_str.strip().split()
-            if len(coords) >= 4:
-                try:
-                    segments.append(tuple(float(c) for c in coords[:4]))
-                except ValueError:
-                    pass
+            try:
+                if len(coords) >= 4:
+                    vertices.append((float(coords[0]) * TEN_MIL_TO_MM,
+                                     float(coords[1]) * TEN_MIL_TO_MM))
+                    vertices.append((float(coords[2]) * TEN_MIL_TO_MM,
+                                     float(coords[3]) * TEN_MIL_TO_MM))
+                elif len(coords) == 2:
+                    vertices.append((float(coords[0]) * TEN_MIL_TO_MM,
+                                     float(coords[1]) * TEN_MIL_TO_MM))
+            except ValueError:
+                continue
+
+        segments = [
+            (v1[0], v1[1], v2[0], v2[1])
+            for v1, v2 in zip(vertices, vertices[1:])
+        ]
 
         return PCBTrace(
             net_name=net_name,
@@ -209,9 +234,9 @@ class LCEDAJsonParser(PCBParseStrategy):
             return None
 
         return PCBVia(
-            position=(x, y),
-            drill_mm=drill,
-            pad_mm=pad,
+            position=(x * TEN_MIL_TO_MM, y * TEN_MIL_TO_MM),
+            drill_mm=drill * TEN_MIL_TO_MM,
+            pad_mm=pad * TEN_MIL_TO_MM,
             from_layer=layer,
             to_layer=layer,  # VIA 跨层信息在简版中为单层
             net_name=net_name,
@@ -227,6 +252,7 @@ class LCEDAProParser(PCBParseStrategy):
     - pcb.epcb (或类似): PCB 图元 (JSON Lines)
 
     每行一个 JSON 对象，包含完整的图元属性（非 ~ 分隔）。
+    坐标/长度按 v3 规格（.specs/v3）以 0.01 inch 为单位，统一换算为 mm。
     """
 
     def parse(self, file_path: str) -> PCBData:
@@ -331,6 +357,7 @@ class LCEDAProParser(PCBParseStrategy):
                 width = float(obj["width"])
             except (ValueError, TypeError):
                 pass
+        width *= TEN_MIL_TO_MM
 
         segments = []
         pts = obj.get("points", obj.get("path", []))
@@ -339,7 +366,15 @@ class LCEDAProParser(PCBParseStrategy):
                 p1, p2 = pts[i], pts[i + 1]
                 if isinstance(p1, (list, tuple)) and len(p1) >= 2:
                     if isinstance(p2, (list, tuple)) and len(p2) >= 2:
-                        segments.append((p1[0], p1[1], p2[0], p2[1]))
+                        try:
+                            segments.append((
+                                float(p1[0]) * TEN_MIL_TO_MM,
+                                float(p1[1]) * TEN_MIL_TO_MM,
+                                float(p2[0]) * TEN_MIL_TO_MM,
+                                float(p2[1]) * TEN_MIL_TO_MM,
+                            ))
+                        except (ValueError, TypeError):
+                            continue
 
         pcb_data.traces.append(PCBTrace(
             net_name=net_name,
@@ -375,9 +410,9 @@ class LCEDAProParser(PCBParseStrategy):
             return
 
         pcb_data.vias.append(PCBVia(
-            position=(x, y),
-            drill_mm=drill,
-            pad_mm=pad,
+            position=(x * TEN_MIL_TO_MM, y * TEN_MIL_TO_MM),
+            drill_mm=drill * TEN_MIL_TO_MM,
+            pad_mm=pad * TEN_MIL_TO_MM,
             from_layer=layer,
             to_layer=layer,
             net_name=net_name,

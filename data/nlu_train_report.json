@@ -1,6 +1,6 @@
 {
   "model": "IntentClassifier (TextCNN)",
-  "timestamp": "2026-10-14T08:48:36.542392",
+  "timestamp": "2026-10-24T15:30:24.522076",
   "config": {
     "vocab_size": 1468,
     "embed_dim": 96,
@@ -21,182 +21,163 @@
     "batch_size": 32,
     "learning_rate": 0.001,
     "weight_decay": 0.0001,
-    "train_samples": 790,
-    "val_samples": 150,
-    "best_epoch": 8,
-    "best_val_acc": 0.9933
+    "train_samples": 1328,
+    "val_samples": 133,
+    "best_epoch": 6,
+    "best_val_acc": 0.8195,
+    "final_val_acc": 0.812
   },
   "results": {
-    "train_loss_final": 0.0095,
-    "val_loss_final": 0.0283,
-    "val_acc_final": 0.9933,
+    "train_loss_final": 0.0039,
+    "val_loss_final": 0.6263,
+    "val_acc_final": 0.812,
     "per_class": {
       "TEXT_CHAT": {
-        "total": 15,
+        "total": 16,
         "correct": 15,
-        "accuracy": 1.0
+        "accuracy": 0.9375
       },
       "BOM_ANALYSIS": {
-        "total": 15,
-        "correct": 15,
-        "accuracy": 1.0
+        "total": 19,
+        "correct": 16,
+        "accuracy": 0.8421
       },
       "BOM_HEALTH": {
-        "total": 15,
-        "correct": 15,
-        "accuracy": 1.0
+        "total": 11,
+        "correct": 7,
+        "accuracy": 0.6364
       },
       "RULE_CHECK": {
-        "total": 15,
-        "correct": 14,
-        "accuracy": 0.9333
+        "total": 14,
+        "correct": 9,
+        "accuracy": 0.6429
       },
       "PCB_ANALYSIS": {
-        "total": 15,
-        "correct": 15,
-        "accuracy": 1.0
+        "total": 18,
+        "correct": 11,
+        "accuracy": 0.6111
       },
       "CODE_RULE_GEN": {
-        "total": 15,
-        "correct": 15,
-        "accuracy": 1.0
+        "total": 11,
+        "correct": 10,
+        "accuracy": 0.9091
       },
       "REPORT_GEN": {
-        "total": 15,
-        "correct": 15,
+        "total": 8,
+        "correct": 8,
         "accuracy": 1.0
       },
       "COMPONENT_LOOKUP": {
-        "total": 15,
-        "correct": 15,
-        "accuracy": 1.0
+        "total": 25,
+        "correct": 24,
+        "accuracy": 0.96
       },
       "VISUAL": {
-        "total": 15,
-        "correct": 15,
-        "accuracy": 1.0
+        "total": 5,
+        "correct": 4,
+        "accuracy": 0.8
       },
       "LOCAL_ONLY": {
-        "total": 15,
-        "correct": 15,
-        "accuracy": 1.0
+        "total": 6,
+        "correct": 5,
+        "accuracy": 0.8333
       }
     },
     "eval_set": {
       "path": "data/nlu_eval.json",
       "total": 84,
-      "correct": 79,
-      "accuracy": 0.9405,
+      "correct": 83,
+      "accuracy": 0.9881,
       "errors": [
-        {
-          "text": "层叠结构有没有问题",
-          "expected": "PCB_ANALYSIS",
-          "predicted": "RULE_CHECK"
-        },
-        {
-          "text": "封装匹配检查",
-          "expected": "BOM_ANALYSIS",
-          "predicted": "RULE_CHECK"
-        },
-        {
-          "text": "看看库存还够不够",
-          "expected": "BOM_HEALTH",
-          "predicted": "RULE_CHECK"
-        },
         {
           "text": "波形怎么有振铃",
           "expected": "VISUAL",
-          "predicted": "PCB_ANALYSIS"
-        },
-        {
-          "text": "怎么提高EMC性能",
-          "expected": "TEXT_CHAT",
-          "predicted": "PCB_ANALYSIS"
+          "predicted": "TEXT_CHAT"
         }
       ]
     }
   },
   "history": {
     "train_loss": [
-      2.2164,
-      1.8526,
-      1.1876,
-      0.5739,
-      0.2614,
-      0.1395,
-      0.0829,
-      0.0546,
-      0.0405,
-      0.0303,
-      0.0245,
-      0.0203,
-      0.0162,
-      0.0162,
-      0.0141,
-      0.0139,
-      0.0115,
-      0.0104,
-      0.0108,
-      0.0126,
-      0.0111,
-      0.0104,
-      0.0113,
-      0.0104,
-      0.0095
+      2.1357,
+      1.2722,
+      0.4122,
+      0.1477,
+      0.0629,
+      0.0341,
+      0.0226,
+      0.0146,
+      0.0112,
+      0.0089,
+      0.0078,
+      0.0073,
+      0.0074,
+      0.007,
+      0.0054,
+      0.0048,
+      0.0051,
+      0.0046,
+      0.0045,
+      0.0041,
+      0.0049,
+      0.0039,
+      0.0042,
+      0.0038,
+      0.0039
     ],
     "val_loss": [
-      2.0701,
-      1.5987,
-      0.9049,
-      0.4513,
-      0.2256,
-      0.1353,
-      0.0906,
-      0.0613,
-      0.0611,
-      0.0467,
-      0.0399,
-      0.0386,
-      0.0358,
-      0.0334,
-      0.0311,
-      0.0318,
-      0.0297,
-      0.0292,
-      0.0289,
-      0.0281,
-      0.0283,
-      0.0282,
-      0.0284,
-      0.0283,
-      0.0283
+      2.0112,
+      1.2132,
+      0.8309,
+      0.7077,
+      0.6615,
+      0.6165,
+      0.6413,
+      0.6122,
+      0.6036,
+      0.6066,
+      0.6062,
+      0.6393,
+      0.6275,
+      0.6183,
+      0.6124,
+      0.6237,
+      0.6226,
+      0.6264,
+      0.6307,
+      0.6278,
+      0.6253,
+      0.6254,
+      0.6256,
+      0.6264,
+      0.6263
     ],
     "val_acc": [
-      0.74,
-      0.8467,
-      0.9267,
-      0.9467,
-      0.9733,
-      0.9733,
-      0.9867,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933,
-      0.9933
+      0.4135,
+      0.6692,
+      0.7444,
+      0.7594,
+      0.782,
+      0.8195,
+      0.797,
+      0.8195,
+      0.8045,
+      0.8195,
+      0.8195,
+      0.8045,
+      0.8045,
+      0.8045,
+      0.812,
+      0.812,
+      0.812,
+      0.812,
+      0.812,
+      0.812,
+      0.812,
+      0.812,
+      0.812,
+      0.812,
+      0.812
     ]
   }
 }

@@ -337,6 +337,10 @@ TOOLS: list[ToolDef] = [
         params_schema={
             "properties": {
                 "image_data": {"type": "string", "description": "base64 编码的图片数据"},
+                # P1-5（验收 2026-10-24）：补可选文字上下文 —— dispatch 适配层把
+                # text 传给 _analyze_image 的提问参数，只有图没有问题就无法
+                # 做有针对性的分析（原先 schema 只声明 image_data）。
+                "text": {"type": "string", "description": "图片相关的补充说明或想分析的问题"},
             },
             "required": ["image_data"],
         },

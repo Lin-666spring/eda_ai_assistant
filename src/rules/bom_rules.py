@@ -90,6 +90,26 @@ _LED_R_MAX_OHM = 47_000.0
 # 前后不能贴字母数字——"60mW" 的 mW 是毫瓦、LED 规格文本不认成功率电阻）。
 _POWER_W_RE = re.compile(r"(?<![a-z0-9.])(\d+(?:\.\d+)?)W(?![a-z0-9])", re.IGNORECASE)
 
+# P1-14（验收 2026-10-24）：电源滤波「大电解」判定的容值 token——裸子串
+# "100u" 会被 "100uH" 电感冒充成大电解（缺失大电容被静默放行），也会从
+# "4100uF" 里抠出 "100u"。改单位感知：数字必须带完整电容单位
+# （pF/nF/µF/mF/F，mu 变体归一到 U；uH/mH/H 是电感单位不认），按真值与
+# 「大电解 ≥100µF」档比对。
+_CAP_VALUE_TOKEN_RE = re.compile(
+    r"(?<![0-9.])(\d+(?:\.\d+)?)\s*(PF|NF|UF|MF|F)(?![A-Z0-9])")
+_CAP_UNIT_TO_UF = {"PF": 1e-6, "NF": 1e-3, "UF": 1.0, "MF": 1e3, "F": 1e6}
+_BULK_CAP_MIN_UF = 100.0
+
+
+def _value_bulk_uf(value: str) -> float:
+    """value 文本里的最大电容标注（µF）；无电容单位 token 返回 0。"""
+    up = (str(value or "")).upper().replace("Μ", "U").replace("μ", "U").replace("µ", "U")
+    best = 0.0
+    for m in _CAP_VALUE_TOKEN_RE.finditer(up):
+        best = max(best, float(m.group(1)) * _CAP_UNIT_TO_UF[m.group(2)])
+    return best
+
+
 # 封装名→引脚数兜底解析用的家族词（数字即引脚数的封装家族）。
 # SOT 家族单独处理（SOT-23 的 23 是系列号不是脚数）；TO 家族（TO-220 是 3 脚）不参与。
 _PKG_PIN_FAMILY_RE = re.compile(
@@ -125,17 +145,14 @@ def _res_counts_as_led_limit(item) -> bool:
     return _LED_R_MIN_OHM <= ohm <= _LED_R_MAX_OHM
 
 
-def _norm_voltage_token(tok: str) -> str:
-    """电压域写法归一：3V3→3.3V、1V8→1.8V、5V0→5V（末尾数字写法折叠同域）。
-
-    批4 2026-10-10 审计残留：多电压域隔离的候选表同时含 "3.3V" 和 "3V3"
-    （"1.8V"/"1V8" 同）——同一域双计凑门槛。先归一化再数独立域。
-    """
-    t = (tok or "").strip().upper()
-    m = re.fullmatch(r"(\d)V(\d)", t)
-    if m:
-        return f"{m.group(1)}V" if m.group(2) == "0" else f"{m.group(1)}.{m.group(2)}V"
-    return t
+# P1-17（验收 2026-10-24）：多电压域候选表（原 "3.3V"/"5V"/"1.8V"/"12V"/
+# "24V"/"2.5V"/"1.2V" 候选串的数值形态）。域名统一按 %g 数值生成——
+# "3V3"/"3.3V"/"3.30V" 全折叠为 "3.3V"，同域不再因写法不同双计凑门槛
+# （原 _norm_voltage_token 只归一 \dV\d，"5.0V" 与 "5V" 仍算两域）。
+_MIXED_DOMAIN_NUMS = frozenset({3.3, 5.0, 1.8, 12.0, 24.0, 2.5, 1.2})
+# \dV\d 紧凑电压域写法（3V3/1V8/5V0/2V5/1V2）：左侧拒字母数字/小数点
+# （REV1V2 的修订号不中），右侧拒字母数字（3V30 之类截断串不中）。
+_XVY_TOKEN_RE = re.compile(r"(?<![0-9.A-Z])(\d)V(\d)(?![A-Z0-9])")
 
 
 class BomRulesMixin:
@@ -401,8 +418,9 @@ class BomRulesMixin:
         if not bom_items:
             return violations
         pwr_kw = ["电源", "power", "VIN", "VBUS", "DC-IN", "PWR"]
-        # 2026-10-10 标准表批：bulk 白名单补 330µF（立创常用电解档位）
-        bulk_uf = ["100u", "220u", "330u", "470u", "1000u", "100ΜF"]
+        # P1-14（验收 2026-10-24）：bulk 白名单裸子串退役（"100u" 会被
+        # "100uH" 电感冒充），改 _value_bulk_uf 单位感知真值 ≥100µF 判档
+        # （判据口径即规则文案「大电解(≥100μF)」）。
         # 批4 2026-10-10 审计残留：删除整体 except Exception 静默吞错——规则 bug
         # 会被 checker.check_all 收进 rule_errors（错误通道），规则内吞掉等于
         # 把红灯变绿灯。此处 getattr 均有缺省值，本身不应抛异常，直接平铺。
@@ -410,7 +428,9 @@ class BomRulesMixin:
                         for i in bom_items for kw in pwr_kw)
         if not has_input:
             return violations
-        has_bulk = any(any(v.lower() in getattr(i, "value", "").lower() for v in bulk_uf) for i in bom_items)
+        has_bulk = any(
+            _value_bulk_uf(getattr(i, "value", "")) >= _BULK_CAP_MIN_UF
+            for i in bom_items)
         has_small = any(getattr(i, "value", "").replace(" ", "").upper() in {"0.1UF", "100NF", "0.1ΜF", "104"} for i in bom_items)
         if not (has_bulk and has_small):
             missing = []
@@ -1151,13 +1171,23 @@ class BomRulesMixin:
             "lm2596-3.3": 3.3, "lm2596-5.0": 5.0,
         }
         supply_voltages = set()
+        rail_nums = set(voltage_rails.values())
         for item in bom_items:
             val = (getattr(item, "value", "") or "").upper().replace(" ", "")
             pn = (getattr(item, "part_number", "") or "").upper().replace(" ", "")
             desc = f"{pn} {getattr(item, 'description', '')}".upper()
-            for rail_v, rail_num in voltage_rails.items():
-                if rail_v in val or rail_v in desc or f"VOUT={rail_v}" in desc or f"VOUT {rail_v}" in desc:
-                    supply_voltages.add(rail_num)
+            # P1-17（验收 2026-10-24）：电压轨识别从裸子串改独立 token——
+            # "5V" in "25V"/"15V" 恒真，25V 系统被认成 5V 轨 → max_voltage
+            # 失真、耐压降额错判（25V 系统上 16V 电容反而漏报）。
+            # _VOLTAGE_TOKEN_RE 要求数字前后不贴字母数字/小数点、\s* 兼容
+            # "5 V" 写法，"VOUT=5V" 里的 5V 同样按 token 命中。
+            for tok in _VOLTAGE_TOKEN_RE.findall(f"{val} {desc}"):
+                try:
+                    v_num = float(tok)
+                except ValueError:
+                    continue
+                if v_num in rail_nums:
+                    supply_voltages.add(v_num)
             # Check IC hints
             for ic_hint, ic_voltage in ic_voltage_hints.items():
                 if ic_hint in (pn + " " + val).lower():
@@ -1843,16 +1873,25 @@ class BomRulesMixin:
     def _check_mixed_voltage_isolation(self, bom_items, positions, netlist):
         """多电压域隔离: 不同电压域应有清晰隔离"""
         # 批4 2026-10-10 审计残留：候选域表同时含 "3.3V" 和 "3V3"（"1.8V"/
-        # "1V8" 同）——同一域双计凑门槛。先 _norm_voltage_token 归一化
-        # （3V3→3.3V、1V8→1.8V、5V0→5V）再数独立域。
+        # "1V8" 同）——同一域双计凑门槛。P1-17（验收 2026-10-24）再修识别
+        # 通道：裸子串 "5V" in "25V"/"15V"/"0.5V"、"2.5V" in "12.5V" 恒真，
+        # 单域板被凑成多域。改单位感知 token（\d+.?\d*V 词边界 + \dV\d 紧凑
+        # 写法 3V3/1V8），数值折进原候选域表、按 %g 生成规范域名（同域不双计）。
         voltages = set()
         for item in bom_items:
-            val = (getattr(item, "value", "") or "").upper().replace(" ", "")
-            pn = (getattr(item, "part_number", "") or "").upper()
-            for v_str in ["3.3V", "5V", "1.8V", "12V", "24V", "3V3", "1V8",
-                          "5V0", "2V5", "1V2", "2.5V"]:
-                if v_str in val or v_str in pn:
-                    voltages.add(_norm_voltage_token(v_str))
+            text = (f"{getattr(item, 'value', '') or ''} "
+                    f"{getattr(item, 'part_number', '') or ''}").upper()
+            for tok in _VOLTAGE_TOKEN_RE.findall(text):
+                try:
+                    v = float(tok)
+                except ValueError:
+                    continue
+                if v in _MIXED_DOMAIN_NUMS:
+                    voltages.add(f"{v:g}V")
+            for a, b in _XVY_TOKEN_RE.findall(text):
+                v = int(a) + int(b) / 10.0
+                if v in _MIXED_DOMAIN_NUMS:
+                    voltages.add(f"{v:g}V")
         if len(voltages) >= 3:
             return [RuleViolation(
                 rule_name="多电压域隔离检查",
@@ -1889,9 +1928,13 @@ class BomRulesMixin:
         voltage = 3.3
         current = self._estimate_power_current(bom_items)
         # 检测实际电压
+        # P1-17（验收 2026-10-24）：裸子串 "5V" in "25V"/"15V"/"0.5V" 恒真，
+        # 25V 板的 PDN 电压被按 5V 估算。改 _VOLTAGE_TOKEN_RE 独立 token
+        # 数值比对（\s* 兼容 "5 V" 写法），token 结构保证 float 可解析。
         for item in bom_items:
             desc = f"{getattr(item, 'value', '')} {getattr(item, 'description', '')}".upper()
-            if "5V" in desc or "5.0V" in desc:
+            if any(abs(float(t) - 5.0) < 1e-9
+                   for t in _VOLTAGE_TOKEN_RE.findall(desc)):
                 voltage = 5.0
                 break
 

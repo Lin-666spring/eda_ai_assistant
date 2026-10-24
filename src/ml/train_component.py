@@ -160,6 +160,7 @@ def train(
     # 训练循环
     best_val_acc = 0.0
     best_epoch = 0
+    best_state = None  # P1-23（验收 2026-10-24）：快照最佳轮权重，对齐 train_intent_bert.py
     history = {"train_loss": [], "val_loss": [], "val_acc": []}
 
     for epoch in range(1, epochs + 1):
@@ -209,6 +210,7 @@ def train(
         if val_acc > best_val_acc:
             best_val_acc = val_acc
             best_epoch = epoch
+            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
             marker = " *"
 
         logger.info(
@@ -216,7 +218,9 @@ def train(
             epoch, epochs, train_loss, val_loss, val_acc * 100, marker,
         )
 
-    # ── 保存模型 ──
+    # ── 保存模型（回载最佳轮权重，汇报值与落盘模型一致，P1-23） ──
+    if best_state is not None:
+        model.load_state_dict(best_state)
     model.save(model_output)
     logger.info("最佳模型: epoch=%d, val_acc=%.2f%%", best_epoch, best_val_acc * 100)
 

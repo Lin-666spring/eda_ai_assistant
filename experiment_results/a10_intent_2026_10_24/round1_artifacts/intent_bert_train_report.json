@@ -1,0 +1,213 @@
+{
+  "model": "IntentBertClassifier (hfl/rbt3 ONNX)",
+  "timestamp": "2026-10-24T14:56:29.825141",
+  "config": {
+    "epochs": 20,
+    "batch_size": 16,
+    "lr": 2e-05,
+    "weight_decay": 0.01,
+    "llrd_decay": 0.7,
+    "patience": 6,
+    "max_len": 32,
+    "seed": 42,
+    "device": "cpu",
+    "precision": "fp16",
+    "skipped_training": false
+  },
+  "training": {
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 2.3243,
+        "val_loss": 2.2034,
+        "val_acc": 0.15
+      },
+      {
+        "epoch": 2,
+        "train_loss": 2.0831,
+        "val_loss": 1.9139,
+        "val_acc": 0.475
+      },
+      {
+        "epoch": 3,
+        "train_loss": 1.6133,
+        "val_loss": 1.4798,
+        "val_acc": 0.65
+      },
+      {
+        "epoch": 4,
+        "train_loss": 1.1218,
+        "val_loss": 1.1694,
+        "val_acc": 0.7125
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.7586,
+        "val_loss": 0.949,
+        "val_acc": 0.775
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.5128,
+        "val_loss": 0.7889,
+        "val_acc": 0.8125
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.3235,
+        "val_loss": 0.6616,
+        "val_acc": 0.8125
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.2063,
+        "val_loss": 0.5867,
+        "val_acc": 0.8625
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.1347,
+        "val_loss": 0.5421,
+        "val_acc": 0.8625
+      },
+      {
+        "epoch": 10,
+        "train_loss": 0.0931,
+        "val_loss": 0.5304,
+        "val_acc": 0.8625
+      },
+      {
+        "epoch": 11,
+        "train_loss": 0.0623,
+        "val_loss": 0.5272,
+        "val_acc": 0.8625
+      },
+      {
+        "epoch": 12,
+        "train_loss": 0.0461,
+        "val_loss": 0.508,
+        "val_acc": 0.8625
+      },
+      {
+        "epoch": 13,
+        "train_loss": 0.0335,
+        "val_loss": 0.5019,
+        "val_acc": 0.8625
+      },
+      {
+        "epoch": 14,
+        "train_loss": 0.028,
+        "val_loss": 0.4878,
+        "val_acc": 0.8625
+      }
+    ],
+    "best_epoch": 8,
+    "best_val_acc": 0.8625,
+    "stopped_early": true
+  },
+  "calibration": {
+    "temperature": 0.85,
+    "ece_before": 0.105,
+    "ece_after": 0.0857
+  },
+  "results": {
+    "val_acc": 0.8625,
+    "eval_acc": 0.9167,
+    "eval_total": 84,
+    "per_class": {
+      "BOM_ANALYSIS": {
+        "correct": 12,
+        "total": 14
+      },
+      "BOM_HEALTH": {
+        "correct": 7,
+        "total": 7
+      },
+      "CODE_RULE_GEN": {
+        "correct": 5,
+        "total": 5
+      },
+      "COMPONENT_LOOKUP": {
+        "correct": 6,
+        "total": 6
+      },
+      "LOCAL_ONLY": {
+        "correct": 2,
+        "total": 2
+      },
+      "PCB_ANALYSIS": {
+        "correct": 20,
+        "total": 21
+      },
+      "REPORT_GEN": {
+        "correct": 5,
+        "total": 6
+      },
+      "RULE_CHECK": {
+        "correct": 11,
+        "total": 13
+      },
+      "TEXT_CHAT": {
+        "correct": 5,
+        "total": 6
+      },
+      "VISUAL": {
+        "correct": 4,
+        "total": 4
+      }
+    },
+    "errors": [
+      {
+        "text": "去耦电容放的位置对不对",
+        "expected": "RULE_CHECK",
+        "predicted": "PCB_ANALYSIS",
+        "confidence": 0.7402
+      },
+      {
+        "text": "过孔密度是不是太密了",
+        "expected": "RULE_CHECK",
+        "predicted": "PCB_ANALYSIS",
+        "confidence": 0.3518
+      },
+      {
+        "text": "查看PCB状态",
+        "expected": "PCB_ANALYSIS",
+        "predicted": "LOCAL_ONLY",
+        "confidence": 0.9433
+      },
+      {
+        "text": "查重",
+        "expected": "BOM_ANALYSIS",
+        "predicted": "RULE_CHECK",
+        "confidence": 0.7302
+      },
+      {
+        "text": "过滤出所有电容",
+        "expected": "BOM_ANALYSIS",
+        "predicted": "RULE_CHECK",
+        "confidence": 0.3362
+      },
+      {
+        "text": "0603电阻的功率一般是多少",
+        "expected": "TEXT_CHAT",
+        "predicted": "COMPONENT_LOOKUP",
+        "confidence": 0.741
+      },
+      {
+        "text": "导出一份Excel格式的BOM",
+        "expected": "REPORT_GEN",
+        "predicted": "CODE_RULE_GEN",
+        "confidence": 0.4778
+      }
+    ]
+  },
+  "artifacts": {
+    "model": "C:\\Users\\ASUS\\Desktop\\eda_ai_assistant\\data\\models\\intent_bert\\model.onnx",
+    "parity": {
+      "n_samples": 164,
+      "argmax_agreement": 1.0,
+      "max_prob_diff": 0.001126,
+      "precision": "fp16"
+    }
+  }
+}

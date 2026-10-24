@@ -11,6 +11,7 @@ PCB 设计质量评分引擎 — 6 维度量化评分 + 雷达图数据
     # → {dimensions: {...}, radar_data: [...], overall: 72.5, suggestions: [...]}
 """
 
+import copy
 import logging
 import math
 from dataclasses import dataclass, field
@@ -61,8 +62,11 @@ DIMENSIONS = {
 }
 
 # ── 规则→维度映射表 ──
-# 每条规则的 rule_name 关键词 → 所属维度 + 权重
-RULE_DIMENSION_MAP: dict[str, tuple[str, float]] = {
+# 每条规则的 rule_name 关键词 → (维度, 权重)；一条规则需同时归属多个维度时
+# （P1-6，验收 2026-10-24），值写成 ((dim, weight), (dim, weight), ...) 多元组。
+# 注意 dict 不允许重复键 —— 原「封装一致性」写了两行（dfm 1.5 / cost 0.5），
+# 后者静默覆盖前者，DFM 维度永远收不到该类违规。
+RULE_DIMENSION_MAP: dict[str, tuple] = {
     # 电源完整性 (power)
     "去耦电容": ("power", 1.5),
     "电源滤波": ("power", 1.2),
@@ -111,7 +115,10 @@ RULE_DIMENSION_MAP: dict[str, tuple[str, float]] = {
     "MOSFET 栅极电阻": ("emc", 1.0),
     "继电器续流二极管": ("emc", 1.0),
     # DFM (可制造性)
-    "封装一致性": ("dfm", 1.5),
+    # P1-6（验收 2026-10-24）：封装一致性双维度归属 —— 既扣 DFM（装配/制造
+    # 一致性）也扣 Cost（多封装增加采购成本）；原 dict 重复键只剩 cost，
+    # DFM 雷达图虚高。
+    "封装一致性": (("dfm", 1.5), ("cost", 0.5)),
     "位号连续性": ("dfm", 0.5),
     "板边间距": ("dfm", 1.0),
     "丝印可读性": ("dfm", 0.5),
@@ -121,7 +128,6 @@ RULE_DIMENSION_MAP: dict[str, tuple[str, float]] = {
     "调试接口": ("dfm", 0.5),
     # 成本优化 (cost)
     "参数范围": ("cost", 1.0),
-    "封装一致性": ("cost", 0.5),  # 多封装增加采购成本
 }
 
 # 严重度→扣分基数
@@ -207,13 +213,21 @@ class DesignScorer:
         unmatched = 0
         for v in violations:
             matched = False
-            for kw, (dim, weight) in RULE_DIMENSION_MAP.items():
-                if kw in v.rule_name:
+            for kw, targets in RULE_DIMENSION_MAP.items():
+                if kw not in v.rule_name:
+                    continue
+                # 单维度 (dim, weight) / 多维度 ((dim, weight), ...) 统一归一
+                #（P1-6，验收 2026-10-24）
+                pairs = targets if (targets and isinstance(targets[0], tuple)) else (targets,)
+                for idx, (dim, weight) in enumerate(pairs):
+                    # 多维度共享同一违规对象会互相覆盖 _weight（各维度权重
+                    # 不同）—— 除首个外浅拷贝一份，各维度按各自权重计分
+                    item = v if idx == 0 else copy.copy(v)
                     # 附加权重到违规对象上（动态属性）
-                    v._weight = weight
-                    dim_violations[dim].append(v)
-                    matched = True
-                    break
+                    item._weight = weight
+                    dim_violations[dim].append(item)
+                matched = True
+                break
             if not matched:
                 unmatched += 1
 

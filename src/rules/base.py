@@ -61,6 +61,11 @@ class RuleViolation:
     location: str = ""
     suggestion: str = ""
     theory: str = ""
+    # 违规坐标化（2026-10-24）：check_all 出口统一解析 —— location 抠位号 →
+    # 查元件坐标（优先级同热力图：PCB component_positions > 坐标文件）。
+    # 一条违规可涉及多位号 → 多个点（按 location 出现顺序、去重）；板级/
+    # 无法定位的违规保持空列表。单位 mm，与 3D 预览/热力图同一坐标系。
+    coords: list = field(default_factory=list)
 
 
 # ═══ PCB 几何辅助（走线类规则共用）═══
@@ -180,9 +185,14 @@ def _init_component_model() -> bool:
         predictor = None
         if os.path.exists(_COMPONENT_MODEL_PATH):
             try:
+                # 校准产物优先（P1-24 2026-10-24）：import 必须留在函数内——
+                # src.ml 包顶层依赖 torch，模块级 import 会让无 torch 的打包版
+                # 连规则引擎都起不来（torch 不进 exe 红线）。
                 from src.ml.component_classifier import ComponentPredictor
+                from src.ml.model_paths import calibrated_first
+
                 predictor = ComponentPredictor.from_path(
-                    _COMPONENT_MODEL_PATH, _COMPONENT_VOCAB_PATH
+                    calibrated_first(_COMPONENT_MODEL_PATH), _COMPONENT_VOCAB_PATH
                 )
                 if predictor:
                     logger.info("本地元件分类模型加载成功 (~600K TextCNN)")
@@ -648,8 +658,19 @@ def _parse_component_value(val: str):
         "U": -6, "UF": -6, "UH": -6, "ΜF": -6, "Μ": -6,
         "M": 6, "MΩ": 6, "MEG": 6,
         "K": 3, "KΩ": 3, "KILO": 3,
-        "R": 1, "Ω": 0, "OHM": 0, "F": 0, "H": 0,
+        # P1-13（验收 2026-10-24）：R 记法里 R 是「欧姆本身」不是 10 倍乘数——
+        # 100R=100Ω。按 10 倍抬幂会把 100R 算成 1kΩ。
+        "R": 0, "Ω": 0, "OHM": 0, "F": 0, "H": 0,
     }
+    # P1-13（验收 2026-10-24）：EIA 值记法允许单位字母代替小数点位置——
+    # 4R7=4.7Ω、4K7=4.7kΩ、2U7=2.7µF。旧正则把 "4R7" 拆成 (4, R) 按 R 的
+    # 指数抬幂得 40Ω，标准阻值被误报「不在 E24/E96」。字母后跟数字时先按
+    # 小数点展开再查乘数表；无乘数的字母串（R/K/N/U…）按表取幂。
+    m_dot = re.fullmatch(r'(\d+)([A-Za-zΩΜμ]+)(\d+)(?:Ω|OHM)?', val)
+    if m_dot:
+        exp = multipliers.get(m_dot.group(2).upper().replace("Μ", "U"))
+        if exp is not None:
+            return (float(f"{m_dot.group(1)}.{m_dot.group(3)}"), exp)
     match = re.match(r'([\d.]+)\s*([A-Za-zΩΜμ]+)?', val)
     if not match:
         return None

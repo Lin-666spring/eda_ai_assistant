@@ -1,0 +1,195 @@
+{
+  "model": "IntentBertClassifier (hfl/rbt3)",
+  "method": "Temperature Scaling (Guo et al. 2017)",
+  "n_samples": 50,
+  "temperature": 0.95,
+  "final_nll": 0.9109,
+  "before": {
+    "accuracy": 0.76,
+    "ece": 0.2318,
+    "mce": 0.5092
+  },
+  "after": {
+    "accuracy": 0.76,
+    "ece": 0.2677,
+    "mce": 0.5333
+  },
+  "ece_reduction": -0.0359,
+  "reliability_before": {
+    "ece": 0.2318,
+    "mce": 0.5092,
+    "n_bins": 10,
+    "n_samples": 50,
+    "bins": [
+      {
+        "bin_start": 0.0,
+        "bin_end": 0.1,
+        "count": 0,
+        "acc": null,
+        "conf": null,
+        "gap": null
+      },
+      {
+        "bin_start": 0.1,
+        "bin_end": 0.2,
+        "count": 0,
+        "acc": null,
+        "conf": null,
+        "gap": null
+      },
+      {
+        "bin_start": 0.2,
+        "bin_end": 0.3,
+        "count": 2,
+        "acc": 0.5,
+        "conf": 0.2642,
+        "gap": 0.2358
+      },
+      {
+        "bin_start": 0.3,
+        "bin_end": 0.4,
+        "count": 7,
+        "acc": 0.8571,
+        "conf": 0.3623,
+        "gap": 0.4948
+      },
+      {
+        "bin_start": 0.4,
+        "bin_end": 0.5,
+        "count": 6,
+        "acc": 0.8333,
+        "conf": 0.4389,
+        "gap": 0.3944
+      },
+      {
+        "bin_start": 0.5,
+        "bin_end": 0.6,
+        "count": 1,
+        "acc": 0.0,
+        "conf": 0.5092,
+        "gap": 0.5092
+      },
+      {
+        "bin_start": 0.6,
+        "bin_end": 0.7,
+        "count": 4,
+        "acc": 0.75,
+        "conf": 0.639,
+        "gap": 0.111
+      },
+      {
+        "bin_start": 0.7,
+        "bin_end": 0.8,
+        "count": 5,
+        "acc": 0.8,
+        "conf": 0.7428,
+        "gap": 0.0572
+      },
+      {
+        "bin_start": 0.8,
+        "bin_end": 0.9,
+        "count": 7,
+        "acc": 0.8571,
+        "conf": 0.8368,
+        "gap": 0.0204
+      },
+      {
+        "bin_start": 0.9,
+        "bin_end": 1.0,
+        "count": 18,
+        "acc": 0.7222,
+        "conf": 0.9393,
+        "gap": 0.2171
+      }
+    ]
+  },
+  "reliability_after": {
+    "ece": 0.2677,
+    "mce": 0.5333,
+    "n_bins": 10,
+    "n_samples": 50,
+    "bins": [
+      {
+        "bin_start": 0.0,
+        "bin_end": 0.1,
+        "count": 0,
+        "acc": null,
+        "conf": null,
+        "gap": null
+      },
+      {
+        "bin_start": 0.1,
+        "bin_end": 0.2,
+        "count": 0,
+        "acc": null,
+        "conf": null,
+        "gap": null
+      },
+      {
+        "bin_start": 0.2,
+        "bin_end": 0.3,
+        "count": 1,
+        "acc": 0.0,
+        "conf": 0.2407,
+        "gap": 0.2407
+      },
+      {
+        "bin_start": 0.3,
+        "bin_end": 0.4,
+        "count": 6,
+        "acc": 0.8333,
+        "conf": 0.352,
+        "gap": 0.4813
+      },
+      {
+        "bin_start": 0.4,
+        "bin_end": 0.5,
+        "count": 8,
+        "acc": 0.875,
+        "conf": 0.4441,
+        "gap": 0.4309
+      },
+      {
+        "bin_start": 0.5,
+        "bin_end": 0.6,
+        "count": 1,
+        "acc": 0.0,
+        "conf": 0.5333,
+        "gap": 0.5333
+      },
+      {
+        "bin_start": 0.6,
+        "bin_end": 0.7,
+        "count": 3,
+        "acc": 1.0,
+        "conf": 0.6504,
+        "gap": 0.3496
+      },
+      {
+        "bin_start": 0.7,
+        "bin_end": 0.8,
+        "count": 4,
+        "acc": 0.5,
+        "conf": 0.7282,
+        "gap": 0.2282
+      },
+      {
+        "bin_start": 0.8,
+        "bin_end": 0.9,
+        "count": 8,
+        "acc": 0.875,
+        "conf": 0.841,
+        "gap": 0.034
+      },
+      {
+        "bin_start": 0.9,
+        "bin_end": 1.0,
+        "count": 19,
+        "acc": 0.7368,
+        "conf": 0.9496,
+        "gap": 0.2127
+      }
+    ]
+  },
+  "timestamp": "2026-10-24T11:03:59.397265"
+}
